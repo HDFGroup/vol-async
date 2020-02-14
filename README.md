@@ -87,3 +87,7 @@ Some configuration parameters used in the instructions:
 
         > H5Dwait(dset_id);
         > H5Fwait(file_id);
+
+    4.4 Finalize asynchronous I/O VOL, needs to be called before exiting the application to ensure all asynchronous I/O tasks have been completed.
+
+        > H5VLasync_finalize();
