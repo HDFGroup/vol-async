@@ -1318,12 +1318,7 @@ H5VL_async_term(void)
 #ifdef ENABLE_LOG 
     fprintf(stderr,"  [ASYNC VOL LOG] ASYNC VOL terminate\n");
 #endif
-    size_t size = 1;
-    while(async_instance_g && size > 0) {
-        usleep(10000);
-        ABT_pool_get_size(async_instance_g->pool, &size);
-        /* printf("H5VLasync_finalize: pool size is %lu\n", size); */
-    }
+    H5VLasync_finalize();
 
     async_term();
     H5VL_ASYNC_g = H5I_INVALID_HID;
@@ -2092,16 +2087,24 @@ double get_elapsed_time(struct timeval *tstart, struct timeval *tend)
     return (double)(((tend->tv_sec-tstart->tv_sec)*1000000LL + tend->tv_usec-tstart->tv_usec) / 1000000.0);
 }
 
-void H5VLasync_finalize()
+void H5VLasync_waitall()
 {
     size_t size = 1;
     while(async_instance_g && size > 0) {
-        usleep(10000);
         ABT_pool_get_size(async_instance_g->pool, &size);
+        usleep(100000);
         /* printf("H5VLasync_finalize: pool size is %lu\n", size); */
     }
 
+    usleep(200000);
+
     return ;
+}
+
+
+void H5VLasync_finalize()
+{
+    H5VLasync_waitall();
 }
 
 
