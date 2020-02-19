@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
     const char *file_name = "async_test_parallel.h5";
     const char *grp_name  = "Group";
     int        *data0_write, *data0_read, *data1_write, *data1_read;
-    int        i, nthread, is_verified, tmp_size;
+    int        i, is_verified, tmp_size;
     hsize_t    ds_size[2] = {DIMLEN, DIMLEN};
     hsize_t    my_size[2] = {DIMLEN, DIMLEN};
     hsize_t    offset[2] = {0, 0};
@@ -33,8 +33,8 @@ int main(int argc, char *argv[])
     }
    
     async_fapl = H5Pcreate (H5P_FILE_ACCESS);
-    nthread    = 1;
-    H5Pset_vol_async(async_fapl, nthread);
+    
+    H5Pset_vol_async(async_fapl);
     H5Pset_fapl_mpio(async_fapl, MPI_COMM_WORLD, MPI_INFO_NULL);
 
     file_id = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, async_fapl);

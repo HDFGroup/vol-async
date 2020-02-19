@@ -64,7 +64,15 @@ Some configuration parameters used in the instructions:
 
         > srun -n 2 ./async_test_parallel.exe
 
-4, Using the Asynchronous I/O VOL connector with application code
+4, Using the Asynchronous I/O VOL connector with application code (Implicit mode with environmental variable)
+
+    The implicit mode allows an application to enable asynchronous I/O VOL connector through setting the following environemental variables and without any application code modification. By default, the dataset writes creates a copy of the data buffer (automatically freed after the asynchronous write).
+
+        > export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
+        > export HDF5_PLUGIN_PATH="VOL_DIR"
+        > Run your application
+
+5, Using the Asynchronous I/O VOL connector with application code (Explicit mode)
 
     Please refer to the Makefile and source code under VOL_DIR/test/ for an example 
 
@@ -72,11 +80,10 @@ Some configuration parameters used in the instructions:
 
         > #include "h5_vol_external_async_native.h" 
 
-    4.2 Create and set the file access property with the number of background threads (currently only supports 1) to be used for asynchronous task execution. 
+    4.2 Create and set the file access property to be used for asynchronous task execution, currently uses 1 Argobots thread in the background. 
 
         > hid_t async_fapl = H5Pcreate (H5P_FILE_ACCESS);
-        > int nthread = 1;
-        > H5Pset_vol_async(async_fapl, nthread);
+        > H5Pset_vol_async(async_fapl);
         > H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, async_fapl);
 
     4.3 Create and set the data transfer property for dataset reads and writes. 

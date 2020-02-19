@@ -151,6 +151,7 @@ typedef struct async_instance_t {
     int                 num_xstreams;
     ABT_xstream         *xstreams;
     ABT_xstream         *scheds;
+    bool                env_async;
 } async_instance_t;
 
 typedef struct H5RQ_token_int_t {
@@ -978,6 +979,9 @@ static const H5VL_class_t H5VL_async_g = {
 /* The connector identification number, initialized at runtime */
 static hid_t H5VL_ASYNC_g = H5I_INVALID_HID;
 
+H5PL_type_t H5PLget_plugin_type(void) {return H5PL_TYPE_VOL;}
+const void *H5PLget_plugin_info(void) {return &H5VL_async_g;}
+    
 static herr_t 
 async_init(hid_t vipl_id)
 {
@@ -1109,11 +1113,14 @@ async_instance_init(int backing_thread_count)
     ABT_xstream *progress_xstreams = NULL;
     ABT_sched *progress_scheds = NULL;
     int abt_ret, i;
+    const char *env_var;
 
     if (backing_thread_count < 0) return -1;
 
     if (NULL != async_instance_g) 
         return 1;
+
+    async_init(H5P_DEFAULT);
 
     #ifdef ENABLE_DBG_MSG
         fprintf(stderr, "  [ASYNC VOL DBG] Init Argobots with %d threads\n", backing_thread_count);
@@ -1195,6 +1202,10 @@ async_instance_init(int backing_thread_count)
     aid->xstreams     = progress_xstreams;
     aid->num_xstreams = backing_thread_count;
 
+    aid->env_async = false;
+    env_var = getenv("HDF5_VOL_CONNECTOR");
+    if (env_var && *env_var && strstr(env_var, "async") != NULL) 
+        aid->env_async = true;
 
     async_instance_g = aid;
 
@@ -1217,8 +1228,14 @@ done:
 hid_t
 H5VL_async_register(void)
 {
-    /* Clear the error stack */
-    /* H5Eclear2(H5E_DEFAULT); */
+    int n_thread = ASYNC_VOL_DEFAULT_NTHREAD;
+    /* Initialize the Argobots I/O instance */
+    if (NULL == async_instance_g) {
+        if (async_instance_init(n_thread) < 0) {
+            fprintf(stderr,"  [ASYNC VOL ERROR] with async_instance_init\n");
+            return -1;
+        }
+    }
 
     /* Singleton register the pass-through VOL connector ID */
     if(H5I_VOL != H5Iget_type(H5VL_ASYNC_g)) {
@@ -1227,8 +1244,6 @@ H5VL_async_register(void)
             fprintf(stderr, "  [ASYNC VOL ERROR] with H5VLregister_connector\n");
             return -1;
         }
-
-        async_init(H5P_DEFAULT);
     }
 
     return H5VL_ASYNC_g;
@@ -1239,20 +1254,40 @@ H5VL_async_init(hid_t vipl_id)
 {
     vipl_id = vipl_id;
 
+    /* Initialize the Argobots I/O instance */
+    int n_thread = ASYNC_VOL_DEFAULT_NTHREAD;
+    if (NULL == async_instance_g) {
+        if (async_instance_init(n_thread) < 0) {
+            fprintf(stderr,"  [ASYNC VOL ERROR] with async_instance_init\n");
+            return -1;
+        }
+    }
+
     return 0;
 }
 
 herr_t 
-H5Pset_vol_async(hid_t fapl_id, int n_thread)
+H5Pset_vol_async(hid_t fapl_id)
 {
     H5VL_async_info_t async_vol_info;
     hid_t under_vol_id;
     void *under_vol_info;
     herr_t status;
+    /* int n_thread = ASYNC_VOL_DEFAULT_NTHREAD; */
 
-    if (H5VL_async_register() < 0) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] with H5Pset_vol\n");
-        goto done;
+    /* /1* Initialize the Argobots I/O instance *1/ */
+    /* if (NULL == async_instance_g) { */
+    /*     if (async_instance_init(n_thread) < 0) { */
+    /*         fprintf(stderr,"  [ASYNC VOL ERROR] with async_instance_init\n"); */
+    /*         return -1; */
+    /*     } */
+    /* } */
+
+    if (H5VLis_connector_registered_by_name(H5VL_ASYNC_NAME) == 0) {
+        if (H5VL_async_register() < 0) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] H5Pset_vol_async: H5VL_async_register\n");
+            goto done;
+        }
     }
 
     status = H5Pget_vol_id(fapl_id, &under_vol_id);
@@ -1270,17 +1305,6 @@ H5Pset_vol_async(hid_t fapl_id, int n_thread)
         goto done;
     }
 
-    if (n_thread <= 0) 
-        n_thread = ASYNC_VOL_DEFAULT_NTHREAD;
-
-    /* Initialize the Argobots I/O instance */
-    if (NULL == async_instance_g) {
-        if (async_instance_init(n_thread) < 0) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] with async_instance_init\n");
-            return -1;
-        }
-    }
-
 done:
     return 1;
 }
@@ -1294,6 +1318,12 @@ H5VL_async_term(void)
 #ifdef ENABLE_LOG 
     fprintf(stderr,"  [ASYNC VOL LOG] ASYNC VOL terminate\n");
 #endif
+    size_t size = 1;
+    while(async_instance_g && size > 0) {
+        usleep(10000);
+        ABT_pool_get_size(async_instance_g->pool, &size);
+        /* printf("H5VLasync_finalize: pool size is %lu\n", size); */
+    }
 
     async_term();
     H5VL_ASYNC_g = H5I_INVALID_HID;
@@ -2065,43 +2095,11 @@ double get_elapsed_time(struct timeval *tstart, struct timeval *tend)
 void H5VLasync_finalize()
 {
     size_t size = 1;
-    while(size > 0) {
+    while(async_instance_g && size > 0) {
         usleep(10000);
         ABT_pool_get_size(async_instance_g->pool, &size);
         /* printf("H5VLasync_finalize: pool size is %lu\n", size); */
     }
-    /* async_term(); */
-    /* async_task_t *task_iter; */
-    /* hbool_t acquired = false; */
-
-    /* if (H5TSmutex_release() < 0) */ 
-    /*     fprintf(stderr, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__); */
-
-    /* if (ABT_mutex_lock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) { */
-    /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__); */
-    /*     return -1; */
-    /* } */
-    /* // Check for all tasks on this dset of a file */
-    /* DL_FOREACH2(async_obj->file_task_list_head, task_iter, file_list_next) { */
-    /*     /1* if (ABT_mutex_lock(async_obj->obj_mutex) != ABT_SUCCESS) { *1/ */
-    /*     /1*     fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_mutex_lock failed\n", __func__); *1/ */
-    /*     /1*     return -1; *1/ */
-    /*     /1* } *1/ */
-
-    /*     if (task_iter->is_done != 1) { */
-    /*         ABT_eventual_wait(task_iter->eventual, NULL); */
-    /*     } */
-    /* } */
-
-    /* if (ABT_mutex_unlock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) { */
-    /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__); */
-    /*     return -1; */
-    /* } */
-
-    /* while (false == acquired) { */
-    /*     if (H5TSmutex_acquire(&acquired) < 0) */
-    /*         fprintf(stderr, "  [ASYNC VOL ERROR] %s with H5TSmutex_acquire\n", __func__); */
-    /* } */
 
     return ;
 }
@@ -7237,8 +7235,8 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with H5Pget_dxpl_async\n", __func__);
         goto error;
     }
-    if (cp_size_limit > 0) enable_async = true;
-
+    if (cp_size_limit > 0) { enable_async = true; }
+    if (aid->env_async) enable_async = true;
     if (enable_async == true && cp_size_limit == 0) cp_size_limit = ULONG_MAX;
 
     /* create a new task and insert into its file task list */ 
@@ -7276,7 +7274,7 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         }
     }
 
-    if (cp_size_limit != ULONG_MAX && cp_size_limit > 0) { 
+    if (cp_size_limit > 0) { 
         if (H5VLasync_get_data_size(args->dset, args->mem_space_id, parent_obj->under_vol_id, &buf_size) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5VLasync_get_data_size failed\n", __func__);
             goto done;
@@ -7291,7 +7289,7 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         }
         else { 
             enable_async = false;
-            fprintf(stderr,"  [ASYNC VOL] %s buf size [%llu] is larger than cp_size_limit [%llu], using synchronous write\n", __func__, buf_size, cp_size_limit);
+            fprintf(stdout,"  [ASYNC VOL] %s buf size [%llu] is larger than cp_size_limit [%llu], using synchronous write\n", __func__, buf_size, cp_size_limit);
         } 
     }
 

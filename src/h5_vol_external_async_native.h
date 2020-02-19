@@ -53,7 +53,7 @@ extern "C" {
 
 H5_DLL hid_t H5VL_async_register(void);
 
-herr_t H5Pset_vol_async(hid_t fapl_id, int n_thread);
+herr_t H5Pset_vol_async(hid_t fapl_id);
 herr_t H5Pget_dxpl_async(hid_t dxpl, hbool_t *is_async);
 herr_t H5Pset_dxpl_async(hid_t dxpl, hbool_t is_async);
 herr_t H5Pget_dxpl_async_cp_limit(hid_t dxpl, hsize_t *size);

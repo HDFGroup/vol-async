@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
     const char *file_name = "async_test_serial.h5";
     const char *grp_name  = "Group";
     int        *data0_write, *data0_read, *data1_write, *data1_read;
-    int        i, nthread;
+    int        i;
     hsize_t    ds_size[2] = {DIMLEN, DIMLEN};
     herr_t     status;
     hid_t      async_fapl;
@@ -22,8 +22,8 @@ int main(int argc, char *argv[])
     /* H5VLasync_init(H5P_DEFAULT); */
     async_fapl = H5Pcreate (H5P_FILE_ACCESS);
     async_dxpl = H5Pcreate (H5P_DATASET_XFER);
-    nthread    = 1;
-    H5Pset_vol_async(async_fapl, nthread);
+    
+    H5Pset_vol_async(async_fapl);
     H5Pset_dxpl_async(async_dxpl, true);
 
     if (print_dbg_msg) printf("H5Fcreate start\n");

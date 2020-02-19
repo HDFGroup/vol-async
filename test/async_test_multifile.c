@@ -24,12 +24,10 @@ int main(int argc, char *argv[])
     char file_name[128];
     char *grp_name  = "Group", *fpath;
     int        *write_data, *data1_write, attr_data0, attr_data1, attr_read_data0=0, attr_read_data1=0;
-    int        i, nthread;
+    int        i;
     herr_t     status;
     hid_t      async_fapl;
     
-    nthread    = 1;
-
     int ifile, nfile = 5, sleeptime = 2;
 
     fpath = ".";
@@ -48,7 +46,7 @@ int main(int argc, char *argv[])
 
     async_fapl = H5Pcreate (H5P_FILE_ACCESS);
     async_dxpl = H5Pcreate (H5P_DATASET_XFER);
-    H5Pset_vol_async(async_fapl, nthread);
+    H5Pset_vol_async(async_fapl);
     H5Pset_dxpl_async(async_dxpl, true);
 
     gettimeofday(&ts, 0);
