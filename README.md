@@ -66,7 +66,7 @@ Some configuration parameters used in the instructions:
 
 4, Using the Asynchronous I/O VOL connector with application code (Implicit mode with environmental variable)
 
-    The implicit mode allows an application to enable asynchronous I/O VOL connector through setting the following environemental variables and without any application code modification. By default, the dataset writes creates a copy of the data buffer (automatically freed after the asynchronous write).
+    The implicit mode allows an application to enable asynchronous I/O VOL connector through setting the following environemental variables and without any application code modification. By default, the dataset writes creates a copy of the data buffer, which is automatically freed after the asynchronous write, and all read operations are blocking to ensure the read data is correct.
 
         > export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
         > export HDF5_PLUGIN_PATH="VOL_DIR"

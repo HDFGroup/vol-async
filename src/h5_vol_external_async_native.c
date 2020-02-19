@@ -3455,6 +3455,8 @@ done:
 static herr_t
 async_attr_read(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type_id, void *buf, hid_t dxpl_id, void **req)
 {
+    // For implicit mode (env var), make all read to be blocking
+    if(aid->env_async) is_blocking = 1;
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_attr_read_args_t *args = NULL;
@@ -6786,6 +6788,8 @@ done:
 static herr_t
 async_dataset_read(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type_id, hid_t mem_space_id, hid_t file_space_id, hid_t plist_id, void *buf, void **req)
 {
+    // For implicit mode (env var), make all read to be blocking
+    if(aid->env_async) is_blocking = 1;
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_dataset_read_args_t *args = NULL;
