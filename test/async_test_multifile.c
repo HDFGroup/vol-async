@@ -52,11 +52,11 @@ int main(int argc, char *argv[])
     gettimeofday(&ts, 0);
     for (ifile = 0; ifile < nfile; ifile++) {
 
-        gettimeofday(&t0, 0);
-
         printf("Compute/sleep for %d seconds...\n", sleeptime);
         fflush(stdout);
         sleep(sleeptime);
+
+        gettimeofday(&t0, 0);
 
         sprintf(file_name, "%s/test_%d.h5", fpath, ifile);
         file_id = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, async_fapl);

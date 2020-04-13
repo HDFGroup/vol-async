@@ -32,7 +32,7 @@
 #define ASYNC_VOL_PROP_NAME "use_async_vol"
 #define ASYNC_VOL_CP_SIZE_LIMIT_NAME "async_vol_cp_size_limit"
 #define ASYNC_VOL_ATTR_CP_SIZE_LIMIT 32768
-#define ASYNC_ATTEMPT_CHECK_INTERVAL 8
+#define ASYNC_ATTEMPT_CHECK_INTERVAL 1
 #define ASYNC_MAGIC 10242048
 
 struct H5VL_async_t;
