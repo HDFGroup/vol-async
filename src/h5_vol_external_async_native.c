@@ -130,6 +130,10 @@ typedef struct H5VL_async_t {
     ABT_pool            *pool_ptr;
     hbool_t             is_col_meta;
     hbool_t             is_raw_io_delay;
+    // To make dset write not requiring dset create to complete (still requries dset open to complete)
+    hbool_t             has_dset_size;
+    hsize_t             dtype_size;
+    hsize_t             dset_size;
 } H5VL_async_t;
 
 typedef struct async_task_list_t {
@@ -2144,6 +2148,31 @@ H5VLasync_get_data_size(void *dset, hid_t space, hid_t connector_id, hsize_t *si
 done:
     return ret;
 }
+
+herr_t
+H5VLasync_get_data_nelem(void *dset, hid_t space, hid_t connector_id, hsize_t *size)
+{
+    herr_t ret;
+    hid_t dset_space;
+
+    if (H5S_ALL == space) {
+        if ((ret = dataset_get_wrapper(dset, connector_id, H5VL_DATASET_GET_SPACE, 
+                                       H5P_DATASET_XFER_DEFAULT, NULL, (void*)&dset_space)) < 0) {
+            fprintf(stderr,"  [ASYNC VOL ERROR] %s dataset_get_wrapper failed\n", __func__);
+            goto done;
+        }
+        (*size) = H5Sget_simple_extent_npoints(dset_space);
+
+        if ((ret = H5Sclose(dset_space)) < 0)
+            fprintf(stderr,"  [ASYNC VOL ERROR] %s H5Sclose failed\n", __func__);
+    }
+    else
+        (*size) = H5Sget_select_npoints(space);
+
+done:
+    return ret;
+}
+
 
 double get_elapsed_time(struct timeval *tstart, struct timeval *tend)
 {
@@ -6229,6 +6258,10 @@ async_dataset_create(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
 
     async_obj->create_task = async_task;
     async_obj->under_vol_id = async_task->under_vol_id;
+    async_obj->dtype_size = H5Tget_size(type_id);
+    async_obj->dset_size = async_obj->dtype_size * H5Sget_simple_extent_npoints(space_id);
+    if (async_obj->dset_size > 0)
+        async_obj->has_dset_size = true;
 
     /* Lock parent_obj */
     while (1) {
@@ -7540,9 +7573,22 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     }
 
     if (cp_size_limit > 0) { 
-        if (H5VLasync_get_data_size(args->dset, args->mem_space_id, parent_obj->under_vol_id, &buf_size) < 0) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s H5VLasync_get_data_size failed\n", __func__);
-            goto done;
+        if (parent_obj->has_dset_size && args->file_space_id == H5S_ALL && parent_obj->dset_size > 0) { 
+            buf_size = parent_obj->dset_size;
+        }
+        else { 
+            if (parent_obj->dtype_size > 0) {
+                if (H5VLasync_get_data_nelem(args->dset, args->file_space_id, parent_obj->under_vol_id, &buf_size) < 0) {
+                    fprintf(stderr,"  [ASYNC VOL ERROR] %s H5VLasync_get_data_nelem failed\n", __func__);
+                    goto done;
+                }
+                buf_size *= parent_obj->dtype_size;
+            }
+            else
+                if (H5VLasync_get_data_size(args->dset, args->file_space_id, parent_obj->under_vol_id, &buf_size) < 0) {
+                    fprintf(stderr,"  [ASYNC VOL ERROR] %s H5VLasync_get_data_size failed\n", __func__);
+                    goto done;
+                }
         }
         if (buf_size <= cp_size_limit) { 
             if (NULL == (args->buf = malloc(buf_size))) {
@@ -9541,9 +9587,6 @@ async_datatype_commit_fn(void *foo)
     gettimeofday(&timer4, NULL);
     double time4 = get_elapsed_time(&timer3, &timer4);
     #endif
-
-    task->async_obj->is_obj_valid = 1;
-    task->async_obj->create_task = NULL;
 
 
 
@@ -17369,9 +17412,6 @@ async_link_create_fn(void *foo)
     double time4 = get_elapsed_time(&timer3, &timer4);
     #endif
 
-    task->async_obj->under_object = args->obj;
-    task->async_obj->is_obj_valid = 1;
-
 
 
 
@@ -19952,9 +19992,6 @@ async_object_open_fn(void *foo)
     gettimeofday(&timer4, NULL);
     double time4 = get_elapsed_time(&timer3, &timer4);
     #endif
-
-    task->async_obj->under_object = args->obj;
-    task->async_obj->is_obj_valid = 1;
 
 
 
@@ -22640,7 +22677,7 @@ H5VL_async_dataset_create(void *obj, const H5VL_loc_params_t *loc_params,
     printf("------- ASYNC VOL DATASET Create\n");
 #endif
 
-    dset = async_dataset_create(1, async_instance_g, o, loc_params, name, lcpl_id, type_id, space_id, dcpl_id,  dapl_id, dxpl_id, req);
+    dset = async_dataset_create(0, async_instance_g, o, loc_params, name, lcpl_id, type_id, space_id, dcpl_id,  dapl_id, dxpl_id, req);
 
 
     return (void *)dset;
