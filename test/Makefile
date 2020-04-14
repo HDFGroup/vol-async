@@ -1,20 +1,36 @@
-HDF5_DIR=/global/homes/h/houhun/hdf5_tmp/hdf5/async_threadsafe/hdf5
-ABT_DIR=/global/homes/h/houhun/cori/argobots/install
-cc=cc
-ASYNC_DIR=../src
+#HDF5_DIR = /global/homes/h/houhun/hdf5_tmp/hdf5/async_threadsafe/hdf5
+#ABT_DIR = /global/homes/h/houhun/cori/argobots/install
+HDF5_DIR = /Users/koziol/HDF5/misc_bugs4/review/vol/build_async_parallel/hdf5
+ABT_DIR = /Users/koziol/HDF5/misc_bugs4/review/vol/argobots/build_argobots
+ASYNC_DIR = ../src
 
-COMMON=-I$(ABT_DIR)/include -I$(ASYNC_DIR) -I$(HDF5_DIR)/include -L$(ASYNC_DIR) -L$(ABT_DIR)/lib -L$(HDF5_DIR)/lib -labt -lhdf5 -g -lh5async 
+#CC = cc
+#CC = gcc-9
+CC = mpicc
 
-all:
-	$(cc) async_test_serial.c    $(COMMON) -o async_test_serial.exe
-	$(cc) async_test_multifile.c    $(COMMON) -o async_test_multifile.exe
-	$(cc) async_test_multifile_env.c    $(COMMON) -o async_test_multifile_env.exe
-	# $(cc) async_test_token.c     $(COMMON) -o async_test_token.exe
-	$(cc) async_test_parallel.c  $(COMMON) -o async_test_parallel.exe
-	$(cc) async_test_parallel2.c $(COMMON) -o async_test_parallel2.exe
-	$(cc) async_test_parallel3.c $(COMMON) -o async_test_parallel3.exe
-	$(cc) async_test_parallel4.c $(COMMON) -o async_test_parallel4.exe
-	$(cc) async_test_parallel5.c $(COMMON) -o async_test_parallel5.exe
+DEBUG = -g -O0
+CFLAGS = $(DEBUG) -I$(ABT_DIR)/include -I$(ASYNC_DIR) -I$(HDF5_DIR)/include
+#-Wall
+LDFLAGS = $(DEBUG) -L$(ASYNC_DIR) -L$(ABT_DIR)/lib -L$(HDF5_DIR)/lib -labt -lhdf5 -lh5async
 
+SRC = async_test_serial.c async_test_serial2.c \
+    async_test_multifile.c async_test_multifile_env.c \
+    async_test_parallel.c async_test_parallel2.c async_test_parallel3.c \
+    async_test_parallel4.c async_test_parallel5.c
+    # async_test_token.c
+OBJ = $(SRC:.c=.o)
+EXE = $(SRC:.c=.exe)
+DBG = $(SRC:.c=.exe.dSYM)
+LIB = libh5async.so
+
+# Add '.exe' as a targetable suffix
+.SUFFIXES: .exe
+
+.c.exe:
+	$(CC) $(CFLAGS) $^ -o $*.exe $(LDFLAGS)
+
+all: $(EXE)
+
+.PHONY: clean
 clean:
-	rm -rf ./*.o ./*.exe ./*.h5
+	rm -rf $(OBJ) $(EXE) $(DBG) ./*.h5
