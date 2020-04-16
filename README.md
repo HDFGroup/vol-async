@@ -76,32 +76,32 @@ Some configuration parameters used in the instructions:
 
     Please refer to the Makefile and source code under VOL_DIR/test/ for an example 
 
-    4.1 Include header file
+    5.1 Include header file
 
         > #include "h5_vol_external_async_native.h" 
 
-    4.2 Create and set the file access property to be used for asynchronous task execution, currently uses 1 Argobots thread in the background. 
+    5.2 Create and set the file access property to be used for asynchronous task execution, currently uses 1 Argobots thread in the background. 
 
         > hid_t async_fapl = H5Pcreate (H5P_FILE_ACCESS);
         > H5Pset_vol_async(async_fapl);
         > H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, async_fapl);
 
-    4.3 Create and set the data transfer property for dataset reads and writes. 
+    5.3 Create and set the data transfer property for dataset reads and writes. 
 
         > hid_t async_dxpl = H5Pcreate (H5P_DATASET_XFER);
         > H5Pset_dxpl_async(async_dxpl, true);
         > H5Pget_dxpl_async_cp_limit(async_dxpl, 1048576); // Optional, for a dataset read or write, if the actual data size is larger the set limit (in bytes), then it becomes blocking, to prevent the data buffer being modified by the application before the I/O operations complete.
         > H5Dwrite(dset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, async_dxpl, data);
 
-    4.4 Finalize asynchronous I/O VOL, must be called before exiting the application to block and allow all asynchronous I/O tasks to be completed in the background thread.
+    5.4 Finalize asynchronous I/O VOL, must be called before exiting the application to block and allow all asynchronous I/O tasks to be completed in the background thread.
 
         > H5VLasync_finalize();
 
-    4.5 Explicitly wait for asynchronous task to be completed. (Optional)
+    5.5 Explicitly wait for asynchronous task to be completed. (Optional)
 
         > H5Dwait(dset_id); // Wait for all I/O tasks of the dataset
         > H5Fwait(file_id); // Wait for all I/O tasks of the file
 
-    4.6 May need to set the following environmental variable before running your application.
+    5.6 May need to set the following environmental variable before running your application.
 
         > export LD_LIBRARY_PATH=VOL_DIR/src:H5_DIR/build/lib:$LD_LIBRARY_PATH
