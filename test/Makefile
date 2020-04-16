@@ -1,6 +1,6 @@
 #HDF5_DIR = /global/homes/h/houhun/hdf5_tmp/hdf5/async_threadsafe/hdf5
 #ABT_DIR = /global/homes/h/houhun/cori/argobots/install
-HDF5_DIR = /Users/koziol/HDF5/misc_bugs4/review/vol/build_async_parallel/hdf5
+HDF5_DIR = /Users/koziol/HDF5/misc_bugs4/review/vol/build_async_parallel_production/hdf5
 ABT_DIR = /Users/koziol/HDF5/misc_bugs4/review/vol/argobots/build_argobots
 ASYNC_DIR = ../src
 
@@ -21,7 +21,8 @@ SRC = async_test_serial.c async_test_serial2.c \
 OBJ = $(SRC:.c=.o)
 EXE = $(SRC:.c=.exe)
 DBG = $(SRC:.c=.exe.dSYM)
-LIB = libh5async.so
+#LIB = libh5async.so
+LIB = libh5async.dylib
 
 # Add '.exe' as a targetable suffix
 .SUFFIXES: .exe
