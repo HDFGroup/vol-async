@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "hdf5.h"
@@ -34,8 +35,10 @@ int main(int argc, char *argv[])
    
     async_fapl = H5Pcreate (H5P_FILE_ACCESS);
     
-    H5Pset_vol_async(async_fapl);
-    H5Pset_fapl_mpio(async_fapl, MPI_COMM_WORLD, MPI_INFO_NULL);
+    status = H5Pset_vol_async(async_fapl);
+    assert(status >= 0);
+    status = H5Pset_fapl_mpio(async_fapl, MPI_COMM_WORLD, MPI_INFO_NULL);
+    assert(status >= 0);
 
     file_id = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, async_fapl);
     if (file_id < 0) {
