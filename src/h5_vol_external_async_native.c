@@ -2152,7 +2152,7 @@ done:
 herr_t
 H5VLasync_get_data_nelem(void *dset, hid_t space, hid_t connector_id, hsize_t *size)
 {
-    herr_t ret;
+    herr_t ret = 0;
     hid_t dset_space;
 
     if (H5S_ALL == space) {
