@@ -1,0 +1,12 @@
+Notes & To Do Items:
+--------------------
+- Several VOL callbacks are not connected to their asynchronous handles and
+    execute synchronously.  Currently, they are marked with an 'unused'
+    attribute, so they don't generate warnings:
+        - file_specific
+        - link_create
+        - link_copy
+        - link_move
+        - link_get
+        - link_specific
+        - link_optional

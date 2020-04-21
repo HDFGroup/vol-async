@@ -13535,7 +13535,7 @@ done:
     return;
 } // End async_file_specific_fn
 
-static herr_t
+__attribute__((unused)) static herr_t
 async_file_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_file_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
@@ -17177,7 +17177,7 @@ error:
 
 
 
-static void
+__attribute__((unused)) static void
 async_link_create_fn(void *foo)
 {
     hbool_t acquired = false;
@@ -17876,7 +17876,7 @@ done:
     return;
 } // End async_link_copy_fn
 
-static herr_t
+__attribute__((unused)) static herr_t
 async_link_copy(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params1, H5VL_async_t *parent_obj2, const H5VL_loc_params_t *loc_params2, hid_t lcpl_id, hid_t lapl_id, hid_t dxpl_id, void **req)
 {
     async_task_t *async_task = NULL;
@@ -18305,7 +18305,7 @@ done:
     return;
 } // End async_link_move_fn
 
-static herr_t
+__attribute__((unused)) static herr_t
 async_link_move(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params1, H5VL_async_t *parent_obj2, const H5VL_loc_params_t *loc_params2, hid_t lcpl_id, hid_t lapl_id, hid_t dxpl_id, void **req)
 {
     async_task_t *async_task = NULL;
@@ -18734,7 +18734,7 @@ done:
     return;
 } // End async_link_get_fn
 
-static herr_t
+__attribute__((unused)) static herr_t
 async_link_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, H5VL_link_get_t get_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
@@ -19158,7 +19158,7 @@ done:
     return;
 } // End async_link_specific_fn
 
-static herr_t
+__attribute__((unused)) static herr_t
 async_link_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, H5VL_link_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
@@ -19581,7 +19581,7 @@ done:
     return;
 } // End async_link_optional_fn
 
-static herr_t
+__attribute__((unused)) static herr_t
 async_link_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_link_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
@@ -23232,6 +23232,10 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_t specific_type,
     printf("------- ASYNC VOL FILE Specific\n");
 #endif
 
+    /* Return error if file object not open / created */
+    if(o->create_task == NULL || !o->is_obj_valid)
+        return(-1);
+
     /* Unpack arguments to get at the child file pointer when mounting a file */
     if(specific_type == H5VL_FILE_MOUNT) {
         H5I_type_t loc_type;
@@ -23628,6 +23632,10 @@ H5VL_async_link_create(H5VL_link_create_type_t create_type, void *obj,
     printf("------- ASYNC VOL LINK Create\n");
 #endif
 
+    /* Return error if object not open / created */
+    if(o->create_task == NULL || !o->is_obj_valid)
+        return(-1);
+
     /* Try to retrieve the "under" VOL id */
     if(o)
         under_vol_id = o->under_vol_id;
@@ -23694,6 +23702,12 @@ H5VL_async_link_copy(void *src_obj, const H5VL_loc_params_t *loc_params1,
     printf("------- ASYNC VOL LINK Copy\n");
 #endif
 
+    /* Return error if objects not open / created */
+    if(o_src->create_task == NULL || !o_src->is_obj_valid)
+        return(-1);
+    if(o_dst->create_task == NULL || !o_dst->is_obj_valid)
+        return(-1);
+
     /* Retrieve the "under" VOL id */
     if(o_src)
         under_vol_id = o_src->under_vol_id;
@@ -23740,6 +23754,12 @@ H5VL_async_link_move(void *src_obj, const H5VL_loc_params_t *loc_params1,
     printf("------- ASYNC VOL LINK Move\n");
 #endif
 
+    /* Return error if objects not open / created */
+    if(o_src->create_task == NULL || !o_src->is_obj_valid)
+        return(-1);
+    if(o_dst->create_task == NULL || !o_dst->is_obj_valid)
+        return(-1);
+
     /* Retrieve the "under" VOL id */
     if(o_src)
         under_vol_id = o_src->under_vol_id;
@@ -23778,6 +23798,10 @@ H5VL_async_link_get(void *obj, const H5VL_loc_params_t *loc_params,
     printf("------- ASYNC VOL LINK Get\n");
 #endif
 
+    /* Return error if file object not open / created */
+    if(o->create_task == NULL || !o->is_obj_valid)
+        return(-1);
+
     ret_value = H5VLlink_get(o->under_object, loc_params, o->under_vol_id, get_type, dxpl_id, req, arguments);
 
     /* Check for async request */
@@ -23809,6 +23833,10 @@ H5VL_async_link_specific(void *obj, const H5VL_loc_params_t *loc_params,
     printf("------- ASYNC VOL LINK Specific\n");
 #endif
 
+    /* Return error if file object not open / created */
+    if(o->create_task == NULL || !o->is_obj_valid)
+        return(-1);
+
     ret_value = H5VLlink_specific(o->under_object, loc_params, o->under_vol_id, specific_type, dxpl_id, req, arguments);
 
     /* Check for async request */
@@ -23839,6 +23867,10 @@ H5VL_async_link_optional(void *obj, H5VL_link_optional_t opt_type,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL LINK Optional\n");
 #endif
+
+    /* Return error if file object not open / created */
+    if(o->create_task == NULL || !o->is_obj_valid)
+        return(-1);
 
     ret_value = H5VLlink_optional(o->under_object, o->under_vol_id, opt_type, dxpl_id, req, arguments);
 
