@@ -17177,7 +17177,7 @@ error:
 
 
 
-__attribute__((unused)) static void
+static void
 async_link_create_fn(void *foo)
 {
     hbool_t acquired = false;
@@ -17432,7 +17432,7 @@ done:
     return;
 } // End async_link_create_fn
 
-static H5VL_async_t*
+__attribute__((unused)) static H5VL_async_t*
 async_link_create(int is_blocking, async_instance_t* aid, H5VL_link_create_type_t create_type, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, hid_t lcpl_id, hid_t lapl_id, hid_t dxpl_id, void **req, va_list arguments)
 {
     H5VL_async_t *async_obj = NULL;
