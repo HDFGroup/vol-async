@@ -1402,66 +1402,40 @@ free_async_task(async_task_t *task)
 /*     } */
 /* } */
 
+static void
+free_file_async_resources(H5VL_async_t *file)
+{
+    async_task_t *task_iter, *tmp;
 
-/* static void */
-/* remove_tasks_of_closed_object(H5VL_async_t *async_obj) */
-/* { */
-/*     async_task_t *task_iter, *tmp; */
-/*     assert(async_obj); */
+    assert(file);
 
-/*     if (ABT_mutex_lock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) { */
-/*         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__); */
-/*         return; */
-/*     } */
+    if (ABT_mutex_lock(file->file_task_list_mutex) != ABT_SUCCESS) {
+        fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
+        return;
+    }
 
-/*     DL_FOREACH_SAFE2(async_obj->file_async_obj->file_task_list_head, task_iter, tmp, file_list_next) { */
-/*         if (task_iter->async_obj == async_obj && task_iter->is_done == 1) { */
-/*             DL_DELETE2(async_obj->file_async_obj->file_task_list_head, task_iter, file_list_prev, file_list_next); */
-/*             free_async_task(task_iter); */
-/*             free(task_iter); */
-/*         } */
-/*     } */
+    DL_FOREACH_SAFE2(file->file_async_obj->file_task_list_head, task_iter, tmp, file_list_next) {
+        DL_DELETE2(file->file_async_obj->file_task_list_head, task_iter, file_list_prev, file_list_next);
+        free_async_task(task_iter);
+        free(task_iter);
+    }
 
-/*     if (ABT_mutex_unlock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) { */
-/*         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__); */
-/*         return; */
-/*     } */
-/* } */
+    if (ABT_mutex_unlock(file->file_task_list_mutex) != ABT_SUCCESS) {
+        fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
+        return;
+    }
 
+    if (ABT_mutex_free(&file->obj_mutex) != ABT_SUCCESS) {
+        fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_free\n", __func__);
+        return;
+    }
 
-/* static void */
-/* free_file_async_obj(H5VL_async_t *file) */
-/* { */
-/*     async_task_t *task_iter, *tmp; */
-
-/*     assert(file); */
-
-/*     if (ABT_mutex_lock(file->file_task_list_mutex) != ABT_SUCCESS) { */
-/*         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__); */
-/*         return; */
-/*     } */
-
-/*     DL_FOREACH_SAFE2(file->file_async_obj->file_task_list_head, task_iter, tmp, file_list_next) { */
-/*         DL_DELETE2(file->file_async_obj->file_task_list_head, task_iter, file_list_prev, file_list_next); */
-/*         free_async_task(task_iter); */
-/*         free(task_iter); */
-/*     } */
-
-/*     if (ABT_mutex_unlock(file->file_task_list_mutex) != ABT_SUCCESS) { */
-/*         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__); */
-/*         return; */
-/*     } */
-
-/*     if (ABT_mutex_free(&file->obj_mutex) != ABT_SUCCESS) { */
-/*         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_free\n", __func__); */
-/*         return; */
-/*     } */
-/*     if (ABT_mutex_free(&file->file_task_list_mutex) != ABT_SUCCESS) { */
-/*         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_free\n", __func__); */
-/*         return; */
-/*     } */
-/*     free(file); */
-/* } */
+    if (ABT_mutex_free(&file->file_task_list_mutex) != ABT_SUCCESS) {
+        fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_free\n", __func__);
+        return;
+    }
+    free(file);
+}
 
 static herr_t
 add_to_dep_task(async_task_t *task, async_task_t *dep_task)
@@ -14392,6 +14366,10 @@ done:
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
        push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr);
+
+    // Free all the resources allocated for this file, e.g. tasks
+    free_file_async_resources(task->async_obj);
+
     #ifdef ENABLE_TIMING
     gettimeofday(&timer9, NULL);
     double exec_time   = get_elapsed_time(&args->start_time, &timer9);
@@ -22816,8 +22794,8 @@ H5VL_async_dataset_specific(void *obj, H5VL_dataset_specific_t specific_type,
     }
 
     /* Check for async request */
-/*     if(req && *req) */
-/*         *req = H5VL_async_new_obj(*req, under_vol_id); */
+    if(req && *req)
+        *req = H5VL_async_new_obj(*req, under_vol_id);
 
     return ret_value;
 } /* end H5VL_async_dataset_specific() */
@@ -23009,8 +22987,8 @@ H5VL_async_datatype_specific(void *obj, H5VL_datatype_specific_t specific_type,
     }
 
     /* Check for async request */
-/*     if(req && *req) */
-/*         *req = H5VL_async_new_obj(*req, under_vol_id); */
+    if(req && *req)
+        *req = H5VL_async_new_obj(*req, under_vol_id);
 
     return ret_value;
 } /* end H5VL_async_datatype_specific() */
@@ -23326,8 +23304,8 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_t specific_type,
             if(ret_value >= 0) {
                 void      **ret = va_arg(my_arguments, void **);
 
-/*                 if(ret && *ret) */
-/*                     *ret = H5VL_async_new_obj(*ret, o->under_vol_id); */
+                if(ret && *ret)
+                    *ret = H5VL_async_new_obj(*ret, o->under_vol_id);
             } /* end if */
 
             /* Finish use of copied vararg list */
@@ -23336,8 +23314,8 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_t specific_type,
     } /* end else */
 
     /* Check for async request */
-/*     if(req && *req) */
-/*         *req = H5VL_async_new_obj(*req, under_vol_id); */
+    if(req && *req)
+        *req = H5VL_async_new_obj(*req, under_vol_id);
 
     return ret_value;
 } /* end H5VL_async_file_specific() */
@@ -23529,8 +23507,8 @@ H5VL_async_group_specific(void *obj, H5VL_group_specific_t specific_type,
     }
 
     /* Check for async request */
-/*     if(req && *req) */
-/*         *req = H5VL_async_new_obj(*req, under_vol_id); */
+    if(req && *req)
+        *req = H5VL_async_new_obj(*req, under_vol_id);
 
     return ret_value;
 } /* end H5VL_async_group_specific() */
@@ -24000,8 +23978,8 @@ H5VL_async_object_specific(void *obj, const H5VL_loc_params_t *loc_params,
     }
 
     /* Check for async request */
-/*     if(req && *req) */
-/*         *req = H5VL_async_new_obj(*req, under_vol_id); */
+    if(req && *req)
+        *req = H5VL_async_new_obj(*req, under_vol_id);
 
     return ret_value;
 } /* end H5VL_async_object_specific() */
