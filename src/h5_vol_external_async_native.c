@@ -873,13 +873,13 @@ static herr_t H5VL_async_optional(void *obj, int op_type, hid_t dxpl_id, void **
 
 /* async VOL connector class struct */
 static const H5VL_class_t H5VL_async_g = {
-    H5VL_ASYNC_VERSION,                          /* version      */
-    (H5VL_class_value_t)H5VL_ASYNC_VALUE,        /* value        */
-    H5VL_ASYNC_NAME,                             /* name         */
-    0,                                              /* capability flags */
+    H5VL_ASYNC_VERSION,                      /* version      */
+    (H5VL_class_value_t)H5VL_ASYNC_VALUE,    /* value        */
+    H5VL_ASYNC_NAME,                         /* name         */
+    0,                                       /* capability flags */
     H5VL_async_init,                         /* initialize   */
     H5VL_async_term,                         /* terminate    */
-    {                                           /* info_cls */
+    { /* info_cls */
         sizeof(H5VL_async_info_t),           /* size    */
         H5VL_async_info_copy,                /* copy    */
         H5VL_async_info_cmp,                 /* compare */
@@ -887,14 +887,14 @@ static const H5VL_class_t H5VL_async_g = {
         H5VL_async_info_to_str,              /* to_str  */
         H5VL_async_str_to_info               /* from_str */
     },
-    {                                           /* wrap_cls */
+    { /* wrap_cls */
         H5VL_async_get_object,               /* get_object   */
         H5VL_async_get_wrap_ctx,             /* get_wrap_ctx */
         H5VL_async_wrap_object,              /* wrap_object  */
         H5VL_async_unwrap_object,            /* unwrap_object */
         H5VL_async_free_wrap_ctx             /* free_wrap_ctx */
     },
-    {                                           /* attribute_cls */
+    { /* attribute_cls */
         H5VL_async_attr_create,              /* create */
         H5VL_async_attr_open,                /* open */
         H5VL_async_attr_read,                /* read */
@@ -904,7 +904,7 @@ static const H5VL_class_t H5VL_async_g = {
         H5VL_async_attr_optional,            /* optional */
         H5VL_async_attr_close                /* close */
     },
-    {                                           /* dataset_cls */
+    { /* dataset_cls */
         H5VL_async_dataset_create,           /* create */
         H5VL_async_dataset_open,             /* open */
         H5VL_async_dataset_read,             /* read */
@@ -914,7 +914,7 @@ static const H5VL_class_t H5VL_async_g = {
         H5VL_async_dataset_optional,         /* optional */
         H5VL_async_dataset_close             /* close */
     },
-    {                                           /* datatype_cls */
+    { /* datatype_cls */
         H5VL_async_datatype_commit,          /* commit */
         H5VL_async_datatype_open,            /* open */
         H5VL_async_datatype_get,             /* get_size */
@@ -922,7 +922,7 @@ static const H5VL_class_t H5VL_async_g = {
         H5VL_async_datatype_optional,        /* optional */
         H5VL_async_datatype_close            /* close */
     },
-    {                                           /* file_cls */
+    { /* file_cls */
         H5VL_async_file_create,              /* create */
         H5VL_async_file_open,                /* open */
         H5VL_async_file_get,                 /* get */
@@ -930,7 +930,7 @@ static const H5VL_class_t H5VL_async_g = {
         H5VL_async_file_optional,            /* optional */
         H5VL_async_file_close                /* close */
     },
-    {                                           /* group_cls */
+    { /* group_cls */
         H5VL_async_group_create,             /* create */
         H5VL_async_group_open,               /* open */
         H5VL_async_group_get,                /* get */
@@ -938,7 +938,7 @@ static const H5VL_class_t H5VL_async_g = {
         H5VL_async_group_optional,           /* optional */
         H5VL_async_group_close               /* close */
     },
-    {                                           /* link_cls */
+    { /* link_cls */
         H5VL_async_link_create,              /* create */
         H5VL_async_link_copy,                /* copy */
         H5VL_async_link_move,                /* move */
@@ -946,18 +946,18 @@ static const H5VL_class_t H5VL_async_g = {
         H5VL_async_link_specific,            /* specific */
         H5VL_async_link_optional             /* optional */
     },
-    {                                           /* object_cls */
+    { /* object_cls */
         H5VL_async_object_open,              /* open */
         H5VL_async_object_copy,              /* copy */
         H5VL_async_object_get,               /* get */
         H5VL_async_object_specific,          /* specific */
         H5VL_async_object_optional           /* optional */
     },
-    {                                           /* introspect_cls */
+    { /* introspect_cls */
         H5VL_async_introspect_get_conn_cls,  /* get_conn_cls */
         H5VL_async_introspect_opt_query,     /* opt_query */
     },
-    {                                           /* request_cls */
+    { /* request_cls */
         H5VL_async_request_wait,             /* wait */
         H5VL_async_request_notify,           /* notify */
         H5VL_async_request_cancel,           /* cancel */
@@ -965,18 +965,18 @@ static const H5VL_class_t H5VL_async_g = {
         H5VL_async_request_optional,         /* optional */
         H5VL_async_request_free              /* free */
     },
-    {                                           /* blob_cls */
+    { /* blob_cls */
         H5VL_async_blob_put,                 /* put */
         H5VL_async_blob_get,                 /* get */
         H5VL_async_blob_specific,            /* specific */
         H5VL_async_blob_optional             /* optional */
     },
-    {                                           /* token_cls */
+    { /* token_cls */
         H5VL_async_token_cmp,                /* cmp */
         H5VL_async_token_to_str,             /* to_str */
-        H5VL_async_token_from_str              /* from_str */
+        H5VL_async_token_from_str            /* from_str */
     },
-    H5VL_async_optional                  /* optional */
+    H5VL_async_optional                      /* optional */
 };
 
 /* The connector identification number, initialized at runtime */
@@ -12455,8 +12455,6 @@ error:
     return NULL;
 } // End async_file_create
 
-
-
 static void
 async_file_open_fn(void *foo)
 {
@@ -12471,7 +12469,7 @@ async_file_open_fn(void *foo)
     async_task_t *task = (async_task_t*)foo;
     async_file_open_args_t *args = (async_file_open_args_t*)(task->args);
 
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     struct timeval now_time;
     struct timeval timer1;
     struct timeval timer2;
@@ -12483,15 +12481,15 @@ async_file_open_fn(void *foo)
     struct timeval timer8;
     struct timeval timer9;
     gettimeofday(&args->start_time, NULL);
-    #endif
+#endif
 
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s start, time=%ld.%06ld\n", __func__, args->start_time.tv_sec, args->start_time.tv_usec);
-    #endif
-    #ifdef ENABLE_LOG
+#endif
+#ifdef ENABLE_LOG
     fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
     fflush(stdout);
-    #endif
+#endif
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -12499,62 +12497,62 @@ async_file_open_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    #ifdef ENABLE_DBG_MSG
+#ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
     fflush(stderr);
-    #endif
-    #ifdef ENABLE_TIMING
+#endif
+#ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
     double time1 = get_elapsed_time(&args->start_time, &timer1);
-    #endif
+#endif
 
     while (acquired == false) {
-        #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
         gettimeofday(&now_time, NULL);
-        #endif
+#endif
         if (async_instance_g->ex_delay == false && H5TSmutex_get_attempt_count(&attempt_count) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_get_attempt_count failed\n", __func__);
             goto done;
         }
-        #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
-        #endif
+#endif
         if (H5TSmutex_acquire(&acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
         if (false == acquired) {
-            #ifdef ENABLE_DBG_MSG
+#ifdef ENABLE_DBG_MSG
             fprintf(stderr,"  [ASYNC ABT DBG] %s lock NOT acquired, wait\n", __func__);
-            #endif
+#endif
             if(sleep_time > 0) usleep(sleep_time);
             continue;
         }
-        #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock SUCCESSFULLY acquired, time=%ld.%06ld\n", __func__, now_time.tv_sec, now_time.tv_usec);
-        #endif
+#endif
         if(async_instance_g->ex_delay == false && task->async_obj->file_async_obj->attempt_check_cnt % ASYNC_ATTEMPT_CHECK_INTERVAL == 0) {
             if(sleep_time > 0) usleep(sleep_time);
             if (H5TSmutex_get_attempt_count(&new_attempt_count) < 0) {
                 fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_get_attempt_count failed\n", __func__);
                 goto done;
             }
-            #ifdef ENABLE_DBG_MSG
-            #ifdef ENABLE_TIMING
+#ifdef ENABLE_DBG_MSG
+#ifdef ENABLE_TIMING
             gettimeofday(&now_time, NULL);
             fprintf(stderr,"  [ASYNC ABT DBG] %s after wait lock count = %d, time=%ld.%06ld\n", __func__, new_attempt_count, now_time.tv_sec, now_time.tv_usec);
-            #endif
-            #endif
+#endif
+#endif
             if (new_attempt_count > attempt_count) {
                 if (H5TSmutex_release() < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
-                #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
                 gettimeofday(&now_time, NULL);
                 fprintf(stderr,"  [ASYNC ABT DBG] %s lock YIELD to main thread, time=%ld.%06ld\n", __func__, now_time.tv_sec, now_time.tv_usec);
-                #endif
+#endif
                 acquired = false;
             }
             else {
@@ -12565,23 +12563,23 @@ async_file_open_fn(void *foo)
             task->async_obj->file_async_obj->attempt_check_cnt %= ASYNC_ATTEMPT_CHECK_INTERVAL;
         }
     }
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer2, NULL);
     double time2 = get_elapsed_time(&timer1, &timer2);
-    #endif
+#endif
 
-    #ifdef ENABLE_DBG_MSG
+#ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
     fflush(stderr);
-    #endif
+#endif
 
     async_instance_g->start_abt_push = false;
 
     if (1 == task->async_obj->is_obj_valid) {
-        #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock, time=%ld.%06ld\n", __func__, now_time.tv_sec, now_time.tv_usec);
-        #endif
+#endif
         if (H5TSmutex_release() < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -12611,10 +12609,10 @@ async_file_open_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer3, NULL);
     double time3 = get_elapsed_time(&timer2, &timer3);
-    #endif
+#endif
 
     /* Get copy of our VOL info from FAPL */
     H5Pget_vol_info(args->fapl_id, (void **)&info);
@@ -12636,21 +12634,18 @@ async_file_open_fn(void *foo)
         goto done;
     }
 
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer4, NULL);
     double time4 = get_elapsed_time(&timer3, &timer4);
-    #endif
+#endif
 
     task->async_obj->under_object = obj;
     task->async_obj->is_obj_valid = 1;
     task->async_obj->create_task = NULL;
 
-
-
-
-    #ifdef ENABLE_LOG
+#ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
-    #endif
+#endif
 
     // Increase file open ref count
     if (ABT_mutex_lock(async_instance_mutex_g) != ABT_SUCCESS) {
@@ -12671,38 +12666,38 @@ done:
     args->name = NULL;
     if(args->fapl_id > 0)    H5Pclose(args->fapl_id);
     if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer5, NULL);
     double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer6, NULL);
     double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer7, NULL);
     double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
+#endif
 
     if(is_lib_state_restored && H5VLreset_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -12712,7 +12707,7 @@ done:
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue )
        push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr);
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer9, NULL);
     double exec_time   = get_elapsed_time(&args->start_time, &timer9);
     double total_time  = get_elapsed_time(&args->create_time, &timer9);
@@ -12724,7 +12719,7 @@ done:
     printf("  [ASYNC ABT TIMING] %-24s \t    time3       : %f\n", __func__, time3);
     printf("  [ASYNC ABT TIMING] %-24s \t    time4(n.vol): %f\n", __func__, time4);
     fflush(stdout);
-    #endif
+#endif
     return;
 } // End async_file_open_fn
 
@@ -12739,10 +12734,10 @@ async_file_open(int is_blocking, async_instance_t* aid, const char *name, unsign
     int lock_self;
     hbool_t acquired = false;
 
-    #ifdef ENABLE_LOG
+#ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
     fflush(stderr);
-    #endif
+#endif
 
     assert(aid);
 
@@ -12752,11 +12747,11 @@ async_file_open(int is_blocking, async_instance_t* aid, const char *name, unsign
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&args->create_time, NULL);
     fprintf(stderr,"  [ASYNC VOL TIMING] entering %s, time=%ld.%06ld\n", __func__, args->create_time.tv_sec, args->create_time.tv_usec);
     fflush(stderr);
-    #endif
+#endif
     /* create a new async object */
     if ((async_obj = H5VL_async_new_obj(NULL, under_vol_id)) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -12854,12 +12849,12 @@ async_file_open(int is_blocking, async_instance_t* aid, const char *name, unsign
     }
     lock_self = 0;
 
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
     printf("  [ASYNC VOL TIMING] %-24s \t  create time   : %f\n",
 		 __func__, get_elapsed_time(&args->create_time, &now_time));
-    #endif
+#endif
     if (get_n_running_task_in_queue(async_task) == 0)
         push_task_to_abt_pool(&aid->qhead, aid->pool);
     /* Wait if blocking is needed */
@@ -12870,18 +12865,18 @@ async_file_open(int is_blocking, async_instance_t* aid, const char *name, unsign
         if (H5TSmutex_release() < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
-        #ifdef ENABLE_DBG_MSG
+#ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
         fflush(stderr);
-        #endif
+#endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
             goto error;
         }
-        #ifdef ENABLE_DBG_MSG
+#ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
         fflush(stderr);
-        #endif
+#endif
         while (acquired == false) {
             if (H5TSmutex_acquire(&acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
@@ -12890,17 +12885,18 @@ async_file_open(int is_blocking, async_instance_t* aid, const char *name, unsign
         }
     }
 
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&now_time, NULL);
     fprintf(stderr,"  [ASYNC VOL TIMING] leaving %s, time=%ld.%06ld\n", __func__, now_time.tv_sec, now_time.tv_usec);
-    #endif
-    #ifdef ENABLE_DBG_MSG
+#endif
+#ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC VOL DBG] leaving %s \n", __func__);
-    #endif
+#endif
 
 done:
     fflush(stdout);
     return async_obj;
+
 error:
     if (lock_self == 1) {
         if (ABT_mutex_unlock(async_obj->obj_mutex) != ABT_SUCCESS)
