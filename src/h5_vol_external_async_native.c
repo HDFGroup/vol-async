@@ -26,6 +26,7 @@
 #include <pthread.h>
 #include <sched.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1280,10 +1281,8 @@ H5VL_async_register(void)
 }
 
 static herr_t
-H5VL_async_init(hid_t vipl_id)
+H5VL_async_init(hid_t __attribute__((unused)) vipl_id)
 {
-    vipl_id = vipl_id;
-
     /* Initialize the Argobots I/O instance */
     int n_thread = ASYNC_VOL_DEFAULT_NTHREAD;
     if (NULL == async_instance_g) {
@@ -2695,7 +2694,7 @@ async_attr_create(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_attr_create_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
 #ifdef ENABLE_LOG
@@ -2796,7 +2795,7 @@ async_attr_create(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -2831,7 +2830,7 @@ async_attr_create(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
 #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -2883,7 +2882,7 @@ done:
     fflush(stdout);
     return async_obj;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -3155,7 +3154,7 @@ async_attr_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_attr_open_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
 #ifdef ENABLE_LOG
@@ -3250,7 +3249,7 @@ async_attr_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -3285,7 +3284,7 @@ async_attr_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
 #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -3337,7 +3336,7 @@ done:
     fflush(stdout);
     return async_obj;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -3592,7 +3591,7 @@ async_attr_read(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_attr_read_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
 #ifdef ENABLE_LOG
@@ -3669,7 +3668,7 @@ async_attr_read(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -3704,7 +3703,7 @@ async_attr_read(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
 #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -3756,7 +3755,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -4013,7 +4012,7 @@ async_attr_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_attr_write_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -4094,7 +4093,7 @@ async_attr_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -4129,7 +4128,7 @@ async_attr_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -4181,7 +4180,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -4439,7 +4438,7 @@ async_attr_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj,
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_attr_get_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -4515,7 +4514,7 @@ async_attr_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj,
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -4550,7 +4549,7 @@ async_attr_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj,
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -4602,7 +4601,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -4861,7 +4860,7 @@ async_attr_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_attr_specific_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -4939,7 +4938,7 @@ async_attr_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -4974,7 +4973,7 @@ async_attr_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -5026,7 +5025,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -5284,7 +5283,7 @@ async_attr_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_attr_optional_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -5360,7 +5359,7 @@ async_attr_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -5395,7 +5394,7 @@ async_attr_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -5447,7 +5446,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -5703,7 +5702,7 @@ async_attr_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_attr_close_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -5777,7 +5776,7 @@ async_attr_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -5812,7 +5811,7 @@ async_attr_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -5871,7 +5870,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -6150,7 +6149,7 @@ async_dataset_create(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_dataset_create_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -6257,7 +6256,7 @@ async_dataset_create(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -6292,7 +6291,7 @@ async_dataset_create(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -6344,7 +6343,7 @@ done:
     fflush(stdout);
     return async_obj;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -6619,7 +6618,7 @@ async_dataset_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_dataset_open_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -6714,7 +6713,7 @@ async_dataset_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -6749,7 +6748,7 @@ async_dataset_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -6801,7 +6800,7 @@ done:
     fflush(stdout);
     return async_obj;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -7061,7 +7060,7 @@ async_dataset_read(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_dataset_read_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -7142,7 +7141,7 @@ async_dataset_read(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -7179,7 +7178,7 @@ async_dataset_read(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -7230,7 +7229,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -7491,7 +7490,7 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_dataset_write_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -7617,7 +7616,7 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -7654,7 +7653,7 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -7705,7 +7704,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -7963,7 +7962,7 @@ async_dataset_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_dataset_get_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -8039,7 +8038,7 @@ async_dataset_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -8074,7 +8073,7 @@ async_dataset_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -8126,7 +8125,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -8384,7 +8383,7 @@ async_dataset_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *par
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_dataset_specific_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -8460,7 +8459,7 @@ async_dataset_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *par
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -8495,7 +8494,7 @@ async_dataset_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *par
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -8547,7 +8546,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -8805,7 +8804,7 @@ async_dataset_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *par
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_dataset_optional_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -8881,7 +8880,7 @@ async_dataset_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *par
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -8916,7 +8915,7 @@ async_dataset_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *par
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -8968,7 +8967,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -9224,7 +9223,7 @@ async_dataset_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_dataset_close_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -9298,7 +9297,7 @@ async_dataset_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -9333,7 +9332,7 @@ async_dataset_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -9394,7 +9393,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -9657,7 +9656,7 @@ async_datatype_commit(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_datatype_commit_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -9758,7 +9757,7 @@ async_datatype_commit(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -9793,7 +9792,7 @@ async_datatype_commit(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -9845,7 +9844,7 @@ done:
     fflush(stdout);
     return async_obj;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -10120,7 +10119,7 @@ async_datatype_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_datatype_open_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -10215,7 +10214,7 @@ async_datatype_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -10250,7 +10249,7 @@ async_datatype_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -10302,7 +10301,7 @@ done:
     fflush(stdout);
     return async_obj;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -10560,7 +10559,7 @@ async_datatype_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_datatype_get_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -10636,7 +10635,7 @@ async_datatype_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -10671,7 +10670,7 @@ async_datatype_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -10723,7 +10722,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -10981,7 +10980,7 @@ async_datatype_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *pa
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_datatype_specific_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -11057,7 +11056,7 @@ async_datatype_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *pa
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -11092,7 +11091,7 @@ async_datatype_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *pa
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -11144,7 +11143,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -11402,7 +11401,7 @@ async_datatype_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *pa
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_datatype_optional_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -11478,7 +11477,7 @@ async_datatype_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *pa
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -11513,7 +11512,7 @@ async_datatype_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *pa
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -11565,7 +11564,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -11821,7 +11820,7 @@ async_datatype_close(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_datatype_close_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -11895,7 +11894,7 @@ async_datatype_close(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -11930,7 +11929,7 @@ async_datatype_close(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -11989,7 +11988,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -12279,7 +12278,7 @@ async_file_create(int is_blocking, async_instance_t* aid, const char *name, unsi
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_file_create_args_t *args = NULL;
-    int lock_self;
+    bool lock_self = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -12374,7 +12373,7 @@ async_file_create(int is_blocking, async_instance_t* aid, const char *name, unsi
             fprintf(stderr,"  [ASYNC VOL DBG] %s error with try_lock\n", __func__);
         usleep(1000);
     }
-    lock_self = 1;
+    lock_self = true;
 
     async_obj->create_task = async_task;
     async_obj->under_vol_id = async_task->under_vol_id;
@@ -12397,7 +12396,7 @@ async_file_create(int is_blocking, async_instance_t* aid, const char *name, unsi
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_self = 0;
+    lock_self = false;
 
     #ifdef ENABLE_TIMING
     struct timeval now_time;
@@ -12447,7 +12446,7 @@ done:
     fflush(stdout);
     return async_obj;
 error:
-    if (lock_self == 1) {
+    if (lock_self) {
         if (ABT_mutex_unlock(async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL DBG] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -12731,7 +12730,7 @@ async_file_open(int is_blocking, async_instance_t* aid, const char *name, unsign
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_file_open_args_t *args = NULL;
-    int lock_self;
+    bool lock_self = false;
     hbool_t acquired = false;
 
 #ifdef ENABLE_LOG
@@ -12824,7 +12823,7 @@ async_file_open(int is_blocking, async_instance_t* aid, const char *name, unsign
             fprintf(stderr,"  [ASYNC VOL DBG] %s error with try_lock\n", __func__);
         usleep(1000);
     }
-    lock_self = 1;
+    lock_self = true;
 
     async_obj->create_task = async_task;
     async_obj->under_vol_id = async_task->under_vol_id;
@@ -12847,7 +12846,7 @@ async_file_open(int is_blocking, async_instance_t* aid, const char *name, unsign
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_self = 0;
+    lock_self = false;
 
 #ifdef ENABLE_TIMING
     struct timeval now_time;
@@ -12898,7 +12897,7 @@ done:
     return async_obj;
 
 error:
-    if (lock_self == 1) {
+    if (lock_self) {
         if (ABT_mutex_unlock(async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL DBG] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -13156,7 +13155,7 @@ async_file_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj,
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_file_get_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -13232,7 +13231,7 @@ async_file_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj,
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -13267,7 +13266,7 @@ async_file_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj,
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -13319,7 +13318,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -13577,7 +13576,7 @@ async_file_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_file_specific_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -13653,7 +13652,7 @@ async_file_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -13688,7 +13687,7 @@ async_file_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -13740,7 +13739,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -13998,7 +13997,7 @@ async_file_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_file_optional_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -14074,7 +14073,7 @@ async_file_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -14109,7 +14108,7 @@ async_file_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -14158,7 +14157,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -14424,7 +14423,7 @@ async_file_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_file_close_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -14498,7 +14497,7 @@ async_file_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -14533,7 +14532,7 @@ async_file_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -14592,7 +14591,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -14869,7 +14868,7 @@ async_group_create(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_group_create_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -14968,7 +14967,7 @@ async_group_create(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -15003,7 +15002,7 @@ async_group_create(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -15055,7 +15054,7 @@ done:
     fflush(stdout);
     return async_obj;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -15330,7 +15329,7 @@ async_group_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_group_open_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -15425,7 +15424,7 @@ async_group_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -15460,7 +15459,7 @@ async_group_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -15512,7 +15511,7 @@ done:
     fflush(stdout);
     return async_obj;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -15770,7 +15769,7 @@ async_group_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_group_get_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -15846,7 +15845,7 @@ async_group_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -15881,7 +15880,7 @@ async_group_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -15933,7 +15932,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -16191,7 +16190,7 @@ async_group_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_group_specific_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -16267,7 +16266,7 @@ async_group_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -16302,7 +16301,7 @@ async_group_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -16354,7 +16353,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -16612,7 +16611,7 @@ async_group_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_group_optional_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -16688,7 +16687,7 @@ async_group_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -16723,7 +16722,7 @@ async_group_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -16775,7 +16774,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -17031,7 +17030,7 @@ async_group_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_group_close_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -17105,7 +17104,7 @@ async_group_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -17140,7 +17139,7 @@ async_group_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -17201,7 +17200,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -17473,7 +17472,7 @@ async_link_create(int is_blocking, async_instance_t* aid, H5VL_link_create_type_
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_link_create_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -17571,7 +17570,7 @@ async_link_create(int is_blocking, async_instance_t* aid, H5VL_link_create_type_
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -17606,7 +17605,7 @@ async_link_create(int is_blocking, async_instance_t* aid, H5VL_link_create_type_
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -17658,7 +17657,7 @@ done:
     fflush(stdout);
     return async_obj;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -17917,7 +17916,7 @@ async_link_copy(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_link_copy_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -18000,7 +17999,7 @@ async_link_copy(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -18035,7 +18034,7 @@ async_link_copy(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -18087,7 +18086,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -18346,7 +18345,7 @@ async_link_move(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_link_move_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -18429,7 +18428,7 @@ async_link_move(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -18464,7 +18463,7 @@ async_link_move(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -18516,7 +18515,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -18775,7 +18774,7 @@ async_link_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj,
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_link_get_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -18853,7 +18852,7 @@ async_link_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj,
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -18888,7 +18887,7 @@ async_link_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj,
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -18940,7 +18939,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -19199,7 +19198,7 @@ async_link_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_link_specific_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -19277,7 +19276,7 @@ async_link_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -19312,7 +19311,7 @@ async_link_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -19364,7 +19363,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -19622,7 +19621,7 @@ async_link_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_link_optional_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -19698,7 +19697,7 @@ async_link_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -19733,7 +19732,7 @@ async_link_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -19785,7 +19784,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -20052,7 +20051,7 @@ async_object_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_object_open_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -20145,7 +20144,7 @@ async_object_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -20180,7 +20179,7 @@ async_object_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -20232,7 +20231,7 @@ done:
     fflush(stdout);
     return async_obj;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -20495,7 +20494,7 @@ async_object_copy(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_object_copy_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -20580,7 +20579,7 @@ async_object_copy(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -20615,7 +20614,7 @@ async_object_copy(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -20667,7 +20666,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -20926,7 +20925,7 @@ async_object_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_object_get_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -21004,7 +21003,7 @@ async_object_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -21039,7 +21038,7 @@ async_object_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -21091,7 +21090,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -21350,7 +21349,7 @@ async_object_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_object_specific_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -21428,7 +21427,7 @@ async_object_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -21463,7 +21462,7 @@ async_object_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -21515,7 +21514,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
@@ -21773,7 +21772,7 @@ async_object_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
     async_task_t *async_task = NULL;
     H5RQ_token_int_t *token = NULL;
     async_object_optional_args_t *args = NULL;
-    int lock_parent;
+    bool lock_parent = false;
     hbool_t acquired = false;
 
     #ifdef ENABLE_LOG
@@ -21849,7 +21848,7 @@ async_object_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
         }
         usleep(1000);
     }
-    lock_parent = 1;
+    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -21884,7 +21883,7 @@ async_object_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
-    lock_parent = 0;
+    lock_parent = false;
     #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
@@ -21936,7 +21935,7 @@ done:
     fflush(stdout);
     return 1;
 error:
-    if (lock_parent == 1) {
+    if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
