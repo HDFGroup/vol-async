@@ -10,3 +10,8 @@ Notes & To Do Items:
         - link_get
         - link_specific
         - link_optional
+
+- The async_task_t structs for each operation should be freed earlier than
+    file close.   They should probably track the # of dependent operations
+    and be freed when both the operation completes and its dependent operations
+    complete.
