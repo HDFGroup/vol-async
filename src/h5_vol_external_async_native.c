@@ -758,8 +758,7 @@ static herr_t H5VL_async_request_specific_reissue(void *obj, hid_t connector_id,
 static herr_t H5VL_async_link_create_reissue(H5VL_link_create_type_t create_type,
     void *obj, const H5VL_loc_params_t *loc_params, hid_t connector_id,
     hid_t lcpl_id, hid_t lapl_id, hid_t dxpl_id, void **req, ...);
-static H5VL_async_t *H5VL_async_new_obj(void *under_obj,
-    hid_t under_vol_id);
+static H5VL_async_t *H5VL_async_new_obj(void *under_obj, hid_t under_vol_id);
 static herr_t H5VL_async_free_obj(H5VL_async_t *obj);
 
 /* "Management" callbacks */
@@ -2720,7 +2719,6 @@ async_attr_create(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
-    async_obj->magic = ASYNC_MAGIC;
     if (ABT_mutex_create(&(async_obj->obj_mutex)) != ABT_SUCCESS) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
@@ -3180,7 +3178,6 @@ async_attr_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
-    async_obj->magic = ASYNC_MAGIC;
     if (ABT_mutex_create(&(async_obj->obj_mutex)) != ABT_SUCCESS) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
@@ -6175,7 +6172,6 @@ async_dataset_create(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
-    async_obj->magic = ASYNC_MAGIC;
     if (ABT_mutex_create(&(async_obj->obj_mutex)) != ABT_SUCCESS) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
@@ -6644,7 +6640,6 @@ async_dataset_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
-    async_obj->magic = ASYNC_MAGIC;
     if (ABT_mutex_create(&(async_obj->obj_mutex)) != ABT_SUCCESS) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
@@ -9682,7 +9677,6 @@ async_datatype_commit(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
-    async_obj->magic = ASYNC_MAGIC;
     if (ABT_mutex_create(&(async_obj->obj_mutex)) != ABT_SUCCESS) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
@@ -10145,7 +10139,6 @@ async_datatype_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
-    async_obj->magic = ASYNC_MAGIC;
     if (ABT_mutex_create(&(async_obj->obj_mutex)) != ABT_SUCCESS) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
@@ -12304,7 +12297,6 @@ async_file_create(int is_blocking, async_instance_t* aid, const char *name, unsi
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
-    async_obj->magic = ASYNC_MAGIC;
     if (ABT_mutex_create(&(async_obj->obj_mutex)) != ABT_SUCCESS) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
@@ -12756,7 +12748,6 @@ async_file_open(int is_blocking, async_instance_t* aid, const char *name, unsign
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
-    async_obj->magic = ASYNC_MAGIC;
     if (ABT_mutex_create(&(async_obj->obj_mutex)) != ABT_SUCCESS) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
@@ -14894,7 +14885,6 @@ async_group_create(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
-    async_obj->magic = ASYNC_MAGIC;
     if (ABT_mutex_create(&(async_obj->obj_mutex)) != ABT_SUCCESS) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
@@ -15355,7 +15345,6 @@ async_group_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
-    async_obj->magic = ASYNC_MAGIC;
     if (ABT_mutex_create(&(async_obj->obj_mutex)) != ABT_SUCCESS) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
@@ -17498,7 +17487,6 @@ async_link_create(int is_blocking, async_instance_t* aid, H5VL_link_create_type_
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
-    async_obj->magic = ASYNC_MAGIC;
     if (ABT_mutex_create(&(async_obj->obj_mutex)) != ABT_SUCCESS) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
@@ -20077,7 +20065,6 @@ async_object_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
-    async_obj->magic = ASYNC_MAGIC;
     if (ABT_mutex_create(&(async_obj->obj_mutex)) != ABT_SUCCESS) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
@@ -21966,6 +21953,7 @@ H5VL_async_new_obj(void *under_obj, hid_t under_vol_id)
     H5VL_async_t *new_obj;
 
     new_obj = (H5VL_async_t *)calloc(1, sizeof(H5VL_async_t));
+    new_obj->magic = ASYNC_MAGIC;
     new_obj->under_object = under_obj;
     new_obj->under_vol_id = under_vol_id;
     H5Iinc_ref(new_obj->under_vol_id);
