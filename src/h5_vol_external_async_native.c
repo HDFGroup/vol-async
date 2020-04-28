@@ -23233,7 +23233,7 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_t specific_type,
 #endif
 
     /* Return error if file object not open / created */
-    if(o->create_task == NULL || !o->is_obj_valid)
+    if(!o->is_obj_valid)
         return(-1);
 
     /* Unpack arguments to get at the child file pointer when mounting a file */
