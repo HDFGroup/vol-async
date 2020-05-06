@@ -7234,7 +7234,8 @@ async_dataset_write_fn(void *foo)
     #endif
 
     #ifdef ENABLE_TIMING
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s start, time=%ld.%06ld\n", __func__, args->start_time.tv_sec, args->start_time.tv_usec);
+    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s start, time=%ld.%06ld\n",
+            __func__, args->start_time.tv_sec, args->start_time.tv_usec);
     #endif
     #ifdef ENABLE_LOG
     fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
@@ -7283,7 +7284,8 @@ async_dataset_write_fn(void *foo)
         }
         #ifdef ENABLE_TIMING
         gettimeofday(&now_time, NULL);
-        fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
+        fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n",
+                __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
         #endif
         if (H5TSmutex_acquire(&acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
@@ -7298,9 +7300,11 @@ async_dataset_write_fn(void *foo)
         }
         #ifdef ENABLE_TIMING
         gettimeofday(&now_time, NULL);
-        fprintf(stderr,"  [ASYNC ABT DBG] %s lock SUCCESSFULLY acquired, time=%ld.%06ld\n", __func__, now_time.tv_sec, now_time.tv_usec);
+        fprintf(stderr,"  [ASYNC ABT DBG] %s lock SUCCESSFULLY acquired, time=%ld.%06ld\n",
+                __func__, now_time.tv_sec, now_time.tv_usec);
         #endif
-        if(async_instance_g->ex_delay == false && task->async_obj->file_async_obj->attempt_check_cnt % ASYNC_ATTEMPT_CHECK_INTERVAL == 0) {
+        if(async_instance_g->ex_delay == false &&
+                task->async_obj->file_async_obj->attempt_check_cnt % ASYNC_ATTEMPT_CHECK_INTERVAL == 0) {
             if(sleep_time > 0) usleep(sleep_time);
             if (H5TSmutex_get_attempt_count(&new_attempt_count) < 0) {
                 fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_get_attempt_count failed\n", __func__);
@@ -7309,7 +7313,8 @@ async_dataset_write_fn(void *foo)
             #ifdef ENABLE_DBG_MSG
             #ifdef ENABLE_TIMING
             gettimeofday(&now_time, NULL);
-            fprintf(stderr,"  [ASYNC ABT DBG] %s after wait lock count = %d, time=%ld.%06ld\n", __func__, new_attempt_count, now_time.tv_sec, now_time.tv_usec);
+            fprintf(stderr,"  [ASYNC ABT DBG] %s after wait lock count = %d, time=%ld.%06ld\n",
+                    __func__, new_attempt_count, now_time.tv_sec, now_time.tv_usec);
             #endif
             #endif
             if (new_attempt_count > attempt_count) {
@@ -7318,7 +7323,8 @@ async_dataset_write_fn(void *foo)
                 }
                 #ifdef ENABLE_TIMING
                 gettimeofday(&now_time, NULL);
-                fprintf(stderr,"  [ASYNC ABT DBG] %s lock YIELD to main thread, time=%ld.%06ld\n", __func__, now_time.tv_sec, now_time.tv_usec);
+                fprintf(stderr,"  [ASYNC ABT DBG] %s lock YIELD to main thread, time=%ld.%06ld\n",
+                        __func__, now_time.tv_sec, now_time.tv_usec);
                 #endif
                 acquired = false;
             }
@@ -7369,7 +7375,8 @@ async_dataset_write_fn(void *foo)
     double time3 = get_elapsed_time(&timer2, &timer3);
     #endif
 
-    if ( H5VLdataset_write(args->dset, task->under_vol_id, args->mem_type_id, args->mem_space_id, args->file_space_id, args->plist_id, args->buf, args->req) < 0 ) {
+    if ( H5VLdataset_write(args->dset, task->under_vol_id, args->mem_type_id, args->mem_space_id,
+            args->file_space_id, args->plist_id, args->buf, args->req) < 0 ) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLdataset_write failed\n", __func__);
         goto done;
     }
@@ -7452,7 +7459,9 @@ done:
 } // End async_dataset_write_fn
 
 static herr_t
-async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type_id, hid_t mem_space_id, hid_t file_space_id, hid_t plist_id, const void *buf, void **req)
+async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj,
+        hid_t mem_type_id, hid_t mem_space_id, hid_t file_space_id,
+        hid_t plist_id, const void *buf, void **req)
 {
     hbool_t enable_async = false;
     hsize_t buf_size, cp_size_limit = 0;
@@ -7477,7 +7486,8 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     }
     #ifdef ENABLE_TIMING
     gettimeofday(&args->create_time, NULL);
-    fprintf(stderr,"  [ASYNC VOL TIMING] entering %s, time=%ld.%06ld\n", __func__, args->create_time.tv_sec, args->create_time.tv_usec);
+    fprintf(stderr,"  [ASYNC VOL TIMING] entering %s, time=%ld.%06ld\n",
+            __func__, args->create_time.tv_sec, args->create_time.tv_usec);
     fflush(stderr);
     #endif
     if (H5Pget_dxpl_async(plist_id, &enable_async) < 0) {
@@ -7555,7 +7565,8 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         }
         else {
             enable_async = false;
-            fprintf(stdout,"  [ASYNC VOL] %s buf size [%llu] is larger than cp_size_limit [%llu], using synchronous write\n", __func__, buf_size, cp_size_limit);
+            fprintf(stdout,"  [ASYNC VOL] %s buf size [%llu] is larger than cp_size_limit [%llu], using synchronous write\n",
+                    __func__, buf_size, cp_size_limit);
         }
     }
 
