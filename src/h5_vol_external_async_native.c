@@ -313,6 +313,7 @@ typedef struct async_dataset_write_args_t {
     hid_t                    mem_space_id;
     hid_t                    file_space_id;
     hid_t                    plist_id;
+    hid_t                    gather_space_id; //Used for gather, and should use this in the actual dataset_write
     void                     *buf;
     void                     **req;
     hbool_t                   buf_free;
@@ -7206,8 +7207,6 @@ error:
     return -1;
 } // End async_dataset_read
 
-
-
 static void
 async_dataset_write_fn(void *foo)
 {
@@ -7361,7 +7360,6 @@ async_dataset_write_fn(void *foo)
     }
     is_lock = 1;
 
-
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -7375,12 +7373,14 @@ async_dataset_write_fn(void *foo)
     double time3 = get_elapsed_time(&timer2, &timer3);
     #endif
 
-    if ( H5VLdataset_write(args->dset, task->under_vol_id, args->mem_type_id, args->mem_space_id,
-            args->file_space_id, args->plist_id, args->buf, args->req) < 0 ) {
+    //gather_space_id replaced mem_space_id
+    if ( H5VLdataset_write(args->dset, task->under_vol_id,
+            args->mem_type_id, args->gather_space_id, args->file_space_id,
+            args->plist_id, args->buf, args->req) < 0 ) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLdataset_write failed\n", __func__);
         goto done;
     }
-
+    H5Sclose(args->gather_space_id);
     #ifdef ENABLE_TIMING
     gettimeofday(&timer4, NULL);
     double time4 = get_elapsed_time(&timer3, &timer4);
@@ -7560,7 +7560,13 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s malloc failed!\n", __func__);
                 goto done;
             }
-            memcpy(args->buf, buf, buf_size);
+            //memcpy(args->buf, buf, buf_size);//replaced with gather
+            H5Dgather(mem_space_id, buf, mem_type_id, buf_size, args->buf, NULL, NULL);
+            int elem_size =  H5Tget_size(mem_type_id);
+            int n_elem = buf_size/elem_size;
+            hsize_t current_dims[1] = {0};
+            current_dims[0] = n_elem;
+            args->gather_space_id = H5Screate_simple(1, current_dims, NULL);
             args->buf_free = true;
         }
         else {
@@ -7569,7 +7575,6 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
                     __func__, buf_size, cp_size_limit);
         }
     }
-
 
     // Retrieve current library state
     if ( H5VLretrieve_lib_state(&async_task->h5_state) < 0) {
