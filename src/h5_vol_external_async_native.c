@@ -314,6 +314,7 @@ typedef struct async_dataset_write_args_t {
     hid_t                    file_space_id;
     hid_t                    plist_id;
     hid_t                    gather_space_id; //Used for gather, and should use this in the actual dataset_write
+    int                      use_gather;
     void                     *buf;
     void                     **req;
     hbool_t                   buf_free;
@@ -7374,13 +7375,22 @@ async_dataset_write_fn(void *foo)
     #endif
 
     //gather_space_id replaced mem_space_id
-    if ( H5VLdataset_write(args->dset, task->under_vol_id,
-            args->mem_type_id, args->gather_space_id, args->file_space_id,
-            args->plist_id, args->buf, args->req) < 0 ) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLdataset_write failed\n", __func__);
-        goto done;
+    if(args->use_gather == 1){
+        if ( H5VLdataset_write(args->dset, task->under_vol_id,
+                args->mem_type_id, args->gather_space_id, args->file_space_id,
+                args->plist_id, args->buf, args->req) < 0 ) {
+            fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLdataset_write failed\n", __func__);
+            goto done;
+        }
+        H5Sclose(args->gather_space_id);
+    } else {
+        if ( H5VLdataset_write(args->dset, task->under_vol_id, args->mem_type_id, args->mem_space_id,
+                args->file_space_id, args->plist_id, args->buf, args->req) < 0 ) {
+            fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLdataset_write failed\n", __func__);
+            goto done;
+        }
     }
-    H5Sclose(args->gather_space_id);
+
     #ifdef ENABLE_TIMING
     gettimeofday(&timer4, NULL);
     double time4 = get_elapsed_time(&timer3, &timer4);
@@ -7524,6 +7534,8 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     args->buf              = (void*)buf;
     args->req              = req;
 
+    args->use_gather = 1; //use gather or rebular memcpy
+
     if (req) {
         token = H5RQ__new_token();
         if (token == NULL) {
@@ -7560,13 +7572,18 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s malloc failed!\n", __func__);
                 goto done;
             }
-            //memcpy(args->buf, buf, buf_size);//replaced with gather
-            H5Dgather(mem_space_id, buf, mem_type_id, buf_size, args->buf, NULL, NULL);
-            int elem_size =  H5Tget_size(mem_type_id);
-            int n_elem = buf_size/elem_size;
-            hsize_t current_dims[1] = {0};
-            current_dims[0] = n_elem;
-            args->gather_space_id = H5Screate_simple(1, current_dims, NULL);
+
+            if(args->use_gather == 1){
+                H5Dgather(mem_space_id, buf, mem_type_id, buf_size, args->buf, NULL, NULL);
+                int elem_size =  H5Tget_size(mem_type_id);
+                int n_elem = buf_size/elem_size;
+                hsize_t current_dims[1] = {0};
+                current_dims[0] = n_elem;
+                args->gather_space_id = H5Screate_simple(1, current_dims, NULL);
+            } else {
+                memcpy(args->buf, buf, buf_size);
+            }
+
             args->buf_free = true;
         }
         else {
