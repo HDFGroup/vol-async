@@ -7534,7 +7534,7 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     args->buf              = (void*)buf;
     args->req              = req;
 
-    args->use_gather = 1; //use gather or rebular memcpy
+    args->use_gather = 0; //use rebular memcpy by default
 
     if (req) {
         token = H5RQ__new_token();
@@ -7580,6 +7580,8 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
                 hsize_t current_dims[1] = {0};
                 current_dims[0] = n_elem;
                 args->gather_space_id = H5Screate_simple(1, current_dims, NULL);
+                //TODO: update H5ES_status_t, add a buf_ready.
+                //token->task->
             } else {
                 memcpy(args->buf, buf, buf_size);
             }
