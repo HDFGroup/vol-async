@@ -16,6 +16,10 @@
 
 #include "node_local_util.h"
 //assume to create a empty file, and need to extend for writing.
+mmap_file* mmap_attach_fd(size_t init_size, int fd){
+    return NULL;
+}
+
 mmap_file* mmap_setup_newfile(size_t init_size, char* file_path, int open_flags){
 
     int page_size = getpagesize();
@@ -77,7 +81,7 @@ int mmap_cpy(mmap_file* mmf,  void* src, size_t offset, size_t len){
         printf("Attempting offset + len > map size. It must be less than %zu bytes. Please call mmap_extend() first.\n", mmf->current_size);
         return -1;
     }
-    memcpy(mmf->map, (char*)src + offset, len);
+    memcpy(mmf->map + offset, (char*)src, len);
     return 0;
 }
 

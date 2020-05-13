@@ -48,7 +48,7 @@
 /* #define ENABLE_DBG_MSG              1 */
 /* #define ENABLE_TIMING              1 */
 
-
+#include "node_local_util.h"
 /**********/
 /* Macros */
 /**********/
@@ -78,7 +78,7 @@ typedef struct H5VL_async_wrap_ctx_t {
 
 typedef enum {QTYPE_NONE, REGULAR, DEPENDENT, COLLECTIVE} task_list_qtype;
 typedef enum {OP_NONE, READ, WRITE} obj_op_type;
-
+typedef enum {MEM_DEFAULT, MEM_GATHER} memcpy_mode;
 const char* qtype_names_g[4] = {"QTYPE_NONE", "REGULAR", "DEPENDENT", "COLLECTIVE"};
 
 typedef struct async_task_t {
@@ -314,7 +314,7 @@ typedef struct async_dataset_write_args_t {
     hid_t                    file_space_id;
     hid_t                    plist_id;
     hid_t                    gather_space_id; //Used for gather, and should use this in the actual dataset_write
-    int                      use_gather;
+    memcpy_mode              memcpy_mode;
     void                     *buf;
     void                     **req;
     hbool_t                   buf_free;
@@ -747,7 +747,8 @@ typedef struct async_object_optional_args_t {
 ABT_mutex           async_instance_mutex_g;
 async_instance_t   *async_instance_g  = NULL;
 hid_t               async_connector_id_g = -1;
-
+mmap_file          *MMAP_FILE;
+int                 USE_MMAP = 0;
 /********************* */
 /* Function prototypes */
 /********************* */
@@ -7375,7 +7376,7 @@ async_dataset_write_fn(void *foo)
     #endif
 
     //gather_space_id replaced mem_space_id
-    if(args->use_gather == 1){
+    if(args->memcpy_mode == MEM_GATHER){
         if ( H5VLdataset_write(args->dset, task->under_vol_id,
                 args->mem_type_id, args->gather_space_id, args->file_space_id,
                 args->plist_id, args->buf, args->req) < 0 ) {
@@ -7383,7 +7384,7 @@ async_dataset_write_fn(void *foo)
             goto done;
         }
         H5Sclose(args->gather_space_id);
-    } else {
+    } else {//MEM_MMAP case is same as it by default
         if ( H5VLdataset_write(args->dset, task->under_vol_id, args->mem_type_id, args->mem_space_id,
                 args->file_space_id, args->plist_id, args->buf, args->req) < 0 ) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLdataset_write failed\n", __func__);
@@ -7534,7 +7535,7 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     args->buf              = (void*)buf;
     args->req              = req;
 
-    args->use_gather = 0; //use rebular memcpy by default
+    args->memcpy_mode = MEM_DEFAULT; //use rebular memcpy by default
 
     if (req) {
         token = H5RQ__new_token();
@@ -7573,7 +7574,7 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
                 goto done;
             }
 
-            if(args->use_gather == 1){
+            if(args->memcpy_mode == MEM_GATHER){
                 H5Dgather(mem_space_id, buf, mem_type_id, buf_size, args->buf, NULL, NULL);
                 int elem_size =  H5Tget_size(mem_type_id);
                 int n_elem = buf_size/elem_size;
