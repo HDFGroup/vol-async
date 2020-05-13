@@ -15,13 +15,8 @@
 #include <assert.h>
 
 #include "node_local_util.h"
-//assume to create a empty file, and need to extend for writing.
-mmap_file* mmap_attach_fd(size_t init_size, int fd){
-    return NULL;
-}
-
-mmap_file* mmap_setup_newfile(size_t init_size, char* file_path, int open_flags){
-
+//assume to attach to a empty file, and need to extend for mmapping.
+mmap_file* _mmap_setup(mmap_file* mmf, size_t init_size, int fd){
     int page_size = getpagesize();
     assert(init_size > 0);
     size_t map_size = 0;
@@ -31,39 +26,50 @@ mmap_file* mmap_setup_newfile(size_t init_size, char* file_path, int open_flags)
     else
         map_size = init_size;
 
+    printf("fd = %d\n", fd);
+        int err = ftruncate(fd, map_size);//allocate space for file extension.
+        if(err != 0){
+            perror("ftruncate failed");
+            return NULL;
+        }
+        void* map = mmap(
+                NULL, //no preference
+                map_size,
+                PROT_READ|PROT_WRITE|PROT_EXEC, //access mode
+                MAP_SHARED, //change write to file and visible immediately
+                fd,
+                0           //offset
+            );
+
+        if(map == MAP_FAILED){
+            perror("mmap failed");
+            return NULL;
+        }
+
+        (*mmf).fd = fd;
+        (*mmf).current_size = map_size;
+        (*mmf).map = map;
+        return mmf;
+}
+
+mmap_file* mmap_new_fd(size_t init_size, int fd){
+    mmap_file* mmf = (mmap_file*)calloc(1, sizeof(mmap_file));
+    mmf->file_path = NULL;
+    return _mmap_setup(mmf, init_size, fd);
+}
+
+
+
+mmap_file* mmap_new_file(size_t init_size, char* file_path, int open_flags){
+    mmap_file* mmf = (mmap_file*)calloc(1, sizeof(mmap_file));
+    mmf->file_path = strdup(file_path);
     //int open_flags = O_RDWR|O_CREAT;
     int fd = open(file_path, open_flags, 0666);//O_CREAT|O_RDWR|O_APPEND
     if(fd < 0){
         perror("open failed");
         return NULL;
     }
-    printf("fd = %d\n", fd);
-    int err = ftruncate(fd, map_size);//allocate space for file extension.
-    if(err != 0){
-        perror("ftruncate failed");
-        return NULL;
-    }
-    void* map = mmap(
-            NULL, //no preference
-            map_size,
-            PROT_READ|PROT_WRITE|PROT_EXEC, //access mode
-            MAP_SHARED, //change write to file and visible immediately
-            fd,
-            0           //offset
-        );
-
-    if(map == MAP_FAILED){
-        perror("mmap failed");
-        return NULL;
-    }
-
-    mmap_file* mmf = (mmap_file*)calloc(1, sizeof(mmap_file));
-    mmf->current_size = map_size;
-    mmf->file_path = strdup(file_path);
-    mmf->fd = fd;
-    mmf->open_flags = open_flags;
-    mmf->map = map;
-    return mmf;
+    return _mmap_setup(mmf, init_size, fd);
 }
 
 int mmap_free(mmap_file* mmf){

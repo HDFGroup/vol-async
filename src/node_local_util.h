@@ -20,7 +20,8 @@ typedef struct Mmaped_file{
 }mmap_file;
 
 //open_flags = O_RDWR|O_CREAT for default.
-mmap_file* mmap_setup_newfile(size_t init_size, char* file_path, int open_flags);
+mmap_file* mmap_new_file(size_t init_size, char* file_path, int open_flags);
+mmap_file* mmap_new_fd(size_t init_size, int fd);
 int mmap_free(mmap_file* mmf);
 int mmap_cpy(mmap_file* mmf, void* src, size_t offset, size_t len);
 size_t mmap_extend(mmap_file* mmf, size_t addition_size);
