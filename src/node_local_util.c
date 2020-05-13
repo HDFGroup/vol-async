@@ -59,7 +59,7 @@ mmap_file* mmap_new_fd(size_t init_size, int fd){
 }
 
 
-
+//open_flags = O_RDWR|O_CREAT by default
 mmap_file* mmap_new_file(size_t init_size, char* file_path, int open_flags){
     mmap_file* mmf = (mmap_file*)calloc(1, sizeof(mmap_file));
     mmf->file_path = strdup(file_path);
@@ -72,11 +72,16 @@ mmap_file* mmap_new_file(size_t init_size, char* file_path, int open_flags){
     return _mmap_setup(mmf, init_size, fd);
 }
 
-int mmap_free(mmap_file* mmf){
+int mmap_free(mmap_file* mmf, int rm_file){
     assert(mmf && mmf->map);
     munmap(mmf->map, mmf->current_size);
+
+    if(rm_file == 1)
+        unlink(mmf->file_path);
+
     if(mmf->file_path)
         free(mmf->file_path);
+
     free(mmf);
     return 0;
 }
@@ -91,7 +96,30 @@ int mmap_cpy(mmap_file* mmf,  void* src, size_t offset, size_t len){
     return 0;
 }
 
-size_t mmap_extend(mmap_file* mmf, size_t addition_size){
+size_t mmap_extend_quick(mmap_file* mmf, size_t new_size){
+    assert(mmf->map );
+    int page_size = getpagesize();
+    if(new_size <= mmf->current_size){
+        return mmf->current_size;
+    }
+    size_t new_map_size = 2* (new_size/page_size + 1) * page_size;
+
+    int err = ftruncate(mmf->fd, new_map_size);
+    if(err!=0){//fail to double
+        printf("ftruncate failed to double size, attempting exact size (%zu bytes) ...\n", new_map_size/2);
+        err = ftruncate(mmf->fd, new_map_size);
+        if(err != 0){
+            printf("ftruncate failed to extend to exact size (%zu bytes), no enough space.\n", new_map_size/2);
+            return -1;
+        } else {//success
+            new_map_size = new_map_size/2;
+        }
+    }
+    mmf->current_size = new_map_size;
+    return new_map_size;
+}
+
+size_t mmap_extend_increament(mmap_file* mmf, size_t addition_size){
     assert(mmf && mmf->map);
     int page_size = getpagesize();
     assert(mmf->current_size > 0 && mmf->current_size % page_size == 0 && addition_size > 0);
@@ -101,12 +129,12 @@ size_t mmap_extend(mmap_file* mmf, size_t addition_size){
     else
         new_map_size = mmf->current_size + (addition_size/page_size + 1) * page_size;
     int err = ftruncate(mmf->fd, new_map_size);
-    mmf->current_size = new_map_size;
 
     if(err != 0){
         perror("ftruncate failed");
-        return err;
+        return -1;
     } else {
+        mmf->current_size = new_map_size;
         return new_map_size;
     }
 }

@@ -748,7 +748,8 @@ ABT_mutex           async_instance_mutex_g;
 async_instance_t   *async_instance_g  = NULL;
 hid_t               async_connector_id_g = -1;
 mmap_file          *MMAP_FILE;
-int                 USE_MMAP = 0;
+int                 USE_MMAP = 1;
+char*               NVRAM_PREFIX;
 /********************* */
 /* Function prototypes */
 /********************* */
@@ -7375,6 +7376,7 @@ async_dataset_write_fn(void *foo)
     double time3 = get_elapsed_time(&timer2, &timer3);
     #endif
 
+
     //gather_space_id replaced mem_space_id
     if(args->memcpy_mode == MEM_GATHER){
         if ( H5VLdataset_write(args->dset, task->under_vol_id,
@@ -7385,12 +7387,17 @@ async_dataset_write_fn(void *foo)
         }
         H5Sclose(args->gather_space_id);
     } else {//MEM_MMAP case is same as it by default
-        if ( H5VLdataset_write(args->dset, task->under_vol_id, args->mem_type_id, args->mem_space_id,
+         if ( H5VLdataset_write(args->dset, task->under_vol_id, args->mem_type_id, args->mem_space_id,
                 args->file_space_id, args->plist_id, args->buf, args->req) < 0 ) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLdataset_write failed\n", __func__);
             goto done;
         }
+     }
+
+    if(USE_MMAP == 1){
+        //maybe to cear the mmap buf, or just keep map size updated is enough.
     }
+
 
     #ifdef ENABLE_TIMING
     gettimeofday(&timer4, NULL);
@@ -7452,7 +7459,10 @@ done:
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue )
        push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr);
-    if (args->buf_free == true) free(args->buf);
+    if(USE_MMAP == 1){
+
+    } else
+        if (args->buf_free == true) free(args->buf);
     #ifdef ENABLE_TIMING
     gettimeofday(&timer9, NULL);
     double exec_time   = get_elapsed_time(&args->start_time, &timer9);
@@ -7535,7 +7545,7 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     args->buf              = (void*)buf;
     args->req              = req;
 
-    args->memcpy_mode = MEM_DEFAULT; //use rebular memcpy by default
+    args->memcpy_mode = MEM_DEFAULT; //use rebular memcpy by default MEM_DEFAULT, MEM_GATHER
 
     if (req) {
         token = H5RQ__new_token();
@@ -7569,10 +7579,28 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
                 }
         }
         if (buf_size <= cp_size_limit) {
-            if (NULL == (args->buf = malloc(buf_size))) {
-                fprintf(stderr,"  [ASYNC VOL ERROR] %s malloc failed!\n", __func__);
-                goto done;
+            if(USE_MMAP == 1){
+                if(!MMAP_FILE){//first time use, need to create new map
+                    char file_path[256];
+                    if(!NVRAM_PREFIX)
+                        NVRAM_PREFIX = strdup("./");
+                    sprintf(file_path, "%s%d.tmp", NVRAM_PREFIX, getpid());
+
+                    MMAP_FILE = mmap_new_file(buf_size, file_path, OPEN_FLAGS_DEFAULT);
+                    args->buf = MMAP_FILE->map;
+                } else {//reuse an already created mmap, ensure size.
+                    assert(MMAP_FILE->map);
+                    if(buf_size > MMAP_FILE->current_size){
+                        mmap_extend_quick(MMAP_FILE, buf_size);
+                    }
+                }
+            } else {
+                if (NULL == (args->buf = malloc(buf_size))) {
+                    fprintf(stderr,"  [ASYNC VOL ERROR] %s malloc failed!\n", __func__);
+                    goto done;
+                }
             }
+
 
             if(args->memcpy_mode == MEM_GATHER){
                 H5Dgather(mem_space_id, buf, mem_type_id, buf_size, args->buf, NULL, NULL);
@@ -7583,7 +7611,7 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
                 args->gather_space_id = H5Screate_simple(1, current_dims, NULL);
                 //TODO: update H5ES_status_t, add a buf_ready.
                 //token->task->
-            } else {
+            } else {//using memory or mmap.
                 memcpy(args->buf, buf, buf_size);
             }
 
@@ -14592,6 +14620,11 @@ async_file_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     fprintf(stderr,"  [ASYNC VOL DBG] leaving %s \n", __func__);
     #endif
 
+    if(USE_MMAP == 1){{
+        mmap_free(MMAP_FILE, 0);//1 to remove tmp file
+    }
+
+    }
 done:
     fflush(stdout);
     return 1;
