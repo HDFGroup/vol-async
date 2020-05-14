@@ -748,8 +748,9 @@ ABT_mutex           async_instance_mutex_g;
 async_instance_t   *async_instance_g  = NULL;
 hid_t               async_connector_id_g = -1;
 mmap_file          *MMAP_FILE;
-int                 USE_MMAP = 1;
-char*               NVRAM_PREFIX;
+int                 ASYNC_USE_MMAP = 1;
+char*               ASYNC_NVRAM_PREFIX;
+memcpy_mode         ASYNC_MEMCPY_MODE;
 /********************* */
 /* Function prototypes */
 /********************* */
@@ -1294,7 +1295,9 @@ H5VL_async_init(hid_t __attribute__((unused)) vipl_id)
             return -1;
         }
     }
-
+    if(set_node_local_env() == -1){
+        return -1;
+    }
     return 0;
 }
 
@@ -7394,7 +7397,7 @@ async_dataset_write_fn(void *foo)
         }
      }
 
-    if(USE_MMAP == 1){
+    if(ASYNC_USE_MMAP == 1){
         //maybe to cear the mmap buf, or just keep map size updated is enough.
     }
 
@@ -7459,7 +7462,7 @@ done:
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue )
        push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr);
-    if(USE_MMAP == 1){
+    if(ASYNC_USE_MMAP == 1){
 
     } else
         if (args->buf_free == true) free(args->buf);
@@ -7545,7 +7548,7 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     args->buf              = (void*)buf;
     args->req              = req;
 
-    args->memcpy_mode = MEM_DEFAULT; //use rebular memcpy by default MEM_DEFAULT, MEM_GATHER
+    args->memcpy_mode = ASYNC_MEMCPY_MODE; //MEM_DEFAULT; //use rebular memcpy by default MEM_DEFAULT, MEM_GATHER
 
     if (req) {
         token = H5RQ__new_token();
@@ -7579,12 +7582,12 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
                 }
         }
         if (buf_size <= cp_size_limit) {
-            if(USE_MMAP == 1){
+            if(ASYNC_USE_MMAP == 1){
                 if(!MMAP_FILE){//first time use, need to create new map
                     char file_path[256];
-                    if(!NVRAM_PREFIX)
-                        NVRAM_PREFIX = strdup("./");
-                    sprintf(file_path, "%s%d.tmp", NVRAM_PREFIX, getpid());
+                    if(!ASYNC_NVRAM_PREFIX)
+                        ASYNC_NVRAM_PREFIX = strdup("./");
+                    sprintf(file_path, "%s%d.tmp", ASYNC_NVRAM_PREFIX, getpid());
 
                     MMAP_FILE = mmap_new_file(buf_size, file_path, OPEN_FLAGS_DEFAULT);
                     args->buf = MMAP_FILE->map;
@@ -14620,7 +14623,7 @@ async_file_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     fprintf(stderr,"  [ASYNC VOL DBG] leaving %s \n", __func__);
     #endif
 
-    if(USE_MMAP == 1){{
+    if(ASYNC_USE_MMAP == 1){{
         mmap_free(MMAP_FILE, 1, 1);//1 to remove tmp file
     }
 
@@ -24735,3 +24738,44 @@ H5VL_async_optional(void *obj, int op_type, hid_t dxpl_id, void **req,
     return ret_value;
 } /* end H5VL_async_optional() */
 
+int set_node_local_env(){
+    printf("set_node_local_env...\n");
+    char* use_map = getenv("ASYNC_USE_MMAP");
+    if(use_map)
+        ASYNC_USE_MMAP = atoi(use_map);
+    else
+        ASYNC_USE_MMAP = 0;
+
+    char* nvram_path = getenv("ASYNC_NVRAM_PREFIX");
+    if(ASYNC_USE_MMAP == 1){
+        if(!nvram_path){
+            printf("ASYNC_USE_MMAP = 1, ASYNC_NVRAM_PREFIX environment variable must be set!\n");
+            return -1;
+        }
+    }
+
+    if(nvram_path)
+        ASYNC_NVRAM_PREFIX = strdup(nvram_path);
+
+    int mem_mode = -1;
+    char* memcpy_mode  = getenv("ASYNC_MEMCPY_MODE");
+    if(memcpy_mode)
+        mem_mode = atoi(memcpy_mode);
+    else
+        mem_mode = 0;
+
+    if(mem_mode == 1){
+        ASYNC_MEMCPY_MODE = MEM_GATHER;
+    } else
+        ASYNC_MEMCPY_MODE = MEM_DEFAULT;
+
+    if(ASYNC_USE_MMAP == 1){
+        ASYNC_MEMCPY_MODE = MEM_DEFAULT;
+        //mmap with gather has a bug for now.
+    }
+    printf("ASYNC_USE_MMAP = [%d], ASYNC_NVRAM_PREFIX = [%s], ASYNC_MEMCPY_MODE = [%d]\n",
+            ASYNC_USE_MMAP, ASYNC_NVRAM_PREFIX, ASYNC_MEMCPY_MODE);
+    //USE_MMAP
+    //MEMCPY_MODE
+    return 0;
+}
