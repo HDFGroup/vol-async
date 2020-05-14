@@ -14621,7 +14621,7 @@ async_file_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     #endif
 
     if(USE_MMAP == 1){{
-        mmap_free(MMAP_FILE, 0);//1 to remove tmp file
+        mmap_free(MMAP_FILE, 1, 1);//1 to remove tmp file
     }
 
     }

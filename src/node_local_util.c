@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <assert.h>
+#include <sys/time.h>
 
 #include "node_local_util.h"
 //assume to attach to a empty file, and need to extend for mmapping.
@@ -26,7 +27,7 @@ mmap_file* _mmap_setup(mmap_file* mmf, size_t init_size, int fd){
     else
         map_size = init_size;
 
-    printf("fd = %d\n", fd);
+    //printf("fd = %d\n", fd);
         int err = ftruncate(fd, map_size);//allocate space for file extension.
         if(err != 0){
             perror("ftruncate failed");
@@ -72,7 +73,7 @@ mmap_file* mmap_new_file(size_t init_size, char* file_path, int open_flags){
     return _mmap_setup(mmf, init_size, fd);
 }
 
-int mmap_free(mmap_file* mmf, int rm_file){
+int mmap_free(mmap_file* mmf, int rm_file, int close_fd){
     assert(mmf && mmf->map);
     munmap(mmf->map, mmf->current_size);
 
@@ -81,6 +82,9 @@ int mmap_free(mmap_file* mmf, int rm_file){
 
     if(mmf->file_path)
         free(mmf->file_path);
+
+    if(close_fd == 1)
+        close(mmf->fd);
 
     free(mmf);
     return 0;
@@ -140,4 +144,8 @@ size_t mmap_extend_increament(mmap_file* mmf, size_t addition_size){
 }
 
 
-
+unsigned long get_time_usec(){
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return 1000000 * tv.tv_sec + tv.tv_usec;
+}
