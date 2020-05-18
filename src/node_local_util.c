@@ -90,22 +90,27 @@ int mmap_free(mmap_file* mmf, int rm_file, int close_fd){
     return 0;
 }
 
-int mmap_sync(mmap_file* mmf, size_t offset, size_t len, mmap_sync_mode sync_mode){
+int mmap_sync(void* mmp, size_t offset, size_t len, mmap_sync_mode sync_mode){
+    int ret = -1;
     switch(sync_mode){
         case MMAP_NOSYNC:
+            ret = 0;
             break;
         case MMAP_ASYNC:
             //printf("msync called: MS_ASYNC\n");
-            msync(mmf->map + offset, len, MS_ASYNC);
+            ret = msync(mmp + offset, len, MS_ASYNC);
             break;
         case MMAP_SYNC:
-            msync(mmf->map + offset, len, MS_SYNC);
+            ret = msync(mmp + offset, len, MS_SYNC);
             //printf("msync called: MS_SYNC\n");
             break;
         default: //same as nosync
+            ret = 0;
             break;
     }
-    return 0;
+    if(ret != 0)
+        perror("msync failed");
+    return ret;
 }
 
 int mmap_cpy(mmap_file* mmf,  void* src, size_t offset, size_t len, mmap_sync_mode sync_mode){
@@ -117,9 +122,7 @@ int mmap_cpy(mmap_file* mmf,  void* src, size_t offset, size_t len, mmap_sync_mo
 
     memcpy(mmf->map + offset, (char*)src, len);
 
-    mmap_sync(mmf, offset, len, sync_mode);
-
-    return 0;
+    return mmap_sync(mmf->map, offset, len, sync_mode);
 }
 
 

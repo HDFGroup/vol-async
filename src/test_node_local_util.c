@@ -68,7 +68,7 @@ int main(int argc, char* argv[]) {
     int test_cnt = atoi(argv[1]);
 
     int write_size = atoi(argv[2]);
-    mmap_cpy_overwrite_overhead(test_cnt, 1000, MMAP_ASYNC);
+    mmap_cpy_overwrite_overhead(test_cnt, 1000, MMAP_SYNC);
 
 
   return 0;
