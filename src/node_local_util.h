@@ -20,11 +20,17 @@ typedef struct Mmaped_file{
     void* map;
 }mmap_file;
 
+typedef enum Mmap_sync_mode{
+    MMAP_NOSYNC,
+    MMAP_ASYNC,
+    MMAP_SYNC
+}mmap_sync_mode;
+
 //open_flags = O_RDWR|O_CREAT for default.
 mmap_file* mmap_new_file(size_t init_size, char* file_path, int open_flags);
 mmap_file* mmap_new_fd(size_t init_size, int fd);
 int mmap_free(mmap_file* mmf, int rm_file, int close_fd);
-int mmap_cpy(mmap_file* mmf, void* src, size_t offset, size_t len);
+int mmap_cpy(mmap_file* mmf, void* src, size_t offset, size_t len, mmap_sync_mode sync_mode);
 size_t mmap_extend_quick(mmap_file* mmf, size_t new_size);
 size_t mmap_extend_increament(mmap_file* mmf, size_t addition_size);
 unsigned long get_time_usec();
