@@ -7595,8 +7595,10 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
                 } else {//reuse an already created mmap, ensure size.
                     assert(MMAP_FILE->map);
                     if(buf_size > MMAP_FILE->current_size){
-                        mmap_extend_quick(MMAP_FILE, buf_size);
+                        if(mmap_extend_quick(MMAP_FILE, buf_size) == -1)
+                            goto done;
                     }
+                    args->buf = MMAP_FILE->map;
                 }
             } else {
                 if (NULL == (args->buf = malloc(buf_size))) {
@@ -7618,7 +7620,8 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
             } else {//using memory or mmap.
                 memcpy(args->buf, buf, buf_size);
                 if(ASYNC_USE_MMAP == 1){
-                    mmap_sync(args->buf, 0, buf_size, ASYNC_MMAP_SYNC_MODE);
+                    if(mmap_sync(args->buf, 0, buf_size, ASYNC_MMAP_SYNC_MODE) == -1)
+                        goto done;
                 }
             }
 
