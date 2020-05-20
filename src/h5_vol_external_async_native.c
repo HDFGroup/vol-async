@@ -7619,10 +7619,11 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
                 //token->task->
             } else {//using memory or mmap.
                 memcpy(args->buf, buf, buf_size);
-                if(ASYNC_USE_MMAP == 1){
-                    if(mmap_sync(args->buf, 0, buf_size, ASYNC_MMAP_SYNC_MODE) == -1)
-                        goto done;
-                }
+            }
+
+            if(ASYNC_USE_MMAP == 1){
+                if(mmap_sync(args->buf, 0, buf_size, ASYNC_MMAP_SYNC_MODE) == -1)
+                    goto done;
             }
 
             args->buf_free = true;
@@ -24798,10 +24799,10 @@ int set_node_local_env(){
     } else
         ASYNC_MEMCPY_MODE = MEM_DEFAULT;
 
-    if(ASYNC_USE_MMAP == 1){
-        ASYNC_MEMCPY_MODE = MEM_DEFAULT;
-        //mmap with gather has a bug for now.
-    }
+//    if(ASYNC_USE_MMAP == 1){
+//        //ASYNC_MEMCPY_MODE = MEM_DEFAULT;
+//        //mmap with gather has a bug for now.
+//    }
 
     printf("ASYNC_USE_MMAP = [%d], ASYNC_NVRAM_PREFIX = [%s], ASYNC_MEMCPY_MODE = [%d], ASYNC_MMAP_SYNC_MODE = %d\n",
             ASYNC_USE_MMAP, ASYNC_NVRAM_PREFIX, ASYNC_MEMCPY_MODE, ASYNC_MMAP_SYNC_MODE);

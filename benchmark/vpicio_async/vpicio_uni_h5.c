@@ -264,6 +264,8 @@ int main (int argc, char* argv[])
     H5Pset_dxpl_async(async_dxpl, true);
     #ifdef ENABLE_MPI
     H5Pset_fapl_mpio(async_fapl, comm, info);
+    int alignment = 16777216;
+    H5Pset_alignment(async_fapl, alignment, alignment);
     #endif
 
     file_id = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, async_fapl);
