@@ -264,8 +264,43 @@ int main (int argc, char* argv[])
     H5Pset_dxpl_async(async_dxpl, true);
     #ifdef ENABLE_MPI
     H5Pset_fapl_mpio(async_fapl, comm, info);
-    int alignment = 16777216;
-    H5Pset_alignment(async_fapl, alignment, alignment);
+
+    char* enable_alignment = getenv("VPIC_H5_ALIGNMENT_ENABLE");
+    if(enable_alignment){
+        if(atoi(enable_alignment) == 1){
+            int alignment = 16777216;
+            H5Pset_alignment(async_fapl, 4096, alignment);
+            printf("H5Pset_alignment enabled\n");
+        }
+    }
+
+    char* coll_metadata = getenv("VPIC_COLLECTIVE_METADATA");
+    if(coll_metadata){
+        if(atoi(coll_metadata)==1){
+            // Collective metadata
+            H5Pset_all_coll_metadata_ops(async_fapl, 1);
+            H5Pset_coll_metadata_write(async_fapl, 1);
+            printf("Collective metadata enabled\n");
+        }
+    }
+
+    char* defer_metadata_flush = getenv("VPIC_DEFER_MEADATA_FLUSH");
+    if(defer_metadata_flush){
+        if(atoi(defer_metadata_flush)==1){
+            H5AC_cache_config_t cache_config;
+            cache_config.version = H5AC__CURR_CACHE_CONFIG_VERSION;
+            H5Pget_mdc_config(async_fapl, &cache_config);
+            cache_config.set_initial_size = 1;
+            cache_config.initial_size = 16 * 1024 * 1024;
+            cache_config.evictions_enabled = 0;
+            cache_config.incr_mode = H5C_incr__off;
+            cache_config.flash_incr_mode = H5C_flash_incr__off;
+            cache_config.decr_mode = H5C_decr__off;
+            H5Pset_mdc_config (async_fapl, &cache_config);
+            printf("Deger metadata flush enabled\n");
+        }
+    }
+
     #endif
 
     file_id = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, async_fapl);
