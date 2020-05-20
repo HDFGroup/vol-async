@@ -366,7 +366,7 @@ int main (int argc, char* argv[])
     timer_off (1);
 
     if (my_rank == 0) {
-        printf ("\nTiming results\n");
+        printf ("\nTiming results with %d ranks\n", num_procs);
         timer_msg (1, "just writing data");
     }
 

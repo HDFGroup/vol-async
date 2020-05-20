@@ -24755,25 +24755,28 @@ int set_node_local_env(){
         return 0;
     }
     char* mmap_sync_mode = getenv("ASYNC_MMAP_SYNC_MODE");
-
-    if(mmap_sync_mode){
-         int mode = atoi(mmap_sync_mode);
-         switch(mode){
-             case 0:
-                 ASYNC_MMAP_SYNC_MODE = MMAP_NOSYNC;
-                 break;
-             case 1:
-                 ASYNC_MMAP_SYNC_MODE = MMAP_ASYNC;
-                 break;
-             case 2:
-                 ASYNC_MMAP_SYNC_MODE = MMAP_SYNC;
-                 break;
-             default:
-                 break;
-         }
-    }
-    else
+    if(ASYNC_USE_MMAP == 1){
+        if(mmap_sync_mode){
+             int mode = atoi(mmap_sync_mode);
+             switch(mode){
+                 case 0:
+                     ASYNC_MMAP_SYNC_MODE = MMAP_NOSYNC;
+                     break;
+                 case 1:
+                     ASYNC_MMAP_SYNC_MODE = MMAP_ASYNC;
+                     break;
+                 case 2:
+                     ASYNC_MMAP_SYNC_MODE = MMAP_SYNC;
+                     break;
+                 default:
+                     break;
+             }
+        }
+        else
+            ASYNC_MMAP_SYNC_MODE = 0;
+    } else
         ASYNC_MMAP_SYNC_MODE = 0;
+
 
     char* nvram_path = getenv("ASYNC_NVRAM_PREFIX");
     if(ASYNC_USE_MMAP == 1){
@@ -24804,8 +24807,8 @@ int set_node_local_env(){
 //        //mmap with gather has a bug for now.
 //    }
 
-    printf("ASYNC_USE_MMAP = [%d], ASYNC_NVRAM_PREFIX = [%s], ASYNC_MEMCPY_MODE = [%d], ASYNC_MMAP_SYNC_MODE = %d\n",
-            ASYNC_USE_MMAP, ASYNC_NVRAM_PREFIX, ASYNC_MEMCPY_MODE, ASYNC_MMAP_SYNC_MODE);
+//    printf("ASYNC_USE_MMAP = [%d], ASYNC_NVRAM_PREFIX = [%s], ASYNC_MEMCPY_MODE = [%d], ASYNC_MMAP_SYNC_MODE = %d\n",
+//            ASYNC_USE_MMAP, ASYNC_NVRAM_PREFIX, ASYNC_MEMCPY_MODE, ASYNC_MMAP_SYNC_MODE);
 
     return 0;
 }
