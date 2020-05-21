@@ -64,12 +64,48 @@ unsigned long mmap_cpy_overwrite_overhead(int test_cnt, size_t write_size, mmap_
     return t2 - t1;
 }
 
+unsigned long write_overhead(int test_cnt, size_t write_size){
+    int pid = getpid();
+    char file_path[100] = {'\0'};  // = argv[1];
+    sprintf(file_path, "%d.mmp", pid);
+    int fd_mmap = open(file_path, O_RDWR|O_CREAT, 0666);
+    mmap_file* mmpf = mmap_new_fd(write_size, fd_mmap);
+    mmpf->file_path = strdup(file_path);
+    assert(mmpf);
+
+    char* write_buf_src = calloc(1, write_size * sizeof(char));
+    memset(write_buf_src, 'w', write_size);
+
+    unsigned long t1 = get_time_usec();
+    for(int i = 0; i < test_cnt; i++){
+        mmap_cpy(mmpf, write_buf_src, 0, write_size, MMAP_SYNC);
+    }
+    unsigned long t2 = get_time_usec();
+    printf("mmap_cpy ran %d times, wrote %lu bytes each time, avg time = %lu us\n",
+            test_cnt, write_size, (t2-t1)/test_cnt);
+
+    sleep(2);
+    sprintf(file_path, "%d.psx", pid);
+    int fd_posix = open(file_path, O_RDWR|O_CREAT, 0666);
+    unsigned long t3 = get_time_usec();
+    for(int i = 0; i < test_cnt; i++){
+        write(fd_posix, write_buf_src, write_size);
+        //syncfs(fd_posix);
+        sync();
+    }
+    unsigned long t4 = get_time_usec();
+
+    printf("posix write ran %d times, wrote %lu bytes each time, avg time = %lu us\n",
+            test_cnt, write_size, (t4-t3)/test_cnt);
+    return 0;
+}
+
 int main(int argc, char* argv[]) {
     int test_cnt = atoi(argv[1]);
 
     int write_size = atoi(argv[2]);
-    mmap_cpy_overwrite_overhead(test_cnt, 1000, MMAP_SYNC);
-
+    //mmap_cpy_overwrite_overhead(test_cnt, 1000, MMAP_SYNC);
+    write_overhead(test_cnt, write_size);
 
   return 0;
 }

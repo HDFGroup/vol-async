@@ -102,6 +102,8 @@ int mmap_sync(void* mmp, size_t offset, size_t len, mmap_sync_mode sync_mode){
             break;
         case MMAP_SYNC:
             ret = msync(mmp + offset, len, MS_SYNC);
+            //ret = 0;
+            //sync();
             //printf("msync called: MS_SYNC\n");
             break;
         default: //same as nosync
