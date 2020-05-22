@@ -64,10 +64,10 @@ unsigned long mmap_cpy_overwrite_overhead(int test_cnt, size_t write_size, mmap_
     return t2 - t1;
 }
 
-unsigned long write_overhead(int test_cnt, size_t write_size){
+unsigned long write_overhead(int test_cnt, size_t write_size, char* prefix){
     int pid = getpid();
     char file_path[100] = {'\0'};  // = argv[1];
-    sprintf(file_path, "%d.mmp", pid);
+    sprintf(file_path, "%s/%d.mmp", prefix, pid);
     int fd_mmap = open(file_path, O_RDWR|O_CREAT, 0666);
     mmap_file* mmpf = mmap_new_fd(write_size, fd_mmap);
     mmpf->file_path = strdup(file_path);
@@ -105,7 +105,8 @@ int main(int argc, char* argv[]) {
 
     int write_size = atoi(argv[2]);
     //mmap_cpy_overwrite_overhead(test_cnt, 1000, MMAP_SYNC);
-    write_overhead(test_cnt, write_size);
+    char* prefix = argv[3];
+    write_overhead(test_cnt, write_size, prefix);
 
   return 0;
 }

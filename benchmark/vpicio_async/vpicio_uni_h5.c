@@ -270,7 +270,7 @@ int main (int argc, char* argv[])
         if(atoi(enable_alignment) == 1){
             int alignment = 16777216;
             H5Pset_alignment(async_fapl, 4096, alignment);
-            printf("H5Pset_alignment enabled\n");
+            //printf("H5Pset_alignment enabled\n");
         }
     }
 
@@ -280,7 +280,7 @@ int main (int argc, char* argv[])
             // Collective metadata
             H5Pset_all_coll_metadata_ops(async_fapl, 1);
             H5Pset_coll_metadata_write(async_fapl, 1);
-            printf("Collective metadata enabled\n");
+            //printf("Collective metadata enabled\n");
         }
     }
 
@@ -297,7 +297,7 @@ int main (int argc, char* argv[])
             cache_config.flash_incr_mode = H5C_flash_incr__off;
             cache_config.decr_mode = H5C_decr__off;
             H5Pset_mdc_config (async_fapl, &cache_config);
-            printf("Deger metadata flush enabled\n");
+            //printf("Deger metadata flush enabled\n");
         }
     }
 
