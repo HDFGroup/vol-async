@@ -24807,8 +24807,8 @@ int set_node_local_env(){
 //        //mmap with gather has a bug for now.
 //    }
 
-    printf("ASYNC_USE_MMAP = [%d], ASYNC_NVRAM_PREFIX = [%s], ASYNC_MEMCPY_MODE = [%d], ASYNC_MMAP_SYNC_MODE = %d\n",
-            ASYNC_USE_MMAP, ASYNC_NVRAM_PREFIX, ASYNC_MEMCPY_MODE, ASYNC_MMAP_SYNC_MODE);
+//    printf("ASYNC_USE_MMAP = [%d], ASYNC_NVRAM_PREFIX = [%s], ASYNC_MEMCPY_MODE = [%d], ASYNC_MMAP_SYNC_MODE = %d\n",
+//            ASYNC_USE_MMAP, ASYNC_NVRAM_PREFIX, ASYNC_MEMCPY_MODE, ASYNC_MMAP_SYNC_MODE);
 
     return 0;
 }

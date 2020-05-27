@@ -258,10 +258,21 @@ int main (int argc, char* argv[])
     offset -= numparticles;
     #endif
 
+
+
     async_fapl = H5Pcreate (H5P_FILE_ACCESS);
     async_dxpl = H5Pcreate (H5P_DATASET_XFER);
     H5Pset_vol_async(async_fapl);
     H5Pset_dxpl_async(async_dxpl, true);
+
+    char* no_buffer = getenv("VPIC_SKIP_ASYNC_BUFFER");
+    if(no_buffer){
+        if(atoi(no_buffer) == 1){
+            H5Pset_dxpl_async_cp_limit(async_dxpl, 0);
+            //printf("H5Pset_alignment enabled\n");
+        }
+    }
+
     #ifdef ENABLE_MPI
     H5Pset_fapl_mpio(async_fapl, comm, info);
 
