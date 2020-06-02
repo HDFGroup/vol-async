@@ -2048,7 +2048,8 @@ H5Pget_dxpl_async_cp_limit(hid_t dxpl, hsize_t *size)
             return ret;
         }
         else {
-            *size = 0;
+            /* *size = 0; */
+            ret = 0;
         }
     }
     else{
@@ -7505,13 +7506,15 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with H5Pget_dxpl_async\n", __func__);
         goto error;
     }
+    if (enable_async == true) cp_size_limit = ULONG_MAX;
+
     if (H5Pget_dxpl_async_cp_limit(plist_id, &cp_size_limit) < 0) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with H5Pget_dxpl_async\n", __func__);
         goto error;
     }
-    if (cp_size_limit > 0) { enable_async = true; }
+    if (cp_size_limit > 0) enable_async = true;
+
     if (aid->env_async) enable_async = true;
-    if (enable_async == true && cp_size_limit == 0) cp_size_limit = ULONG_MAX;
 
     /* create a new task and insert into its file task list */
     if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
@@ -7546,7 +7549,6 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
             token->task = async_task;
             async_task->token = token;
             *req = (void*)token;
-            cp_size_limit = 0;
         }
     }
 
@@ -7568,6 +7570,7 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
                     goto done;
                 }
         }
+
         if (buf_size <= cp_size_limit) {
             if (NULL == (args->buf = malloc(buf_size))) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s malloc failed!\n", __func__);
@@ -7589,11 +7592,12 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
 
             args->buf_free = true;
         }
-        else {
-            enable_async = false;
-            fprintf(stdout,"  [ASYNC VOL] %s buf size [%llu] is larger than cp_size_limit [%llu], using synchronous write\n",
-                    __func__, buf_size, cp_size_limit);
-        }
+        // if buf_size is larger than copy size limit, do not memcpy and assume user buffer is not modified until actual write happens
+        /* else { */
+        /*     enable_async = false; */
+        /*     fprintf(stdout,"  [ASYNC VOL] %s buf size [%llu] is larger than cp_size_limit [%llu], using synchronous write\n", */
+        /*             __func__, buf_size, cp_size_limit); */
+        /* } */
     }
 
     // Retrieve current library state
