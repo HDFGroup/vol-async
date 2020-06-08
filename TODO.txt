@@ -10,8 +10,13 @@ Notes & To Do Items:
         - link_get
         - link_specific
         - link_optional
+    6/5/20 update: done by Tang
 
 - The async_task_t structs for each operation should be freed earlier than
     file close.   They should probably track the # of dependent operations
     and be freed when both the operation completes and its dependent operations
     complete.
+
+- There are a number of operations that are currently executed synchronously by
+    default, e.g. all the *get, *specific, and *optional functions and others. 
+    Need to document them in detail.
