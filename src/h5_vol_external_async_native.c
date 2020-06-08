@@ -7630,8 +7630,8 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         }
         else {
             enable_async = false;
-            fprintf(stdout,"  [ASYNC VOL] %s buf size [%llu] is larger than cp_size_limit [%llu], using synchronous write\n",
-                    __func__, buf_size, cp_size_limit);
+            //fprintf(stdout,"  [ASYNC VOL] %s buf size [%llu] is larger than cp_size_limit [%llu], using synchronous write\n",
+            //        __func__, buf_size, cp_size_limit);
         }
     }
 

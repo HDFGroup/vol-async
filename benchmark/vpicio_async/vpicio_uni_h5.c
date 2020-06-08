@@ -269,7 +269,7 @@ int main (int argc, char* argv[])
     if(no_buffer){
         if(atoi(no_buffer) == 1){
             H5Pset_dxpl_async_cp_limit(async_dxpl, 0);
-            //printf("H5Pset_alignment enabled\n");
+            printf("VPIC_SKIP_ASYNC_BUFFER enabled\n");
         }
     }
 
@@ -332,6 +332,7 @@ int main (int argc, char* argv[])
     /* #ifdef ENABLE_MPI */
     /* MPI_Barrier(MPI_COMM_WORLD); */
     /* #endif */
+    timer_reset(1);
     timer_on (1);
 
     for (i = 0; i < nts; i++) {
@@ -378,7 +379,7 @@ int main (int argc, char* argv[])
 
     if (my_rank == 0) {
         printf ("\nTiming results with %d ranks\n", num_procs);
-        timer_msg (1, "just writing data");
+        timer_msg (1, "total running time");
     }
 
 
