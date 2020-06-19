@@ -14,17 +14,18 @@ Some configuration parameters used in the instructions:
 
     1.1 Download the Asynchronous I/O VOL connector code (this repository)
 
-       > git clone https://bitbucket.hdfgroup.org/scm/hdf5vol/async.git VOL_DIR
+       > git clone https://bitbucket.hdfgroup.org/scm/hdf5vol/async.git 
 
     1.2 Download the Argobots code
 
-       > git clone git@github.com:pmodels/argobots.git ABT_DIR
+       > wget https://github.com/pmodels/argobots/releases/download/v1.0/argobots-1.0.tar.gz
+       > tar xf argobots-1.0.tar.gz
 
     1.3 Download the HDF5 code 
 
-       > git clone https://bitbucket.hdfgroup.org/scm/hdffv/hdf5.git  H5_DIR
+       > git clone https://bitbucket.hdfgroup.org/scm/hdffv/hdf5.git
 
-    1.4 automake/autoconf may be needed on NERSC machines, if there are any "configuration errors", do the following:
+    1.4 (optional) automake/autoconf may be needed on NERSC machines, if there are any "configuration errors", do the following:
 
        > module load automake
        > module load autoconf
