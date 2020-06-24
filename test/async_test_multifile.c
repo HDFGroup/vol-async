@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
     char file_name[128];
     char *grp_name  = "Group", *fpath;
     int        *write_data, *data1_write, attr_data0, attr_data1, attr_read_data0=0, attr_read_data1=0;
-    int        i;
+    int        i, ret = 0;
     herr_t     status;
     hid_t      async_fapl;
     
@@ -62,6 +62,7 @@ int main(int argc, char *argv[])
         file_id = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, async_fapl);
         if (file_id < 0) {
             fprintf(stderr, "Error with file create\n");
+            ret = -1;
             goto done;
         }
         if (print_dbg_msg) { printf("Create file [%s]\n", file_name); fflush(stdout); }
@@ -69,18 +70,21 @@ int main(int argc, char *argv[])
         grp_id = H5Gcreate(file_id, grp_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
         if (grp_id < 0) {
             fprintf(stderr, "Error with group create\n");
+            ret = -1;
             goto done;
         }
 
         dset0_id  = H5Dcreate(grp_id,"dset0",H5T_NATIVE_INT,dspace_id,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT);
         if (dset0_id < 0) {
             fprintf(stderr, "Error with dset0 create\n");
+            ret = -1;
             goto done;
         }
 
         dset1_id  = H5Dcreate(grp_id,"dset1",H5T_NATIVE_INT,dspace_id,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT);
         if (dset1_id < 0) {
             fprintf(stderr, "Error with dset1 create\n");
+            ret = -1;
             goto done;
         }
 
@@ -104,6 +108,7 @@ int main(int argc, char *argv[])
         status = H5Dwrite(dset0_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, async_dxpl, write_data);
         if (status < 0) {
             fprintf(stderr, "Error with dset 0 write\n");
+            ret = -1;
             goto done;
         }
         if (print_dbg_msg) { printf("Write dset 0\n" ); fflush(stdout); }
@@ -114,6 +119,7 @@ int main(int argc, char *argv[])
         status = H5Dwrite(dset1_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, async_dxpl, write_data);
         if (status < 0) {
             fprintf(stderr, "Error with dset 0 write\n");
+            ret = -1;
             goto done;
         }
         if (print_dbg_msg) { printf("Write dset 1\n" ); fflush(stdout); }
@@ -153,5 +159,5 @@ done:
     if (write_data != NULL) 
         free(write_data);
 
-    return 0;
+    return ret;
 }

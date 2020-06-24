@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
     hsize_t    offset[2] = {0, 0};
     herr_t     status;
     hid_t      async_fapl;
-    int        proc_num, my_rank;
+    int        proc_num, my_rank, ret=0;
 
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &proc_num);
@@ -43,12 +43,14 @@ int main(int argc, char *argv[])
     file_id = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, async_fapl);
     if (file_id < 0) {
         fprintf(stderr, "Error with file create\n");
+        ret = -1;
         goto done;
     }
 
     grp_id = H5Gcreate(file_id, grp_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     if (grp_id < 0) {
         fprintf(stderr, "Error with group create\n");
+        ret = -1;
         goto done;
     }
 
@@ -71,6 +73,7 @@ int main(int argc, char *argv[])
     dset0_id  = H5Dcreate(grp_id,"dset0",H5T_NATIVE_INT,fspace_id,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT);
     if (dset0_id < 0) {
         fprintf(stderr, "Error with dset0 create\n");
+        ret = -1;
         goto done;
     }
 
@@ -90,6 +93,7 @@ int main(int argc, char *argv[])
     status = H5Dwrite(dset0_id, H5T_NATIVE_INT, mspace_id, fspace_id, dxpl_id, data0_write);
     if (status < 0) {
         fprintf(stderr, "Error with dset 0 write\n");
+        ret = -1;
         goto done;
     }
     else
@@ -98,6 +102,7 @@ int main(int argc, char *argv[])
     status = H5Dread(dset0_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl_id, data0_read);
     if (status < 0) {
         fprintf(stderr, "Error with dset 0 read\n");
+        ret = -1;
         goto done;
     }
 
@@ -108,98 +113,108 @@ int main(int argc, char *argv[])
         if (data0_read[i] != i) {
             fprintf(stderr, "Error with dset 0 read %d/%d\n", data0_read[i], i);
             is_verified = -1;
+            ret = -1;
             break;
         }
     }
     if (is_verified == 1) 
         fprintf(stderr, "Succeed with dset 0 read: %d \n", data0_read[0]);
 
-    /* status = H5Dwrite(dset1_id, H5T_NATIVE_INT, mspace_id, fspace_id, dxpl_id, data1_write); */
-    /* if (status < 0) { */
-    /*     fprintf(stderr, "Error with dset 1 write\n"); */
-    /*     goto done; */
-    /* } */
-    /* else */
-    /*     fprintf(stderr, "Succeed with dset 1 write\n"); */
+    status = H5Dwrite(dset1_id, H5T_NATIVE_INT, mspace_id, fspace_id, dxpl_id, data1_write);
+    if (status < 0) {
+        fprintf(stderr, "Error with dset 1 write\n");
+        ret = -1;
+        goto done;
+    }
+    else
+        fprintf(stderr, "Succeed with dset 1 write\n");
 
-    /* status = H5Dread(dset1_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl_id, data1_read); */
-    /* if (status < 0) { */
-    /*     fprintf(stderr, "Error with dset 1 read\n"); */
-    /*     goto done; */
-    /* } */
+    status = H5Dread(dset1_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl_id, data1_read);
+    if (status < 0) {
+        fprintf(stderr, "Error with dset 1 read\n");
+        ret = -1;
+        goto done;
+    }
 
-    /* // Verify read data */
-    /* H5Dwait(dset1_id); */
-    /* is_verified = 1; */
-    /* for(i = 0; i < DIMLEN*DIMLEN; ++i) { */
-    /*     if (data1_read[i] != 2*i) { */
-    /*         fprintf(stderr, "Error with dset 1 read %d/%d\n", data1_read[i], i*2); */
-    /*         is_verified = -1; */
-    /*         break; */
-    /*     } */
-    /* } */
-    /* if (is_verified == 1) */ 
-    /*     fprintf(stderr, "Succeed with dset 1 read: %d\n", data1_read[0]); */
+    // Verify read data
+    H5Dwait(dset1_id);
+    is_verified = 1;
+    for(i = 0; i < DIMLEN*DIMLEN; ++i) {
+        if (data1_read[i] != 2*i) {
+            fprintf(stderr, "Error with dset 1 read %d/%d\n", data1_read[i], i*2);
+            is_verified = -1;
+            ret = -1;
+            break;
+        }
+    }
+    if (is_verified == 1) 
+        fprintf(stderr, "Succeed with dset 1 read: %d\n", data1_read[0]);
 
-    /* // Change data 0 and 1 */
-    /* for(i = 0; i < DIMLEN*DIMLEN; ++i) { */
-    /*     data0_write[i] *= -1; */
-    /*     data1_write[i] *= -1; */
-    /* } */
+    // Change data 0 and 1
+    for(i = 0; i < DIMLEN*DIMLEN; ++i) {
+        data0_write[i] *= -1;
+        data1_write[i] *= -1;
+    }
 
-    /* status = H5Dwrite(dset1_id, H5T_NATIVE_INT, mspace_id, fspace_id, dxpl_id, data1_write); */
-    /* if (status < 0) { */
-    /*     fprintf(stderr, "Error with dset 1 write\n"); */
-    /*     goto done; */
-    /* } */
-    /* else */
-    /*     fprintf(stderr, "Succeed with dset 1 write\n"); */
+    status = H5Dwrite(dset1_id, H5T_NATIVE_INT, mspace_id, fspace_id, dxpl_id, data1_write);
+    if (status < 0) {
+        fprintf(stderr, "Error with dset 1 write\n");
+        ret = -1;
+        goto done;
+    }
+    else
+        fprintf(stderr, "Succeed with dset 1 write\n");
 
-    /* status = H5Dwrite(dset0_id, H5T_NATIVE_INT, mspace_id, fspace_id, H5P_DEFAULT, data0_write); */
-    /* if (status < 0) { */
-    /*     fprintf(stderr, "Error with dset 0 write\n"); */
-    /*     goto done; */
-    /* } */
-    /* else */
-    /*     fprintf(stderr, "Succeed with dset 0 write\n"); */
+    status = H5Dwrite(dset0_id, H5T_NATIVE_INT, mspace_id, fspace_id, H5P_DEFAULT, data0_write);
+    if (status < 0) {
+        fprintf(stderr, "Error with dset 0 write\n");
+        ret = -1;
+        goto done;
+    }
+    else
+        fprintf(stderr, "Succeed with dset 0 write\n");
 
-    /* status = H5Dread(dset0_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl_id, data0_read); */
-    /* if (status < 0) { */
-    /*     fprintf(stderr, "Error with dset 0 read\n"); */
-    /*     goto done; */
-    /* } */
+    status = H5Dread(dset0_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl_id, data0_read);
+    if (status < 0) {
+        fprintf(stderr, "Error with dset 0 read\n");
+        ret = -1;
+        goto done;
+    }
 
-    /* // Verify read data */
-    /* H5Dwait(dset0_id); */
-    /* is_verified = 1; */
-    /* for(i = 0; i < DIMLEN*DIMLEN; ++i) { */
-    /*     if (data0_read[i] != -i) { */
-    /*         fprintf(stderr, "Error with dset 0 read %d/%d\n", data0_read[i], -i); */
-    /*         is_verified = -1; */
-    /*         break; */
-    /*     } */
-    /* } */
-    /* if (is_verified == 1) */ 
-    /*     fprintf(stderr, "Succeed with dset 0 read: %d\n", data0_read[0]); */
+    // Verify read data
+    H5Dwait(dset0_id);
+    is_verified = 1;
+    for(i = 0; i < DIMLEN*DIMLEN; ++i) {
+        if (data0_read[i] != -i) {
+            fprintf(stderr, "Error with dset 0 read %d/%d\n", data0_read[i], -i);
+            is_verified = -1;
+            ret = -1;
+            break;
+        }
+    }
+    if (is_verified == 1) 
+        fprintf(stderr, "Succeed with dset 0 read: %d\n", data0_read[0]);
 
 
-    /* status = H5Dread(dset1_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl_id, data1_read); */
-    /* if (status < 0) { */
-    /*     fprintf(stderr, "Error with dset 1 read\n"); */
-    /*     goto done; */
-    /* } */
-    /* H5Dwait(dset1_id); */
-    /* // Verify read data */
-    /* is_verified = 1; */
-    /* for(i = 0; i < DIMLEN*DIMLEN; ++i) { */
-    /*     if (data1_read[i] != -2*i) { */
-    /*         fprintf(stderr, "Error with dset 1 read %d/%d\n", data1_read[i], -2*i); */
-    /*         is_verified = -1; */
-    /*         break; */
-    /*     } */
-    /* } */
-    /* if (is_verified == 1) */ 
-    /*     fprintf(stderr, "Succeed with dset 1 read: %d\n", data1_read[0]); */
+    status = H5Dread(dset1_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl_id, data1_read);
+    if (status < 0) {
+        fprintf(stderr, "Error with dset 1 read\n");
+        ret = -1;
+        goto done;
+    }
+    H5Dwait(dset1_id);
+    // Verify read data
+    is_verified = 1;
+    for(i = 0; i < DIMLEN*DIMLEN; ++i) {
+        if (data1_read[i] != -2*i) {
+            fprintf(stderr, "Error with dset 1 read %d/%d\n", data1_read[i], -2*i);
+            is_verified = -1;
+            ret = -1;
+            break;
+        }
+    }
+    if (is_verified == 1) 
+        fprintf(stderr, "Succeed with dset 1 read: %d\n", data1_read[0]);
 
 
     H5Pclose(async_fapl);
@@ -224,5 +239,5 @@ done:
         free(data1_read);
 
     MPI_Finalize();
-    return 0;
+    return ret;
 }

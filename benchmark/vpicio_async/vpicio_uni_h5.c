@@ -261,6 +261,7 @@ int main (int argc, char* argv[])
     async_fapl = H5Pcreate (H5P_FILE_ACCESS);
     async_dxpl = H5Pcreate (H5P_DATASET_XFER);
     H5Pset_vol_async(async_fapl);
+    H5Pset_alignment(async_fapl, 16777216, 16777216);
     H5Pset_dxpl_async(async_dxpl, true);
     #ifdef ENABLE_MPI
     H5Pset_fapl_mpio(async_fapl, comm, info);
@@ -307,7 +308,7 @@ int main (int argc, char* argv[])
             H5Dclose(dset_ids[i][j]);
         H5Gclose(grp_ids[i]);
 
-        H5VL_async_start();
+        /* H5VL_async_start(); */
 
         if (i != nts - 1) {
             if (my_rank == 0) { printf ("  sleep for %ds start\n", sleep_time); fflush(stdout);}

@@ -1,12 +1,12 @@
-#HDF5_DIR = /global/homes/h/houhun/hdf5_tmp/hdf5/async_threadsafe/hdf5
-#ABT_DIR = /global/homes/h/houhun/cori/argobots/install
-HDF5_DIR = /Users/koziol/HDF5/misc_bugs4/review/vol/build_async_parallel_production/hdf5
-ABT_DIR = /Users/koziol/HDF5/misc_bugs4/review/vol/argobots/build_argobots
+HDF5_DIR = /global/homes/h/houhun/hdf5_tmp/hdf5/async_threadsafe/hdf5
+ABT_DIR = /global/homes/h/houhun/cori/argobots/install
+# HDF5_DIR = /Users/koziol/HDF5/misc_bugs4/review/vol/build_async_parallel/hdf5
+# ABT_DIR = /Users/koziol/HDF5/misc_bugs4/review/vol/argobots/build_argobots
 ASYNC_DIR = ../src
 
-#CC = cc
-#CC = gcc-9
-CC = mpicc
+CC = cc
+# CC = gcc-9
+# CC = mpicc
 
 DEBUG = -g -O0
 CFLAGS = $(DEBUG) -I$(ABT_DIR)/include -I$(ASYNC_DIR) -I$(HDF5_DIR)/include
@@ -21,8 +21,8 @@ SRC = async_test_serial.c async_test_serial2.c \
 OBJ = $(SRC:.c=.o)
 EXE = $(SRC:.c=.exe)
 DBG = $(SRC:.c=.exe.dSYM)
-#LIB = libh5async.so
-LIB = libh5async.dylib
+LIB = libh5async.so
+# LIB = libh5async.dylib
 
 # Add '.exe' as a targetable suffix
 .SUFFIXES: .exe
@@ -31,6 +31,12 @@ LIB = libh5async.dylib
 	$(CC) $(CFLAGS) $^ -o $*.exe $(LDFLAGS)
 
 all: $(EXE)
+
+check: 
+	./pytest.py -p
+
+check_serial: 
+	./pytest.py
 
 .PHONY: clean
 clean:
