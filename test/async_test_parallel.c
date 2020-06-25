@@ -65,6 +65,7 @@ int main(int argc, char *argv[])
 
     // Set collective operation
     dxpl_id = H5Pcreate(H5P_DATASET_XFER);
+    H5Pset_dxpl_async(dxpl_id, true);
     H5Pset_dxpl_mpio(dxpl_id, H5FD_MPIO_COLLECTIVE);
 
     mspace_id = H5Screate_simple(2, my_size, NULL);
