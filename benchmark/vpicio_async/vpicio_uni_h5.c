@@ -316,7 +316,7 @@ int main (int argc, char* argv[])
             if (my_rank == 0) { printf ("  sleep for %ds end\n", sleep_time); fflush(stdout);}
         }
 
-        H5Fwait(file_id);
+        /* H5Fwait(file_id); */
 
         #ifdef ENABLE_MPI
         MPI_Barrier(MPI_COMM_WORLD);
@@ -340,7 +340,7 @@ int main (int argc, char* argv[])
     H5Pclose(async_dxpl);
     H5Pclose(async_fapl);
     /* if (my_rank == 0) printf ("Before closing HDF5 file \n"); */
-    H5Fwait(file_id);
+    /* H5Fwait(file_id); */
     H5Fclose(file_id);
     if (my_rank == 0) {printf ("Closed HDF5 file \n"); fflush(stdout);}
 
