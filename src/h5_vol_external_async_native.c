@@ -7538,7 +7538,7 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     args->buf              = (void*)buf;
     args->req              = req;
 
-    args->memcpy_mode = MEM_DEFAULT; //use rebular memcpy by default
+    args->memcpy_mode = MEM_GATHER; //use rebular memcpy by default
 
     if (req) {
         token = H5RQ__new_token();
