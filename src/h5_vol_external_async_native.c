@@ -7377,7 +7377,7 @@ async_dataset_write_fn(void *foo)
     #endif
 
     //gather_space_id replaced mem_space_id
-    if(args->memcpy_mode == MEM_GATHER){
+    if(args->memcpy_mode == MEM_GATHER && args->gather_space_id != 0){
         if ( H5VLdataset_write(args->dset, task->under_vol_id,
                 args->mem_type_id, args->gather_space_id, args->file_space_id,
                 args->plist_id, args->buf, args->req) < 0 ) {
@@ -7577,7 +7577,7 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
                 goto done;
             }
 
-            if(args->memcpy_mode == MEM_GATHER){
+            if(args->memcpy_mode == MEM_GATHER && mem_space_id != H5S_ALL){
                 H5Dgather(mem_space_id, buf, mem_type_id, buf_size, args->buf, NULL, NULL);
                 int elem_size =  H5Tget_size(mem_type_id);
                 int n_elem = buf_size/elem_size;
