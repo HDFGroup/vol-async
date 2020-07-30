@@ -103,7 +103,7 @@ typedef struct async_task_t {
 
     struct H5VL_async_t *parent_obj;            /* pointer back to the parent async object */
 
-    struct H5O_token_t *token;
+    /* struct H5O_token_t *token; */
 
     struct async_task_t *prev;
     struct async_task_t *next;
@@ -2699,7 +2699,7 @@ async_attr_create(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
 {
     H5VL_async_t *async_obj = NULL;
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_attr_create_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -3151,7 +3151,7 @@ async_attr_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
 {
     H5VL_async_t *async_obj = NULL;
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_attr_open_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -3580,7 +3580,7 @@ async_attr_read(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
     // For implicit mode (env var), make all read to be blocking
     if(aid->env_async) is_blocking = 1;
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_attr_read_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -3993,7 +3993,7 @@ static herr_t
 async_attr_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type_id, const void *buf, hid_t dxpl_id, void **req)
 {
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_attr_write_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -4411,7 +4411,7 @@ static herr_t
 async_attr_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_attr_get_t get_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_attr_get_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -4825,7 +4825,7 @@ static herr_t
 async_attr_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, H5VL_attr_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_attr_specific_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -5240,7 +5240,7 @@ static herr_t
 async_attr_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_attr_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_attr_optional_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -5651,7 +5651,7 @@ static herr_t
 async_attr_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id, void **req)
 {
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_attr_close_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -6090,7 +6090,7 @@ async_dataset_create(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
 {
     H5VL_async_t *async_obj = NULL;
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_dataset_create_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -6551,7 +6551,7 @@ async_dataset_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
 {
     H5VL_async_t *async_obj = NULL;
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_dataset_open_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -6985,7 +6985,7 @@ async_dataset_read(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
     // For implicit mode (env var), make all read to be blocking
     if(aid->env_async) is_blocking = 1;
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_dataset_read_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -7424,7 +7424,7 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     hbool_t enable_async = false;
     hsize_t buf_size, cp_size_limit = 0;
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_dataset_write_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -7907,7 +7907,7 @@ static herr_t
 async_dataset_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_dataset_get_t get_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_dataset_get_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -8320,7 +8320,7 @@ static herr_t
 async_dataset_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_dataset_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_dataset_specific_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -8733,7 +8733,7 @@ static herr_t
 async_dataset_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_dataset_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_dataset_optional_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -9144,7 +9144,7 @@ static herr_t
 async_dataset_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id, void **req)
 {
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_dataset_close_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -9569,7 +9569,7 @@ async_datatype_commit(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
 {
     H5VL_async_t *async_obj = NULL;
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_datatype_commit_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -10024,7 +10024,7 @@ async_datatype_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
 {
     H5VL_async_t *async_obj = NULL;
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_datatype_open_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -10456,7 +10456,7 @@ static herr_t
 async_datatype_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_datatype_get_t get_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_datatype_get_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -10869,7 +10869,7 @@ static herr_t
 async_datatype_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_datatype_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_datatype_specific_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -11282,7 +11282,7 @@ static herr_t
 async_datatype_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_datatype_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_datatype_optional_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -11693,7 +11693,7 @@ static herr_t
 async_datatype_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id, void **req)
 {
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_datatype_close_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -12143,7 +12143,7 @@ async_file_create(int is_blocking, async_instance_t* aid, const char *name, unsi
     hid_t under_vol_id;
     H5VL_async_t *async_obj = NULL;
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_file_create_args_t *args = NULL;
     bool lock_self = false;
     hbool_t acquired = false;
@@ -12587,7 +12587,7 @@ async_file_open(int is_blocking, async_instance_t* aid, const char *name, unsign
     hid_t under_vol_id;
     H5VL_async_t *async_obj = NULL;
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_file_open_args_t *args = NULL;
     bool lock_self = false;
     hbool_t acquired = false;
@@ -13004,7 +13004,7 @@ static herr_t
 async_file_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_file_get_t get_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_file_get_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -13417,7 +13417,7 @@ static herr_t
 async_file_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_file_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_file_specific_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -13830,7 +13830,7 @@ static herr_t
 async_file_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_file_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_file_optional_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -14252,7 +14252,7 @@ static herr_t
 async_file_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id, void **req)
 {
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_file_close_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -14689,7 +14689,7 @@ async_group_create(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
 {
     H5VL_async_t *async_obj = NULL;
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_group_create_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -15142,7 +15142,7 @@ async_group_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
 {
     H5VL_async_t *async_obj = NULL;
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_group_open_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -15574,7 +15574,7 @@ static herr_t
 async_group_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_group_get_t get_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_group_get_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -15987,7 +15987,7 @@ static herr_t
 async_group_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_group_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_group_specific_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -16400,7 +16400,7 @@ static herr_t
 async_group_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_group_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_group_optional_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -16811,7 +16811,7 @@ static herr_t
 async_group_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id, void **req)
 {
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_group_close_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -17245,7 +17245,7 @@ async_link_create(int is_blocking, async_instance_t* aid, H5VL_link_create_type_
 {
     H5VL_async_t *async_obj = NULL;
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_link_create_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -17681,7 +17681,7 @@ static herr_t
 async_link_copy(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params1, H5VL_async_t *parent_obj2, const H5VL_loc_params_t *loc_params2, hid_t lcpl_id, hid_t lapl_id, hid_t dxpl_id, void **req)
 {
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_link_copy_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -18102,7 +18102,7 @@ static herr_t
 async_link_move(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params1, H5VL_async_t *parent_obj2, const H5VL_loc_params_t *loc_params2, hid_t lcpl_id, hid_t lapl_id, hid_t dxpl_id, void **req)
 {
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_link_move_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -18523,7 +18523,7 @@ static herr_t
 async_link_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, H5VL_link_get_t get_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_link_get_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -18939,7 +18939,7 @@ static herr_t
 async_link_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, H5VL_link_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_link_specific_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -19354,7 +19354,7 @@ static herr_t
 async_link_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_link_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_link_optional_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -19776,7 +19776,7 @@ async_object_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
 {
     H5VL_async_t *async_obj = NULL;
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_object_open_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -20211,7 +20211,7 @@ static herr_t
 async_object_copy(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *src_loc_params, const char *src_name, H5VL_async_t *parent_obj2, const H5VL_loc_params_t *dst_loc_params, const char *dst_name, hid_t ocpypl_id, hid_t lcpl_id, hid_t dxpl_id, void **req)
 {
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_object_copy_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -20634,7 +20634,7 @@ static herr_t
 async_object_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, H5VL_object_get_t get_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_object_get_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -21050,7 +21050,7 @@ static herr_t
 async_object_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, H5VL_object_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_object_specific_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -21465,7 +21465,7 @@ static herr_t
 async_object_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_object_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5O_token_t *token = NULL;
+    /* H5O_token_t *token = NULL; */
     async_object_optional_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -22512,7 +22512,7 @@ H5VL_async_dataset_specific(void *obj, H5VL_dataset_specific_t specific_type,
     hid_t dxpl_id, void **req, va_list arguments)
 {
     H5VL_async_t *o = (H5VL_async_t *)obj;
-    hid_t under_vol_id;
+    /* hid_t under_vol_id; */
     herr_t ret_value;
 
 #ifdef ENABLE_ASYNC_LOGGING
@@ -22521,7 +22521,7 @@ H5VL_async_dataset_specific(void *obj, H5VL_dataset_specific_t specific_type,
 
     // Save copy of underlying VOL connector ID and prov helper, in case of
     // refresh destroying the current object
-    under_vol_id = o->under_vol_id;
+    /* under_vol_id = o->under_vol_id; */
 
     // For H5Dwait
     if (H5VL_DATASET_WAIT == specific_type)
@@ -22709,7 +22709,7 @@ H5VL_async_datatype_specific(void *obj, H5VL_datatype_specific_t specific_type,
     hid_t dxpl_id, void **req, va_list arguments)
 {
     H5VL_async_t *o = (H5VL_async_t *)obj;
-    hid_t under_vol_id;
+    /* hid_t under_vol_id; */
     herr_t ret_value;
 
 #ifdef ENABLE_ASYNC_LOGGING
@@ -22718,7 +22718,7 @@ H5VL_async_datatype_specific(void *obj, H5VL_datatype_specific_t specific_type,
 
     // Save copy of underlying VOL connector ID and prov helper, in case of
     // refresh destroying the current object
-    under_vol_id = o->under_vol_id;
+    /* under_vol_id = o->under_vol_id; */
 
     if ((ret_value = async_datatype_specific(1, async_instance_g, o, specific_type, dxpl_id, req, arguments)) < 0 ) {
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_datatype_specific\n");
@@ -22963,7 +22963,7 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_t specific_type,
     hid_t dxpl_id, void **req, va_list arguments)
 {
     H5VL_async_t *o = (H5VL_async_t *)file;
-    hid_t under_vol_id = -1;
+    hid_t under_vol_id;
     herr_t ret_value;
 
 #ifdef ENABLE_ASYNC_LOGGING
@@ -22991,7 +22991,7 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_t specific_type,
         under_vol_id = o->under_vol_id;
 
         /* Re-issue 'file specific' call, using the unwrapped pieces */
-        ret_value = H5VL_async_file_specific_reissue(o->under_object, o->under_vol_id, specific_type, dxpl_id, req, (int)loc_type, name, child_file->under_object, plist_id);
+        ret_value = H5VL_async_file_specific_reissue(o->under_object, under_vol_id, specific_type, dxpl_id, req, (int)loc_type, name, child_file->under_object, plist_id);
     } /* end if */
     else if(H5VL_FILE_WAIT) {
         /* ==== Added for async H5Fwait */
@@ -23021,7 +23021,7 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_t specific_type,
         under_vol_id = info->under_vol_id;
 
         /* Re-issue 'file specific' call */
-        ret_value = H5VL_async_file_specific_reissue(NULL, info->under_vol_id, specific_type, dxpl_id, req, under_fapl_id, name, ret);
+        ret_value = H5VL_async_file_specific_reissue(NULL, under_vol_id, specific_type, dxpl_id, req, under_fapl_id, name, ret);
 
         /* Close underlying FAPL */
         H5Pclose(under_fapl_id);
@@ -23235,7 +23235,7 @@ H5VL_async_group_specific(void *obj, H5VL_group_specific_t specific_type,
     hid_t dxpl_id, void **req, va_list arguments)
 {
     H5VL_async_t *o = (H5VL_async_t *)obj;
-    hid_t under_vol_id;
+    /* hid_t under_vol_id; */
     herr_t ret_value;
 
 #ifdef ENABLE_ASYNC_LOGGING
@@ -23244,7 +23244,7 @@ H5VL_async_group_specific(void *obj, H5VL_group_specific_t specific_type,
 
     // Save copy of underlying VOL connector ID and prov helper, in case of
     // refresh destroying the current object
-    under_vol_id = o->under_vol_id;
+    /* under_vol_id = o->under_vol_id; */
 
     if ((ret_value = async_group_specific(1, async_instance_g, o, specific_type, dxpl_id, req, arguments)) < 0 ) {
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_group_specific\n");
@@ -23735,7 +23735,7 @@ H5VL_async_object_specific(void *obj, const H5VL_loc_params_t *loc_params,
     va_list arguments)
 {
     H5VL_async_t *o = (H5VL_async_t *)obj;
-    hid_t under_vol_id;
+    /* hid_t under_vol_id; */
     herr_t ret_value;
 
 #ifdef ENABLE_ASYNC_LOGGING
@@ -23744,7 +23744,7 @@ H5VL_async_object_specific(void *obj, const H5VL_loc_params_t *loc_params,
 
     // Save copy of underlying VOL connector ID and prov helper, in case of
     // refresh destroying the current object
-    under_vol_id = o->under_vol_id;
+    /* under_vol_id = o->under_vol_id; */
 
     if ((ret_value = async_object_specific(1, async_instance_g, o, loc_params, specific_type, dxpl_id, req, arguments)) < 0 ) {
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_object_specific\n");
@@ -24223,7 +24223,7 @@ static herr_t
 H5VL_async_request_free(void *obj)
 {
     /* H5VL_async_t *o = (H5VL_async_t *)obj; */
-    herr_t ret_value;
+    /* herr_t ret_value; */
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL REQUEST Free\n");
