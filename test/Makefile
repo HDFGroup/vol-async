@@ -16,8 +16,8 @@ LDFLAGS = $(DEBUG) -L$(ASYNC_DIR) -L$(ABT_DIR)/lib -L$(HDF5_DIR)/lib -Wl,-rpath=
 SRC = async_test_serial.c async_test_serial2.c \
     async_test_multifile.c async_test_multifile_env.c \
     async_test_parallel.c async_test_parallel2.c async_test_parallel3.c \
-    async_test_parallel4.c async_test_parallel5.c
-    # async_test_token.c
+    async_test_parallel4.c async_test_parallel5.c \
+    async_test_serial_event_set.c
 OBJ = $(SRC:.c=.o)
 EXE = $(SRC:.c=.exe)
 DBG = $(SRC:.c=.exe.dSYM)

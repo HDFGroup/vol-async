@@ -34,6 +34,7 @@
 #define ASYNC_VOL_ATTR_CP_SIZE_LIMIT 32768
 #define ASYNC_ATTEMPT_CHECK_INTERVAL 1
 #define ASYNC_MAGIC 10242048
+#define TASK_MAGIC 20481024
 
 struct H5VL_async_t;
 struct H5RQ_token_int_t;

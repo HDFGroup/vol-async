@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 
 /* Public HDF5 file */
 #include "hdf5.h"
@@ -82,6 +83,7 @@ typedef enum {MEM_DEFAULT, MEM_GATHER} memcpy_mode;
 const char* qtype_names_g[4] = {"QTYPE_NONE", "REGULAR", "DEPENDENT", "COLLECTIVE"};
 
 typedef struct async_task_t {
+    int                 magic;
     ABT_mutex           task_mutex;
     void                *h5_state;
     void                (*func)(void *);
@@ -101,7 +103,7 @@ typedef struct async_task_t {
 
     struct H5VL_async_t *parent_obj;            /* pointer back to the parent async object */
 
-    struct H5RQ_token_int_t *token;
+    struct H5O_token_t *token;
 
     struct async_task_t *prev;
     struct async_task_t *next;
@@ -158,9 +160,9 @@ typedef struct async_instance_t {
     bool                start_abt_push;      /* Start pushing tasks to Argobots pool */
 } async_instance_t;
 
-typedef struct H5RQ_token_int_t {
-    struct async_task_t *task;
-} H5RQ_token_int_t;
+/* typedef struct H5RQ_token_int_t { */
+/*     struct async_task_t *task; */
+/* } H5RQ_token_int_t; */
 
 typedef struct async_attr_create_args_t {
     void                     *obj;
@@ -1357,6 +1359,32 @@ H5VL_async_term(void)
     return ret_val;
 }
 
+async_task_t *
+create_async_task(void)
+{
+    async_task_t *async_task;
+
+    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+        fprintf(stderr, "  [ASYNC VOL ERROR] %s calloc failed\n", __func__);
+        return NULL;
+    }
+
+    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
+        fprintf(stderr, "  [ASYNC VOL ERROR] %s ABT_mutex_create failed\n", __func__);
+        return NULL;
+    }
+
+    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
+        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
+        return NULL;
+    }
+
+    async_task->magic = TASK_MAGIC;
+
+    return async_task;
+}
+
+
 static void
 free_async_task(async_task_t *task)
 {
@@ -1365,9 +1393,9 @@ free_async_task(async_task_t *task)
         return;
     }
 
-    if (task->token) {
-        task->token->task = NULL;
-    }
+    /* if (task->token) { */
+    /*     task->token->task = NULL; */
+    /* } */
 
     if (task->args) free(task->args);
 
@@ -1904,6 +1932,8 @@ herr_t H5VL_async_dataset_wait(H5VL_async_t *async_obj)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with H5TSmutex_acquire\n", __func__);
     }
 
+    async_instance_g->start_abt_push = false;
+
     return 0;
 }
 
@@ -2325,83 +2355,83 @@ void H5VLasync_finalize()
 /*     /1* free(cpuset); *1/ */
 /* } */
 
-H5RQ_token_int_t *
-H5RQ__new_token(void)
-{
-    H5RQ_token_int_t *ret = (H5RQ_token_int_t*)calloc(1, sizeof(H5RQ_token_int_t));
+/* H5RQ_token_int_t * */
+/* H5RQ__new_token(void) */
+/* { */
+/*     H5RQ_token_int_t *ret = (H5RQ_token_int_t*)calloc(1, sizeof(H5RQ_token_int_t)); */
 
-    return ret;
-}
+/*     return ret; */
+/* } */
 
-herr_t
-H5RQ_token_check(H5RQ_token_t token, int *status)
-{
-    H5RQ_token_int_t *in_token;
+/* herr_t */
+/* H5RQ_token_check(H5RQ_token_t token, int *status) */
+/* { */
+/*     H5RQ_token_int_t *in_token; */
 
-    if (NULL == token || NULL == status) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s input NULL!\n", __func__);
-        return -1;
-    }
+/*     if (NULL == token || NULL == status) { */
+/*         fprintf(stderr,"  [ASYNC VOL ERROR] %s input NULL!\n", __func__); */
+/*         return -1; */
+/*     } */
 
-    in_token = (H5RQ_token_int_t*)(token);
+/*     in_token = (H5RQ_token_int_t*)(token); */
 
-    if (in_token->task)
-        *status = in_token->task->is_done;
-    else
-        *status = 1;
+/*     if (in_token->task) */
+/*         *status = in_token->task->is_done; */
+/*     else */
+/*         *status = 1; */
 
-    return 1;
-}
+/*     return 1; */
+/* } */
 
-herr_t
-H5RQ_token_wait(H5RQ_token_t token)
-{
-    /* hbool_t acquired = false; */
-    H5RQ_token_int_t *in_token;
+/* herr_t */
+/* H5RQ_token_wait(H5RQ_token_t token) */
+/* { */
+/*     /1* hbool_t acquired = false; *1/ */
+/*     H5RQ_token_int_t *in_token; */
 
-    if (NULL == token) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s input NULL!\n", __func__);
-        return -1;
-    }
+/*     if (NULL == token) { */
+/*         fprintf(stderr,"  [ASYNC VOL ERROR] %s input NULL!\n", __func__); */
+/*         return -1; */
+/*     } */
 
-    in_token = (H5RQ_token_int_t*)(token);
+/*     in_token = (H5RQ_token_int_t*)(token); */
 
-    if (NULL == in_token->task)
-        return 1;
+/*     if (NULL == in_token->task) */
+/*         return 1; */
 
-    if (in_token->task->is_done != 1) {
+/*     if (in_token->task->is_done != 1) { */
 
-        if(NULL == in_token->task->async_obj) {
-            fprintf(stderr, "  [ASYNC VOL ERROR] %s with task async object\n", __func__);
-            return -1;
-        }
+/*         if(NULL == in_token->task->async_obj) { */
+/*             fprintf(stderr, "  [ASYNC VOL ERROR] %s with task async object\n", __func__); */
+/*             return -1; */
+/*         } */
 
-        ABT_eventual_wait(in_token->task->eventual, NULL);
+/*         ABT_eventual_wait(in_token->task->eventual, NULL); */
 
-    }
+/*     } */
 
-    return 1;
-}
+/*     return 1; */
+/* } */
 
-herr_t
-H5RQ_token_free(H5RQ_token_t token)
-{
-    H5RQ_token_int_t *in_token;
+/* herr_t */
+/* H5RQ_token_free(H5RQ_token_t token) */
+/* { */
+/*     H5RQ_token_int_t *in_token; */
 
-    if (NULL == token) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s input NULL!\n", __func__);
-        return -1;
-    }
+/*     if (NULL == token) { */
+/*         fprintf(stderr,"  [ASYNC VOL ERROR] %s input NULL!\n", __func__); */
+/*         return -1; */
+/*     } */
 
-    in_token = (H5RQ_token_int_t*)(token);
+/*     in_token = (H5RQ_token_int_t*)(token); */
 
-    if (in_token->task)
-        in_token->task->token = NULL;
+/*     if (in_token->task) */
+/*         in_token->task->token = NULL; */
 
-    free(in_token);
+/*     free(in_token); */
 
-    return 1;
-}
+/*     return 1; */
+/* } */
 
 static void
 async_attr_create_fn(void *foo)
@@ -2669,7 +2699,7 @@ async_attr_create(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
 {
     H5VL_async_t *async_obj = NULL;
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_attr_create_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -2706,12 +2736,8 @@ async_attr_create(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
     async_obj->is_col_meta = parent_obj->is_col_meta;
     async_obj->pool_ptr = &aid->pool;
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -2732,15 +2758,16 @@ async_attr_create(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
     args->req              = req;
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
+        *req = (void*)async_task;
     }
 
 
@@ -2756,10 +2783,6 @@ async_attr_create(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = async_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
 
     async_obj->create_task = async_task;
     async_obj->under_vol_id = async_task->under_vol_id;
@@ -3128,7 +3151,7 @@ async_attr_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
 {
     H5VL_async_t *async_obj = NULL;
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_attr_open_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -3165,12 +3188,8 @@ async_attr_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
     async_obj->is_col_meta = parent_obj->is_col_meta;
     async_obj->pool_ptr = &aid->pool;
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -3185,15 +3204,16 @@ async_attr_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
     args->req              = req;
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
+        *req = (void*)async_task;
     }
 
 
@@ -3209,10 +3229,6 @@ async_attr_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = async_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
 
     async_obj->create_task = async_task;
     async_obj->under_vol_id = async_task->under_vol_id;
@@ -3564,7 +3580,7 @@ async_attr_read(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
     // For implicit mode (env var), make all read to be blocking
     if(aid->env_async) is_blocking = 1;
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_attr_read_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -3588,12 +3604,8 @@ async_attr_read(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
     fflush(stderr);
 #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -3606,15 +3618,16 @@ async_attr_read(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
     args->req              = req;
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -3630,11 +3643,6 @@ async_attr_read(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -3985,7 +3993,7 @@ static herr_t
 async_attr_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type_id, const void *buf, hid_t dxpl_id, void **req)
 {
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_attr_write_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -4009,12 +4017,8 @@ async_attr_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -4026,15 +4030,16 @@ async_attr_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     args->req              = req;
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
     if (NULL == (args->buf = malloc(ASYNC_VOL_ATTR_CP_SIZE_LIMIT))) {
@@ -4055,11 +4060,6 @@ async_attr_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -4411,7 +4411,7 @@ static herr_t
 async_attr_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_attr_get_t get_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_attr_get_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -4435,12 +4435,8 @@ async_attr_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj,
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -4452,15 +4448,16 @@ async_attr_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj,
     va_copy(args->arguments, arguments);
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -4476,11 +4473,6 @@ async_attr_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj,
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -4833,7 +4825,7 @@ static herr_t
 async_attr_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, H5VL_attr_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_attr_specific_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -4857,12 +4849,8 @@ async_attr_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -4876,15 +4864,16 @@ async_attr_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     va_copy(args->arguments, arguments);
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -4900,11 +4889,6 @@ async_attr_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -5256,7 +5240,7 @@ static herr_t
 async_attr_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_attr_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_attr_optional_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -5280,12 +5264,8 @@ async_attr_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -5297,15 +5277,16 @@ async_attr_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     va_copy(args->arguments, arguments);
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -5321,11 +5302,6 @@ async_attr_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -5675,7 +5651,7 @@ static herr_t
 async_attr_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id, void **req)
 {
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_attr_close_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -5699,12 +5675,8 @@ async_attr_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -5714,15 +5686,16 @@ async_attr_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     args->req              = req;
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -5738,11 +5711,6 @@ async_attr_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -6122,7 +6090,7 @@ async_dataset_create(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
 {
     H5VL_async_t *async_obj = NULL;
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_dataset_create_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -6159,12 +6127,8 @@ async_dataset_create(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
     async_obj->is_col_meta = parent_obj->is_col_meta;
     async_obj->pool_ptr = &aid->pool;
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -6187,15 +6151,16 @@ async_dataset_create(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
     args->req              = req;
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -6211,10 +6176,6 @@ async_dataset_create(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = async_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
 
     async_obj->create_task = async_task;
     async_obj->under_vol_id = async_task->under_vol_id;
@@ -6590,7 +6551,7 @@ async_dataset_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
 {
     H5VL_async_t *async_obj = NULL;
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_dataset_open_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -6627,12 +6588,8 @@ async_dataset_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
     async_obj->is_col_meta = parent_obj->is_col_meta;
     async_obj->pool_ptr = &aid->pool;
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -6647,15 +6604,16 @@ async_dataset_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
     args->req              = req;
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -6671,10 +6629,6 @@ async_dataset_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = async_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
 
     async_obj->create_task = async_task;
     async_obj->under_vol_id = async_task->under_vol_id;
@@ -7031,7 +6985,7 @@ async_dataset_read(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
     // For implicit mode (env var), make all read to be blocking
     if(aid->env_async) is_blocking = 1;
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_dataset_read_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -7055,12 +7009,8 @@ async_dataset_read(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -7077,15 +7027,16 @@ async_dataset_read(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
     args->req              = req;
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -7101,11 +7052,6 @@ async_dataset_read(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -7478,7 +7424,7 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     hbool_t enable_async = false;
     hsize_t buf_size, cp_size_limit = 0;
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_dataset_write_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -7517,12 +7463,8 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     if (aid->env_async) enable_async = true;
 
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -7541,15 +7483,16 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     args->memcpy_mode = MEM_GATHER; //use rebular memcpy by default
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
     if (cp_size_limit > 0) {
@@ -7612,11 +7555,6 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -7969,7 +7907,7 @@ static herr_t
 async_dataset_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_dataset_get_t get_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_dataset_get_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -7993,12 +7931,8 @@ async_dataset_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -8010,15 +7944,16 @@ async_dataset_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
     va_copy(args->arguments, arguments);
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -8034,11 +7969,6 @@ async_dataset_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -8390,7 +8320,7 @@ static herr_t
 async_dataset_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_dataset_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_dataset_specific_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -8414,12 +8344,8 @@ async_dataset_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *par
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -8431,15 +8357,16 @@ async_dataset_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *par
     va_copy(args->arguments, arguments);
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -8455,11 +8382,6 @@ async_dataset_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *par
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -8811,7 +8733,7 @@ static herr_t
 async_dataset_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_dataset_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_dataset_optional_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -8835,12 +8757,8 @@ async_dataset_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *par
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -8852,15 +8770,16 @@ async_dataset_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *par
     va_copy(args->arguments, arguments);
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -8876,11 +8795,6 @@ async_dataset_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *par
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -9230,7 +9144,7 @@ static herr_t
 async_dataset_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id, void **req)
 {
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_dataset_close_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -9254,12 +9168,8 @@ async_dataset_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -9269,15 +9179,16 @@ async_dataset_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     args->req              = req;
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -9293,11 +9204,6 @@ async_dataset_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -9663,7 +9569,7 @@ async_datatype_commit(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
 {
     H5VL_async_t *async_obj = NULL;
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_datatype_commit_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -9700,12 +9606,8 @@ async_datatype_commit(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
     async_obj->is_col_meta = parent_obj->is_col_meta;
     async_obj->pool_ptr = &aid->pool;
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -9726,15 +9628,16 @@ async_datatype_commit(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
     args->req              = req;
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -9750,10 +9653,6 @@ async_datatype_commit(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = async_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
 
     async_obj->create_task = async_task;
     async_obj->under_vol_id = async_task->under_vol_id;
@@ -10125,7 +10024,7 @@ async_datatype_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
 {
     H5VL_async_t *async_obj = NULL;
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_datatype_open_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -10162,12 +10061,8 @@ async_datatype_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     async_obj->is_col_meta = parent_obj->is_col_meta;
     async_obj->pool_ptr = &aid->pool;
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -10182,15 +10077,16 @@ async_datatype_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     args->req              = req;
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -10206,10 +10102,6 @@ async_datatype_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = async_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
 
     async_obj->create_task = async_task;
     async_obj->under_vol_id = async_task->under_vol_id;
@@ -10564,7 +10456,7 @@ static herr_t
 async_datatype_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_datatype_get_t get_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_datatype_get_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -10588,12 +10480,8 @@ async_datatype_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -10605,15 +10493,16 @@ async_datatype_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
     va_copy(args->arguments, arguments);
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -10629,11 +10518,6 @@ async_datatype_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -10985,7 +10869,7 @@ static herr_t
 async_datatype_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_datatype_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_datatype_specific_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -11009,12 +10893,8 @@ async_datatype_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *pa
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -11026,15 +10906,16 @@ async_datatype_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *pa
     va_copy(args->arguments, arguments);
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -11050,11 +10931,6 @@ async_datatype_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *pa
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -11406,7 +11282,7 @@ static herr_t
 async_datatype_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_datatype_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_datatype_optional_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -11430,12 +11306,8 @@ async_datatype_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *pa
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -11447,15 +11319,16 @@ async_datatype_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *pa
     va_copy(args->arguments, arguments);
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -11471,11 +11344,6 @@ async_datatype_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *pa
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -11825,7 +11693,7 @@ static herr_t
 async_datatype_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id, void **req)
 {
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_datatype_close_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -11849,12 +11717,8 @@ async_datatype_close(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -11864,15 +11728,16 @@ async_datatype_close(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
     args->req              = req;
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -11888,11 +11753,6 @@ async_datatype_close(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -12283,7 +12143,7 @@ async_file_create(int is_blocking, async_instance_t* aid, const char *name, unsi
     hid_t under_vol_id;
     H5VL_async_t *async_obj = NULL;
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_file_create_args_t *args = NULL;
     bool lock_self = false;
     hbool_t acquired = false;
@@ -12322,12 +12182,8 @@ async_file_create(int is_blocking, async_instance_t* aid, const char *name, unsi
     }
     async_obj->pool_ptr = &aid->pool;
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -12342,15 +12198,16 @@ async_file_create(int is_blocking, async_instance_t* aid, const char *name, unsi
     args->req              = req;
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -12365,10 +12222,6 @@ async_file_create(int is_blocking, async_instance_t* aid, const char *name, unsi
     async_task->op         = WRITE;
     async_task->under_vol_id  = under_vol_id;
     async_task->async_obj  = async_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
 
     /* Lock async_obj */
     while (1) {
@@ -12734,7 +12587,7 @@ async_file_open(int is_blocking, async_instance_t* aid, const char *name, unsign
     hid_t under_vol_id;
     H5VL_async_t *async_obj = NULL;
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_file_open_args_t *args = NULL;
     bool lock_self = false;
     hbool_t acquired = false;
@@ -12773,12 +12626,8 @@ async_file_open(int is_blocking, async_instance_t* aid, const char *name, unsign
     }
     async_obj->pool_ptr = &aid->pool;
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -12791,15 +12640,16 @@ async_file_open(int is_blocking, async_instance_t* aid, const char *name, unsign
     args->req              = req;
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -12814,10 +12664,6 @@ async_file_open(int is_blocking, async_instance_t* aid, const char *name, unsign
     async_task->op         = READ;
     async_task->under_vol_id  = under_vol_id;
     async_task->async_obj  = async_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
 
     /* Lock async_obj */
     while (1) {
@@ -13158,7 +13004,7 @@ static herr_t
 async_file_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_file_get_t get_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_file_get_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -13182,12 +13028,8 @@ async_file_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj,
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -13199,15 +13041,16 @@ async_file_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj,
     va_copy(args->arguments, arguments);
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -13223,11 +13066,6 @@ async_file_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj,
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -13579,7 +13417,7 @@ static herr_t
 async_file_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_file_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_file_specific_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -13603,12 +13441,8 @@ async_file_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -13620,15 +13454,16 @@ async_file_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     va_copy(args->arguments, arguments);
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -13644,11 +13479,6 @@ async_file_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -14000,7 +13830,7 @@ static herr_t
 async_file_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_file_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_file_optional_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -14024,12 +13854,8 @@ async_file_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -14041,15 +13867,16 @@ async_file_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     va_copy(args->arguments, arguments);
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -14065,11 +13892,6 @@ async_file_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -14430,7 +14252,7 @@ static herr_t
 async_file_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id, void **req)
 {
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_file_close_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -14454,12 +14276,8 @@ async_file_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -14469,15 +14287,16 @@ async_file_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     args->req              = req;
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -14493,11 +14312,6 @@ async_file_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -14875,7 +14689,7 @@ async_group_create(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
 {
     H5VL_async_t *async_obj = NULL;
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_group_create_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -14912,12 +14726,8 @@ async_group_create(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
     async_obj->is_col_meta = parent_obj->is_col_meta;
     async_obj->pool_ptr = &aid->pool;
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -14936,15 +14746,16 @@ async_group_create(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
     args->req              = req;
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -14960,10 +14771,6 @@ async_group_create(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = async_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
 
     async_obj->create_task = async_task;
     async_obj->under_vol_id = async_task->under_vol_id;
@@ -15335,7 +15142,7 @@ async_group_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
 {
     H5VL_async_t *async_obj = NULL;
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_group_open_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -15372,12 +15179,8 @@ async_group_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     async_obj->is_col_meta = parent_obj->is_col_meta;
     async_obj->pool_ptr = &aid->pool;
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -15392,15 +15195,16 @@ async_group_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     args->req              = req;
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -15416,10 +15220,6 @@ async_group_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = async_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
 
     async_obj->create_task = async_task;
     async_obj->under_vol_id = async_task->under_vol_id;
@@ -15774,7 +15574,7 @@ static herr_t
 async_group_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_group_get_t get_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_group_get_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -15798,12 +15598,8 @@ async_group_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -15815,15 +15611,16 @@ async_group_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
     va_copy(args->arguments, arguments);
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -15839,11 +15636,6 @@ async_group_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -16195,7 +15987,7 @@ static herr_t
 async_group_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_group_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_group_specific_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -16219,12 +16011,8 @@ async_group_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -16236,15 +16024,16 @@ async_group_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
     va_copy(args->arguments, arguments);
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -16260,11 +16049,6 @@ async_group_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -16616,7 +16400,7 @@ static herr_t
 async_group_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_group_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_group_optional_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -16640,12 +16424,8 @@ async_group_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -16657,15 +16437,16 @@ async_group_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
     va_copy(args->arguments, arguments);
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -16681,11 +16462,6 @@ async_group_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -17035,7 +16811,7 @@ static herr_t
 async_group_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id, void **req)
 {
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_group_close_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -17059,12 +16835,8 @@ async_group_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -17074,15 +16846,16 @@ async_group_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
     args->req              = req;
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -17098,11 +16871,6 @@ async_group_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -17477,7 +17245,7 @@ async_link_create(int is_blocking, async_instance_t* aid, H5VL_link_create_type_
 {
     H5VL_async_t *async_obj = NULL;
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_link_create_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -17514,12 +17282,8 @@ async_link_create(int is_blocking, async_instance_t* aid, H5VL_link_create_type_
     async_obj->is_col_meta = parent_obj->is_col_meta;
     async_obj->pool_ptr = &aid->pool;
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -17537,15 +17301,16 @@ async_link_create(int is_blocking, async_instance_t* aid, H5VL_link_create_type_
     va_copy(args->arguments, arguments);
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -17561,10 +17326,6 @@ async_link_create(int is_blocking, async_instance_t* aid, H5VL_link_create_type_
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
 
     async_obj->create_task = async_task;
     async_obj->under_vol_id = async_task->under_vol_id;
@@ -17920,7 +17681,7 @@ static herr_t
 async_link_copy(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params1, H5VL_async_t *parent_obj2, const H5VL_loc_params_t *loc_params2, hid_t lcpl_id, hid_t lapl_id, hid_t dxpl_id, void **req)
 {
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_link_copy_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -17944,12 +17705,8 @@ async_link_copy(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -17968,15 +17725,16 @@ async_link_copy(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
     args->req              = req;
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -17992,11 +17750,6 @@ async_link_copy(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -18349,7 +18102,7 @@ static herr_t
 async_link_move(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params1, H5VL_async_t *parent_obj2, const H5VL_loc_params_t *loc_params2, hid_t lcpl_id, hid_t lapl_id, hid_t dxpl_id, void **req)
 {
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_link_move_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -18373,12 +18126,8 @@ async_link_move(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -18397,15 +18146,16 @@ async_link_move(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
     args->req              = req;
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -18421,11 +18171,6 @@ async_link_move(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -18778,7 +18523,7 @@ static herr_t
 async_link_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, H5VL_link_get_t get_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_link_get_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -18802,12 +18547,8 @@ async_link_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj,
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -18821,15 +18562,16 @@ async_link_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj,
     va_copy(args->arguments, arguments);
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -18845,11 +18587,6 @@ async_link_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj,
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -19202,7 +18939,7 @@ static herr_t
 async_link_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, H5VL_link_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_link_specific_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -19226,12 +18963,8 @@ async_link_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -19245,15 +18978,16 @@ async_link_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     va_copy(args->arguments, arguments);
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -19269,11 +19003,6 @@ async_link_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -19625,7 +19354,7 @@ static herr_t
 async_link_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_link_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_link_optional_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -19649,12 +19378,8 @@ async_link_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -19666,15 +19391,16 @@ async_link_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     va_copy(args->arguments, arguments);
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -19690,11 +19416,6 @@ async_link_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -20055,7 +19776,7 @@ async_object_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
 {
     H5VL_async_t *async_obj = NULL;
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_object_open_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -20092,12 +19813,8 @@ async_object_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
     async_obj->is_col_meta = parent_obj->is_col_meta;
     async_obj->pool_ptr = &aid->pool;
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -20110,15 +19827,16 @@ async_object_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
     args->req              = req;
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -20134,10 +19852,6 @@ async_object_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
 
     async_obj->create_task = async_task;
     async_obj->under_vol_id = async_task->under_vol_id;
@@ -20497,7 +20211,7 @@ static herr_t
 async_object_copy(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *src_loc_params, const char *src_name, H5VL_async_t *parent_obj2, const H5VL_loc_params_t *dst_loc_params, const char *dst_name, hid_t ocpypl_id, hid_t lcpl_id, hid_t dxpl_id, void **req)
 {
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_object_copy_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -20521,12 +20235,8 @@ async_object_copy(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -20547,15 +20257,16 @@ async_object_copy(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
     args->req              = req;
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -20571,11 +20282,6 @@ async_object_copy(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -20928,7 +20634,7 @@ static herr_t
 async_object_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, H5VL_object_get_t get_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_object_get_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -20952,12 +20658,8 @@ async_object_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -20971,15 +20673,16 @@ async_object_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     va_copy(args->arguments, arguments);
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -20995,11 +20698,6 @@ async_object_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -21352,7 +21050,7 @@ static herr_t
 async_object_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, H5VL_object_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_object_specific_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -21376,12 +21074,8 @@ async_object_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -21395,15 +21089,16 @@ async_object_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
     va_copy(args->arguments, arguments);
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -21419,11 +21114,6 @@ async_object_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -21775,7 +21465,7 @@ static herr_t
 async_object_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_object_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
-    H5RQ_token_int_t *token = NULL;
+    H5O_token_t *token = NULL;
     async_object_optional_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
@@ -21799,12 +21489,8 @@ async_object_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
     fflush(stderr);
     #endif
     /* create a new task and insert into its file task list */
-    if ((async_task = (async_task_t*)calloc(1, sizeof(async_task_t))) == NULL) {
+    if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
-        goto error;
-    }
-    if (ABT_mutex_create(&(async_task->task_mutex)) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
         goto error;
     }
 
@@ -21816,15 +21502,16 @@ async_object_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
     va_copy(args->arguments, arguments);
 
     if (req) {
-        token = H5RQ__new_token();
-        if (token == NULL) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__);
-        }
-        else {
-            token->task = async_task;
-            async_task->token = token;
-            *req = (void*)token;
-        }
+        *req = (void*)async_task;
+        /* token = H5RQ__new_token(); */
+        /* if (token == NULL) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s token is NULL!\n", __func__); */
+        /* } */
+        /* else { */
+        /*     token->task = async_task; */
+        /*     async_task->token = token; */
+        /*     *req = (void*)token; */
+        /* } */
     }
 
 
@@ -21840,11 +21527,6 @@ async_object_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
     async_task->under_vol_id  = parent_obj->under_vol_id;
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
-    if (ABT_eventual_create(0, &async_task->eventual) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_eventual_create failed\n", __func__);
-        goto error;
-    }
-
 
     /* Lock parent_obj */
     while (1) {
@@ -22262,7 +21944,10 @@ H5VL_async_get_object(const void *obj)
 static herr_t
 H5VL_async_get_wrap_ctx(const void *obj, void **wrap_ctx)
 {
-    const H5VL_async_t *o = (const H5VL_async_t *)obj;
+    const H5VL_async_t *o_async = (const H5VL_async_t *)obj;
+    const async_task_t *o_task  = (const async_task_t *)obj;
+    hid_t under_vol_id = 0;
+    void *under_object = NULL;
     H5VL_async_wrap_ctx_t *new_wrap_ctx;
 
 #ifdef ENABLE_ASYNC_LOGGING
@@ -22273,11 +21958,24 @@ H5VL_async_get_wrap_ctx(const void *obj, void **wrap_ctx)
     new_wrap_ctx = (H5VL_async_wrap_ctx_t *)calloc(1, sizeof(H5VL_async_wrap_ctx_t));
 
     /* Increment reference count on underlying VOL ID, and copy the VOL info */
-    new_wrap_ctx->under_vol_id = o->under_vol_id;
+    if (o_async->magic == ASYNC_MAGIC) {
+        under_vol_id = o_async->under_vol_id;
+        under_object = o_async->under_object;
+    }
+    else if (o_task->magic == TASK_MAGIC && o_task->async_obj != NULL) {
+        under_vol_id = o_task->async_obj->under_vol_id;
+        under_object = o_task->async_obj->under_object;
+    }
+    else {
+        fprintf(stderr,"  [ASYNC VOL ERROR] with H5VL_async_get_wrap_ctx\n");
+        return -1;
+    }
+
+    new_wrap_ctx->under_vol_id = under_vol_id;
     H5Iinc_ref(new_wrap_ctx->under_vol_id);
     /* ==== added for aysnc vol ==== */
-    if (o->under_object) {
-        H5VLget_wrap_ctx(o->under_object, o->under_vol_id, &new_wrap_ctx->under_wrap_ctx);
+    if (under_object) {
+        H5VLget_wrap_ctx(under_object, under_vol_id, &new_wrap_ctx->under_wrap_ctx);
     }
 
     /* Set wrap context to return */
@@ -22834,8 +22532,8 @@ H5VL_async_dataset_specific(void *obj, H5VL_dataset_specific_t specific_type,
     }
 
     /* Check for async request */
-    if(req && *req)
-        *req = H5VL_async_new_obj(*req, under_vol_id);
+    /* if(req && *req) */
+    /*     *req = H5VL_async_new_obj(*req, under_vol_id); */
 
     return ret_value;
 } /* end H5VL_async_dataset_specific() */
@@ -23027,8 +22725,8 @@ H5VL_async_datatype_specific(void *obj, H5VL_datatype_specific_t specific_type,
     }
 
     /* Check for async request */
-    if(req && *req)
-        *req = H5VL_async_new_obj(*req, under_vol_id);
+    /* if(req && *req) */
+    /*     *req = H5VL_async_new_obj(*req, under_vol_id); */
 
     return ret_value;
 } /* end H5VL_async_datatype_specific() */
@@ -23360,8 +23058,8 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_t specific_type,
     } /* end else */
 
     /* Check for async request */
-    if(req && *req)
-        *req = H5VL_async_new_obj(*req, under_vol_id);
+    /* if(req && *req) */
+    /*     *req = H5VL_async_new_obj(*req, under_vol_id); */
 
     return ret_value;
 } /* end H5VL_async_file_specific() */
@@ -23553,8 +23251,8 @@ H5VL_async_group_specific(void *obj, H5VL_group_specific_t specific_type,
     }
 
     /* Check for async request */
-    if(req && *req)
-        *req = H5VL_async_new_obj(*req, under_vol_id);
+    /* if(req && *req) */
+    /*     *req = H5VL_async_new_obj(*req, under_vol_id); */
 
     return ret_value;
 } /* end H5VL_async_group_specific() */
@@ -24053,8 +23751,8 @@ H5VL_async_object_specific(void *obj, const H5VL_loc_params_t *loc_params,
     }
 
     /* Check for async request */
-    if(req && *req)
-        *req = H5VL_async_new_obj(*req, under_vol_id);
+    /* if(req && *req) */
+    /*     *req = H5VL_async_new_obj(*req, under_vol_id); */
 
     return ret_value;
 } /* end H5VL_async_object_specific() */
@@ -24168,20 +23866,83 @@ H5VL_async_introspect_opt_query(void *obj, H5VL_subclass_t cls,
  *-------------------------------------------------------------------------
  */
 static herr_t
-H5VL_async_request_wait(void *obj, uint64_t timeout,
-    H5ES_status_t *status)
+H5VL_async_request_wait(void *obj, uint64_t timeout, H5ES_status_t *status)
 {
-    H5VL_async_t *o = (H5VL_async_t *)obj;
-    herr_t ret_value;
+    herr_t ret_value = 0;
+    clock_t start_time, now_time;
+    double elapsed, trigger;
+    async_task_t *task; 
+    ABT_task_state    state;
+    hbool_t acquired = false;
+
+    assert(obj);
+    assert(status);
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL REQUEST Wait\n");
 #endif
 
-    ret_value = H5VLrequest_wait(o->under_object, o->under_vol_id, timeout, status);
+    /* token = (H5O_token_t*) obj; */
+    /* task = token->task; */
+    task = (async_task_t*)obj;
+    if (task == NULL) {
+        *status = H5ES_STATUS_FAIL;
+        fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object\n", __func__);
+        return -1;
+    }
 
-    if(ret_value >= 0 && *status != H5ES_STATUS_IN_PROGRESS)
-        H5VL_async_free_obj(o);
+    async_instance_g->start_abt_push = true;
+
+    if (task->async_obj && get_n_running_task_in_queue_obj(task->async_obj) == 0 )
+	push_task_to_abt_pool(&async_instance_g->qhead, *task->async_obj->pool_ptr);
+
+    if (H5TSmutex_release() < 0)
+        fprintf(stderr, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__);
+
+    trigger = (double)timeout;
+    start_time = clock();
+
+    do {
+        if (NULL == task->abt_task) {
+            if (task->is_done == 1) {
+                *status = H5ES_STATUS_SUCCEED;
+                ret_value = 0;
+                goto done;
+            }
+        }
+
+        if (task->abt_task) {
+            ABT_task_get_state (task->abt_task, &state);
+            if (ABT_TASK_STATE_RUNNING == state || ABT_TASK_STATE_READY == state) {
+                *status = H5ES_STATUS_IN_PROGRESS;
+                ret_value = 0;
+                goto done;
+            }
+            else {
+                *status = H5ES_STATUS_SUCCEED;
+                ret_value = 0;
+                goto done;
+            }
+        }
+
+        usleep(100000);
+        now_time = clock();
+        elapsed = (double)(now_time - start_time) / CLOCKS_PER_SEC * 1e9;
+
+        *status = H5ES_STATUS_IN_PROGRESS;
+    } while (elapsed < trigger) ;
+
+    if (elapsed > timeout) {
+        printf("Timedout during wait (elapsed=%.1f, timeout=%.1f)\n", elapsed, trigger);
+    }
+
+done:
+    while (false == acquired) {
+        if (H5TSmutex_acquire(&acquired) < 0)
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with H5TSmutex_acquire\n", __func__);
+    }
+
+    async_instance_g->start_abt_push = false;
 
     return ret_value;
 } /* end H5VL_async_request_wait() */
@@ -24461,19 +24222,20 @@ H5VL_async_request_optional(void *obj, H5VL_request_optional_t opt_type,
 static herr_t
 H5VL_async_request_free(void *obj)
 {
-    H5VL_async_t *o = (H5VL_async_t *)obj;
+    /* H5VL_async_t *o = (H5VL_async_t *)obj; */
     herr_t ret_value;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL REQUEST Free\n");
 #endif
 
-    ret_value = H5VLrequest_free(o->under_object, o->under_vol_id);
+    // No need to free the request object (it is currently async_task_t and is freed at other place)
+    /* ret_value = H5VLrequest_free(o->under_object, o->under_vol_id); */
 
-    if(ret_value >= 0)
-        H5VL_async_free_obj(o);
+    /* if(ret_value >= 0) */
+    /*     H5VL_async_free_obj(o); */
 
-    return ret_value;
+    return 0;
 } /* end H5VL_async_request_free() */
 
 
