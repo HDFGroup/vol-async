@@ -35,14 +35,13 @@
 // Created:	in 2011
 // Modified:	01/06/2014 --> Removed all H5Part calls and using HDF5 calls
 //          	02/19/2019 --> Add option to read multiple timesteps of data - Tang
-//
 
 #include <math.h>
 #include <hdf5.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <sys/time.h>
-#include "h5_vol_external_async_native.h"
+#include <stdio.h>
+#include <unistd.h>
 
 // A simple timer based on gettimeofday
 
@@ -123,32 +122,41 @@ void print_data(int n)
 }
 
 // Create HDF5 file and read data
-void read_h5_data(int rank, hid_t loc, hid_t *dset_ids, hid_t filespace, hid_t memspace, hid_t dxpl)
+void read_h5_data(int rank, hid_t loc, hid_t filespace, hid_t memspace)
 {
-    dset_ids[0] = H5Dopen(loc, "x", H5P_DEFAULT);
-    dset_ids[1] = H5Dopen(loc, "y", H5P_DEFAULT);
-    dset_ids[2] = H5Dopen(loc, "z", H5P_DEFAULT);
-    dset_ids[3] = H5Dopen(loc, "id1", H5P_DEFAULT);
-    dset_ids[4] = H5Dopen(loc, "id2", H5P_DEFAULT);
-    dset_ids[5] = H5Dopen(loc, "px", H5P_DEFAULT);
-    dset_ids[6] = H5Dopen(loc, "py", H5P_DEFAULT);
-    dset_ids[7] = H5Dopen(loc, "pz", H5P_DEFAULT);
+    hid_t dset_id;
+    dset_id = H5Dopen2(loc, "x", H5P_DEFAULT);
+    ierr = H5Dread(dset_id, H5T_NATIVE_FLOAT, memspace, filespace, H5P_DEFAULT, x);
+    H5Dclose(dset_id);
+    //if (rank == 0) printf ("Read variable 1 \n");
 
-    ierr = H5Dread(dset_ids[0], H5T_NATIVE_FLOAT, memspace, filespace, dxpl, x);
+    dset_id = H5Dopen2(loc, "y", H5P_DEFAULT);
+    ierr = H5Dread(dset_id, H5T_NATIVE_FLOAT, memspace, filespace, H5P_DEFAULT, y);
+    H5Dclose(dset_id);
 
-    ierr = H5Dread(dset_ids[1], H5T_NATIVE_FLOAT, memspace, filespace, dxpl, y);
+    dset_id = H5Dopen2(loc, "z", H5P_DEFAULT);
+    ierr = H5Dread(dset_id, H5T_NATIVE_FLOAT, memspace, filespace, H5P_DEFAULT, z);
+    H5Dclose(dset_id);
 
-    ierr = H5Dread(dset_ids[2], H5T_NATIVE_FLOAT, memspace, filespace, dxpl, z);
+    dset_id = H5Dopen2(loc, "id1", H5P_DEFAULT);
+    ierr = H5Dread(dset_id, H5T_NATIVE_INT, memspace, filespace, H5P_DEFAULT, id1);
+    H5Dclose(dset_id);
 
-    ierr = H5Dread(dset_ids[3], H5T_NATIVE_INT, memspace, filespace, dxpl, id1);
+    dset_id = H5Dopen2(loc, "id2", H5P_DEFAULT);
+    ierr = H5Dread(dset_id, H5T_NATIVE_INT, memspace, filespace, H5P_DEFAULT, id2);
+    H5Dclose(dset_id);
 
-    ierr = H5Dread(dset_ids[4], H5T_NATIVE_INT, memspace, filespace, dxpl, id2);
+    dset_id = H5Dopen2(loc, "px", H5P_DEFAULT);
+    ierr = H5Dread(dset_id, H5T_NATIVE_FLOAT, memspace, filespace, H5P_DEFAULT, px);
+    H5Dclose(dset_id);
 
-    ierr = H5Dread(dset_ids[5], H5T_NATIVE_FLOAT, memspace, filespace, dxpl, px);
+    dset_id = H5Dopen2(loc, "py", H5P_DEFAULT);
+    ierr = H5Dread(dset_id, H5T_NATIVE_FLOAT, memspace, filespace, H5P_DEFAULT, py);
+    H5Dclose(dset_id);
 
-    ierr = H5Dread(dset_ids[6], H5T_NATIVE_FLOAT, memspace, filespace, dxpl, py);
-
-    ierr = H5Dread(dset_ids[7], H5T_NATIVE_FLOAT, memspace, filespace, dxpl, pz);
+    dset_id = H5Dopen2(loc, "pz", H5P_DEFAULT);
+    ierr = H5Dread(dset_id, H5T_NATIVE_FLOAT, memspace, filespace, H5P_DEFAULT, pz);
+    H5Dclose(dset_id);
 
     if (rank == 0) printf ("  Read 8 variable completed\n");
 
@@ -168,21 +176,15 @@ int main (int argc, char* argv[])
         printf("Usage: ./%s /path/to/file #timestep [# mega particles]\n", argv[0]);
         return 0;
     }
-    int my_rank, num_procs, nts, i, j, sleep_time;
-    hid_t file_id, *grp_ids, **dset_ids, async_dxpl;
+    int my_rank, num_procs, nts, i, sleep_time;
+    hid_t file_id, grp;
     hid_t filespace, memspace;
-    hid_t async_fapl;
+    hid_t fapl;
     MPI_Comm_rank (MPI_COMM_WORLD, &my_rank);
     MPI_Comm_size (MPI_COMM_WORLD, &num_procs);
 
     char *file_name = argv[1];
     char grp_name[128];
-
-    if (argc < 4) {
-        print_usage(argv[0]);
-        return 0;
-    }
-
     nts = atoi(argv[2]);
     if (nts <= 0) {
         printf("Usage: ./%s /path/to/file #timestep [# mega particles]\n", argv[0]);
@@ -228,15 +230,14 @@ int main (int argc, char* argv[])
 
 
     /* Set up FAPL */
-    async_fapl = H5Pcreate (H5P_FILE_ACCESS);
-    async_dxpl = H5Pcreate (H5P_DATASET_XFER);
-    H5Pset_vol_async(async_fapl);
-    H5Pset_fapl_mpio(async_fapl, MPI_COMM_WORLD, info);
-    H5Pset_dxpl_async(async_dxpl, true);
-    H5Pset_all_coll_metadata_ops(async_fapl, true);
+    if((fapl = H5Pcreate(H5P_FILE_ACCESS)) < 0)
+        goto error;
+    if(H5Pset_fapl_mpio(fapl, MPI_COMM_WORLD, MPI_INFO_NULL) < 0)
+        goto error;
+    H5Pset_all_coll_metadata_ops(fapl, true);
 
     /* Open file */
-    file_id = H5Fopen(file_name, H5F_ACC_RDONLY, async_fapl);
+    file_id = H5Fopen(file_name, H5F_ACC_RDONLY, fapl);
     if(file_id < 0) {
         printf("Error with opening file [%s]!\n", file_name);
         goto done;
@@ -251,70 +252,39 @@ int main (int argc, char* argv[])
     //printf("total_particles: %lld\n", total_particles);
     //printf("my particles   : %ld\n", numparticles);
 
-    //H5Pset_async_dxpl_mpio(async_faplfapl, H5FD_MPIO_COLLECTIVE);
+    //H5Pset_dxpl_mpio(fapl, H5FD_MPIO_COLLECTIVE);
     H5Sselect_hyperslab(filespace, H5S_SELECT_SET, (hsize_t *) &offset, NULL, (hsize_t *) &numparticles, NULL);
-    
-    dset_ids = (hid_t**)calloc(nts, sizeof(hid_t*));
-    grp_ids  = (hid_t*)calloc(nts, sizeof(hid_t));
-    for (i = 0; i < nts; i++) 
-        dset_ids[i] = (hid_t*)calloc(8, sizeof(hid_t));
 
-    /* MPI_Barrier (MPI_COMM_WORLD); */
+    MPI_Barrier (MPI_COMM_WORLD);
     timer_on (1);
 
-    i = 0;
-    sprintf(grp_name, "Timestep_%d", i);
-    grp_ids[i] = H5Gopen(file_id, grp_name, H5P_DEFAULT);
-    if (my_rank == 0)
-        printf ("Reading %s ... \n", grp_name);
-    read_h5_data(my_rank, grp_ids[i], dset_ids[i], filespace, memspace, async_dxpl);
-
-    for (i = 1; i < nts; i++) {
+    for (i = 0; i < nts; i++) {
         timer_reset(2);
         timer_on (2);
         sprintf(grp_name, "Timestep_%d", i);
-        grp_ids[i] = H5Gopen(file_id, grp_name, H5P_DEFAULT);
+        grp = H5Gopen(file_id, grp_name, H5P_DEFAULT);
 
         if (my_rank == 0)
-            printf ("Prefetch %s ... \n", grp_name);
-
-        read_h5_data(my_rank, grp_ids[i], dset_ids[i], filespace, memspace, async_dxpl);
-
-        /* H5VL_async_start(); */
+            printf ("Reading %s ... \n", grp_name);
+        read_h5_data(my_rank, grp, filespace, memspace);
 
         if (i != 0) {
             if (my_rank == 0) printf ("  sleep for %ds\n", sleep_time);
             sleep(sleep_time);
         }
-
-        if (i == 1) {
-            for (j = 0; j < 8; j++) 
-                H5Dclose(dset_ids[0][j]);
-            H5Gclose(grp_ids[0]);
-        }
-
-        for (j = 0; j < 8; j++) 
-            H5Dclose(dset_ids[i][j]);
-        H5Gclose(grp_ids[i]);
-
-        MPI_Barrier (MPI_COMM_WORLD);
+        H5Gclose(grp);
+        MPI_Barrier(MPI_COMM_WORLD);
         timer_off(2);
-        if (my_rank == 0) 
-            timer_msg (2, "prefetch read and wait 1 timestep");
-
-        /* for (j = 0; j < 8; j++) */ 
-        /*     H5Dwait(dset_ids[i][j]); */
+        if (my_rank == 0)
+            timer_msg (2, "read 1 timestep data");
     }
 
     MPI_Barrier (MPI_COMM_WORLD);
     timer_off (1);
 
-
     H5Sclose(memspace);
     H5Sclose(filespace);
-    H5Pclose(async_fapl);
-    H5Pclose(async_dxpl);
-    H5Fwait(file_id);
+    H5Pclose(fapl);
     H5Fclose(file_id);
 
     MPI_Barrier (MPI_COMM_WORLD);
@@ -337,21 +307,15 @@ int main (int argc, char* argv[])
     free(pz);
     free(id1);
     free(id2);
-    for (i = 0; i < nts; i++) 
-        free(dset_ids[i]);
-    free(dset_ids);
-    free(grp_ids);
-
-    goto done;
 
 error:
     H5E_BEGIN_TRY {
         H5Fclose(file_id);
-        H5Pclose(async_fapl);
+        H5Pclose(fapl);
     } H5E_END_TRY;
 
 done:
-    H5VLasync_finalize();
+    H5close();
     MPI_Finalize();
 
     return 0;

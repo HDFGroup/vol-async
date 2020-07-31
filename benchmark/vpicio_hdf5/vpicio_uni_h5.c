@@ -44,7 +44,6 @@
 #include <math.h>
 #include <unistd.h>
 #include <sys/time.h>
-#include "h5_vol_external_async_native.h"
 
 #define ENABLE_MPI 1
 
@@ -198,7 +197,7 @@ int main (int argc, char* argv[])
     MPI_Info info  = MPI_INFO_NULL;
     #endif
 
-    hid_t file_id, filespace, memspace, *grp_ids, async_fapl, async_dxpl, **dset_ids;
+    hid_t file_id, filespace, memspace, *grp_ids, fapl, dxpl, **dset_ids;
     char grp_name[128];
 
     if (argc < 4) {
@@ -258,17 +257,15 @@ int main (int argc, char* argv[])
     offset -= numparticles;
     #endif
 
-    async_fapl = H5Pcreate (H5P_FILE_ACCESS);
-    async_dxpl = H5Pcreate (H5P_DATASET_XFER);
-    H5Pset_vol_async(async_fapl);
-    H5Pset_alignment(async_fapl, 1048576, 16777216);
-    H5Pset_dxpl_async(async_dxpl, true);
-    H5Pset_coll_metadata_write(async_fapl, true);
+    fapl = H5Pcreate (H5P_FILE_ACCESS);
+    dxpl = H5Pcreate (H5P_DATASET_XFER);
+    H5Pset_alignment(fapl, 1048576, 16777216);
+    H5Pset_coll_metadata_write(fapl, true);
     #ifdef ENABLE_MPI
-    H5Pset_fapl_mpio(async_fapl, comm, info);
+    H5Pset_fapl_mpio(fapl, comm, info);
     #endif
 
-    file_id = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, async_fapl);
+    file_id = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, fapl);
 
     if (my_rank == 0)
         printf ("Opened HDF5 file... \n");
@@ -298,7 +295,7 @@ int main (int argc, char* argv[])
         timer_reset(2);
         timer_on(2);
         timer_on(3);
-        create_and_write_synthetic_h5_data(my_rank, grp_ids[i], dset_ids[i], filespace, memspace, async_dxpl);
+        create_and_write_synthetic_h5_data(my_rank, grp_ids[i], dset_ids[i], filespace, memspace, dxpl);
         timer_off(2);
         if (my_rank == 0)
             timer_msg (2, "create and write");
@@ -309,7 +306,6 @@ int main (int argc, char* argv[])
             H5Dclose(dset_ids[i][j]);
         H5Gclose(grp_ids[i]);
 
-        /* H5VL_async_start(); */
 
         if (i != nts - 1) {
             if (my_rank == 0) { printf ("  sleep for %ds start\n", sleep_time); fflush(stdout);}
@@ -317,7 +313,6 @@ int main (int argc, char* argv[])
             if (my_rank == 0) { printf ("  sleep for %ds end\n", sleep_time); fflush(stdout);}
         }
 
-        /* H5Fwait(file_id); */
 
         #ifdef ENABLE_MPI
         MPI_Barrier(MPI_COMM_WORLD);
@@ -338,14 +333,13 @@ int main (int argc, char* argv[])
 
     H5Sclose(memspace);
     H5Sclose(filespace);
-    H5Pclose(async_dxpl);
-    H5Pclose(async_fapl);
+    H5Pclose(dxpl);
+    H5Pclose(fapl);
     /* if (my_rank == 0) printf ("Before closing HDF5 file \n"); */
     /* H5Fwait(file_id); */
     H5Fclose(file_id);
     if (my_rank == 0) {printf ("Closed HDF5 file \n"); fflush(stdout);}
 
-    H5VLasync_finalize();
 
     #ifdef ENABLE_MPI
     MPI_Barrier(MPI_COMM_WORLD);

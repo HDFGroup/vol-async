@@ -1,10 +1,14 @@
-HDF5_DIR = /global/homes/h/houhun/hdf5_tmp/hdf5/async_threadsafe/hdf5
-ABT_DIR = /global/homes/h/houhun/cori/argobots/install
-ASYNC_DIR = /global/u1/h/houhun/hdf5vol/async/src
+# HDF5_DIR = /global/homes/h/houhun/hdf5_tmp/hdf5/async_threadsafe/hdf5
+# ABT_DIR = /global/homes/h/houhun/cori/argobots/install
+# ASYNC_DIR = /global/u1/h/houhun/hdf5vol/async/src
 
-CC = cc
+HDF5_DIR  = /ccs/home/houjun/summit/hdf5/async_threadsafe/hdf5
+ABT_DIR = /ccs/home/houjun/summit/argobots/install/
+ASYNC_DIR = ../../src
+
+# CC = cc
 # CC = gcc-9
-# CC = mpicc
+CC = mpicc
 
 DEBUG = -g -O0
 CFLAGS = $(DEBUG) -I$(ABT_DIR)/include -I$(ASYNC_DIR) -I$(HDF5_DIR)/include
