@@ -22324,12 +22324,20 @@ H5VL_async_attr_close(void *attr, hid_t dxpl_id, void **req)
 {
     H5VL_async_t *o = (H5VL_async_t *)attr;
     herr_t ret_value;
+    int is_blocking = 0;
+    hbool_t is_term;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL ATTRIBUTE Close\n");
 #endif
 
-    if ((ret_value = async_attr_close(0, async_instance_g, o, dxpl_id, req)) < 0 ) {
+    if ((ret_value = H5is_library_terminating(&is_term)) < 0 ) 
+        fprintf(stderr,"  [ASYNC VOL ERROR] with H5is_library_terminating\n");
+
+    if (is_term) 
+        is_blocking = 1;
+
+    if ((ret_value = async_attr_close(is_blocking, async_instance_g, o, dxpl_id, req)) < 0 ) {
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_attr_close\n");
     }
 
@@ -22587,12 +22595,20 @@ H5VL_async_dataset_close(void *dset, hid_t dxpl_id, void **req)
 {
     H5VL_async_t *o = (H5VL_async_t *)dset;
     herr_t ret_value;
+    int is_blocking = 0;
+    hbool_t is_term;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATASET Close\n");
 #endif
 
-    if ((ret_value = async_dataset_close(0, async_instance_g, o, dxpl_id, req)) < 0 ) {
+    if ((ret_value = H5is_library_terminating(&is_term)) < 0 ) 
+        fprintf(stderr,"  [ASYNC VOL ERROR] with H5is_library_terminating\n");
+
+    if (is_term) 
+        is_blocking = 1;
+
+    if ((ret_value = async_dataset_close(is_blocking, async_instance_g, o, dxpl_id, req)) < 0 ) {
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_dataset_close\n");
     }
 
@@ -22780,6 +22796,8 @@ H5VL_async_datatype_close(void *dt, hid_t dxpl_id, void **req)
 {
     H5VL_async_t *o = (H5VL_async_t *)dt;
     herr_t ret_value;
+    int is_blocking = 0;
+    hbool_t is_term;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATATYPE Close\n");
@@ -22787,7 +22805,13 @@ H5VL_async_datatype_close(void *dt, hid_t dxpl_id, void **req)
 
     assert(o->under_object);
 
-    if ((ret_value = async_datatype_close(0, async_instance_g, o, dxpl_id, req)) < 0 ) {
+    if ((ret_value = H5is_library_terminating(&is_term)) < 0 ) 
+        fprintf(stderr,"  [ASYNC VOL ERROR] with H5is_library_terminating\n");
+
+    if (is_term) 
+        is_blocking = 1;
+
+    if ((ret_value = async_datatype_close(is_blocking, async_instance_g, o, dxpl_id, req)) < 0 ) {
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_datatype_close\n");
     }
 
@@ -23113,12 +23137,19 @@ H5VL_async_file_close(void *file, hid_t dxpl_id, void **req)
 {
     H5VL_async_t *o = (H5VL_async_t *)file;
     herr_t ret_value;
+    int is_blocking = 0;
+    hbool_t is_term;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL FILE Close\n");
 #endif
+    if ((ret_value = H5is_library_terminating(&is_term)) < 0 ) 
+        fprintf(stderr,"  [ASYNC VOL ERROR] with H5is_library_terminating\n");
 
-    if ((ret_value = async_file_close(0, async_instance_g, o, dxpl_id, req)) < 0 ) {
+    if (is_term) 
+        is_blocking = 1;
+
+    if ((ret_value = async_file_close(is_blocking, async_instance_g, o, dxpl_id, req)) < 0 ) {
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_file_close\n");
     }
 
@@ -23306,12 +23337,19 @@ H5VL_async_group_close(void *grp, hid_t dxpl_id, void **req)
 {
     H5VL_async_t *o = (H5VL_async_t *)grp;
     herr_t ret_value;
+    int is_blocking = 0;
+    hbool_t is_term;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL H5Gclose\n");
 #endif
+    if ((ret_value = H5is_library_terminating(&is_term)) < 0 ) 
+        fprintf(stderr,"  [ASYNC VOL ERROR] with H5is_library_terminating\n");
 
-    if ((ret_value = async_group_close(0, async_instance_g, o, dxpl_id, req)) < 0 ) {
+    if (is_term) 
+        is_blocking = 1;
+
+    if ((ret_value = async_group_close(is_blocking, async_instance_g, o, dxpl_id, req)) < 0 ) {
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_group_close\n");
     }
 
