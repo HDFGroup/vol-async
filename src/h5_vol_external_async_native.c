@@ -2496,7 +2496,7 @@ async_attr_create_fn(void *foo)
 #endif
 #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
 #endif
 
     while (acquired == false) {
@@ -2954,7 +2954,7 @@ async_attr_open_fn(void *foo)
 #endif
 #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
 #endif
 
     while (acquired == false) {
@@ -3399,7 +3399,7 @@ async_attr_read_fn(void *foo)
 #endif
 #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
 #endif
 
     while (acquired == false) {
@@ -3810,7 +3810,7 @@ async_attr_write_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -4227,7 +4227,7 @@ async_attr_get_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -4640,7 +4640,7 @@ async_attr_specific_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -5056,7 +5056,7 @@ async_attr_optional_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -5470,7 +5470,7 @@ async_attr_close_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -5886,7 +5886,7 @@ async_dataset_create_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -6351,7 +6351,7 @@ async_dataset_open_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -6799,7 +6799,7 @@ async_dataset_read_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -7219,7 +7219,7 @@ async_dataset_write_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -7723,7 +7723,7 @@ async_dataset_get_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -8136,7 +8136,7 @@ async_dataset_specific_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -8549,7 +8549,7 @@ async_dataset_optional_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -8963,7 +8963,7 @@ async_dataset_close_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -9380,7 +9380,7 @@ async_datatype_commit_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -9824,7 +9824,7 @@ async_datatype_open_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -10272,7 +10272,7 @@ async_datatype_get_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -10685,7 +10685,7 @@ async_datatype_specific_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -11098,7 +11098,7 @@ async_datatype_optional_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -11512,7 +11512,7 @@ async_datatype_close_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -11913,7 +11913,7 @@ async_file_create_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -12361,7 +12361,7 @@ async_file_open_fn(void *foo)
 #endif
 #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
 #endif
 
     while (acquired == false) {
@@ -12820,7 +12820,7 @@ async_file_get_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -13233,7 +13233,7 @@ async_file_specific_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -13646,7 +13646,7 @@ async_file_optional_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -14057,7 +14057,7 @@ async_file_close_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -14487,7 +14487,7 @@ async_group_create_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -14942,7 +14942,7 @@ async_group_open_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -15390,7 +15390,7 @@ async_group_get_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -15803,7 +15803,7 @@ async_group_specific_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -16216,7 +16216,7 @@ async_group_optional_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -16630,7 +16630,7 @@ async_group_close_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -17047,7 +17047,7 @@ async_link_create_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -17496,7 +17496,7 @@ async_link_copy_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -17917,7 +17917,7 @@ async_link_move_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -18338,7 +18338,7 @@ async_link_get_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -18754,7 +18754,7 @@ async_link_specific_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -19170,7 +19170,7 @@ async_link_optional_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -19531,6 +19531,7 @@ async_object_open_fn(void *foo)
     ABT_pool *pool_ptr;
     async_task_t *task = (async_task_t*)foo;
     async_object_open_args_t *args = (async_object_open_args_t*)(task->args);
+    void *obj;
 
     #ifdef ENABLE_TIMING
     struct timeval now_time;
@@ -19583,7 +19584,7 @@ async_object_open_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -19692,7 +19693,7 @@ async_object_open_fn(void *foo)
     double time3 = get_elapsed_time(&timer2, &timer3);
     #endif
 
-    if ( H5VLobject_open(args->obj, args->loc_params, task->under_vol_id, args->opened_type, args->dxpl_id, args->req) < 0 ) {
+    if ( (obj = H5VLobject_open(args->obj, args->loc_params, task->under_vol_id, args->opened_type, args->dxpl_id, args->req)) == NULL ) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLobject_open failed\n", __func__);
         goto done;
     }
@@ -19702,8 +19703,9 @@ async_object_open_fn(void *foo)
     double time4 = get_elapsed_time(&timer3, &timer4);
     #endif
 
-
-
+    task->async_obj->under_object = obj;
+    task->async_obj->is_obj_valid = 1;
+    task->async_obj->create_task = NULL;
 
     #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
@@ -19850,7 +19852,7 @@ async_object_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
     async_task->args       = args;
     async_task->op         = READ;
     async_task->under_vol_id  = parent_obj->under_vol_id;
-    async_task->async_obj  = parent_obj;
+    async_task->async_obj  = async_obj;
     async_task->parent_obj = parent_obj;
 
     async_obj->create_task = async_task;
@@ -20022,7 +20024,7 @@ async_object_copy_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -20449,7 +20451,7 @@ async_object_get_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -20865,7 +20867,7 @@ async_object_specific_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -21281,7 +21283,7 @@ async_object_optional_fn(void *foo)
     #endif
     #ifdef ENABLE_TIMING
     gettimeofday(&timer1, NULL);
-    double time1 = get_elapsed_time(&args->start_time, &timer1);
+    /* double time1 = get_elapsed_time(&args->start_time, &timer1); */
     #endif
 
     while (acquired == false) {
@@ -22900,7 +22902,7 @@ H5VL_async_file_open(const char *name, unsigned flags, hid_t fapl_id,
     H5Pset_vol(under_fapl_id, info->under_vol_id, info->under_vol_info);
 
     /* Open the file with the underlying VOL connector */
-    file = async_file_open(0, async_instance_g, name, flags, under_fapl_id, dxpl_id, req);
+    file = async_file_open(1, async_instance_g, name, flags, under_fapl_id, dxpl_id, req);
 
 
     /* Close underlying FAPL */
@@ -23682,7 +23684,7 @@ H5VL_async_object_open(void *obj, const H5VL_loc_params_t *loc_params,
     printf("------- ASYNC VOL OBJECT Open\n");
 #endif
 
-    new_obj = async_object_open(0, async_instance_g, o, loc_params, opened_type, dxpl_id, req);
+    new_obj = async_object_open(1, async_instance_g, o, loc_params, opened_type, dxpl_id, req);
 
 
     return (void *)new_obj;
