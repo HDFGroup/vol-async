@@ -235,6 +235,7 @@ int main (int argc, char* argv[])
     if(H5Pset_fapl_mpio(fapl, MPI_COMM_WORLD, MPI_INFO_NULL) < 0)
         goto error;
     H5Pset_all_coll_metadata_ops(fapl, true);
+    H5Pset_coll_metadata_write(fapl, true);
 
     /* Open file */
     file_id = H5Fopen(file_name, H5F_ACC_RDONLY, fapl);
