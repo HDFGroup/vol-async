@@ -64,7 +64,7 @@ float elapse[5];
 		}
 
 #define timer_msg(id, msg) \
-	printf("%f seconds elapsed in %s\n", (DTYPE)(elapse[id]), msg);  \
+	printf("%f seconds elapsed in %s\n", (DTYPE)(elapse[id]), msg);  fflush(stdout); \
 
 #define timer_reset(id) elapse[id] = 0
 
@@ -262,6 +262,7 @@ int main (int argc, char* argv[])
     async_dxpl = H5Pcreate (H5P_DATASET_XFER);
     H5Pset_vol_async(async_fapl);
     H5Pset_alignment(async_fapl, 1048576, 16777216);
+    H5Pset_dxpl_async_cp_limit(async_dxpl, 0);
     H5Pset_dxpl_async(async_dxpl, true);
     H5Pset_coll_metadata_write(async_fapl, true);
     #ifdef ENABLE_MPI
@@ -309,7 +310,7 @@ int main (int argc, char* argv[])
             H5Dclose(dset_ids[i][j]);
         H5Gclose(grp_ids[i]);
 
-        /* H5VL_async_start(); */
+        H5VL_async_start();
 
         if (i != nts - 1) {
             if (my_rank == 0) { printf ("  sleep for %ds start\n", sleep_time); fflush(stdout);}

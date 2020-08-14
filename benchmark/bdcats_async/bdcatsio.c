@@ -280,7 +280,7 @@ int main (int argc, char* argv[])
 
         read_h5_data(my_rank, grp_ids[i], dset_ids[i], filespace, memspace, async_dxpl);
 
-        /* H5VL_async_start(); */
+        H5VL_async_start();
 
         if (i != 0) {
             if (my_rank == 0) printf ("  sleep for %ds\n", sleep_time);
