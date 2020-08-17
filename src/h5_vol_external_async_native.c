@@ -7416,6 +7416,38 @@ done:
     return;
 } // End async_dataset_write_fn
 
+int is_contig_memspace(hid_t memspace)
+{
+    hsize_t nblocks, slab[32];
+    int ndim;
+    H5S_sel_type type;
+    
+    if (memspace == H5S_SEL_ALL || memspace == H5S_SEL_NONE) {
+        return 1;
+    }
+
+    type = H5Sget_select_type(memspace);
+    if (type == H5S_SEL_POINTS) {
+        return 0;
+    }
+    else if (type == H5S_SEL_HYPERSLABS) {
+        ndim = H5Sget_simple_extent_ndims(memspace);
+        if (ndim != 1) 
+            return 0;
+
+        nblocks = H5Sget_select_hyper_nblocks(memspace);
+        if (nblocks == 1) {
+            H5Sget_select_hyper_blocklist(memspace, 0, 1, slab);
+            if (slab[0] == 0) {
+                return 1;
+            }
+        }
+        return 0;
+    }
+
+    return 0;
+}
+
 static herr_t
 async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj,
         hid_t mem_type_id, hid_t mem_space_id, hid_t file_space_id,
@@ -7480,7 +7512,7 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     args->buf              = (void*)buf;
     args->req              = req;
 
-    args->memcpy_mode = MEM_GATHER; //use rebular memcpy by default
+    args->memcpy_mode = MEM_GATHER;
 
     if (req) {
         *req = (void*)async_task;
@@ -7497,9 +7529,11 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
 
     if (cp_size_limit > 0) {
         if (parent_obj->has_dset_size && args->file_space_id == H5S_ALL && parent_obj->dset_size > 0) {
+            // Check for cached dset size
             buf_size = parent_obj->dset_size;
         }
         else {
+            // Get dset size
             if (parent_obj->dtype_size > 0) {
                 if (H5VLasync_get_data_nelem(args->dset, args->file_space_id, parent_obj->under_vol_id, &buf_size) < 0) {
                     fprintf(stderr,"  [ASYNC VOL ERROR] %s H5VLasync_get_data_nelem failed\n", __func__);
@@ -7520,6 +7554,10 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
                 goto done;
             }
 
+            // If is contiguous space, no need to go through gather process as it can be costly
+            if (1 == is_contig_memspace(mem_space_id))
+                args->memcpy_mode = MEM_DEFAULT;
+
             if(args->memcpy_mode == MEM_GATHER && mem_space_id != H5S_ALL){
                 H5Dgather(mem_space_id, buf, mem_type_id, buf_size, args->buf, NULL, NULL);
                 int elem_size =  H5Tget_size(mem_type_id);
@@ -7527,8 +7565,6 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
                 hsize_t current_dims[1] = {0};
                 current_dims[0] = n_elem;
                 args->gather_space_id = H5Screate_simple(1, current_dims, NULL);
-                //TODO: update H5ES_status_t, add a buf_ready.
-                //token->task->
             } else {
                 memcpy(args->buf, buf, buf_size);
             }
@@ -23684,7 +23720,7 @@ H5VL_async_object_open(void *obj, const H5VL_loc_params_t *loc_params,
     printf("------- ASYNC VOL OBJECT Open\n");
 #endif
 
-    new_obj = async_object_open(1, async_instance_g, o, loc_params, opened_type, dxpl_id, req);
+    new_obj = async_object_open(0, async_instance_g, o, loc_params, opened_type, dxpl_id, req);
 
 
     return (void *)new_obj;
