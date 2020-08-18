@@ -23720,7 +23720,7 @@ H5VL_async_object_open(void *obj, const H5VL_loc_params_t *loc_params,
     printf("------- ASYNC VOL OBJECT Open\n");
 #endif
 
-    new_obj = async_object_open(0, async_instance_g, o, loc_params, opened_type, dxpl_id, req);
+    new_obj = async_object_open(1, async_instance_g, o, loc_params, opened_type, dxpl_id, req);
 
 
     return (void *)new_obj;
