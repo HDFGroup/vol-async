@@ -265,6 +265,7 @@ int main (int argc, char* argv[])
     H5Pset_dxpl_async_cp_limit(async_dxpl, 0);
     H5Pset_dxpl_async(async_dxpl, true);
     H5Pset_coll_metadata_write(async_fapl, true);
+    H5Pset_meta_block_size(async_fapl, 1048576);
     #ifdef ENABLE_MPI
     H5Pset_fapl_mpio(async_fapl, comm, info);
     #endif

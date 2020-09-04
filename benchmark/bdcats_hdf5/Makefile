@@ -1,6 +1,6 @@
 # HDF5_DIR = /global/homes/h/houhun/hdf5_tmp/hdf5/async_threadsafe/hdf5
 
-HDF5_DIR  = /ccs/home/houjun/summit/hdf5/async_threadsafe/hdf5
+HDF5_DIR  = /gpfs/alpine/csc300/world-shared/gnu_build/hdf5-1.10.6/build/hdf5
 
 # CC = cc
 # CC = gcc-9

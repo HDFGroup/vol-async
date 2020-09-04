@@ -261,6 +261,7 @@ int main (int argc, char* argv[])
     dxpl = H5Pcreate (H5P_DATASET_XFER);
     H5Pset_alignment(fapl, 1048576, 16777216);
     H5Pset_coll_metadata_write(fapl, true);
+    H5Pset_meta_block_size(fapl, 1048576);
     #ifdef ENABLE_MPI
     H5Pset_fapl_mpio(fapl, comm, info);
     #endif

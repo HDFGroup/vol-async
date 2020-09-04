@@ -4,7 +4,7 @@
 
 HDF5_DIR  = /ccs/home/houjun/summit/hdf5/async_threadsafe/hdf5
 ABT_DIR = /ccs/home/houjun/summit/argobots/install/
-ASYNC_DIR = ../../src
+ASYNC_DIR = /autofs/nccs-svm1_home1/houjun/summit/async/src
 
 # CC = cc
 # CC = gcc-9
@@ -13,7 +13,7 @@ CC = mpicc
 DEBUG = -g -O0
 CFLAGS = $(DEBUG) -I$(ABT_DIR)/include -I$(ASYNC_DIR) -I$(HDF5_DIR)/include
 #-Wall
-LDFLAGS = $(DEBUG) -L$(ASYNC_DIR) -L$(ABT_DIR)/lib -L$(HDF5_DIR)/lib -labt -lhdf5 -lh5async
+LDFLAGS = $(DEBUG) -L$(ASYNC_DIR) -L$(ABT_DIR)/lib -L$(HDF5_DIR)/lib -labt -lhdf5 -lh5async -Wl,-rpath=$(ABT_DIR)/lib -Wl,-rpath=$(HDF5_DIR)/lib -Wl,-rpath=$(ASYNC_DIR)
 
 SRC = bdcatsio.c
 OBJ = $(SRC:.c=.o)

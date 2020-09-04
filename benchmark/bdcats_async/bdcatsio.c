@@ -125,14 +125,18 @@ void print_data(int n)
 // Create HDF5 file and read data
 void read_h5_data(int rank, hid_t loc, hid_t *dset_ids, hid_t filespace, hid_t memspace, hid_t dxpl)
 {
-    dset_ids[0] = H5Dopen(loc, "x", H5P_DEFAULT);
-    dset_ids[1] = H5Dopen(loc, "y", H5P_DEFAULT);
-    dset_ids[2] = H5Dopen(loc, "z", H5P_DEFAULT);
-    dset_ids[3] = H5Dopen(loc, "id1", H5P_DEFAULT);
-    dset_ids[4] = H5Dopen(loc, "id2", H5P_DEFAULT);
-    dset_ids[5] = H5Dopen(loc, "px", H5P_DEFAULT);
-    dset_ids[6] = H5Dopen(loc, "py", H5P_DEFAULT);
-    dset_ids[7] = H5Dopen(loc, "pz", H5P_DEFAULT);
+    hid_t dapl;
+    dapl = H5Pcreate(H5P_DATASET_ACCESS);
+    H5Pset_all_coll_metadata_ops(dapl, true);
+
+    dset_ids[0] = H5Dopen(loc, "x", dapl);
+    dset_ids[1] = H5Dopen(loc, "y", dapl);
+    dset_ids[2] = H5Dopen(loc, "z", dapl);
+    dset_ids[3] = H5Dopen(loc, "id1", dapl);
+    dset_ids[4] = H5Dopen(loc, "id2", dapl);
+    dset_ids[5] = H5Dopen(loc, "px", dapl);
+    dset_ids[6] = H5Dopen(loc, "py", dapl);
+    dset_ids[7] = H5Dopen(loc, "pz", dapl);
 
     ierr = H5Dread(dset_ids[0], H5T_NATIVE_FLOAT, memspace, filespace, dxpl, x);
 
@@ -152,6 +156,7 @@ void read_h5_data(int rank, hid_t loc, hid_t *dset_ids, hid_t filespace, hid_t m
 
     if (rank == 0) printf ("  Read 8 variable completed\n");
 
+    H5Pclose(dapl);
     //print_data(3);
 }
 
@@ -163,7 +168,9 @@ void print_usage(char *name)
 int main (int argc, char* argv[])
 {
 
-    MPI_Init(&argc,&argv);
+    /* MPI_Init(&argc,&argv); */
+    int provided;
+    MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
     if(argc < 3) {
         printf("Usage: ./%s /path/to/file #timestep [# mega particles]\n", argv[0]);
         return 0;
@@ -171,7 +178,7 @@ int main (int argc, char* argv[])
     int my_rank, num_procs, nts, i, j, sleep_time;
     hid_t file_id, *grp_ids, **dset_ids, async_dxpl;
     hid_t filespace, memspace;
-    hid_t async_fapl;
+    hid_t async_fapl, gapl;
     MPI_Comm_rank (MPI_COMM_WORLD, &my_rank);
     MPI_Comm_size (MPI_COMM_WORLD, &num_procs);
 
@@ -235,6 +242,11 @@ int main (int argc, char* argv[])
     H5Pset_dxpl_async(async_dxpl, true);
     H5Pset_all_coll_metadata_ops(async_fapl, true);
 
+    if((gapl = H5Pcreate(H5P_DATASET_ACCESS)) < 0)
+        goto error;
+    if(H5Pset_all_coll_metadata_ops(gapl, true) < 0)
+        goto error;
+
     /* Open file */
     file_id = H5Fopen(file_name, H5F_ACC_RDONLY, async_fapl);
     if(file_id < 0) {
@@ -273,7 +285,7 @@ int main (int argc, char* argv[])
         timer_reset(2);
         timer_on (2);
         sprintf(grp_name, "Timestep_%d", i);
-        grp_ids[i] = H5Gopen(file_id, grp_name, H5P_DEFAULT);
+        grp_ids[i] = H5Gopen(file_id, grp_name, gapl);
 
         if (my_rank == 0)
             printf ("Prefetch %s ... \n", grp_name);
@@ -297,7 +309,7 @@ int main (int argc, char* argv[])
             H5Dclose(dset_ids[i][j]);
         H5Gclose(grp_ids[i]);
 
-        MPI_Barrier (MPI_COMM_WORLD);
+        /* MPI_Barrier (MPI_COMM_WORLD); */
         timer_off(2);
         if (my_rank == 0) 
             timer_msg (2, "prefetch read and wait 1 timestep");
@@ -314,6 +326,7 @@ int main (int argc, char* argv[])
     H5Sclose(filespace);
     H5Pclose(async_fapl);
     H5Pclose(async_dxpl);
+    H5Pclose(gapl);
     H5Fwait(file_id);
     H5Fclose(file_id);
 

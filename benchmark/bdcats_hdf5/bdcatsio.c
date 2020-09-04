@@ -124,42 +124,46 @@ void print_data(int n)
 // Create HDF5 file and read data
 void read_h5_data(int rank, hid_t loc, hid_t filespace, hid_t memspace)
 {
-    hid_t dset_id;
-    dset_id = H5Dopen2(loc, "x", H5P_DEFAULT);
+    hid_t dset_id, dapl;
+    dapl = H5Pcreate(H5P_DATASET_ACCESS);
+    H5Pset_all_coll_metadata_ops(dapl, true);
+
+    dset_id = H5Dopen2(loc, "x", dapl);
     ierr = H5Dread(dset_id, H5T_NATIVE_FLOAT, memspace, filespace, H5P_DEFAULT, x);
     H5Dclose(dset_id);
     //if (rank == 0) printf ("Read variable 1 \n");
 
-    dset_id = H5Dopen2(loc, "y", H5P_DEFAULT);
+    dset_id = H5Dopen2(loc, "y", dapl);
     ierr = H5Dread(dset_id, H5T_NATIVE_FLOAT, memspace, filespace, H5P_DEFAULT, y);
     H5Dclose(dset_id);
 
-    dset_id = H5Dopen2(loc, "z", H5P_DEFAULT);
+    dset_id = H5Dopen2(loc, "z", dapl);
     ierr = H5Dread(dset_id, H5T_NATIVE_FLOAT, memspace, filespace, H5P_DEFAULT, z);
     H5Dclose(dset_id);
 
-    dset_id = H5Dopen2(loc, "id1", H5P_DEFAULT);
+    dset_id = H5Dopen2(loc, "id1", dapl);
     ierr = H5Dread(dset_id, H5T_NATIVE_INT, memspace, filespace, H5P_DEFAULT, id1);
     H5Dclose(dset_id);
 
-    dset_id = H5Dopen2(loc, "id2", H5P_DEFAULT);
+    dset_id = H5Dopen2(loc, "id2", dapl);
     ierr = H5Dread(dset_id, H5T_NATIVE_INT, memspace, filespace, H5P_DEFAULT, id2);
     H5Dclose(dset_id);
 
-    dset_id = H5Dopen2(loc, "px", H5P_DEFAULT);
+    dset_id = H5Dopen2(loc, "px", dapl);
     ierr = H5Dread(dset_id, H5T_NATIVE_FLOAT, memspace, filespace, H5P_DEFAULT, px);
     H5Dclose(dset_id);
 
-    dset_id = H5Dopen2(loc, "py", H5P_DEFAULT);
+    dset_id = H5Dopen2(loc, "py", dapl);
     ierr = H5Dread(dset_id, H5T_NATIVE_FLOAT, memspace, filespace, H5P_DEFAULT, py);
     H5Dclose(dset_id);
 
-    dset_id = H5Dopen2(loc, "pz", H5P_DEFAULT);
+    dset_id = H5Dopen2(loc, "pz", dapl);
     ierr = H5Dread(dset_id, H5T_NATIVE_FLOAT, memspace, filespace, H5P_DEFAULT, pz);
     H5Dclose(dset_id);
 
     if (rank == 0) printf ("  Read 8 variable completed\n");
 
+    H5Pclose(dapl);
     //print_data(3);
 }
 
@@ -179,7 +183,7 @@ int main (int argc, char* argv[])
     int my_rank, num_procs, nts, i, sleep_time;
     hid_t file_id, grp;
     hid_t filespace, memspace;
-    hid_t fapl;
+    hid_t fapl, gapl;
     MPI_Comm_rank (MPI_COMM_WORLD, &my_rank);
     MPI_Comm_size (MPI_COMM_WORLD, &num_procs);
 
@@ -237,6 +241,11 @@ int main (int argc, char* argv[])
     H5Pset_all_coll_metadata_ops(fapl, true);
     H5Pset_coll_metadata_write(fapl, true);
 
+    if((gapl = H5Pcreate(H5P_DATASET_ACCESS)) < 0)
+        goto error;
+    if(H5Pset_all_coll_metadata_ops(gapl, true) < 0)
+        goto error;
+
     /* Open file */
     file_id = H5Fopen(file_name, H5F_ACC_RDONLY, fapl);
     if(file_id < 0) {
@@ -263,7 +272,7 @@ int main (int argc, char* argv[])
         timer_reset(2);
         timer_on (2);
         sprintf(grp_name, "Timestep_%d", i);
-        grp = H5Gopen(file_id, grp_name, H5P_DEFAULT);
+        grp = H5Gopen(file_id, grp_name, gapl);
 
         if (my_rank == 0)
             printf ("Reading %s ... \n", grp_name);
@@ -286,6 +295,7 @@ int main (int argc, char* argv[])
     H5Sclose(memspace);
     H5Sclose(filespace);
     H5Pclose(fapl);
+    H5Pclose(gapl);
     H5Fclose(file_id);
 
     MPI_Barrier (MPI_COMM_WORLD);
