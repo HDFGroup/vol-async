@@ -3997,6 +3997,7 @@ async_attr_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     async_attr_write_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    hsize_t attr_size;
 
     #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -4042,11 +4043,17 @@ async_attr_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
         /* } */
     }
 
-    if (NULL == (args->buf = malloc(ASYNC_VOL_ATTR_CP_SIZE_LIMIT))) {
+    attr_size = H5Tget_size(mem_type_id);
+    if (attr_size == 0) {
+        fprintf(stderr,"  [ASYNC VOL ERROR] %s H5Tget_size failed!\n", __func__);
+        goto done;
+    }
+
+    if (NULL == (args->buf = malloc(attr_size))) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s malloc failed!\n", __func__);
         goto done;
     }
-    memcpy(args->buf, buf, ASYNC_VOL_ATTR_CP_SIZE_LIMIT);
+    memcpy(args->buf, buf, attr_size);
 
     // Retrieve current library state
     if ( H5VLretrieve_lib_state(&async_task->h5_state) < 0) {
