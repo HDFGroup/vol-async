@@ -58,7 +58,7 @@ typedef struct H5VL_async_t {
 	H5VL_asynci_mutex_handle_t lock;
 	int ref;
 	int cnt;
-	H5VL_async_t *parent;
+	// struct H5VL_async_t *parent;
 } H5VL_async_t;
 
 extern hid_t H5VL_ASYNC_g;

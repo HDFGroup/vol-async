@@ -20,8 +20,10 @@
 #include "h5vl_async_file.h"
 #include "h5vl_async_filei.h"
 #include "h5vl_async_info.h"
+#include "h5vl_async_public.h"
 #include "h5vl_async_req.h"
 #include "h5vl_asynci.h"
+#include "h5vl_asynci_mutex.h"
 #include "h5vl_asynci_vector.h"
 
 /*-------------------------------------------------------------------------
@@ -44,6 +46,7 @@ void *H5VL_async_file_create (
 	size_t name_len;
 	hbool_t is_async;
 	herr_t ret;
+	TW_Task_handle_t task;
 
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL FILE Create\n");
@@ -78,21 +81,26 @@ void *H5VL_async_file_create (
 		argp->ret = &ret;
 	}
 
-	fp->init_task = TW_HANDLE_NULL;
-	twerr =
-		TW_Task_create (H5VL_async_file_create_handler, argp, TW_TASK_DEP_NULL, 0, &fp->init_task);
+	twerr = TW_Task_create (H5VL_async_file_create_handler, argp, TW_TASK_DEP_NULL, 0, &task);
 	CHK_TWERR
-	if (reqp) { reqp->task = fp->init_task; }
+	fp->init_task = task;
+	if (reqp) { reqp->task = task; }
 
 	H5VL_async_inc_ref (fp);
-	twerr = TW_Task_commit (fp->init_task, H5VL_async_engine);
+	twerr = TW_Task_commit (task, H5VL_async_engine);
 	CHK_TWERR
 
 	if (!is_async) {
-		twerr = TW_Task_wait (fp->init_task, TW_TIMEOUT_NEVER);
+		// Release the lock so worker thread can acquire
+		H5TSmutex_release ();
+
+		twerr = TW_Task_wait (task, TW_TIMEOUT_NEVER);
 		CHK_TWERR
 
-		twerr = TW_Task_free (fp->init_task);
+		err = H5VL_asynci_h5ts_mutex_lock ();
+		CHECK_ERR
+
+		twerr = TW_Task_free (task);
 		CHK_TWERR
 		fp->init_task = TW_HANDLE_NULL;
 
@@ -102,7 +110,7 @@ void *H5VL_async_file_create (
 
 err_out:;
 	if (err) {
-		if (fp->init_task != TW_HANDLE_NULL) { TW_Task_free (fp->init_task); }
+		if (task != TW_HANDLE_NULL) { TW_Task_free (task); }
 
 		if (argp) {
 			H5Pclose (argp->dxpl_id);
@@ -141,6 +149,7 @@ void *H5VL_async_file_open (
 	size_t name_len;
 	hbool_t is_async;
 	herr_t ret;
+	TW_Task_handle_t task;
 
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL FILE Open\n");
@@ -176,23 +185,28 @@ void *H5VL_async_file_open (
 		argp->ret = &ret;
 	}
 
-	fp->init_task = TW_HANDLE_NULL;
-	twerr =
-		TW_Task_create (H5VL_async_file_open_handler, argp, TW_TASK_DEP_NULL, 0, &fp->init_task);
+	twerr = TW_Task_create (H5VL_async_file_open_handler, argp, TW_TASK_DEP_NULL, 0, &task);
 	CHK_TWERR
-	if (reqp) { reqp->task = fp->init_task; }
+	fp->init_task = task;
+	if (reqp) { reqp->task = task; }
 
 	H5VL_async_inc_ref (fp);
-	twerr = TW_Task_commit (fp->init_task, H5VL_async_engine);
+	twerr = TW_Task_commit (task, H5VL_async_engine);
 	CHK_TWERR
 
 	if (!is_async) {
-		twerr = TW_Task_wait (fp->init_task, TW_TIMEOUT_NEVER);
+		// Release the lock so worker thread can acquire
+		H5TSmutex_release ();
+
+		twerr = TW_Task_wait (task, TW_TIMEOUT_NEVER);
 		CHK_TWERR
 
-		twerr = TW_Task_free (fp->init_task);
+		err = H5VL_asynci_h5ts_mutex_lock ();
+		CHECK_ERR
+
+		twerr = TW_Task_free (task);
 		CHK_TWERR
-		fp->init_task = TW_HANDLE_NULL;
+		task = TW_HANDLE_NULL;
 
 		err = ret;
 		CHECK_ERR
@@ -200,7 +214,7 @@ void *H5VL_async_file_open (
 
 err_out:;
 	if (err) {
-		if (fp->init_task != TW_HANDLE_NULL) { TW_Task_free (fp->init_task); }
+		if (task != TW_HANDLE_NULL) { TW_Task_free (task); }
 
 		if (argp) {
 			H5Pclose (argp->dxpl_id);
@@ -237,6 +251,7 @@ herr_t H5VL_async_file_get (
 	H5VL_async_req_t *reqp = NULL;
 	hbool_t is_async;
 	herr_t ret;
+	TW_Task_handle_t task;
 
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL FILE Get\n");
@@ -272,23 +287,33 @@ herr_t H5VL_async_file_get (
 	}
 
 	argp->task = TW_HANDLE_NULL;
-	twerr = TW_Task_create (H5VL_async_file_get_handler, argp, TW_TASK_DEP_NULL, 0, &argp->task);
+	twerr	   = TW_Task_create (H5VL_async_file_get_handler, argp, TW_TASK_DEP_NULL, 0, &task);
 	CHK_TWERR
+	argp->task = task;
 	if (reqp) { reqp->task = argp->task; }
 
-	h5vl_async_mutex_lock (fp->lock);
+	H5VL_asynci_mutex_lock (fp->lock);
+	if (fp->init_task) {
+		twerr = TW_Task_add_dep (task, fp->init_task);
+		CHK_TWERR
+	}
 	H5VL_async_inc_ref (fp);
 	twerr = TW_Task_commit (argp->task, H5VL_async_engine);
 	CHK_TWERR
-	h5vl_async_mutex_unlock (fp->lock);
+	H5VL_asynci_mutex_unlock (fp->lock);
 
 	if (!is_async) {
-		twerr = TW_Task_wait (argp->task, TW_TIMEOUT_NEVER);
+		// Release the lock so worker thread can acquire
+		H5TSmutex_release ();
+
+		twerr = TW_Task_wait (task, TW_TIMEOUT_NEVER);
 		CHK_TWERR
 
-		twerr = TW_Task_free (argp->task);
+		err = H5VL_asynci_h5ts_mutex_lock ();
+		CHECK_ERR
+
+		twerr = TW_Task_free (task);
 		CHK_TWERR
-		argp->task = TW_HANDLE_NULL;
 
 		err = ret;
 		CHECK_ERR
@@ -327,6 +352,7 @@ herr_t H5VL_async_file_specific (
 	H5VL_async_req_t *reqp = NULL;
 	hbool_t is_async;
 	herr_t ret;
+	TW_Task_handle_t task;
 
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL FILE Specific\n");
@@ -362,23 +388,33 @@ herr_t H5VL_async_file_specific (
 	}
 
 	argp->task = TW_HANDLE_NULL;
-	twerr = TW_Task_create (H5VL_async_file_get_handler, argp, TW_TASK_DEP_NULL, 0, &argp->task);
+	twerr = TW_Task_create (H5VL_async_file_specific_handler, argp, TW_TASK_DEP_NULL, 0, &task);
 	CHK_TWERR
+	argp->task = task;
 	if (reqp) { reqp->task = argp->task; }
 
-	h5vl_async_mutex_lock (fp->lock);
+	H5VL_asynci_mutex_lock (fp->lock);
+	if (fp->init_task) {
+		twerr = TW_Task_add_dep (task, fp->init_task);
+		CHK_TWERR
+	}
 	H5VL_async_inc_ref (fp);
 	twerr = TW_Task_commit (argp->task, H5VL_async_engine);
 	CHK_TWERR
-	h5vl_async_mutex_unlock (fp->lock);
+	H5VL_asynci_mutex_unlock (fp->lock);
 
 	if (!is_async) {
-		twerr = TW_Task_wait (argp->task, TW_TIMEOUT_NEVER);
+		// Release the lock so worker thread can acquire
+		H5TSmutex_release ();
+
+		twerr = TW_Task_wait (task, TW_TIMEOUT_NEVER);
 		CHK_TWERR
 
-		twerr = TW_Task_free (argp->task);
+		err = H5VL_asynci_h5ts_mutex_lock ();
+		CHECK_ERR
+
+		twerr = TW_Task_free (task);
 		CHK_TWERR
-		argp->task = TW_HANDLE_NULL;
 
 		err = ret;
 		CHECK_ERR
@@ -415,7 +451,7 @@ herr_t H5VL_async_file_optional (
 	H5VL_async_req_t *reqp = NULL;
 	hbool_t is_async;
 	herr_t ret;
-
+	TW_Task_handle_t task;
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL File Optional\n");
 #endif
@@ -450,23 +486,34 @@ herr_t H5VL_async_file_optional (
 	}
 
 	argp->task = TW_HANDLE_NULL;
-	twerr = TW_Task_create (H5VL_async_file_get_handler, argp, TW_TASK_DEP_NULL, 0, &argp->task);
+	twerr =
+		TW_Task_create (H5VL_async_file_optional_handler, argp, TW_TASK_DEP_ALL_COMPLETE, 0, &task);
 	CHK_TWERR
-	if (reqp) { reqp->task = argp->task; }
+	argp->task = task;
+	if (reqp) { reqp->task = task; }
 
-	h5vl_async_mutex_lock (fp->lock);
+	H5VL_asynci_mutex_lock (fp->lock);
+	if (fp->init_task) {
+		twerr = TW_Task_add_dep (task, fp->init_task);
+		CHK_TWERR
+	}
 	H5VL_async_inc_ref (fp);
-	twerr = TW_Task_commit (argp->task, H5VL_async_engine);
+	twerr = TW_Task_commit (task, H5VL_async_engine);
 	CHK_TWERR
-	h5vl_async_mutex_unlock (fp->lock);
+	H5VL_asynci_mutex_unlock (fp->lock);
 
 	if (!is_async) {
-		twerr = TW_Task_wait (argp->task, TW_TIMEOUT_NEVER);
+		// Release the lock so worker thread can acquire
+		H5TSmutex_release ();
+
+		twerr = TW_Task_wait (task, TW_TIMEOUT_NEVER);
 		CHK_TWERR
 
-		twerr = TW_Task_free (argp->task);
+		err = H5VL_asynci_h5ts_mutex_lock ();
+		CHECK_ERR
+
+		twerr = TW_Task_free (task);
 		CHK_TWERR
-		argp->task = TW_HANDLE_NULL;
 
 		err = ret;
 		CHECK_ERR
@@ -496,9 +543,14 @@ err_out:;
  *-------------------------------------------------------------------------
  */
 herr_t H5VL_async_file_close (void *file, hid_t dxpl_id, void **req) {
-	H5VL_async_t *o = (H5VL_async_t *)file;
-	herr_t ret_value;
-
+	herr_t err	 = 0;
+	terr_t twerr = TW_SUCCESS;
+	H5VL_async_file_close_args *argp;
+	H5VL_async_t *fp	   = (H5VL_async_t *)file;
+	H5VL_async_req_t *reqp = NULL;
+	hbool_t is_async;
+	herr_t ret;
+	TW_Task_handle_t task;
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL FILE Close\n");
 #endif
@@ -506,9 +558,71 @@ herr_t H5VL_async_file_close (void *file, hid_t dxpl_id, void **req) {
 	if ((fp->stat == H5VL_async_stat_err) || (fp->stat == H5VL_async_stat_close)) {
 		RET_ERR ("Parent object in wrong status");
 	}
+	fp->stat == H5VL_async_stat_close;
 
 	err = H5Pget_dxpl_async (dxpl_id, &is_async);
 	CHECK_ERR
 
-	return ret_value;
+	argp = (H5VL_async_file_close_args *)malloc (sizeof (H5VL_async_file_close_args));
+	CHECK_PTR (argp)
+
+	argp->fp	  = fp;
+	argp->dxpl_id = H5Pcopy (dxpl_id);
+	if (is_async) {
+		if (req) {
+			reqp = (H5VL_async_req_t *)malloc (sizeof (H5VL_async_req_t));
+			CHECK_PTR (reqp)
+
+			argp->ret = &(reqp->ret);
+
+			*req = reqp;
+		} else {
+			argp->ret = NULL;
+		}
+	} else {
+		argp->ret = &ret;
+	}
+
+	argp->task = TW_HANDLE_NULL;
+	twerr = TW_Task_create (H5VL_async_file_close_handler, argp, TW_TASK_DEP_NULL, fp->cnt, &task);
+	CHK_TWERR
+	argp->task = task;
+	if (reqp) { reqp->task = argp->task; }
+
+	H5VL_asynci_mutex_lock (fp->lock);
+	if (fp->ref) {
+		fp->close_task = task;
+	} else {
+		twerr = TW_Task_commit (task, H5VL_async_engine);
+		CHK_TWERR
+	}
+	H5VL_asynci_mutex_unlock (fp->lock);
+
+	if (!is_async) {
+		// Release the lock so worker thread can acquire
+		H5TSmutex_release ();
+
+		twerr = TW_Task_wait (task, TW_TIMEOUT_NEVER);
+		CHK_TWERR
+
+		err = H5VL_asynci_h5ts_mutex_lock ();
+		CHECK_ERR
+
+		twerr = TW_Task_free (task);
+		CHK_TWERR
+
+		err = ret;
+		CHECK_ERR
+	}
+
+err_out:;
+	if (err) {
+		if (argp) {
+			if (argp->task != TW_HANDLE_NULL) { TW_Task_free (argp->task); }
+			H5Pclose (argp->dxpl_id);
+			free (argp);
+		}
+	}
+
+	return err;
 } /* end H5VL_async_file_close() */

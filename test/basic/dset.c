@@ -70,11 +70,11 @@ int main (int argc, char **argv) {
 	CHECK_ERR (sid)
 	ndim = H5Sget_simple_extent_dims (sid, dims, mdims);
 	CHECK_ERR (ndim);
-	EXP_VAL (ndim, 2, "%d")
-	EXP_VAL (dims[0], N, "%d")
-	EXP_VAL (dims[1], N, "%d")
-	EXP_VAL (mdims[0], N, "%d")
-	EXP_VAL (mdims[1], N, "%d")
+	EXP_VAL ((int)ndim, 2, "%d")
+	EXP_VAL ((int)dims[0], N, "%d")
+	EXP_VAL ((int)dims[1], N, "%d")
+	EXP_VAL ((int)mdims[0], N, "%d")
+	EXP_VAL ((int)mdims[1], N, "%d")
 
 	err = H5Sclose (sid);
 	CHECK_ERR (err)

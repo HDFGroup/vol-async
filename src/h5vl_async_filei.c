@@ -26,8 +26,11 @@ int H5VL_async_file_create_handler (void *data) {
 	herr_t err = 0;
 	H5VL_async_info_t *info, *under_vol_info;
 	hid_t under_fapl_id, under_vol_id;
-	void *under;
 	H5VL_async_file_create_args *argp = (H5VL_async_file_create_args *)data;
+
+	/* Acquire global lock */
+	err = H5VL_asynci_h5ts_mutex_lock ();
+	CHECK_ERR
 
 	/* Get copy of our VOL info from FAPL */
 	H5Pget_vol_info (argp->fapl_id, (void **)&info);
@@ -40,6 +43,7 @@ int H5VL_async_file_create_handler (void *data) {
 		ret = H5VLis_connector_registered_by_name ("native");
 		if (ret != 1) { RET_ERR ("Native VOL not found") }
 		under_vol_id = H5VLpeek_connector_id_by_name ("native");
+		// under_vol_id = H5VLget_connector_id_by_value (0);
 		CHECK_ID (under_vol_id)
 		under_vol_info = NULL;
 	}
@@ -55,7 +59,6 @@ int H5VL_async_file_create_handler (void *data) {
 											  argp->dxpl_id, NULL);
 	CHECK_PTR (argp->fp->under_object)
 
-	argp->fp->under_object = under;
 	argp->fp->under_vol_id = under_vol_id;
 
 err_out:;
@@ -89,6 +92,9 @@ err_out:;
 	free (argp->name);
 	free (argp);
 
+	err = H5TSmutex_release ();
+	CHECK_ERR
+
 	return 0;
 }
 
@@ -96,8 +102,11 @@ int H5VL_async_file_open_handler (void *data) {
 	herr_t err = 0;
 	H5VL_async_info_t *info, *under_vol_info;
 	hid_t under_fapl_id, under_vol_id;
-	void *under;
 	H5VL_async_file_open_args *argp = (H5VL_async_file_open_args *)data;
+
+	/* Acquire global lock */
+	err = H5VL_asynci_h5ts_mutex_lock ();
+	CHECK_ERR
 
 	/* Get copy of our VOL info from FAPL */
 	H5Pget_vol_info (argp->fapl_id, (void **)&info);
@@ -125,7 +134,6 @@ int H5VL_async_file_open_handler (void *data) {
 		H5VLfile_open (argp->name, argp->flags, under_fapl_id, argp->dxpl_id, NULL);
 	CHECK_PTR (argp->fp->under_object)
 
-	argp->fp->under_object = under;
 	argp->fp->under_vol_id = under_vol_id;
 
 err_out:;
@@ -161,6 +169,9 @@ err_out:;
 	free (argp->name);
 	free (argp);
 
+	err = H5TSmutex_release ();
+	CHECK_ERR
+
 	return 0;
 }
 
@@ -168,6 +179,10 @@ int H5VL_async_file_get_handler (void *data) {
 	herr_t err					   = 0;
 	terr_t twerr				   = TW_SUCCESS;
 	H5VL_async_file_get_args *argp = (H5VL_async_file_get_args *)data;
+
+	/* Acquire global lock */
+	err = H5VL_asynci_h5ts_mutex_lock ();
+	CHECK_ERR
 
 	err = H5VLfile_get (argp->fp->under_object, argp->fp->under_vol_id, argp->get_type,
 						argp->dxpl_id, NULL, argp->arguments);
@@ -189,6 +204,9 @@ err_out:;
 	H5Pclose (argp->dxpl_id);
 	va_end (argp->arguments);
 	free (argp);
+
+	err = H5TSmutex_release ();
+	CHECK_ERR
 
 	return 0;
 }
@@ -224,6 +242,10 @@ int H5VL_async_file_specific_handler (void *data) {
 	herr_t err							= 0;
 	hid_t under_vol_id					= -1;
 	H5VL_async_file_specific_args *argp = (H5VL_async_file_specific_args *)data;
+
+	/* Acquire global lock */
+	err = H5VL_asynci_h5ts_mutex_lock ();
+	CHECK_ERR
 
 	/* Unpack arguments to get at the child file pointer when mounting a file */
 	if (argp->specific_type == H5VL_FILE_MOUNT) {
@@ -322,33 +344,79 @@ err_out:;
 	va_end (argp->arguments);
 	free (argp);
 
+	err = H5TSmutex_release ();
+	CHECK_ERR
+
 	return 0;
 }
 
 int H5VL_async_file_optional_handler (void *data) {
 	herr_t err							= 0;
 	terr_t twerr						= TW_SUCCESS;
-	H5VL_async_file_specific_args *argp = (H5VL_async_file_specific_args *)data;
+	H5VL_async_file_optional_args *argp = (H5VL_async_file_optional_args *)data;
+
+	/* Acquire global lock */
+	err = H5VL_asynci_h5ts_mutex_lock ();
+	CHECK_ERR
 
 	err = H5VLfile_optional (argp->fp->under_object, argp->fp->under_vol_id, argp->opt_type,
 							 argp->dxpl_id, NULL, argp->arguments);
 	CHECK_ERR
 
 err_out:;
-	TW_Task_free (argp->task);
+	H5VL_asynci_mutex_lock (argp->fp->lock);
+
+	if (argp->ret) {
+		*argp->ret = err;
+	} else {
+		TW_Task_free (argp->task);
+	}
+	H5VL_async_dec_ref (argp->fp);
+
+	H5VL_asynci_mutex_unlock (argp->fp->lock);
+
 	H5Pclose (argp->dxpl_id);
 	va_end (argp->arguments);
 	free (argp);
+
+	err = H5TSmutex_release ();
+	CHECK_ERR
 
 	return 0;
 }
 
 int H5VL_async_file_close_handler (void *data) {
-	ret_value = H5VLfile_close (o->under_object, o->under_vol_id, dxpl_id, req);
+	herr_t err						 = 0;
+	terr_t twerr					 = TW_SUCCESS;
+	H5VL_async_file_close_args *argp = (H5VL_async_file_close_args *)data;
 
-	/* Check for async request */
-	if (req && *req) *req = H5VL_async_new_obj (*req, o->under_vol_id);
+	/* Acquire global lock */
+	err = H5VL_asynci_h5ts_mutex_lock ();
+	CHECK_ERR
 
-	/* Release our wrapper, if underlying file was closed */
-	if (ret_value >= 0) H5VL_async_free_obj (o);
+	err = H5VLfile_close (argp->fp->under_object, argp->fp->under_vol_id, argp->dxpl_id, NULL);
+	CHECK_ERR
+
+	err = H5VL_async_free_obj (argp->fp);
+	CHECK_ERR
+
+err_out:;
+	H5VL_asynci_mutex_lock (argp->fp->lock);
+
+	if (argp->ret) {
+		*argp->ret = err;
+	} else {
+		TW_Task_free (argp->task);
+	}
+	H5VL_async_dec_ref (argp->fp);
+
+	H5VL_asynci_mutex_unlock (argp->fp->lock);
+
+	H5Pclose (argp->dxpl_id);
+	free (argp);
+
+	err = H5TSmutex_release ();
+	CHECK_ERR
+
+	return 0;
 }

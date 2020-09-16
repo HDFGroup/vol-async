@@ -1,6 +1,7 @@
 #include <hdf5.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "h5vl_async_public.h"
 #include "testutils.h"

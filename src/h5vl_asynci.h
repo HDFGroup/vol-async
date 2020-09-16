@@ -94,10 +94,14 @@
 		if (R != TW_SUCCESS) {                                  \
 			char msg[256];                                      \
 			sprintf (msg, "TaskWorks: %s", TW_Get_err_msg (R)); \
-			PRINT_ERR_MSG (msg, R);                             \
+			PRINT_ERR_MSG (R, msg);                             \
 			DEBUG_ABORT;                                        \
 			err = -1;                                           \
 			goto err_out;                                       \
 		}                                                       \
 	}
 #define CHK_TWERR CHK_TWRET (twerr)
+
+#define H5VL_ASYNC_LOCK_POLL_PEROID 1000
+
+herr_t H5VL_asynci_h5ts_mutex_lock ();

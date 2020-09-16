@@ -20,7 +20,7 @@
 
 typedef struct H5VL_async_file_create_args {
 	H5VL_async_t *fp;
-	const char *name;
+	char *name;
 	unsigned flags;
 	hid_t fcpl_id;
 	hid_t fapl_id;
@@ -30,10 +30,11 @@ typedef struct H5VL_async_file_create_args {
 
 typedef struct H5VL_async_file_open_args {
 	H5VL_async_t *fp;
-	const char *name;
+	char *name;
 	unsigned flags;
 	hid_t fapl_id;
 	hid_t dxpl_id;
+	TW_Task_handle_t task;
 	herr_t *ret;
 } H5VL_async_file_open_args;
 
@@ -63,6 +64,13 @@ typedef struct H5VL_async_file_optional_args {
 	TW_Task_handle_t task;
 	herr_t *ret;
 } H5VL_async_file_optional_args;
+
+typedef struct H5VL_async_file_close_args {
+	H5VL_async_t *fp;
+	hid_t dxpl_id;
+	TW_Task_handle_t task;
+	herr_t *ret;
+} H5VL_async_file_close_args;
 
 int H5VL_async_file_create_handler (void *data);
 int H5VL_async_file_open_handler (void *data);
