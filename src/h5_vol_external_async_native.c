@@ -1322,6 +1322,10 @@ H5Pset_vol_async(hid_t fapl_id)
             goto done;
         }
     }
+    else {
+        if(H5VL_ASYNC_g < 0)
+            H5VL_ASYNC_g = H5VLget_connector_id_by_name(H5VL_ASYNC_NAME);
+    }
 
     status = H5Pget_vol_id(fapl_id, &under_vol_id);
     assert(status >= 0);
