@@ -106,3 +106,8 @@ Some configuration parameters used in the instructions:
     5.6 May need to set the following environmental variable before running your application.
 
         > export LD_LIBRARY_PATH=VOL_DIR/src:H5_DIR/build/lib:$LD_LIBRARY_PATH
+
+        and on MacOS:
+
+        > export DYLD_LIBRARY_PATH=VOL_DIR/src:H5_DIR/build/lib:$DYLD_LIBRARY_PATH
+
