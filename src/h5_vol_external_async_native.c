@@ -45,7 +45,7 @@
 /* Universal linked lists header */
 #include "utlist.h"
 
-/* #define ENABLE_LOG                  1 */
+#define ENABLE_LOG                  1
 /* #define ENABLE_DBG_MSG              1 */
 /* #define ENABLE_TIMING              1 */
 
@@ -3586,8 +3586,9 @@ static herr_t
 async_attr_read(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type_id, void *buf, hid_t dxpl_id, void **req)
 {
     // For implicit mode (env var), make all read to be blocking
-    if(aid->env_async) is_blocking = 1;
-    async_task_t *async_task = NULL;
+    assert(async_instance_g);
+    if(aid->env_async) { is_blocking = 1; async_instance_g->start_abt_push = true;}
+    async_task_t *async_task = NULL; 
     /* H5O_token_t *token = NULL; */
     async_attr_read_args_t *args = NULL;
     bool lock_parent = false;
@@ -6998,7 +6999,8 @@ static herr_t
 async_dataset_read(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type_id, hid_t mem_space_id, hid_t file_space_id, hid_t plist_id, void *buf, void **req)
 {
     // For implicit mode (env var), make all read to be blocking
-    if(aid->env_async) is_blocking = 1;
+    assert(async_instance_g);
+    if(aid->env_async) { is_blocking = 1; async_instance_g->start_abt_push = true;}
     async_task_t *async_task = NULL;
     /* H5O_token_t *token = NULL; */
     async_dataset_read_args_t *args = NULL;
