@@ -758,6 +758,8 @@ int                 USE_MMAP = 0;
 /* Helper routines */
 static herr_t H5VL_async_file_specific_reissue(void *obj, hid_t connector_id,
     H5VL_file_specific_t specific_type, hid_t dxpl_id, void **req, ...);
+static herr_t H5VL_async_file_optional_reissue(void *obj, hid_t connector_id,
+    H5VL_file_optional_t optional_type, hid_t dxpl_id, void **req, ...);
 static herr_t H5VL_async_request_specific_reissue(void *obj, hid_t connector_id,
     H5VL_request_specific_t specific_type, ...);
 static herr_t H5VL_async_link_create_reissue(H5VL_link_create_type_t create_type,
@@ -1331,15 +1333,17 @@ H5Pset_vol_async(hid_t fapl_id)
     assert(status >= 0);
     assert(under_vol_id > 0);
 
-    status = H5Pget_vol_info(fapl_id, &under_vol_info);
-    assert(status >= 0);
+    if(under_vol_id != H5VL_ASYNC_g) {
+        status = H5Pget_vol_info(fapl_id, &under_vol_info);
+        assert(status >= 0);
 
-    async_vol_info.under_vol_id   = under_vol_id;
-    async_vol_info.under_vol_info = under_vol_info;
+        async_vol_info.under_vol_id   = under_vol_id;
+        async_vol_info.under_vol_info = under_vol_info;
 
-    if (H5Pset_vol(fapl_id, H5VL_ASYNC_g, &async_vol_info) < 0) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] with H5Pset_vol\n");
-        goto done;
+        if (H5Pset_vol(fapl_id, H5VL_ASYNC_g, &async_vol_info) < 0) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] with H5Pset_vol\n");
+            goto done;
+        }
     }
 
 done:
@@ -11925,6 +11929,8 @@ async_file_create_fn(void *foo)
     hid_t under_fapl_id = -1;
     async_task_t *task = (async_task_t*)foo;
     async_file_create_args_t *args = (async_file_create_args_t*)(task->args);
+    hid_t under_vol_id;
+    hbool_t supported;          /* Whether 'post open' operation is supported by VOL connector */
 
     #ifdef ENABLE_TIMING
     struct timeval now_time;
@@ -12078,18 +12084,34 @@ async_file_create_fn(void *foo)
     under_fapl_id = H5Pcopy(args->fapl_id);
 
     /* Set the VOL ID and info for the underlying FAPL */
+    /* (Caches a copy of the under_vol_id for calling post open operation) */
     if (info) {
         H5Pset_vol(under_fapl_id, info->under_vol_id, info->under_vol_info);
+        under_vol_id = info->under_vol_id;
     }
     else {
-        hid_t under_vol_id;
         H5Pget_vol_id(args->fapl_id, &under_vol_id);
         H5Pset_vol(under_fapl_id, under_vol_id, NULL);
     }
+    assert(under_vol_id);
     if ((obj = H5VLfile_create(args->name, args->flags, args->fcpl_id, under_fapl_id, args->dxpl_id, args->req)) == NULL ) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfile_create failed\n", __func__);
         goto done;
     }
+
+    /* Check for 'post open' callback */
+    supported = 0;
+    if(H5VLintrospect_opt_query(obj, under_vol_id, H5VL_SUBCLS_FILE, H5VL_NATIVE_FILE_POST_OPEN, &supported) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLintrospect_opt_query failed\n", __func__);
+        goto done;
+    }
+    if(supported) {
+        /* Make the 'post open' callback */
+        if(H5VL_async_file_optional_reissue(obj, under_vol_id, H5VL_NATIVE_FILE_POST_OPEN, args->dxpl_id, NULL) < 0) {
+            fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfile_optional failed\n", __func__);
+            goto done;
+        }
+    } /* end if */
 
     #ifdef ENABLE_TIMING
     gettimeofday(&timer4, NULL);
@@ -12373,6 +12395,8 @@ async_file_open_fn(void *foo)
     hid_t under_fapl_id = -1;
     async_task_t *task = (async_task_t*)foo;
     async_file_open_args_t *args = (async_file_open_args_t*)(task->args);
+    hid_t under_vol_id;
+    hbool_t supported;          /* Whether 'post open' operation is supported by VOL connector */
 
 #ifdef ENABLE_TIMING
     struct timeval now_time;
@@ -12526,18 +12550,34 @@ async_file_open_fn(void *foo)
     under_fapl_id = H5Pcopy(args->fapl_id);
 
     /* Set the VOL ID and info for the underlying FAPL */
+    /* (Caches a copy of the under_vol_id for calling post open operation) */
     if (info) {
         H5Pset_vol(under_fapl_id, info->under_vol_id, info->under_vol_info);
+        under_vol_id = info->under_vol_id;
     }
     else {
-        hid_t under_vol_id;
         H5Pget_vol_id(args->fapl_id, &under_vol_id);
         H5Pset_vol(under_fapl_id, under_vol_id, NULL);
     }
+    assert(under_vol_id);
     if ((obj = H5VLfile_open(args->name, args->flags, under_fapl_id, args->dxpl_id, args->req)) == NULL ) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfile_open failed\n", __func__);
         goto done;
     }
+
+    /* Check for 'post open' callback */
+    supported = 0;
+    if(H5VLintrospect_opt_query(obj, under_vol_id, H5VL_SUBCLS_FILE, H5VL_NATIVE_FILE_POST_OPEN, &supported) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLintrospect_opt_query failed\n", __func__);
+        goto done;
+    }
+    if(supported) {
+        /* Make the 'post open' callback */
+        if(H5VL_async_file_optional_reissue(obj, under_vol_id, H5VL_NATIVE_FILE_POST_OPEN, args->dxpl_id, NULL) < 0) {
+            fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfile_optional failed\n", __func__);
+            goto done;
+        }
+    } /* end if */
 
 #ifdef ENABLE_TIMING
     gettimeofday(&timer4, NULL);
@@ -13874,7 +13914,9 @@ done:
 } // End async_file_optional_fn
 
 static herr_t
-async_file_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_file_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
+async_file_optional(int is_blocking, async_instance_t* aid,
+    H5VL_async_t *parent_obj, H5VL_file_optional_t opt_type,
+    hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
     /* H5O_token_t *token = NULL; */
@@ -23139,6 +23181,32 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_t specific_type,
 
 
 /*-------------------------------------------------------------------------
+ * Function:    H5VL_async_file_optional_reissue
+ *
+ * Purpose:     Re-wrap vararg arguments into a va_list and reissue the
+ *              file optional callback to the underlying VOL connector.
+ *
+ * Return:      Success:    0
+ *              Failure:    -1
+ *
+ *-------------------------------------------------------------------------
+ */
+static herr_t
+H5VL_async_file_optional_reissue(void *obj, hid_t connector_id,
+    H5VL_file_optional_t optional_type, hid_t dxpl_id, void **req, ...)
+{
+    va_list arguments;
+    herr_t ret_value;
+
+    va_start(arguments, req);
+    ret_value = H5VLfile_optional(obj, connector_id, optional_type, dxpl_id, req, arguments);
+    va_end(arguments);
+
+    return ret_value;
+} /* end H5VL_async_file_optional_reissue() */
+
+
+/*-------------------------------------------------------------------------
  * Function:    H5VL_async_file_optional
  *
  * Purpose:     Perform a connector-specific operation on a file
@@ -23159,9 +23227,8 @@ H5VL_async_file_optional(void *file, H5VL_file_optional_t opt_type,
     printf("------- ASYNC VOL File Optional\n");
 #endif
 
-    if ((ret_value = async_file_optional(1, async_instance_g, o, opt_type, dxpl_id, req, arguments)) < 0 ) {
+    if ((ret_value = async_file_optional(1, async_instance_g, o, opt_type, dxpl_id, req, arguments)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_file_optional\n");
-    }
 
     /* Check for async request */
 /*     if(req && *req) */
@@ -23931,8 +23998,18 @@ H5VL_async_introspect_opt_query(void *obj, H5VL_subclass_t cls,
     printf("------- ASYNC VOL INTROSPECT OptQuery\n");
 #endif
 
-    ret_value = H5VLintrospect_opt_query(o->under_object, o->under_vol_id, cls,
-        opt_type, supported);
+    /* Check for 'post open' query and return immediately here, we will
+     * query for the underlying VOL connector's support in the actual file
+     * create or query operation.
+     */
+    if(H5VL_NATIVE_FILE_POST_OPEN == opt_type) {
+        if(supported)
+            *supported = 0;
+        ret_value = 0;
+    } /* end if */
+    else
+        ret_value = H5VLintrospect_opt_query(o->under_object, o->under_vol_id, cls,
+            opt_type, supported);
 
     return ret_value;
 } /* end H5VL_async_introspect_opt_query() */

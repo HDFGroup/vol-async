@@ -18,10 +18,10 @@ int main(int argc, char *argv[])
     herr_t     status;
     hid_t      async_fapl;
     int        sleeptime = 100;
-    
+
     async_fapl = H5Pcreate (H5P_FILE_ACCESS);
     async_dxpl = H5Pcreate (H5P_DATASET_XFER);
-    
+
     H5Pset_vol_async(async_fapl);
     H5Pset_dxpl_async(async_dxpl, true);
 
@@ -88,17 +88,27 @@ int main(int argc, char *argv[])
 
     attr0 = H5Acreate(dset0_id, "attr_0", H5T_NATIVE_INT, attr_space, H5P_DEFAULT, H5P_DEFAULT);
     attr1 = H5Acreate(dset1_id, "attr_1", H5T_NATIVE_INT, attr_space, H5P_DEFAULT, H5P_DEFAULT);
+    if (print_dbg_msg) printf("H5Acreate 0 & 1 done\n");
+    fflush(stdout);
 
     attr_data0 = 123456;
     attr_data1 = -654321;
     H5Awrite(attr0, H5T_NATIVE_INT, &attr_data0);
     H5Awrite(attr1, H5T_NATIVE_INT, &attr_data1);
+    if (print_dbg_msg) printf("H5Awrite 0 & 1 done\n");
+    fflush(stdout);
 
     H5Aread(attr0, H5T_NATIVE_INT, &attr_read_data0);
+    if (print_dbg_msg) printf("H5Aread 0 done\n");
+    fflush(stdout);
     H5Aread(attr1, H5T_NATIVE_INT, &attr_read_data1);
+    if (print_dbg_msg) printf("H5Aread 1 done\n");
+    fflush(stdout);
 
     H5Aclose(attr0);
     H5Aclose(attr1);
+    if (print_dbg_msg) printf("H5Aclose 0 & 1 done\n");
+    fflush(stdout);
 
     H5Sclose(attr_space);
 
