@@ -45,7 +45,7 @@
 /* Universal linked lists header */
 #include "utlist.h"
 
-#define ENABLE_LOG                  1
+/* #define ENABLE_LOG                  1 */
 /* #define ENABLE_DBG_MSG              1 */
 /* #define ENABLE_TIMING              1 */
 
