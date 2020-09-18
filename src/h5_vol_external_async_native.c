@@ -2637,6 +2637,16 @@ async_attr_create_fn(void *foo)
 
 done:
     fflush(stdout);
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer5, NULL);
+    double time5 = get_elapsed_time(&timer4, &timer5);
+#endif
+
     free_loc_param((H5VL_loc_params_t*)args->loc_params);
     free(args->name);
     args->name = NULL;
@@ -2646,8 +2656,8 @@ done:
     if(args->aapl_id > 0)    H5Pclose(args->aapl_id);
     if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 #ifdef ENABLE_TIMING
-    gettimeofday(&timer5, NULL);
-    double time5 = get_elapsed_time(&timer4, &timer5);
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
 #endif
 
     if (is_lock == 1) {
@@ -2656,23 +2666,13 @@ done:
     }
 
 #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
 #endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-#ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-#endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
 #ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
@@ -3092,14 +3092,24 @@ async_attr_open_fn(void *foo)
 
 done:
     fflush(stdout);
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer5, NULL);
+    double time5 = get_elapsed_time(&timer4, &timer5);
+#endif
+
     free_loc_param((H5VL_loc_params_t*)args->loc_params);
     free(args->name);
     args->name = NULL;
     if(args->aapl_id > 0)    H5Pclose(args->aapl_id);
     if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 #ifdef ENABLE_TIMING
-    gettimeofday(&timer5, NULL);
-    double time5 = get_elapsed_time(&timer4, &timer5);
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
 #endif
 
     if (is_lock == 1) {
@@ -3108,23 +3118,13 @@ done:
     }
 
 #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
 #endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-#ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-#endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
 #ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
@@ -3523,12 +3523,22 @@ async_attr_read_fn(void *foo)
 
 done:
     fflush(stdout);
-    if(args->mem_type_id > 0)    H5Tclose(args->mem_type_id);
-    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
 #ifdef ENABLE_TIMING
     gettimeofday(&timer5, NULL);
     double time5 = get_elapsed_time(&timer4, &timer5);
-   #endif
+#endif
+
+    if(args->mem_type_id > 0)    H5Tclose(args->mem_type_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -3536,23 +3546,13 @@ done:
     }
 
 #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
 #endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-#ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-#endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
 #ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
@@ -3938,40 +3938,40 @@ async_attr_write_fn(void *foo)
 
 done:
     fflush(stdout);
-    if(args->mem_type_id > 0)    H5Tclose(args->mem_type_id);
-    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
     gettimeofday(&timer5, NULL);
     double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#endif
+
+    if(args->mem_type_id > 0)    H5Tclose(args->mem_type_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -4365,39 +4365,39 @@ async_attr_get_fn(void *foo)
 
 done:
     fflush(stdout);
-    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
     gettimeofday(&timer5, NULL);
     double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#endif
+
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -4778,40 +4778,40 @@ async_attr_specific_fn(void *foo)
 
 done:
     fflush(stdout);
-    free_loc_param((H5VL_loc_params_t*)args->loc_params);
-    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
     gettimeofday(&timer5, NULL);
     double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#endif
+
+    free_loc_param((H5VL_loc_params_t*)args->loc_params);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -5194,39 +5194,39 @@ async_attr_optional_fn(void *foo)
 
 done:
     fflush(stdout);
-    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
     gettimeofday(&timer5, NULL);
     double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#endif
+
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -5605,39 +5605,39 @@ async_attr_close_fn(void *foo)
 
 done:
     fflush(stdout);
-    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
     gettimeofday(&timer5, NULL);
     double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#endif
+
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -6035,6 +6035,16 @@ async_dataset_create_fn(void *foo)
 
 done:
     fflush(stdout);
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer5, NULL);
+    double time5 = get_elapsed_time(&timer4, &timer5);
+#endif
+
     free_loc_param((H5VL_loc_params_t*)args->loc_params);
     free(args->name);
     args->name = NULL;
@@ -6044,38 +6054,28 @@ done:
     if(args->dcpl_id > 0)    H5Pclose(args->dcpl_id);
     if(args->dapl_id > 0)    H5Pclose(args->dapl_id);
     if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer5, NULL);
-    double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -6500,43 +6500,43 @@ async_dataset_open_fn(void *foo)
 
 done:
     fflush(stdout);
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer5, NULL);
+    double time5 = get_elapsed_time(&timer4, &timer5);
+#endif
+
     free_loc_param((H5VL_loc_params_t*)args->loc_params);
     free(args->name);
     args->name = NULL;
     if(args->dapl_id > 0)    H5Pclose(args->dapl_id);
     if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer5, NULL);
-    double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -6934,42 +6934,42 @@ async_dataset_read_fn(void *foo)
 
 done:
     fflush(stdout);
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer5, NULL);
+    double time5 = get_elapsed_time(&timer4, &timer5);
+#endif
+
     if(args->mem_type_id > 0)    H5Tclose(args->mem_type_id);
     if(args->mem_space_id > 0)    H5Sclose(args->mem_space_id);
     if(args->file_space_id > 0)    H5Sclose(args->file_space_id);
     if(args->plist_id > 0)    H5Pclose(args->plist_id);
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer5, NULL);
-    double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -7371,42 +7371,42 @@ async_dataset_write_fn(void *foo)
 
 done:
     fflush(stdout);
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer5, NULL);
+    double time5 = get_elapsed_time(&timer4, &timer5);
+#endif
+
     if(args->mem_type_id > 0)    H5Tclose(args->mem_type_id);
     if(args->mem_space_id > 0)    H5Sclose(args->mem_space_id);
     if(args->file_space_id > 0)    H5Sclose(args->file_space_id);
     if(args->plist_id > 0)    H5Pclose(args->plist_id);
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer5, NULL);
-    double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -7417,7 +7417,7 @@ done:
     if (async_instance_g && NULL != async_instance_g->qhead.queue )
        push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr);
     if (args->buf_free == true) free(args->buf);
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer9, NULL);
     double exec_time   = get_elapsed_time(&args->start_time, &timer9);
     double total_time  = get_elapsed_time(&args->create_time, &timer9);
@@ -7429,7 +7429,7 @@ done:
     printf("  [ASYNC ABT TIMING] %-24s \t    time3       : %f\n", __func__, time3);
     printf("  [ASYNC ABT TIMING] %-24s \t    time4(n.vol): %f\n", __func__, time4);
     fflush(stdout);
-    #endif
+#endif
     return;
 } // End async_dataset_write_fn
 
@@ -7898,39 +7898,39 @@ async_dataset_get_fn(void *foo)
 
 done:
     fflush(stdout);
-    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
     gettimeofday(&timer5, NULL);
     double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#endif
+
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -8311,39 +8311,39 @@ async_dataset_specific_fn(void *foo)
 
 done:
     fflush(stdout);
-    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
     gettimeofday(&timer5, NULL);
     double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#endif
+
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -8724,39 +8724,39 @@ async_dataset_optional_fn(void *foo)
 
 done:
     fflush(stdout);
-    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
     gettimeofday(&timer5, NULL);
     double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#endif
+
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -9135,39 +9135,39 @@ async_dataset_close_fn(void *foo)
 
 done:
     fflush(stdout);
-    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
     gettimeofday(&timer5, NULL);
     double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#endif
+
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -9552,6 +9552,16 @@ async_datatype_commit_fn(void *foo)
 
 done:
     fflush(stdout);
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer5, NULL);
+    double time5 = get_elapsed_time(&timer4, &timer5);
+#endif
+
     free_loc_param((H5VL_loc_params_t*)args->loc_params);
     free(args->name);
     args->name = NULL;
@@ -9560,38 +9570,28 @@ done:
     if(args->tcpl_id > 0)    H5Pclose(args->tcpl_id);
     if(args->tapl_id > 0)    H5Pclose(args->tapl_id);
     if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer5, NULL);
-    double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -10010,43 +10010,43 @@ async_datatype_open_fn(void *foo)
 
 done:
     fflush(stdout);
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer5, NULL);
+    double time5 = get_elapsed_time(&timer4, &timer5);
+#endif
+
     free_loc_param((H5VL_loc_params_t*)args->loc_params);
     free(args->name);
     args->name = NULL;
     if(args->tapl_id > 0)    H5Pclose(args->tapl_id);
     if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer5, NULL);
-    double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -10447,39 +10447,39 @@ async_datatype_get_fn(void *foo)
 
 done:
     fflush(stdout);
-    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
     gettimeofday(&timer5, NULL);
     double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#endif
+
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -10860,39 +10860,39 @@ async_datatype_specific_fn(void *foo)
 
 done:
     fflush(stdout);
-    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
     gettimeofday(&timer5, NULL);
     double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#endif
+
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -11273,39 +11273,39 @@ async_datatype_optional_fn(void *foo)
 
 done:
     fflush(stdout);
-    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
     gettimeofday(&timer5, NULL);
     double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#endif
+
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -11684,39 +11684,39 @@ async_datatype_close_fn(void *foo)
 
 done:
     fflush(stdout);
-    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
     gettimeofday(&timer5, NULL);
     double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#endif
+
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -12144,6 +12144,16 @@ async_file_create_fn(void *foo)
 
 done:
     fflush(stdout);
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer5, NULL);
+    double time5 = get_elapsed_time(&timer4, &timer5);
+#endif
+
     if(under_fapl_id > 0)    H5Pclose(under_fapl_id);
     if(NULL != info)         H5VL_async_info_free(info);
     free(args->name);
@@ -12151,38 +12161,28 @@ done:
     if(args->fcpl_id > 0)    H5Pclose(args->fcpl_id);
     if(args->fapl_id > 0)    H5Pclose(args->fapl_id);
     if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer5, NULL);
-    double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -12607,6 +12607,16 @@ async_file_open_fn(void *foo)
 
 done:
     fflush(stdout);
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer5, NULL);
+    double time5 = get_elapsed_time(&timer4, &timer5);
+#endif
+
     if(under_fapl_id > 0)    H5Pclose(under_fapl_id);
     if(NULL != info)         H5VL_async_info_free(info);
     free(args->name);
@@ -12614,8 +12624,8 @@ done:
     if(args->fapl_id > 0)    H5Pclose(args->fapl_id);
     if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 #ifdef ENABLE_TIMING
-    gettimeofday(&timer5, NULL);
-    double time5 = get_elapsed_time(&timer4, &timer5);
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
 #endif
 
     if (is_lock == 1) {
@@ -12624,23 +12634,13 @@ done:
     }
 
 #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
 #endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-#ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-#endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
 #ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
@@ -13031,39 +13031,39 @@ async_file_get_fn(void *foo)
 
 done:
     fflush(stdout);
-    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
     gettimeofday(&timer5, NULL);
     double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#endif
+
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -13444,39 +13444,39 @@ async_file_specific_fn(void *foo)
 
 done:
     fflush(stdout);
-    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
     gettimeofday(&timer5, NULL);
     double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#endif
+
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -13857,39 +13857,39 @@ async_file_optional_fn(void *foo)
 
 done:
     fflush(stdout);
-    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
     gettimeofday(&timer5, NULL);
     double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#endif
+
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -14277,39 +14277,39 @@ async_file_close_fn(void *foo)
 
 done:
     fflush(stdout);
-    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
     gettimeofday(&timer5, NULL);
     double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#endif
+
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -14711,6 +14711,16 @@ async_group_create_fn(void *foo)
 
 done:
     fflush(stdout);
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer5, NULL);
+    double time5 = get_elapsed_time(&timer4, &timer5);
+#endif
+
     free_loc_param((H5VL_loc_params_t*)args->loc_params);
     free(args->name);
     args->name = NULL;
@@ -14718,38 +14728,28 @@ done:
     if(args->gcpl_id > 0)    H5Pclose(args->gcpl_id);
     if(args->gapl_id > 0)    H5Pclose(args->gapl_id);
     if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer5, NULL);
-    double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -15166,43 +15166,43 @@ async_group_open_fn(void *foo)
 
 done:
     fflush(stdout);
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer5, NULL);
+    double time5 = get_elapsed_time(&timer4, &timer5);
+#endif
+
     free_loc_param((H5VL_loc_params_t*)args->loc_params);
     free(args->name);
     args->name = NULL;
     if(args->gapl_id > 0)    H5Pclose(args->gapl_id);
     if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer5, NULL);
-    double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -15603,39 +15603,39 @@ async_group_get_fn(void *foo)
 
 done:
     fflush(stdout);
-    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
     gettimeofday(&timer5, NULL);
     double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#endif
+
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -16016,39 +16016,39 @@ async_group_specific_fn(void *foo)
 
 done:
     fflush(stdout);
-    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
     gettimeofday(&timer5, NULL);
     double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#endif
+
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -16429,39 +16429,39 @@ async_group_optional_fn(void *foo)
 
 done:
     fflush(stdout);
-    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
     gettimeofday(&timer5, NULL);
     double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#endif
+
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -16840,39 +16840,39 @@ async_group_close_fn(void *foo)
 
 done:
     fflush(stdout);
-    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
     gettimeofday(&timer5, NULL);
     double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#endif
+
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -17270,42 +17270,42 @@ async_link_create_fn(void *foo)
 
 done:
     fflush(stdout);
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer5, NULL);
+    double time5 = get_elapsed_time(&timer4, &timer5);
+#endif
+
     free_loc_param((H5VL_loc_params_t*)args->loc_params);
     if(args->lcpl_id > 0)    H5Pclose(args->lcpl_id);
     if(args->lapl_id > 0)    H5Pclose(args->lapl_id);
     if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer5, NULL);
-    double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -17706,43 +17706,43 @@ async_link_copy_fn(void *foo)
 
 done:
     fflush(stdout);
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer5, NULL);
+    double time5 = get_elapsed_time(&timer4, &timer5);
+#endif
+
     free_loc_param((H5VL_loc_params_t*)args->loc_params1);
     free_loc_param((H5VL_loc_params_t*)args->loc_params2);
     if(args->lcpl_id > 0)    H5Pclose(args->lcpl_id);
     if(args->lapl_id > 0)    H5Pclose(args->lapl_id);
     if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer5, NULL);
-    double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -18127,43 +18127,43 @@ async_link_move_fn(void *foo)
 
 done:
     fflush(stdout);
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer5, NULL);
+    double time5 = get_elapsed_time(&timer4, &timer5);
+#endif
+
     free_loc_param((H5VL_loc_params_t*)args->loc_params1);
     free_loc_param((H5VL_loc_params_t*)args->loc_params2);
     if(args->lcpl_id > 0)    H5Pclose(args->lcpl_id);
     if(args->lapl_id > 0)    H5Pclose(args->lapl_id);
     if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer5, NULL);
-    double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -18551,40 +18551,40 @@ async_link_get_fn(void *foo)
 
 done:
     fflush(stdout);
-    free_loc_param((H5VL_loc_params_t*)args->loc_params);
-    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
     gettimeofday(&timer5, NULL);
     double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#endif
+
+    free_loc_param((H5VL_loc_params_t*)args->loc_params);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -18967,40 +18967,40 @@ async_link_specific_fn(void *foo)
 
 done:
     fflush(stdout);
-    free_loc_param((H5VL_loc_params_t*)args->loc_params);
-    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
     gettimeofday(&timer5, NULL);
     double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#endif
+
+    free_loc_param((H5VL_loc_params_t*)args->loc_params);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -19383,39 +19383,39 @@ async_link_optional_fn(void *foo)
 
 done:
     fflush(stdout);
-    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
     gettimeofday(&timer5, NULL);
     double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#endif
+
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -19805,40 +19805,40 @@ async_object_open_fn(void *foo)
 
 done:
     fflush(stdout);
-    free_loc_param((H5VL_loc_params_t*)args->loc_params);
-    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
     gettimeofday(&timer5, NULL);
     double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#endif
+
+    free_loc_param((H5VL_loc_params_t*)args->loc_params);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -20234,6 +20234,16 @@ async_object_copy_fn(void *foo)
 
 done:
     fflush(stdout);
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer5, NULL);
+    double time5 = get_elapsed_time(&timer4, &timer5);
+#endif
+
     free_loc_param((H5VL_loc_params_t*)args->src_loc_params);
     free(args->src_name);
     args->src_name = NULL;
@@ -20243,38 +20253,28 @@ done:
     if(args->ocpypl_id > 0)    H5Pclose(args->ocpypl_id);
     if(args->lcpl_id > 0)    H5Pclose(args->lcpl_id);
     if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer5, NULL);
-    double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -20664,40 +20664,40 @@ async_object_get_fn(void *foo)
 
 done:
     fflush(stdout);
-    free_loc_param((H5VL_loc_params_t*)args->loc_params);
-    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
     gettimeofday(&timer5, NULL);
     double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#endif
+
+    free_loc_param((H5VL_loc_params_t*)args->loc_params);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -21080,40 +21080,40 @@ async_object_specific_fn(void *foo)
 
 done:
     fflush(stdout);
-    free_loc_param((H5VL_loc_params_t*)args->loc_params);
-    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
     gettimeofday(&timer5, NULL);
     double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#endif
+
+    free_loc_param((H5VL_loc_params_t*)args->loc_params);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
@@ -21496,39 +21496,39 @@ async_object_optional_fn(void *foo)
 
 done:
     fflush(stdout);
-    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
-    #ifdef ENABLE_TIMING
+    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
+    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    task->h5_state = NULL;
+#ifdef ENABLE_TIMING
     gettimeofday(&timer5, NULL);
     double time5 = get_elapsed_time(&timer4, &timer5);
-    #endif
+#endif
+
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer6, NULL);
+    double time6 = get_elapsed_time(&timer5, &timer6);
+#endif
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer6, NULL);
-    double time6 = get_elapsed_time(&timer5, &timer6);
-    #endif
+#ifdef ENABLE_TIMING
+    gettimeofday(&timer7, NULL);
+    double time7 = get_elapsed_time(&timer6, &timer7);
+#endif
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
-    #ifdef ENABLE_TIMING
-    gettimeofday(&timer7, NULL);
-    double time7 = get_elapsed_time(&timer6, &timer7);
-    #endif
-
-    if(is_lib_state_restored && H5VLreset_lib_state() < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLreset_lib_state failed\n", __func__);
-    if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-    task->h5_state = NULL;
-    #ifdef ENABLE_TIMING
+#ifdef ENABLE_TIMING
     gettimeofday(&timer8, NULL);
     double time8 = get_elapsed_time(&timer7, &timer8);
-    #endif
+#endif
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
