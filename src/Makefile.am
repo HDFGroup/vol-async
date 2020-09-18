@@ -23,9 +23,12 @@ CXX_SRCS =
 C_SRCS =    h5vl_async.c \
             h5vl_asynci.c \
             h5vl_async_attr.c \
+            h5vl_async_attri.c \
             h5vl_async_blob.c \
             h5vl_async_dset.c \
+            h5vl_async_dseti.c \
             h5vl_async_dtype.c \
+            h5vl_async_dtypei.c \
             h5vl_async_file.c \
             h5vl_async_filei.c \
             h5vl_async_group.c \
@@ -33,6 +36,7 @@ C_SRCS =    h5vl_async.c \
             h5vl_async_info.c \
             h5vl_async_link.c \
             h5vl_async_obj.c \
+            h5vl_async_obji.c \
             h5vl_async_public.c \
             h5vl_async_req.c \
             h5vl_async_token.c \

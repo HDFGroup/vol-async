@@ -29,6 +29,8 @@
 #define H5VL_ASYNC_VALUE   707 /* VOL connector ID */
 #define H5VL_ASYNC_VERSION 0
 
+#define ASYNC_VOL_PROP_NAME "h5vl_async"
+
 #define H5VL_async_inc_ref(A) \
 	{                         \
 		A->ref++;             \

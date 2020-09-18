@@ -19,6 +19,7 @@
 #include "h5vl_async.h"
 #include "h5vl_async_info.h"
 #include "h5vl_async_public.h"
+#include "h5vl_asynci.h"
 
 herr_t H5Pset_vol_async (hid_t fapl_id) {
 	H5VL_async_info_t async_vol_info;
@@ -64,15 +65,51 @@ done:
 void H5VL_async_start () {}
 
 herr_t H5Pget_dxpl_async (hid_t dxpl, hbool_t *is_async) {
-	herr_t ret;
+	herr_t err = 0;
+	htri_t isdxpl, pexist;
 
-	return ret;
+	isdxpl = H5Pisa_class (dxpl, H5P_DATASET_XFER);
+	CHECK_ID (isdxpl)
+	if (isdxpl == 0)
+		*is_async = false;	// Default property will not pass class check
+	else {
+		pexist = H5Pexist (dxpl, ASYNC_VOL_PROP_NAME);
+		CHECK_ID (pexist)
+		if (pexist) {
+			err = H5Pget (dxpl, ASYNC_VOL_PROP_NAME, &is_async);
+			CHECK_ERR
+
+		} else {
+			*is_async = false;
+		}
+	}
+
+err_out:;
+	return err;
 }
 
 herr_t H5Pset_dxpl_async (hid_t dxpl, hbool_t is_async) {
-	herr_t ret;
+	herr_t err = 0;
+	htri_t isdxpl, pexist;
 
-	return ret;
+	isdxpl = H5Pisa_class (dxpl, H5P_DATASET_XFER);
+	CHECK_ID (isdxpl)
+	if (isdxpl == 0) RET_ERR ("Not dxplid")
+
+	pexist = H5Pexist (dxpl, ASYNC_VOL_PROP_NAME);
+	CHECK_ID (pexist)
+	if (!pexist) {
+		hbool_t f = false;
+		err = H5Pinsert2 (dxpl, ASYNC_VOL_PROP_NAME, sizeof (hbool_t), &f, NULL, NULL, NULL, NULL,
+						  NULL, NULL);
+		CHECK_ERR
+	}
+
+	err = H5Pset (dxpl, ASYNC_VOL_PROP_NAME, &is_async);
+	CHECK_ERR
+
+err_out:;
+	return err;
 }
 
 herr_t H5Pget_dxpl_async_cp_limit (hid_t dxpl, hsize_t *size) {

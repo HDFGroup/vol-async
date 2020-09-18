@@ -14,15 +14,15 @@
 
 #include <H5VLpublic.h>
 
-void *H5VL_async_datatype_commit (void *obj,
-								  const H5VL_loc_params_t *loc_params,
-								  const char *name,
-								  hid_t type_id,
-								  hid_t lcpl_id,
-								  hid_t tcpl_id,
-								  hid_t tapl_id,
-								  hid_t dxpl_id,
-								  void **req);
+herr_t H5VL_async_datatype_commit (void *obj,
+								   const H5VL_loc_params_t *loc_params,
+								   const char *name,
+								   hid_t type_id,
+								   hid_t lcpl_id,
+								   hid_t tcpl_id,
+								   hid_t tapl_id,
+								   hid_t dxpl_id,
+								   void **req);
 void *H5VL_async_datatype_open (void *obj,
 								const H5VL_loc_params_t *loc_params,
 								const char *name,

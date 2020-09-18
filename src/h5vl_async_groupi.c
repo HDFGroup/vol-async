@@ -23,18 +23,17 @@
 #include "h5vl_asynci.h"
 
 int H5VL_async_group_create_handler (void *data) {
-	herr_t err						   = 0;
+	H5VL_ASYNC_HANDLER_VARS
 	H5VL_async_group_create_args *argp = (H5VL_async_group_create_args *)data;
 
-	/* Acquire global lock */
-	err = H5VL_asynci_h5ts_mutex_lock ();
-	CHECK_ERR
+	H5VL_ASYNC_HANDLER_BEGIN
 
 	/* Open the gp with the underlying VOL connector */
-	argp->gp->under_vol_id = argp->parent->under_vol_id;
-	argp->gp->under_object =
-		H5VLgroup_create (argp->parent, argp->loc_params, argp->gp->under_vol_id, argp->name,
-						  argp->lcpl_id, argp->gcpl_id, argp->gapl_id, argp->dxpl_id, NULL);
+	argp->gp->under_vol_id = argp->pp->under_vol_id;
+	H5Iinc_ref (argp->gp->under_vol_id);
+	argp->gp->under_object = H5VLgroup_create (argp->pp->under_object, argp->loc_params,
+											   argp->gp->under_vol_id, argp->name, argp->lcpl_id,
+											   argp->gcpl_id, argp->gapl_id, argp->dxpl_id, NULL);
 	CHECK_PTR (argp->gp->under_object)
 
 err_out:;
@@ -45,47 +44,35 @@ err_out:;
 	}
 
 	H5VL_asynci_mutex_lock (argp->gp->lock);
-
-	if (argp->ret) {
-		*argp->ret = err;
-	} else {
-		TW_Task_free (argp->gp->init_task);
-	}
-	argp->gp->init_task = TW_HANDLE_NULL;
 	H5VL_async_dec_ref (argp->gp);
-	H5VL_async_dec_ref (argp->parent);
-
 	H5VL_asynci_mutex_unlock (argp->gp->lock);
+
+	H5VL_ASYNC_HANDLER_END
 
 	H5Pclose (argp->dxpl_id);
 	H5Pclose (argp->gapl_id);
 	H5Pclose (argp->gcpl_id);
 	H5Pclose (argp->lcpl_id);
-	free (argp->name);
-	free (argp);
-
-	err = H5TSmutex_release ();
-	CHECK_ERR
+	H5VL_ASYNC_HANDLER_FREE
 
 	return 0;
 }
 
 int H5VL_async_group_open_handler (void *data) {
-	herr_t err						 = 0;
+	H5VL_ASYNC_HANDLER_VARS
 	H5VL_async_group_open_args *argp = (H5VL_async_group_open_args *)data;
 
-	/* Acquire global lock */
-	err = H5VL_asynci_h5ts_mutex_lock ();
-	CHECK_ERR
+	H5VL_ASYNC_HANDLER_BEGIN
 
 	/* Open the group with the underlying VOL connector */
-	argp->gp->under_vol_id = argp->parent->under_vol_id;
-	argp->gp->under_object = H5VLgroup_open (argp->parent, argp->loc_params, argp->gp->under_vol_id,
-											 argp->name, argp->gapl_id, argp->dxpl_id, NULL);
+	argp->gp->under_vol_id = argp->pp->under_vol_id;
+	H5Iinc_ref (argp->gp->under_vol_id);
+	argp->gp->under_object =
+		H5VLgroup_open (argp->pp->under_object, argp->loc_params, argp->gp->under_vol_id,
+						argp->name, argp->gapl_id, argp->dxpl_id, NULL);
 	CHECK_PTR (argp->gp->under_object)
 
 err_out:;
-
 	if (err) {
 		argp->gp->stat = H5VL_async_stat_err;
 	} else {
@@ -93,61 +80,35 @@ err_out:;
 	}
 
 	H5VL_asynci_mutex_lock (argp->gp->lock);
-
-	if (argp->ret) {
-		*argp->ret = err;
-	} else {
-		TW_Task_free (argp->gp->init_task);
-	}
-	argp->gp->init_task = TW_HANDLE_NULL;
 	H5VL_async_dec_ref (argp->gp);
-	H5VL_async_dec_ref (argp->parent);
-
 	H5VL_asynci_mutex_unlock (argp->gp->lock);
+
+	H5VL_ASYNC_HANDLER_END
 
 	H5Pclose (argp->dxpl_id);
 	H5Pclose (argp->gapl_id);
-	free (argp->name);
-	free (argp);
-
-	err = H5TSmutex_release ();
-	CHECK_ERR
+	H5VL_ASYNC_HANDLER_FREE
 
 	return 0;
 }
 
 int H5VL_async_group_get_handler (void *data) {
-	herr_t err						= 0;
+	H5VL_ASYNC_HANDLER_VARS
 	terr_t twerr					= TW_SUCCESS;
 	H5VL_async_group_get_args *argp = (H5VL_async_group_get_args *)data;
 
-	/* Acquire global lock */
-	err = H5VL_asynci_h5ts_mutex_lock ();
-	CHECK_ERR
+	H5VL_ASYNC_HANDLER_BEGIN
 
-	err = H5VLgroup_get (argp->gp->under_object, argp->gp->under_vol_id, argp->get_type,
+	err = H5VLgroup_get (argp->pp->under_object, argp->pp->under_vol_id, argp->get_type,
 						 argp->dxpl_id, NULL, argp->arguments);
 	CHECK_ERR
 
 err_out:;
-
-	H5VL_asynci_mutex_lock (argp->gp->lock);
-
-	if (argp->ret) {
-		*argp->ret = err;
-	} else {
-		TW_Task_free (argp->task);
-	}
-	H5VL_async_dec_ref (argp->gp);
-
-	H5VL_asynci_mutex_unlock (argp->gp->lock);
+	H5VL_ASYNC_HANDLER_END
 
 	H5Pclose (argp->dxpl_id);
 	va_end (argp->arguments);
-	free (argp);
-
-	err = H5TSmutex_release ();
-	CHECK_ERR
+	H5VL_ASYNC_HANDLER_FREE
 
 	return 0;
 }
@@ -180,106 +141,62 @@ herr_t H5VL_async_group_specific_reissue (void *obj,
 } /* end H5VL_async_group_specific_reissue() */
 
 int H5VL_async_group_specific_handler (void *data) {
-	herr_t err							 = 0;
+	H5VL_ASYNC_HANDLER_VARS
 	hid_t under_vol_id					 = -1;
 	H5VL_async_group_specific_args *argp = (H5VL_async_group_specific_args *)data;
 
-	/* Acquire global lock */
-	err = H5VL_asynci_h5ts_mutex_lock ();
-	CHECK_ERR
+	H5VL_ASYNC_HANDLER_BEGIN
 
-	err = H5VLgroup_specific (argp->gp->under_object, argp->gp->under_vol_id, argp->specific_type,
+	err = H5VLgroup_specific (argp->pp->under_object, argp->pp->under_vol_id, argp->specific_type,
 							  argp->dxpl_id, NULL, argp->arguments);
 
 err_out:;
-	H5VL_asynci_mutex_lock (argp->gp->lock);
-
-	if (argp->ret) {
-		*argp->ret = err;
-	} else {
-		TW_Task_free (argp->task);
-	}
-	H5VL_async_dec_ref (argp->gp);
-
-	H5VL_asynci_mutex_unlock (argp->gp->lock);
+	H5VL_ASYNC_HANDLER_END
 
 	H5Pclose (argp->dxpl_id);
 	va_end (argp->arguments);
-	free (argp);
-
-	err = H5TSmutex_release ();
-	CHECK_ERR
+	H5VL_ASYNC_HANDLER_FREE
 
 	return 0;
 }
 
 int H5VL_async_group_optional_handler (void *data) {
-	herr_t err							 = 0;
-	terr_t twerr						 = TW_SUCCESS;
+	H5VL_ASYNC_HANDLER_VARS
 	H5VL_async_group_optional_args *argp = (H5VL_async_group_optional_args *)data;
 
-	/* Acquire global lock */
-	err = H5VL_asynci_h5ts_mutex_lock ();
-	CHECK_ERR
+	H5VL_ASYNC_HANDLER_BEGIN
 
-	err = H5VLgroup_optional (argp->gp->under_object, argp->gp->under_vol_id, argp->opt_type,
+	err = H5VLgroup_optional (argp->pp->under_object, argp->pp->under_vol_id, argp->opt_type,
 							  argp->dxpl_id, NULL, argp->arguments);
 	CHECK_ERR
 
 err_out:;
-	H5VL_asynci_mutex_lock (argp->gp->lock);
-
-	if (argp->ret) {
-		*argp->ret = err;
-	} else {
-		TW_Task_free (argp->task);
-	}
-	H5VL_async_dec_ref (argp->gp);
-
-	H5VL_asynci_mutex_unlock (argp->gp->lock);
+	H5VL_ASYNC_HANDLER_END
 
 	H5Pclose (argp->dxpl_id);
 	va_end (argp->arguments);
-	free (argp);
-
-	err = H5TSmutex_release ();
-	CHECK_ERR
+	H5VL_ASYNC_HANDLER_FREE
 
 	return 0;
 }
 
 int H5VL_async_group_close_handler (void *data) {
-	herr_t err						  = 0;
-	terr_t twerr					  = TW_SUCCESS;
+	H5VL_ASYNC_HANDLER_VARS
 	H5VL_async_group_close_args *argp = (H5VL_async_group_close_args *)data;
 
-	/* Acquire global lock */
-	err = H5VL_asynci_h5ts_mutex_lock ();
+	H5VL_ASYNC_HANDLER_BEGIN
+
+	err = H5VLgroup_close (argp->pp->under_object, argp->pp->under_vol_id, argp->dxpl_id, NULL);
 	CHECK_ERR
 
-	err = H5VLgroup_close (argp->gp->under_object, argp->gp->under_vol_id, argp->dxpl_id, NULL);
-	CHECK_ERR
-
-	err = H5VL_async_free_obj (argp->gp);
+	err = H5VL_async_free_obj (argp->pp);
 	CHECK_ERR
 
 err_out:;
-	H5VL_asynci_mutex_lock (argp->gp->lock);
-
-	if (argp->ret) {
-		*argp->ret = err;
-	} else {
-		TW_Task_free (argp->task);
-	}
-	H5VL_async_dec_ref (argp->gp);
-
-	H5VL_asynci_mutex_unlock (argp->gp->lock);
+	H5VL_ASYNC_HANDLER_END
 
 	H5Pclose (argp->dxpl_id);
-	free (argp);
-
-	err = H5TSmutex_release ();
-	CHECK_ERR
+	H5VL_ASYNC_HANDLER_FREE
 
 	return 0;
 }

@@ -34,14 +34,14 @@ herr_t H5VL_async_dataset_read (void *dset,
 								hid_t mem_type_id,
 								hid_t mem_space_id,
 								hid_t file_space_id,
-								hid_t plist_id,
+								hid_t dxpl_id,
 								void *buf,
 								void **req);
 herr_t H5VL_async_dataset_write (void *dset,
 								 hid_t mem_type_id,
 								 hid_t mem_space_id,
 								 hid_t file_space_id,
-								 hid_t plist_id,
+								 hid_t dxpl_id,
 								 const void *buf,
 								 void **req);
 herr_t H5VL_async_dataset_get (
