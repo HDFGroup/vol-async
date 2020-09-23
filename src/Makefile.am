@@ -35,6 +35,7 @@ C_SRCS =    h5vl_async.c \
             h5vl_async_groupi.c \
             h5vl_async_info.c \
             h5vl_async_link.c \
+            h5vl_async_linki.c \
             h5vl_async_obj.c \
             h5vl_async_obji.c \
             h5vl_async_public.c \

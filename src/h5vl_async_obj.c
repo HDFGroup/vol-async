@@ -201,10 +201,10 @@ herr_t H5VL_async_object_get (void *obj,
 #endif
 
 	argp = (H5VL_async_object_get_args *)malloc (sizeof (H5VL_async_object_get_args) +
-												 sizeof (H5VL_object_get_t));
+												 sizeof (H5VL_loc_params_t));
 	CHECK_PTR (argp)
 	argp->pp		 = pp;
-	argp->loc_params = (H5VL_loc_params_t *)((char *)argp + sizeof (H5VL_async_object_open_args));
+	argp->loc_params = (H5VL_loc_params_t *)((char *)argp + sizeof (H5VL_async_object_get_args));
 	memcpy (argp->loc_params, loc_params, sizeof (H5VL_loc_params_t));
 	argp->dxpl_id  = H5Pcopy (dxpl_id);
 	argp->get_type = get_type;
@@ -258,10 +258,11 @@ herr_t H5VL_async_object_specific (void *obj,
 #endif
 
 	argp = (H5VL_async_object_specific_args *)malloc (sizeof (H5VL_async_object_specific_args) +
-													  sizeof (H5VL_object_get_t));
+													  sizeof (H5VL_loc_params_t));
 	CHECK_PTR (argp)
-	argp->pp		 = pp;
-	argp->loc_params = (H5VL_loc_params_t *)((char *)argp + sizeof (H5VL_async_object_open_args));
+	argp->pp = pp;
+	argp->loc_params =
+		(H5VL_loc_params_t *)((char *)argp + sizeof (H5VL_async_object_specific_args));
 	memcpy (argp->loc_params, loc_params, sizeof (H5VL_loc_params_t));
 	argp->dxpl_id		= H5Pcopy (dxpl_id);
 	argp->specific_type = specific_type;

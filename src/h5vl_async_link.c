@@ -2,50 +2,29 @@
  * Copyright (C) 2020, Lawrence Berkeley National Laboratory.                *
  * All rights reserved.                                                      *
  *                                                                           *
- * This file is part of AsyncVOL. The full AsyncVOL copyright notice,      *
+ * This object is part of AsyncVOL. The full AsyncVOL copyright notice,      *
  * including terms governing use, modification, and redistribution, is       *
- * contained in the file COPYING at the root of the source code distribution *
+ * contained in the object COPYING at the root of the source code distribution *
  * tree.                                                                     *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-/* Link callbacks */
+/* object callbacks */
 
-#include <assert.h>
+#include <hdf5.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <string.h>
 
 /* Async VOL headers */
 #include "h5vl_async.h"
+#include "h5vl_async_info.h"
 #include "h5vl_async_link.h"
-
-/*-------------------------------------------------------------------------
- * Function:    H5VL_async_link_create_reissue
- *
- * Purpose:     Re-wrap vararg arguments into a va_list and reissue the
- *              link create callback to the underlying VOL connector.
- *
- * Return:      Success:    0
- *              Failure:    -1
- *
- *-------------------------------------------------------------------------
- */
-herr_t H5VL_async_link_create_reissue (H5VL_link_create_type_t create_type,
-									   void *obj,
-									   const H5VL_loc_params_t *loc_params,
-									   hid_t connector_id,
-									   hid_t lcpl_id,
-									   hid_t lapl_id,
-									   hid_t dxpl_id,
-									   void **req,
-									   ...) {
-	va_list arguments;
-	herr_t ret_value;
-
-	va_start (arguments, req);
-	ret_value = H5VLlink_create (create_type, obj, loc_params, connector_id, lcpl_id, lapl_id,
-								 dxpl_id, req, arguments);
-	va_end (arguments);
-
-	return ret_value;
-} /* end H5VL_async_link_create_reissue() */
+#include "h5vl_async_linki.h"
+#include "h5vl_async_public.h"
+#include "h5vl_async_req.h"
+#include "h5vl_asynci.h"
+#include "h5vl_asynci_mutex.h"
+#include "h5vl_asynci_vector.h"
 
 /*-------------------------------------------------------------------------
  * Function:    H5VL_async_link_create
@@ -65,49 +44,49 @@ herr_t H5VL_async_link_create (H5VL_link_create_type_t create_type,
 							   hid_t dxpl_id,
 							   void **req,
 							   va_list arguments) {
-	H5VL_async_t *o	   = (H5VL_async_t *)obj;
-	hid_t under_vol_id = -1;
-	herr_t ret_value;
+	H5VL_ASYNC_CB_VARS
+	H5VL_async_link_create_args *argp;
+	H5VL_async_t *pp = (H5VL_async_t *)obj;
 
 #ifdef ENABLE_ASYNC_LOGGING
-	printf ("------- ASYNC VOL LINK Create\n");
+	printf ("------- ASYNC VOL link Create\n");
 #endif
 
-	/* Try to retrieve the "under" VOL id */
-	if (o) under_vol_id = o->under_vol_id;
+	argp = (H5VL_async_link_create_args *)malloc (sizeof (H5VL_async_link_create_args) +
+												  sizeof (H5VL_loc_params_t));
+	CHECK_PTR (argp)
+	argp->pp		 = pp;
+	argp->loc_params = (H5VL_loc_params_t *)((char *)argp + sizeof (H5VL_async_link_create_args));
+	memcpy (argp->loc_params, loc_params, sizeof (H5VL_loc_params_t));
+	argp->dxpl_id	  = H5Pcopy (dxpl_id);
+	argp->lcpl_id	  = H5Pcopy (lcpl_id);
+	argp->lapl_id	  = H5Pcopy (lapl_id);
+	argp->create_type = create_type;
+	va_copy (argp->arguments, arguments);
+	H5VL_ASYNC_CB_TASK_INIT
 
-	/* Fix up the link target object for hard link creation */
-	if (H5VL_LINK_CREATE_HARD == create_type) {
-		void *cur_obj;
-		H5VL_loc_params_t *cur_params;
+	twerr =
+		TW_Task_create (H5VL_async_link_create_handler, argp, TW_TASK_DEP_ALL_COMPLETE, 0, &task);
+	CHK_TWERR
 
-		/* Retrieve the object & loc params for the link target */
-		cur_obj	   = va_arg (arguments, void *);
-		cur_params = va_arg (arguments, H5VL_loc_params_t *);
+	H5VL_ASYNC_CB_TASK_COMMIT
 
-		/* If it's a non-NULL pointer, find the 'under object' and re-set the
-		 * property */
-		if (cur_obj) {
-			/* Check if we still need the "under" VOL ID */
-			if (under_vol_id < 0) under_vol_id = ((H5VL_async_t *)cur_obj)->under_vol_id;
+	H5VL_ASYNC_CB_TASK_WAIT
 
-			/* Set the object for the link target */
-			cur_obj = ((H5VL_async_t *)cur_obj)->under_object;
-		} /* end if */
+err_out:;
+	if (err) {
+		if (argp) {
+			if (argp->task != TW_HANDLE_NULL) { TW_Task_free (argp->task); }
+			H5Pclose (argp->dxpl_id);
+			H5Pclose (argp->lapl_id);
+			H5Pclose (argp->lcpl_id);
+			va_end (argp->arguments);
+			free (argp);
+		}
 
-		/* Re-issue 'link create' call, using the unwrapped pieces */
-		ret_value = H5VL_async_link_create_reissue (create_type, (o ? o->under_object : NULL),
-													loc_params, under_vol_id, lcpl_id, lapl_id,
-													dxpl_id, req, cur_obj, cur_params);
-	} /* end if */
-	else
-		ret_value = H5VLlink_create (create_type, (o ? o->under_object : NULL), loc_params,
-									 under_vol_id, lcpl_id, lapl_id, dxpl_id, req, arguments);
-
-	/* Check for async request */
-	if (req && *req) *req = H5VL_async_new_obj (*req, under_vol_id);
-
-	return ret_value;
+		free (reqp);
+	}
+	return err;
 } /* end H5VL_async_link_create() */
 
 /*-------------------------------------------------------------------------
@@ -132,30 +111,59 @@ herr_t H5VL_async_link_copy (void *src_obj,
 							 hid_t lapl_id,
 							 hid_t dxpl_id,
 							 void **req) {
-	H5VL_async_t *o_src = (H5VL_async_t *)src_obj;
-	H5VL_async_t *o_dst = (H5VL_async_t *)dst_obj;
-	hid_t under_vol_id	= -1;
-	herr_t ret_value;
+	H5VL_ASYNC_CB_VARS
+	H5VL_async_link_copy_args *argp;
+	H5VL_async_t *pp = (H5VL_async_t *)src_obj;
 
 #ifdef ENABLE_ASYNC_LOGGING
-	printf ("------- ASYNC VOL LINK Copy\n");
+	printf ("------- ASYNC VOL link Copy\n");
 #endif
 
-	/* Retrieve the "under" VOL id */
-	if (o_src)
-		under_vol_id = o_src->under_vol_id;
-	else if (o_dst)
-		under_vol_id = o_dst->under_vol_id;
-	assert (under_vol_id > 0);
+	argp = (H5VL_async_link_copy_args *)malloc (sizeof (H5VL_async_link_copy_args) +
+												sizeof (H5VL_loc_params_t) * 2);
+	CHECK_PTR (argp)
+	argp->pp		  = pp;
+	argp->loc_params1 = (H5VL_loc_params_t *)((char *)argp + sizeof (H5VL_async_link_get_args));
+	memcpy (argp->loc_params1, loc_params1, sizeof (H5VL_loc_params_t));
+	argp->loc_params2 =
+		(H5VL_loc_params_t *)((char *)argp->loc_params1 + sizeof (H5VL_loc_params_t));
+	memcpy (argp->loc_params2, loc_params2, sizeof (H5VL_loc_params_t));
+	argp->dxpl_id = H5Pcopy (dxpl_id);
+	argp->lcpl_id = H5Pcopy (lcpl_id);
+	argp->lapl_id = H5Pcopy (lapl_id);
+	argp->dst_obj = dst_obj;
+	H5VL_ASYNC_CB_TASK_INIT
 
-	ret_value = H5VLlink_copy ((o_src ? o_src->under_object : NULL), loc_params1,
-							   (o_dst ? o_dst->under_object : NULL), loc_params2, under_vol_id,
-							   lcpl_id, lapl_id, dxpl_id, req);
+	twerr = TW_Task_create (H5VL_async_link_move_handler, argp, TW_TASK_DEP_ALL_COMPLETE, 0, &task);
+	CHK_TWERR
 
-	/* Check for async request */
-	if (req && *req) *req = H5VL_async_new_obj (*req, under_vol_id);
+	H5VL_asynci_mutex_lock (argp->dst_obj->lock);
+	/* Add dependency to init task */
+	if (argp->dst_obj->init_task) {
+		twerr = TW_Task_add_dep (task, argp->dst_obj->init_task);
+		CHK_TWERR
+	}
+	/* Increase reference count and commit task*/
+	H5VL_async_inc_ref (argp->dst_obj);
+	/* Release object lock */
+	H5VL_asynci_mutex_unlock (argp->dst_obj->lock);
+	H5VL_ASYNC_CB_TASK_COMMIT
 
-	return ret_value;
+	H5VL_ASYNC_CB_TASK_WAIT
+
+err_out:;
+	if (err) {
+		if (argp) {
+			if (argp->task != TW_HANDLE_NULL) { TW_Task_free (argp->task); }
+			H5Pclose (argp->dxpl_id);
+			H5Pclose (argp->lapl_id);
+			H5Pclose (argp->lcpl_id);
+			free (argp);
+		}
+
+		free (reqp);
+	}
+	return err;
 } /* end H5VL_async_link_copy() */
 
 /*-------------------------------------------------------------------------
@@ -181,30 +189,59 @@ herr_t H5VL_async_link_move (void *src_obj,
 							 hid_t lapl_id,
 							 hid_t dxpl_id,
 							 void **req) {
-	H5VL_async_t *o_src = (H5VL_async_t *)src_obj;
-	H5VL_async_t *o_dst = (H5VL_async_t *)dst_obj;
-	hid_t under_vol_id	= -1;
-	herr_t ret_value;
+	H5VL_ASYNC_CB_VARS
+	H5VL_async_link_move_args *argp;
+	H5VL_async_t *pp = (H5VL_async_t *)src_obj;
 
 #ifdef ENABLE_ASYNC_LOGGING
-	printf ("------- ASYNC VOL LINK Move\n");
+	printf ("------- ASYNC VOL link Move\n");
 #endif
 
-	/* Retrieve the "under" VOL id */
-	if (o_src)
-		under_vol_id = o_src->under_vol_id;
-	else if (o_dst)
-		under_vol_id = o_dst->under_vol_id;
-	assert (under_vol_id > 0);
+	argp = (H5VL_async_link_move_args *)malloc (sizeof (H5VL_async_link_move_args) +
+												sizeof (H5VL_loc_params_t) * 2);
+	CHECK_PTR (argp)
+	argp->pp		  = pp;
+	argp->loc_params1 = (H5VL_loc_params_t *)((char *)argp + sizeof (H5VL_async_link_get_args));
+	memcpy (argp->loc_params1, loc_params1, sizeof (H5VL_loc_params_t));
+	argp->loc_params2 =
+		(H5VL_loc_params_t *)((char *)argp->loc_params1 + sizeof (H5VL_loc_params_t));
+	memcpy (argp->loc_params2, loc_params2, sizeof (H5VL_loc_params_t));
+	argp->dxpl_id = H5Pcopy (dxpl_id);
+	argp->lcpl_id = H5Pcopy (lcpl_id);
+	argp->lapl_id = H5Pcopy (lapl_id);
+	argp->dst_obj = dst_obj;
+	H5VL_ASYNC_CB_TASK_INIT
 
-	ret_value = H5VLlink_move ((o_src ? o_src->under_object : NULL), loc_params1,
-							   (o_dst ? o_dst->under_object : NULL), loc_params2, under_vol_id,
-							   lcpl_id, lapl_id, dxpl_id, req);
+	twerr = TW_Task_create (H5VL_async_link_move_handler, argp, TW_TASK_DEP_ALL_COMPLETE, 0, &task);
+	CHK_TWERR
 
-	/* Check for async request */
-	if (req && *req) *req = H5VL_async_new_obj (*req, under_vol_id);
+	H5VL_asynci_mutex_lock (argp->dst_obj->lock);
+	/* Add dependency to init task */
+	if (argp->dst_obj->init_task) {
+		twerr = TW_Task_add_dep (task, argp->dst_obj->init_task);
+		CHK_TWERR
+	}
+	/* Increase reference count and commit task*/
+	H5VL_async_inc_ref (argp->dst_obj);
+	/* Release object lock */
+	H5VL_asynci_mutex_unlock (argp->dst_obj->lock);
+	H5VL_ASYNC_CB_TASK_COMMIT
 
-	return ret_value;
+	H5VL_ASYNC_CB_TASK_WAIT
+
+err_out:;
+	if (err) {
+		if (argp) {
+			if (argp->task != TW_HANDLE_NULL) { TW_Task_free (argp->task); }
+			H5Pclose (argp->dxpl_id);
+			H5Pclose (argp->lapl_id);
+			H5Pclose (argp->lcpl_id);
+			free (argp);
+		}
+
+		free (reqp);
+	}
+	return err;
 } /* end H5VL_async_link_move() */
 
 /*-------------------------------------------------------------------------
@@ -223,26 +260,50 @@ herr_t H5VL_async_link_get (void *obj,
 							hid_t dxpl_id,
 							void **req,
 							va_list arguments) {
-	H5VL_async_t *o = (H5VL_async_t *)obj;
-	herr_t ret_value;
+	H5VL_ASYNC_CB_VARS
+	H5VL_async_link_get_args *argp;
+	H5VL_async_t *pp = (H5VL_async_t *)obj;
 
 #ifdef ENABLE_ASYNC_LOGGING
-	printf ("------- ASYNC VOL LINK Get\n");
+	printf ("------- ASYNC VOL link Get\n");
 #endif
 
-	ret_value = H5VLlink_get (o->under_object, loc_params, o->under_vol_id, get_type, dxpl_id, req,
-							  arguments);
+	argp = (H5VL_async_link_get_args *)malloc (sizeof (H5VL_async_link_get_args) +
+											   sizeof (H5VL_loc_params_t));
+	CHECK_PTR (argp)
+	argp->pp		 = pp;
+	argp->loc_params = (H5VL_loc_params_t *)((char *)argp + sizeof (H5VL_async_link_get_args));
+	memcpy (argp->loc_params, loc_params, sizeof (H5VL_loc_params_t));
+	argp->dxpl_id  = H5Pcopy (dxpl_id);
+	argp->get_type = get_type;
+	va_copy (argp->arguments, arguments);
+	H5VL_ASYNC_CB_TASK_INIT
 
-	/* Check for async request */
-	if (req && *req) *req = H5VL_async_new_obj (*req, o->under_vol_id);
+	twerr = TW_Task_create (H5VL_async_link_get_handler, argp, TW_TASK_DEP_ALL_COMPLETE, 0, &task);
+	CHK_TWERR
 
-	return ret_value;
+	H5VL_ASYNC_CB_TASK_COMMIT
+
+	H5VL_ASYNC_CB_TASK_WAIT
+
+err_out:;
+	if (err) {
+		if (argp) {
+			if (argp->task != TW_HANDLE_NULL) { TW_Task_free (argp->task); }
+			H5Pclose (argp->dxpl_id);
+			va_end (argp->arguments);
+			free (argp);
+		}
+
+		free (reqp);
+	}
+	return err;
 } /* end H5VL_async_link_get() */
 
 /*-------------------------------------------------------------------------
  * Function:    H5VL_async_link_specific
  *
- * Purpose:     Specific operation on a link
+ * Purpose:     Specific operation on link
  *
  * Return:      Success:    0
  *              Failure:    -1
@@ -255,20 +316,43 @@ herr_t H5VL_async_link_specific (void *obj,
 								 hid_t dxpl_id,
 								 void **req,
 								 va_list arguments) {
-	H5VL_async_t *o = (H5VL_async_t *)obj;
-	herr_t ret_value;
+	H5VL_ASYNC_CB_VARS
+	H5VL_async_link_specific_args *argp;
+	H5VL_async_t *pp = (H5VL_async_t *)obj;
 
 #ifdef ENABLE_ASYNC_LOGGING
-	printf ("------- ASYNC VOL LINK Specific\n");
+	printf ("------- ASYNC VOL link Specific\n");
 #endif
 
-	ret_value = H5VLlink_specific (o->under_object, loc_params, o->under_vol_id, specific_type,
-								   dxpl_id, req, arguments);
+	argp = (H5VL_async_link_specific_args *)malloc (sizeof (H5VL_async_link_specific_args) +
+													sizeof (H5VL_link_get_t));
+	CHECK_PTR (argp)
+	argp->pp		 = pp;
+	argp->loc_params = (H5VL_loc_params_t *)((char *)argp + sizeof (H5VL_async_link_specific_args));
+	memcpy (argp->loc_params, loc_params, sizeof (H5VL_loc_params_t));
+	argp->dxpl_id		= H5Pcopy (dxpl_id);
+	argp->specific_type = specific_type;
+	va_copy (argp->arguments, arguments);
+	H5VL_ASYNC_CB_TASK_INIT
 
-	/* Check for async request */
-	if (req && *req) *req = H5VL_async_new_obj (*req, o->under_vol_id);
+	twerr =
+		TW_Task_create (H5VL_async_link_specific_handler, argp, TW_TASK_DEP_ALL_COMPLETE, 0, &task);
+	CHK_TWERR
 
-	return ret_value;
+	H5VL_ASYNC_CB_TASK_COMMIT
+
+	H5VL_ASYNC_CB_TASK_WAIT
+err_out:;
+	if (err) {
+		if (argp) {
+			if (argp->task != TW_HANDLE_NULL) { TW_Task_free (argp->task); }
+			H5Pclose (argp->dxpl_id);
+			va_end (argp->arguments);
+			free (argp);
+		}
+	}
+
+	return err;
 } /* end H5VL_async_link_specific() */
 
 /*-------------------------------------------------------------------------
@@ -283,18 +367,39 @@ herr_t H5VL_async_link_specific (void *obj,
  */
 herr_t H5VL_async_link_optional (
 	void *obj, H5VL_link_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments) {
-	H5VL_async_t *o = (H5VL_async_t *)obj;
-	herr_t ret_value;
+	H5VL_ASYNC_CB_VARS
+	H5VL_async_link_optional_args *argp;
+	H5VL_async_t *pp = (H5VL_async_t *)obj;
 
 #ifdef ENABLE_ASYNC_LOGGING
-	printf ("------- ASYNC VOL LINK Optional\n");
+	printf ("------- ASYNC VOL link Optional\n");
 #endif
 
-	ret_value =
-		H5VLlink_optional (o->under_object, o->under_vol_id, opt_type, dxpl_id, req, arguments);
+	argp = (H5VL_async_link_optional_args *)malloc (sizeof (H5VL_async_link_optional_args));
+	CHECK_PTR (argp)
+	argp->pp	   = pp;
+	argp->dxpl_id  = H5Pcopy (dxpl_id);
+	argp->opt_type = opt_type;
+	va_copy (argp->arguments, arguments);
+	H5VL_ASYNC_CB_TASK_INIT
 
-	/* Check for async request */
-	if (req && *req) *req = H5VL_async_new_obj (*req, o->under_vol_id);
+	twerr =
+		TW_Task_create (H5VL_async_link_optional_handler, argp, TW_TASK_DEP_ALL_COMPLETE, 0, &task);
+	CHK_TWERR
 
-	return ret_value;
+	H5VL_ASYNC_CB_TASK_COMMIT
+
+	H5VL_ASYNC_CB_TASK_WAIT
+
+err_out:;
+	if (err) {
+		if (argp) {
+			if (argp->task != TW_HANDLE_NULL) { TW_Task_free (argp->task); }
+			H5Pclose (argp->dxpl_id);
+			va_end (argp->arguments);
+			free (argp);
+		}
+	}
+
+	return err;
 } /* end H5VL_async_link_optional() */

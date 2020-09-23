@@ -146,9 +146,9 @@ am__objects_1 = h5vl_async.lo h5vl_asynci.lo h5vl_async_attr.lo \
 	h5vl_async_dseti.lo h5vl_async_dtype.lo h5vl_async_dtypei.lo \
 	h5vl_async_file.lo h5vl_async_filei.lo h5vl_async_group.lo \
 	h5vl_async_groupi.lo h5vl_async_info.lo h5vl_async_link.lo \
-	h5vl_async_obj.lo h5vl_async_obji.lo h5vl_async_public.lo \
-	h5vl_async_req.lo h5vl_async_token.lo h5vl_async_wrap.lo \
-	h5vl_asynci_vector.lo h5vl_asynci_mutex.lo
+	h5vl_async_linki.lo h5vl_async_obj.lo h5vl_async_obji.lo \
+	h5vl_async_public.lo h5vl_async_req.lo h5vl_async_token.lo \
+	h5vl_async_wrap.lo h5vl_asynci_vector.lo h5vl_asynci_mutex.lo
 am__objects_2 =
 am_libh5vl_async_la_OBJECTS = $(am__objects_1) $(am__objects_2) \
 	$(am__objects_2)
@@ -187,8 +187,9 @@ am__depfiles_remade = ./$(DEPDIR)/h5vl_async.Plo \
 	./$(DEPDIR)/h5vl_async_group.Plo \
 	./$(DEPDIR)/h5vl_async_groupi.Plo \
 	./$(DEPDIR)/h5vl_async_info.Plo \
-	./$(DEPDIR)/h5vl_async_link.Plo ./$(DEPDIR)/h5vl_async_obj.Plo \
-	./$(DEPDIR)/h5vl_async_obji.Plo \
+	./$(DEPDIR)/h5vl_async_link.Plo \
+	./$(DEPDIR)/h5vl_async_linki.Plo \
+	./$(DEPDIR)/h5vl_async_obj.Plo ./$(DEPDIR)/h5vl_async_obji.Plo \
 	./$(DEPDIR)/h5vl_async_public.Plo \
 	./$(DEPDIR)/h5vl_async_req.Plo \
 	./$(DEPDIR)/h5vl_async_token.Plo \
@@ -399,6 +400,7 @@ C_SRCS = h5vl_async.c \
             h5vl_async_groupi.c \
             h5vl_async_info.c \
             h5vl_async_link.c \
+            h5vl_async_linki.c \
             h5vl_async_obj.c \
             h5vl_async_obji.c \
             h5vl_async_public.c \
@@ -525,6 +527,7 @@ include ./$(DEPDIR)/h5vl_async_group.Plo # am--include-marker
 include ./$(DEPDIR)/h5vl_async_groupi.Plo # am--include-marker
 include ./$(DEPDIR)/h5vl_async_info.Plo # am--include-marker
 include ./$(DEPDIR)/h5vl_async_link.Plo # am--include-marker
+include ./$(DEPDIR)/h5vl_async_linki.Plo # am--include-marker
 include ./$(DEPDIR)/h5vl_async_obj.Plo # am--include-marker
 include ./$(DEPDIR)/h5vl_async_obji.Plo # am--include-marker
 include ./$(DEPDIR)/h5vl_async_public.Plo # am--include-marker
@@ -735,6 +738,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/h5vl_async_groupi.Plo
 	-rm -f ./$(DEPDIR)/h5vl_async_info.Plo
 	-rm -f ./$(DEPDIR)/h5vl_async_link.Plo
+	-rm -f ./$(DEPDIR)/h5vl_async_linki.Plo
 	-rm -f ./$(DEPDIR)/h5vl_async_obj.Plo
 	-rm -f ./$(DEPDIR)/h5vl_async_obji.Plo
 	-rm -f ./$(DEPDIR)/h5vl_async_public.Plo
@@ -803,6 +807,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/h5vl_async_groupi.Plo
 	-rm -f ./$(DEPDIR)/h5vl_async_info.Plo
 	-rm -f ./$(DEPDIR)/h5vl_async_link.Plo
+	-rm -f ./$(DEPDIR)/h5vl_async_linki.Plo
 	-rm -f ./$(DEPDIR)/h5vl_async_obj.Plo
 	-rm -f ./$(DEPDIR)/h5vl_async_obji.Plo
 	-rm -f ./$(DEPDIR)/h5vl_async_public.Plo

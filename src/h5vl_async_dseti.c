@@ -110,8 +110,8 @@ err_out:;
 	H5VL_ASYNC_HANDLER_END
 
 	H5Pclose (argp->dxpl_id);
-	H5Sclose (argp->file_space_id);
-	H5Sclose (argp->mem_space_id);
+	if (argp->file_space_id != H5S_ALL) H5Sclose (argp->file_space_id);
+	if (argp->mem_space_id != H5S_ALL) H5Sclose (argp->mem_space_id);
 	H5Tclose (argp->mem_type_id);
 	H5VL_ASYNC_HANDLER_FREE
 
@@ -134,8 +134,8 @@ err_out:;
 	H5VL_ASYNC_HANDLER_END
 
 	H5Pclose (argp->dxpl_id);
-	H5Sclose (argp->file_space_id);
-	H5Sclose (argp->mem_space_id);
+	if (argp->file_space_id != H5S_ALL) H5Sclose (argp->file_space_id);
+	if (argp->mem_space_id != H5S_ALL) H5Sclose (argp->mem_space_id);
 	H5Tclose (argp->mem_type_id);
 	H5VL_ASYNC_HANDLER_FREE
 

@@ -211,16 +211,22 @@ herr_t H5VL_async_dataset_read (void *dset,
 
 	argp = (H5VL_async_dataset_read_args *)malloc (sizeof (H5VL_async_dataset_read_args));
 	CHECK_PTR (argp)
-	argp->pp			= pp;
-	argp->mem_type_id	= H5Tcopy (mem_type_id);
-	argp->mem_space_id	= H5Scopy (mem_space_id);
-	argp->file_space_id = H5Scopy (file_space_id);
-	argp->dxpl_id		= H5Pcopy (dxpl_id);
-	argp->buf			= buf;
+	argp->pp		  = pp;
+	argp->mem_type_id = H5Tcopy (mem_type_id);
+	if (mem_space_id == H5S_ALL)
+		argp->mem_space_id = H5S_ALL;
+	else
+		argp->mem_space_id = H5Scopy (mem_space_id);
+	if (file_space_id == H5S_ALL)
+		argp->file_space_id = H5S_ALL;
+	else
+		argp->file_space_id = H5Scopy (file_space_id);
+	argp->dxpl_id = H5Pcopy (dxpl_id);
+	argp->buf	  = buf;
 	H5VL_ASYNC_CB_TASK_INIT
 
 	twerr =
-		TW_Task_create (H5VL_async_dataset_get_handler, argp, TW_TASK_DEP_ALL_COMPLETE, 0, &task);
+		TW_Task_create (H5VL_async_dataset_read_handler, argp, TW_TASK_DEP_ALL_COMPLETE, 0, &task);
 	CHK_TWERR
 
 	H5VL_ASYNC_CB_TASK_COMMIT
@@ -270,16 +276,22 @@ herr_t H5VL_async_dataset_write (void *dset,
 
 	argp = (H5VL_async_dataset_write_args *)malloc (sizeof (H5VL_async_dataset_write_args));
 	CHECK_PTR (argp)
-	argp->pp			= pp;
-	argp->mem_type_id	= H5Tcopy (mem_type_id);
-	argp->mem_space_id	= H5Scopy (mem_space_id);
-	argp->file_space_id = H5Scopy (file_space_id);
-	argp->dxpl_id		= H5Pcopy (dxpl_id);
-	argp->buf			= buf;
+	argp->pp		  = pp;
+	argp->mem_type_id = H5Tcopy (mem_type_id);
+	if (mem_space_id == H5S_ALL)
+		argp->mem_space_id = H5S_ALL;
+	else
+		argp->mem_space_id = H5Scopy (mem_space_id);
+	if (file_space_id == H5S_ALL)
+		argp->file_space_id = H5S_ALL;
+	else
+		argp->file_space_id = H5Scopy (file_space_id);
+	argp->dxpl_id = H5Pcopy (dxpl_id);
+	argp->buf	  = buf;
 	H5VL_ASYNC_CB_TASK_INIT
 
 	twerr =
-		TW_Task_create (H5VL_async_dataset_get_handler, argp, TW_TASK_DEP_ALL_COMPLETE, 0, &task);
+		TW_Task_create (H5VL_async_dataset_write_handler, argp, TW_TASK_DEP_ALL_COMPLETE, 0, &task);
 	CHK_TWERR
 
 	H5VL_ASYNC_CB_TASK_COMMIT
@@ -496,8 +508,8 @@ herr_t H5VL_async_dataset_close (void *grp, hid_t dxpl_id, void **req) {
 	argp->dxpl_id = H5Pcopy (dxpl_id);
 	H5VL_ASYNC_CB_TASK_INIT
 
-	twerr =
-		TW_Task_create (H5VL_async_dataset_close_handler, argp, TW_TASK_DEP_NULL, pp->cnt, &task);
+	twerr = TW_Task_create (H5VL_async_dataset_close_handler, argp, TW_TASK_DEP_ALL_COMPLETE,
+							pp->cnt, &task);
 	CHK_TWERR
 	argp->task = task;
 

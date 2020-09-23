@@ -367,7 +367,8 @@ herr_t H5VL_async_group_close (void *grp, hid_t dxpl_id, void **req) {
 	argp->dxpl_id = H5Pcopy (dxpl_id);
 	H5VL_ASYNC_CB_TASK_INIT
 
-	twerr = TW_Task_create (H5VL_async_group_close_handler, argp, TW_TASK_DEP_NULL, pp->cnt, &task);
+	twerr = TW_Task_create (H5VL_async_group_close_handler, argp, TW_TASK_DEP_ALL_COMPLETE, pp->cnt,
+							&task);
 	CHK_TWERR
 	argp->task = task;
 
