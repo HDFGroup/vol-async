@@ -23,7 +23,7 @@ Some configuration parameters used in the instructions:
 
     1.3 Download the HDF5 code 
 
-       > git clone https://bitbucket.hdfgroup.org/scm/hdffv/hdf5.git
+       > git clone https://github.com/HDFGroup/hdf5.git
 
     1.4 (optional) automake/autoconf may be needed on NERSC machines, if there are any "configuration errors", do the following:
 
