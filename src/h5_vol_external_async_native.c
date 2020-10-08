@@ -1806,11 +1806,13 @@ void dup_loc_param(H5VL_loc_params_t *dest, H5VL_loc_params_t const *loc_params)
     memcpy(dest, loc_params, sizeof(*loc_params));
 
     if (loc_params->type == H5VL_OBJECT_BY_NAME) {
-        dest->loc_data.loc_by_name.name    =  strdup(loc_params->loc_data.loc_by_name.name);
+        if (NULL != loc_params->loc_data.loc_by_name.name) 
+            dest->loc_data.loc_by_name.name = strdup(loc_params->loc_data.loc_by_name.name);
         dest->loc_data.loc_by_name.lapl_id = H5Pcopy(loc_params->loc_data.loc_by_name.lapl_id);
     }
     else if (loc_params->type == H5VL_OBJECT_BY_IDX) {
-        dest->loc_data.loc_by_idx.name    =  strdup(loc_params->loc_data.loc_by_idx.name);
+        if (NULL != loc_params->loc_data.loc_by_idx.name) 
+            dest->loc_data.loc_by_idx.name = strdup(loc_params->loc_data.loc_by_idx.name);
         dest->loc_data.loc_by_idx.lapl_id = H5Pcopy(loc_params->loc_data.loc_by_idx.lapl_id);
     }
     else if (loc_params->type == H5VL_OBJECT_BY_TOKEN) {
@@ -2752,7 +2754,8 @@ async_attr_create(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
     args->obj              = parent_obj->under_object;
     args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
-    args->name             = strdup(name);
+    if (NULL != name) 
+        args->name = strdup(name);
     if(type_id > 0)
         args->type_id = H5Tcopy(type_id);
     if(space_id > 0)
@@ -3204,7 +3207,8 @@ async_attr_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
     args->obj              = parent_obj->under_object;
     args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
-    args->name             = strdup(name);
+    if (NULL != name) 
+        args->name = strdup(name);
     if(aapl_id > 0)
         args->aapl_id = H5Pcopy(aapl_id);
     if(dxpl_id > 0)
@@ -6151,7 +6155,8 @@ async_dataset_create(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
     args->obj              = parent_obj->under_object;
     args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
-    args->name             = strdup(name);
+    if (NULL != name) 
+        args->name = strdup(name);
     if(lcpl_id > 0)
         args->lcpl_id = H5Pcopy(lcpl_id);
     if(type_id > 0)
@@ -6612,7 +6617,8 @@ async_dataset_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
     args->obj              = parent_obj->under_object;
     args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
-    args->name             = strdup(name);
+    if (NULL != name) 
+        args->name = strdup(name);
     if(dapl_id > 0)
         args->dapl_id = H5Pcopy(dapl_id);
     if(dxpl_id > 0)
@@ -9667,7 +9673,8 @@ async_datatype_commit(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
     args->obj              = parent_obj->under_object;
     args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
-    args->name             = strdup(name);
+    if (NULL != name) 
+        args->name = strdup(name);
     if(type_id > 0)
         args->type_id = H5Tcopy(type_id);
     if(lcpl_id > 0)
@@ -10122,7 +10129,8 @@ async_datatype_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     args->obj              = parent_obj->under_object;
     args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
-    args->name             = strdup(name);
+    if (NULL != name) 
+        args->name = strdup(name);
     if(tapl_id > 0)
         args->tapl_id = H5Pcopy(tapl_id);
     if(dxpl_id > 0)
@@ -12258,7 +12266,8 @@ async_file_create(int is_blocking, async_instance_t* aid, const char *name, unsi
         goto error;
     }
 
-    args->name             = strdup(name);
+    if (NULL != name) 
+        args->name = strdup(name);
     args->flags            = flags;
     if(fcpl_id > 0)
         args->fcpl_id = H5Pcopy(fcpl_id);
@@ -12720,7 +12729,8 @@ async_file_open(int is_blocking, async_instance_t* aid, const char *name, unsign
         goto error;
     }
 
-    args->name             = strdup(name);
+    if (NULL != name) 
+        args->name = strdup(name);
     args->flags            = flags;
     if(fapl_id > 0)
         args->fapl_id = H5Pcopy(fapl_id);
@@ -14825,7 +14835,8 @@ async_group_create(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
     args->obj              = parent_obj->under_object;
     args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
-    args->name             = strdup(name);
+    if (NULL != name) 
+        args->name = strdup(name);
     if(lcpl_id > 0)
         args->lcpl_id = H5Pcopy(lcpl_id);
     if(gcpl_id > 0)
@@ -15278,7 +15289,8 @@ async_group_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     args->obj              = parent_obj->under_object;
     args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
-    args->name             = strdup(name);
+    if (NULL != name) 
+        args->name = strdup(name);
     if(gapl_id > 0)
         args->gapl_id = H5Pcopy(gapl_id);
     if(dxpl_id > 0)
@@ -20336,11 +20348,13 @@ async_object_copy(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
     args->src_obj          = parent_obj->under_object;
     args->src_loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*src_loc_params));
     dup_loc_param(args->src_loc_params, src_loc_params);
-    args->src_name         = strdup(src_name);
+    if (NULL != src_name) 
+        args->src_name = strdup(src_name);
     args->dst_obj          = parent_obj2->under_object;
     args->dst_loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*dst_loc_params));
     dup_loc_param(args->dst_loc_params, dst_loc_params);
-    args->dst_name         = strdup(dst_name);
+    if (NULL != dst_name) 
+        args->dst_name = strdup(dst_name);
     if(ocpypl_id > 0)
         args->ocpypl_id = H5Pcopy(ocpypl_id);
     if(lcpl_id > 0)
