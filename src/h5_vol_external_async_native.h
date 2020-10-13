@@ -37,16 +37,12 @@
 #define TASK_MAGIC 20481024
 
 struct H5VL_async_t;
-struct H5RQ_token_int_t;
-
 
 /* Pass-through VOL connector info */
 typedef struct H5VL_async_info_t {
     hid_t under_vol_id;         /* VOL ID for under VOL */
     void *under_vol_info;       /* VOL info for under VOL */
 } H5VL_async_info_t;
-
-typedef void * H5RQ_token_t;
 
 #ifdef __cplusplus
 extern "C" {
@@ -63,12 +59,6 @@ herr_t H5Dwait(hid_t dset);
 herr_t H5Fwait(hid_t file);
 void   H5VLasync_waitall();
 void   H5VLasync_finalize();
-
-/* Experimental token APIs */
-herr_t H5RQ_token_check(H5RQ_token_t token, int *status);
-herr_t H5RQ_token_wait(H5RQ_token_t token);
-herr_t H5RQ_token_free(H5RQ_token_t token);
-/* H5RQ_token_t *H5RQ_new_token(void); */
 
 #ifdef __cplusplus
 }

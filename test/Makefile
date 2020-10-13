@@ -1,10 +1,12 @@
 ASYNC_DIR = ../src
-HDF5_DIR  = /ccs/home/houjun/summit/hdf5/async_threadsafe/hdf5
-ABT_DIR = /ccs/home/houjun/summit/argobots/install/
+# HDF5_DIR  = /ccs/home/houjun/summit/hdf5/async_threadsafe/hdf5
+# ABT_DIR = /ccs/home/houjun/summit/argobots/install/
+HDF5_DIR = /global/u1/h/houhun/hdf5/async_gnu/hdf5
+ABT_DIR = /global/homes/h/houhun/cori/argobots/install
 
-# CC = cc
+CC = cc
 #CC = gcc-9
-CC = mpicc
+# CC = mpicc
 
 DEBUG = -g -O0
 CFLAGS = $(DEBUG) -I$(ABT_DIR)/include -I$(ASYNC_DIR) -I$(HDF5_DIR)/include
@@ -15,7 +17,8 @@ SRC = async_test_serial.c async_test_serial2.c \
     async_test_multifile.c async_test_multifile_env.c \
     async_test_parallel.c async_test_parallel2.c async_test_parallel3.c \
     async_test_parallel4.c async_test_parallel5.c \
-    async_test_serial_event_set.c
+    async_test_serial_event_set.c async_test_serial_error_stack.c
+#async_test_no_fclose.c
 OBJ = $(SRC:.c=.o)
 EXE = $(SRC:.c=.exe)
 DBG = $(SRC:.c=.exe.dSYM)
