@@ -47,7 +47,7 @@
 /* #define ENABLE_LOG                  1 */
 /* #define ENABLE_DBG_MSG              1 */
 /* #define ENABLE_TIMING               1 */
-#define PRINT_ERROR_STACK           1
+/* #define PRINT_ERROR_STACK           1 */
 
 #include "node_local_util.h"
 /**********/
@@ -1534,7 +1534,7 @@ add_to_dep_task(async_task_t *task, async_task_t *dep_task)
 static herr_t
 push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool)
 {
-    int               i, is_dep_done;
+    int               i, is_dep_done = 1;
     /* ABT_task_state    task_state; */
     ABT_thread_state  thread_state;
     /* ABT_thread        my_thread; */
@@ -1561,6 +1561,24 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool)
         if (qhead->queue->type  == DEPENDENT) {
             // Check if depenent tasks are finished
             for (i = 0; i < task_elt->n_dep; i++) {
+
+                /* // If dependent parent failed, do not push to Argobots pool */
+                /* if (task_elt->dep_tasks[i]->err_stack != 0) { */
+                /*     task_elt->err_stack = H5Ecreate_stack(); */
+                /*     H5Eappend_stack(task_elt->err_stack, task_elt->dep_tasks[i]->err_stack, false); */
+                /*     H5Epush(task_elt->err_stack, __FILE__, __func__, __LINE__, async_error_class_g, */
+                /*         H5E_VOL, H5E_CANTCREATE, "Parent task failed"); */
+
+/* #ifdef PRINT_ERROR_STACK */
+                /*     H5Eprint2(task_elt->err_stack, stderr); */
+/* #endif */
+                /*     DL_DELETE(qhead->queue->task_list, task_elt); */
+                /*     task_elt->prev = NULL; */
+                /*     task_elt->next = NULL; */
+                /*     is_dep_done = 0; */
+                /*     break; */
+                /* } */
+
                 if (NULL != task_elt->dep_tasks[i]->abt_thread) {
                     /* ABT_thread_self(&my_thread); */
                     /* if (task_elt->dep_tasks[i]->abt_thread == my_thread) { */
@@ -1619,6 +1637,12 @@ done:
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         return -1;
     }
+
+    /* // If the dependent parents of tasks in the dependent task list failed, resulting in no executing, */
+    /* // continue to push the next task list */
+    /* if (qhead->queue != NULL && is_dep_done == 0) { */
+    /*     push_task_to_abt_pool(qhead, pool); */
+    /* } */
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC VOL DBG] leaving %s \n", __func__);
@@ -2384,10 +2408,10 @@ async_attr_create_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -2839,10 +2863,10 @@ async_attr_open_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -3284,10 +3308,10 @@ async_attr_read_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -3698,10 +3722,10 @@ async_attr_write_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -4119,10 +4143,10 @@ async_attr_get_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -4528,10 +4552,10 @@ async_attr_specific_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -4940,10 +4964,10 @@ async_attr_optional_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -5350,10 +5374,10 @@ async_attr_close_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -5762,10 +5786,10 @@ async_dataset_create_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -6224,10 +6248,10 @@ async_dataset_open_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -6669,10 +6693,10 @@ async_dataset_read_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -7091,10 +7115,10 @@ async_dataset_write_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -7630,10 +7654,10 @@ async_dataset_get_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -8039,10 +8063,10 @@ async_dataset_specific_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -8448,10 +8472,10 @@ async_dataset_optional_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -8858,10 +8882,10 @@ async_dataset_close_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -9271,10 +9295,10 @@ async_datatype_commit_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -9712,10 +9736,10 @@ async_datatype_open_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -10157,10 +10181,10 @@ async_datatype_get_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -10566,10 +10590,10 @@ async_datatype_specific_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -10975,10 +10999,10 @@ async_datatype_optional_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -11385,10 +11409,10 @@ async_datatype_close_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -12708,10 +12732,10 @@ async_file_get_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -13117,10 +13141,10 @@ async_file_specific_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -13526,10 +13550,10 @@ async_file_optional_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -13935,10 +13959,10 @@ async_file_close_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -14362,10 +14386,10 @@ async_group_create_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -14814,10 +14838,10 @@ async_group_open_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -15259,10 +15283,10 @@ async_group_get_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -15668,10 +15692,10 @@ async_group_specific_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -16077,10 +16101,10 @@ async_group_optional_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -16487,10 +16511,10 @@ async_group_close_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -16900,10 +16924,10 @@ async_link_create_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -17345,10 +17369,10 @@ async_link_copy_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -17762,10 +17786,10 @@ async_link_move_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -18179,10 +18203,10 @@ async_link_get_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -18591,10 +18615,10 @@ async_link_specific_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -19003,10 +19027,10 @@ async_link_optional_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -19413,10 +19437,10 @@ async_object_open_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -19852,10 +19876,10 @@ async_object_copy_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -20277,10 +20301,10 @@ async_object_get_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -20689,10 +20713,10 @@ async_object_specific_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -21101,10 +21125,10 @@ async_object_optional_fn(void *foo)
         else {
             if (check_parent_task(task->parent_obj) != 0) {
                 task->err_stack = H5Ecreate_stack();
+                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
                 H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
                     H5E_VOL, H5E_CANTCREATE, "Parent task failed");
 
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
@@ -24110,15 +24134,33 @@ H5VL_async_request_optional(void *obj, H5VL_request_optional_t opt_type,
 static herr_t
 H5VL_async_request_free(void *obj)
 {
-    /* H5VL_async_t *o = (H5VL_async_t *)obj; */
+    /* async_task_t *o = (async_task_t*)obj; */
     /* herr_t ret_value; */
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL REQUEST Free\n");
 #endif
 
-    // No need to free the request object (it is currently async_task_t and is freed at other place)
-    /* ret_value = H5VLrequest_free(o->under_object, o->under_vol_id); */
+    /* if (ABT_mutex_lock(o->async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) { */
+    /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__); */
+    /*     return -1; */
+    /* } */
+
+    /* DL_DELETE2(o->async_obj->file_async_obj->file_task_list_head, o, file_list_prev, file_list_next); */
+
+    /* if (ABT_mutex_unlock(o->async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) { */
+    /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__); */
+    /*     return -1; */
+    /* } */
+
+    /* if (o->prev && o->prev != o) */ 
+    /*     o->prev->next = o->next; */
+    /* if (o->next && o->prev != o) */ 
+    /*     o->next->prev = o->prev; */
+
+    /* free_async_task(o); */
+    /* free(o); */
+
 
     /* if(ret_value >= 0) */
     /*     H5VL_async_free_obj(o); */
