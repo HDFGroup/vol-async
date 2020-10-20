@@ -22862,7 +22862,7 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_t specific_type,
         /* Re-issue 'file specific' call, using the unwrapped pieces */
         ret_value = H5VL_async_file_specific_reissue(o->under_object, under_vol_id, specific_type, dxpl_id, req, (int)loc_type, name, child_file->under_object, plist_id);
     } /* end if */
-    else if(H5VL_FILE_WAIT) {
+    else if(specific_type == H5VL_FILE_WAIT) {
         /* ==== Added for async H5Fwait */
         return (H5VL_async_file_wait(o));
     }
