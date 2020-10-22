@@ -23289,7 +23289,7 @@ H5VL_async_link_create(H5VL_link_create_type_t create_type, void *obj,
 #endif
 
     /* Return error if object not open / created */
-    if(!o->is_obj_valid)
+    if(loc_params && loc_params->obj_type != H5I_BADID && o && !o->is_obj_valid)
         return(-1);
 
     /* Try to retrieve the "under" VOL id */
