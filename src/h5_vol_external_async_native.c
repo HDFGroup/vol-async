@@ -509,6 +509,7 @@ typedef struct async_file_close_args_t {
     void                     *file;
     hid_t                    dxpl_id;
     void                     **req;
+    bool                     is_reopen;
 #ifdef ENABLE_TIMING
     struct timeval create_time;
     struct timeval start_time;
@@ -1471,7 +1472,12 @@ free_file_async_resources(H5VL_async_t *file)
 
     assert(file);
 
-    if (ABT_mutex_lock(file->file_task_list_mutex) != ABT_SUCCESS) {
+    // When closing a reopened file
+    if (NULL == file->file_async_obj) {
+        return;
+    }
+
+    if (file->file_task_list_mutex && ABT_mutex_lock(file->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         return;
     }
@@ -1482,17 +1488,17 @@ free_file_async_resources(H5VL_async_t *file)
         free(task_iter);
     }
 
-    if (ABT_mutex_unlock(file->file_task_list_mutex) != ABT_SUCCESS) {
+    if (file->file_task_list_mutex && ABT_mutex_unlock(file->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         return;
     }
 
-    if (ABT_mutex_free(&file->obj_mutex) != ABT_SUCCESS) {
+    if (file->obj_mutex && ABT_mutex_free(&file->obj_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_free\n", __func__);
         return;
     }
 
-    if (ABT_mutex_free(&file->file_task_list_mutex) != ABT_SUCCESS) {
+    if (file->file_task_list_mutex && ABT_mutex_free(&file->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_free\n", __func__);
         return;
     }
@@ -1729,7 +1735,7 @@ add_task_to_queue(async_qhead_t *qhead, async_task_t *task, task_list_qtype task
     tail_list = qhead->queue == NULL ? NULL : qhead->queue->prev;
 
     // Need to depend on the object's createion (create/open) task to finish
-    if (task_type != COLLECTIVE) {
+    if (task_type == DEPENDENT) {
         if (task->parent_obj && task->parent_obj->is_obj_valid != 1) {
             /* is_dep = 1; */
             task_type = DEPENDENT;
@@ -13410,13 +13416,13 @@ async_file_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     }
     lock_parent = true;
 
-    if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -13904,7 +13910,7 @@ done:
     return 1;
 error:
     if (lock_parent) {
-        if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
+        if (parent_obj && ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
     if (NULL != args) free(args);
@@ -14057,10 +14063,11 @@ async_file_close_fn(void *foo)
 #endif
 
     /* Aquire async obj mutex and set the obj */
-    assert(task->async_obj->obj_mutex);
-    assert(task->async_obj->magic == ASYNC_MAGIC);
-    while (1) {
+    /* assert(task->async_obj->obj_mutex); */
+    /* assert(task->async_obj->magic == ASYNC_MAGIC); */
+    while (task->async_obj && task->async_obj->obj_mutex) {
         if (ABT_mutex_trylock(task->async_obj->obj_mutex) == ABT_SUCCESS) {
+            is_lock = 1;
             break;
         }
         else {
@@ -14069,7 +14076,6 @@ async_file_close_fn(void *foo)
         }
         usleep(1000);
     }
-    is_lock = 1;
 
     // Restore previous library state
     assert(task->h5_state);
@@ -14105,7 +14111,7 @@ async_file_close_fn(void *foo)
         fprintf(stderr, "  [ASYNC ABT ERROR] with ABT_mutex_lock\n");
         goto done;
     };
-    if (async_instance_g->nfopen > 0)  async_instance_g->nfopen--;
+    if (async_instance_g->nfopen > 0 && args->is_reopen == false)  async_instance_g->nfopen--;
     if (ABT_mutex_unlock(async_instance_mutex_g) != ABT_SUCCESS) {
         fprintf(stderr, "  [ASYNC ABT ERROR] with ABT_mutex_ulock\n");
         goto done;
@@ -14206,6 +14212,11 @@ async_file_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
+    // Closing a reopened file
+    if (parent_obj->is_obj_valid == 0) {
+        is_blocking = 1;
+        args->is_reopen = true;
+    }
 
     args->file             = parent_obj->under_object;
     if(dxpl_id > 0)
@@ -14234,17 +14245,20 @@ async_file_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
             break;
         }
+        else if (parent_obj->obj_mutex == NULL) {
+            break;
+        }
         usleep(1000);
     }
     lock_parent = true;
 
-    if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -14256,8 +14270,10 @@ async_file_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
         else {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s parent task not created\n", __func__);
-            goto error;
+            // For closing a reopened file
+            add_task_to_queue(&aid->qhead, async_task, REGULAR);
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s parent task not created\n", __func__); */
+        /*     goto error; */
         }
     }
     else {
@@ -14267,7 +14283,7 @@ async_file_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
     }
 
-    if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS) {
+    if (parent_obj->obj_mutex && ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
@@ -14278,16 +14294,10 @@ async_file_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     printf("  [ASYNC VOL TIMING] %-24s \t  create time   : %f\n",
            __func__, get_elapsed_time(&args->create_time, &now_time));
 #endif
-    if (aid->ex_delay == false) {
-        if (get_n_running_task_in_queue(async_task) == 0)
-            push_task_to_abt_pool(&aid->qhead, aid->pool);
-    }
 
-    else {
-        if (get_n_running_task_in_queue(async_task) == 0)
-            push_task_to_abt_pool(&aid->qhead, aid->pool);
+    if (get_n_running_task_in_queue(async_task) == 0)
+        push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-    }
 
     aid->start_abt_push = true;
     /* Wait if blocking is needed */
@@ -14331,7 +14341,7 @@ done:
     return 1;
 error:
     if (lock_parent) {
-        if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
+        if (parent_obj->obj_mutex && ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
     if (NULL != args) free(args);
@@ -23279,7 +23289,7 @@ H5VL_async_link_create(H5VL_link_create_type_t create_type, void *obj,
 #endif
 
     /* Return error if object not open / created */
-    if(o->create_task == NULL || !o->is_obj_valid)
+    if(!o->is_obj_valid)
         return(-1);
 
     /* Try to retrieve the "under" VOL id */
@@ -23349,9 +23359,9 @@ H5VL_async_link_copy(void *src_obj, const H5VL_loc_params_t *loc_params1,
 #endif
 
     /* Return error if objects not open / created */
-    if(o_src->create_task == NULL || !o_src->is_obj_valid)
+    if(!o_src->is_obj_valid)
         return(-1);
-    if(o_dst->create_task == NULL || !o_dst->is_obj_valid)
+    if(!o_dst->is_obj_valid)
         return(-1);
 
     /* Retrieve the "under" VOL id */
@@ -23401,9 +23411,9 @@ H5VL_async_link_move(void *src_obj, const H5VL_loc_params_t *loc_params1,
 #endif
 
     /* Return error if objects not open / created */
-    if(o_src->create_task == NULL || !o_src->is_obj_valid)
+    if(!o_src->is_obj_valid)
         return(-1);
-    if(o_dst->create_task == NULL || !o_dst->is_obj_valid)
+    if(!o_dst->is_obj_valid)
         return(-1);
 
     /* Retrieve the "under" VOL id */
@@ -23445,7 +23455,7 @@ H5VL_async_link_get(void *obj, const H5VL_loc_params_t *loc_params,
 #endif
 
     /* Return error if file object not open / created */
-    if(o->create_task == NULL || !o->is_obj_valid)
+    if(!o->is_obj_valid)
         return(-1);
 
     ret_value = async_link_get(1, async_instance_g, o, loc_params, get_type, dxpl_id, req, arguments);
@@ -23480,7 +23490,7 @@ H5VL_async_link_specific(void *obj, const H5VL_loc_params_t *loc_params,
 #endif
 
     /* Return error if file object not open / created */
-    if(o->create_task == NULL || !o->is_obj_valid)
+    if(!o->is_obj_valid)
         return(-1);
 
     ret_value = async_link_specific(1, async_instance_g, o, loc_params, specific_type, dxpl_id, req, arguments);
@@ -23515,7 +23525,7 @@ H5VL_async_link_optional(void *obj, H5VL_link_optional_t opt_type,
 #endif
 
     /* Return error if file object not open / created */
-    if(o->create_task == NULL || !o->is_obj_valid)
+    if(!o->is_obj_valid)
         return(-1);
 
     ret_value = async_link_optional(0, async_instance_g, o, opt_type, dxpl_id, req, arguments);
