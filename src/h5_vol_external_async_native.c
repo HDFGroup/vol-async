@@ -44,7 +44,7 @@
 /* Universal linked lists header */
 #include "utlist.h"
 
-/* #define ENABLE_LOG                  1 */
+#define ENABLE_LOG                  1
 /* #define ENABLE_DBG_MSG              1 */
 /* #define ENABLE_TIMING               1 */
 /* #define PRINT_ERROR_STACK           1 */
@@ -2511,16 +2511,6 @@ async_attr_create_fn(void *foo)
     fflush(stderr);
 #endif
 
-    if (1 == task->async_obj->is_obj_valid) {
-#ifdef ENABLE_TIMING
-        gettimeofday(&now_time, NULL);
-        fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock, time=%ld.%06ld\n", __func__, now_time.tv_sec, now_time.tv_usec);
-#endif
-        if (H5TSmutex_release() < 0) {
-            fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
-        }
-        return;
-    }
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
@@ -2966,16 +2956,6 @@ async_attr_open_fn(void *foo)
     fflush(stderr);
 #endif
 
-    if (1 == task->async_obj->is_obj_valid) {
-#ifdef ENABLE_TIMING
-        gettimeofday(&now_time, NULL);
-        fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock, time=%ld.%06ld\n", __func__, now_time.tv_sec, now_time.tv_usec);
-#endif
-        if (H5TSmutex_release() < 0) {
-            fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
-        }
-        return;
-    }
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
@@ -5889,16 +5869,6 @@ async_dataset_create_fn(void *foo)
     fflush(stderr);
 #endif
 
-    if (1 == task->async_obj->is_obj_valid) {
-#ifdef ENABLE_TIMING
-        gettimeofday(&now_time, NULL);
-        fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock, time=%ld.%06ld\n", __func__, now_time.tv_sec, now_time.tv_usec);
-#endif
-        if (H5TSmutex_release() < 0) {
-            fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
-        }
-        return;
-    }
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
@@ -6351,16 +6321,6 @@ async_dataset_open_fn(void *foo)
     fflush(stderr);
 #endif
 
-    if (1 == task->async_obj->is_obj_valid) {
-#ifdef ENABLE_TIMING
-        gettimeofday(&now_time, NULL);
-        fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock, time=%ld.%06ld\n", __func__, now_time.tv_sec, now_time.tv_usec);
-#endif
-        if (H5TSmutex_release() < 0) {
-            fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
-        }
-        return;
-    }
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
@@ -9839,16 +9799,6 @@ async_datatype_open_fn(void *foo)
     fflush(stderr);
 #endif
 
-    if (1 == task->async_obj->is_obj_valid) {
-#ifdef ENABLE_TIMING
-        gettimeofday(&now_time, NULL);
-        fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock, time=%ld.%06ld\n", __func__, now_time.tv_sec, now_time.tv_usec);
-#endif
-        if (H5TSmutex_release() < 0) {
-            fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
-        }
-        return;
-    }
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
@@ -11901,16 +11851,6 @@ async_file_create_fn(void *foo)
 
     async_instance_g->start_abt_push = false;
 
-    if (1 == task->async_obj->is_obj_valid) {
-#ifdef ENABLE_TIMING
-        gettimeofday(&now_time, NULL);
-        fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock, time=%ld.%06ld\n", __func__, now_time.tv_sec, now_time.tv_usec);
-#endif
-        if (H5TSmutex_release() < 0) {
-            fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
-        }
-        return;
-    }
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
@@ -12357,16 +12297,6 @@ async_file_open_fn(void *foo)
 
     async_instance_g->start_abt_push = false;
 
-    if (1 == task->async_obj->is_obj_valid) {
-#ifdef ENABLE_TIMING
-        gettimeofday(&now_time, NULL);
-        fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock, time=%ld.%06ld\n", __func__, now_time.tv_sec, now_time.tv_usec);
-#endif
-        if (H5TSmutex_release() < 0) {
-            fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
-        }
-        return;
-    }
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
@@ -14493,16 +14423,6 @@ async_group_create_fn(void *foo)
     fflush(stderr);
 #endif
 
-    if (1 == task->async_obj->is_obj_valid) {
-#ifdef ENABLE_TIMING
-        gettimeofday(&now_time, NULL);
-        fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock, time=%ld.%06ld\n", __func__, now_time.tv_sec, now_time.tv_usec);
-#endif
-        if (H5TSmutex_release() < 0) {
-            fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
-        }
-        return;
-    }
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
@@ -14945,16 +14865,6 @@ async_group_open_fn(void *foo)
     fflush(stderr);
 #endif
 
-    if (1 == task->async_obj->is_obj_valid) {
-#ifdef ENABLE_TIMING
-        gettimeofday(&now_time, NULL);
-        fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock, time=%ld.%06ld\n", __func__, now_time.tv_sec, now_time.tv_usec);
-#endif
-        if (H5TSmutex_release() < 0) {
-            fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
-        }
-        return;
-    }
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
@@ -17031,16 +16941,6 @@ async_link_create_fn(void *foo)
     fflush(stderr);
 #endif
 
-    if (1 == task->async_obj->is_obj_valid) {
-#ifdef ENABLE_TIMING
-        gettimeofday(&now_time, NULL);
-        fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock, time=%ld.%06ld\n", __func__, now_time.tv_sec, now_time.tv_usec);
-#endif
-        if (H5TSmutex_release() < 0) {
-            fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
-        }
-        return;
-    }
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
@@ -19544,16 +19444,6 @@ async_object_open_fn(void *foo)
     fflush(stderr);
 #endif
 
-    if (1 == task->async_obj->is_obj_valid) {
-#ifdef ENABLE_TIMING
-        gettimeofday(&now_time, NULL);
-        fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock, time=%ld.%06ld\n", __func__, now_time.tv_sec, now_time.tv_usec);
-#endif
-        if (H5TSmutex_release() < 0) {
-            fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
-        }
-        return;
-    }
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
@@ -22850,8 +22740,10 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_t specific_type,
 #endif
 
     /* Return error if file object not open / created */
-    if(!o->is_obj_valid)
+    if(!o->is_obj_valid) {
+        fprintf(stderr,"  [ASYNC VOL ERROR] with async_file_specific, invalid object\n");
         return(-1);
+    }
 
     /* Unpack arguments to get at the child file pointer when mounting a file */
     if(specific_type == H5VL_FILE_MOUNT) {
@@ -23289,8 +23181,10 @@ H5VL_async_link_create(H5VL_link_create_type_t create_type, void *obj,
 #endif
 
     /* Return error if object not open / created */
-    if(loc_params && loc_params->obj_type != H5I_BADID && o && !o->is_obj_valid)
+    if(loc_params && loc_params->obj_type != H5I_BADID && o && !o->is_obj_valid){
+        fprintf(stderr,"  [ASYNC VOL ERROR] with async_file_specific, invalid object\n");
         return(-1);
+    }
 
     /* Try to retrieve the "under" VOL id */
     if(o)
