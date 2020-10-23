@@ -23359,10 +23359,14 @@ H5VL_async_link_copy(void *src_obj, const H5VL_loc_params_t *loc_params1,
 #endif
 
     /* Return error if objects not open / created */
-    if(!o_src->is_obj_valid)
+    if(!o_src->is_obj_valid) {
+        fprintf(stderr,"  [ASYNC VOL ERROR] with %s, invalid o_src\n", __func__);
         return(-1);
-    if(!o_dst->is_obj_valid)
+    }
+    if(!o_dst->is_obj_valid){
+        fprintf(stderr,"  [ASYNC VOL ERROR] with %s, invalid o_dst\n", __func__);
         return(-1);
+    }
 
     /* Retrieve the "under" VOL id */
     if(o_src)
@@ -23411,10 +23415,14 @@ H5VL_async_link_move(void *src_obj, const H5VL_loc_params_t *loc_params1,
 #endif
 
     /* Return error if objects not open / created */
-    if(!o_src->is_obj_valid)
+    if(!o_src->is_obj_valid) {
+        fprintf(stderr,"  [ASYNC VOL ERROR] with %s, invalid o_src\n", __func__);
         return(-1);
-    if(!o_dst->is_obj_valid)
+    }
+    if(!o_dst->is_obj_valid){
+        fprintf(stderr,"  [ASYNC VOL ERROR] with %s, invalid o_dst\n", __func__);
         return(-1);
+    }
 
     /* Retrieve the "under" VOL id */
     if(o_src)
@@ -23455,8 +23463,10 @@ H5VL_async_link_get(void *obj, const H5VL_loc_params_t *loc_params,
 #endif
 
     /* Return error if file object not open / created */
-    if(!o->is_obj_valid)
+    if(!o->is_obj_valid) {
+        fprintf(stderr,"  [ASYNC VOL ERROR] with %s, invalid o_dst\n", __func__);
         return(-1);
+    }
 
     ret_value = async_link_get(1, async_instance_g, o, loc_params, get_type, dxpl_id, req, arguments);
 
@@ -23489,10 +23499,6 @@ H5VL_async_link_specific(void *obj, const H5VL_loc_params_t *loc_params,
     printf("------- ASYNC VOL LINK Specific\n");
 #endif
 
-    /* Return error if file object not open / created */
-    if(!o->is_obj_valid)
-        return(-1);
-
     ret_value = async_link_specific(1, async_instance_g, o, loc_params, specific_type, dxpl_id, req, arguments);
 
     /* Check for async request */
@@ -23523,10 +23529,6 @@ H5VL_async_link_optional(void *obj, H5VL_link_optional_t opt_type,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL LINK Optional\n");
 #endif
-
-    /* Return error if file object not open / created */
-    if(!o->is_obj_valid)
-        return(-1);
 
     ret_value = async_link_optional(0, async_instance_g, o, opt_type, dxpl_id, req, arguments);
 
