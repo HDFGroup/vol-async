@@ -748,7 +748,7 @@ async_instance_t   *async_instance_g  = NULL;
 hid_t               async_connector_id_g = -1;
 mmap_file          *MMAP_FILE;
 int                 USE_MMAP = 0;
-hid_t               async_error_class_g = 0;
+hid_t               async_error_class_g = H5I_INVALID_HID;
 
 /********************* */
 /* Function prototypes */
@@ -1384,8 +1384,11 @@ H5VL_async_term(void)
     async_term();
     H5VL_ASYNC_g = H5I_INVALID_HID;
 
-    if (H5Eunregister_class(async_error_class_g) < 0)
-        fprintf(stderr,"  [ASYNC VOL ERROR] ASYNC VOL unregister error class failed\n");
+    if(H5I_INVALID_HID != async_error_class_g) {
+        if (H5Eunregister_class(async_error_class_g) < 0)
+            fprintf(stderr,"  [ASYNC VOL ERROR] ASYNC VOL unregister error class failed\n");
+        async_error_class_g = H5I_INVALID_HID;
+    }
 
     return ret_val;
 }
