@@ -44,7 +44,7 @@
 /* Universal linked lists header */
 #include "utlist.h"
 
-#define ENABLE_LOG                  1
+/* #define ENABLE_LOG                  1 */
 /* #define ENABLE_DBG_MSG              1 */
 /* #define ENABLE_TIMING               1 */
 /* #define PRINT_ERROR_STACK           1 */
@@ -23213,7 +23213,7 @@ H5VL_async_link_create(H5VL_link_create_type_t create_type, void *obj,
         ret_value = H5VL_async_link_create_reissue(create_type, (o ? o->under_object : NULL), loc_params, under_vol_id, lcpl_id, lapl_id, dxpl_id, req, cur_obj, cur_params);
     } /* end if */
     else
-        ret_value = async_link_create(0, async_instance_g, create_type, o, loc_params, lcpl_id, lapl_id, dxpl_id, req, arguments);
+        ret_value = async_link_create(1, async_instance_g, create_type, o, loc_params, lcpl_id, lapl_id, dxpl_id, req, arguments);
 
     /* Check for async request */
     /*     if(req && *req) */
@@ -23424,7 +23424,7 @@ H5VL_async_link_optional(void *obj, H5VL_link_optional_t opt_type,
     printf("------- ASYNC VOL LINK Optional\n");
 #endif
 
-    ret_value = async_link_optional(0, async_instance_g, o, opt_type, dxpl_id, req, arguments);
+    ret_value = async_link_optional(1, async_instance_g, o, opt_type, dxpl_id, req, arguments);
 
     /* Check for async request */
     /*     if(req && *req) */
