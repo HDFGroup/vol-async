@@ -92,35 +92,35 @@ int main(int argc, char *argv[])
     fflush(stdout);
 
     // attribute async API have not been fully implemented, skip the test for now
-    /* attr0 = H5Acreate(dset0_id, "attr_0", H5T_NATIVE_INT, attr_space, H5P_DEFAULT, H5P_DEFAULT); */
-    /* attr1 = H5Acreate(dset1_id, "attr_1", H5T_NATIVE_INT, attr_space, H5P_DEFAULT, H5P_DEFAULT); */
+    attr0 = H5Acreate(dset0_id, "attr_0", H5T_NATIVE_INT, attr_space, H5P_DEFAULT, H5P_DEFAULT);
+    attr1 = H5Acreate(dset1_id, "attr_1", H5T_NATIVE_INT, attr_space, H5P_DEFAULT, H5P_DEFAULT);
 
-    /* attr_data0 = 123456; */
-    /* attr_data1 = -654321; */
-    /* H5Awrite(attr0, H5T_NATIVE_INT, &attr_data0); */
-    /* H5Awrite(attr1, H5T_NATIVE_INT, &attr_data1); */
+    attr_data0 = 123456;
+    attr_data1 = -654321;
+    H5Awrite(attr0, H5T_NATIVE_INT, &attr_data0);
+    H5Awrite(attr1, H5T_NATIVE_INT, &attr_data1);
 
-    /* H5Aread(attr0, H5T_NATIVE_INT, &attr_read_data0); */
-    /* H5Aread(attr1, H5T_NATIVE_INT, &attr_read_data1); */
+    H5Aread(attr0, H5T_NATIVE_INT, &attr_read_data0);
+    H5Aread(attr1, H5T_NATIVE_INT, &attr_read_data1);
 
-    /* H5Aclose(attr0); */
-    /* H5Aclose(attr1); */
+    H5Aclose(attr0);
+    H5Aclose(attr1);
 
-    /* H5Sclose(attr_space); */
+    H5Sclose(attr_space);
 
-    /* H5Fwait(file_id); */
+    H5Fwait(file_id);
 
-    /* if (attr_data0 != attr_read_data0) { */
-    /*     fprintf(stderr, "Error with attr 0 read\n"); */
-    /*     ret = -1; */
-    /*     goto done; */
-    /* } */
-    /* if (attr_data1 != attr_read_data1) { */
-    /*     fprintf(stderr, "Error with attr 1 read\n"); */
-    /*     ret = -1; */
-    /*     goto done; */
-    /* } */
-    /* if (print_dbg_msg) printf("H5Aread done\n"); */
+    if (attr_data0 != attr_read_data0) {
+        fprintf(stderr, "Error with attr 0 read\n");
+        ret = -1;
+        goto done;
+    }
+    if (attr_data1 != attr_read_data1) {
+        fprintf(stderr, "Error with attr 1 read\n");
+        ret = -1;
+        goto done;
+    }
+    if (print_dbg_msg) printf("H5Aread done\n");
 
 
     // W0, R0, W1, R1, W1', W0', R0', R1'
