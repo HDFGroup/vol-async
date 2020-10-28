@@ -1674,7 +1674,8 @@ int get_n_running_task_in_queue(async_task_t *task)
     DL_FOREACH2(task->async_obj->file_task_list_head, task_elt, file_list_next) {
         if (task_elt->abt_thread != NULL) {
             ABT_thread_get_state(task_elt->abt_thread, &thread_state);
-            if (thread_state == ABT_THREAD_STATE_RUNNING) {
+            if (thread_state != ABT_THREAD_STATE_TERMINATED) {
+            /* if (thread_state == ABT_THREAD_STATE_RUNNING) { */
                 remaining_task++;
             }
         }
