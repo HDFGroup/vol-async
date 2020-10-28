@@ -92,7 +92,7 @@ typedef struct async_task_t {
     ABT_eventual        eventual;
     int                 in_abt_pool;
     int                 is_done;
-    ABT_task            abt_task;
+    /* ABT_task            abt_task; */
     ABT_thread          abt_thread;
     hid_t               err_stack;
 
@@ -23874,7 +23874,7 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5ES_status_t *status)
     clock_t start_time, now_time;
     double elapsed, trigger;
     async_task_t *task;
-    ABT_task_state    state;
+    ABT_thread_state    state;
     hbool_t acquired = false;
 
     assert(obj);
@@ -23902,7 +23902,7 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5ES_status_t *status)
     start_time = clock();
 
     do {
-        if (NULL == task->abt_task) {
+        if (NULL == task->abt_thread) {
             if (task->is_done == 1) {
 fprintf(stderr,"  [ASYNC ABT LOG] %s err_stack = %0llx\n", __func__, task->err_stack);
                 if(task->err_stack)
@@ -23914,12 +23914,11 @@ fprintf(stderr,"  [ASYNC ABT LOG] %s err_stack = %0llx\n", __func__, task->err_s
             }
         }
 
-        if (task->abt_task) {
-            ABT_task_get_state (task->abt_task, &state);
-            if (ABT_TASK_STATE_RUNNING == state || ABT_TASK_STATE_READY == state) {
+        if (task->abt_thread) {
+            ABT_thread_get_state (task->abt_thread, &state);
+            if (ABT_THREAD_STATE_RUNNING == state || ABT_THREAD_STATE_READY == state) {
                 *status = H5ES_STATUS_IN_PROGRESS;
                 ret_value = 0;
-                goto done;
             }
             else {
                 *status = H5ES_STATUS_SUCCEED;
