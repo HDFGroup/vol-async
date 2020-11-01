@@ -7,6 +7,18 @@
 
 int print_dbg_msg = 1;
 
+static int
+link_iterate_cb(hid_t group_id, const char *link_name, const H5L_info2_t *info, void *_op_data)
+{
+    int *nlink = (int *)_op_data;
+
+    ++(*nlink);
+    printf("nlink = %d, link_name = %s\n", *nlink, link_name);
+
+    return H5_ITER_CONT;
+}
+
+
 int main(int argc, char *argv[])
 {
     hid_t file_id, grp_id, dset1_id, dset0_id, dspace_id, mspace_id, async_dxpl, attr_space, attr0, attr1;
@@ -15,6 +27,8 @@ int main(int argc, char *argv[])
     int        *data0_write, *data0_read, *data1_write, *data1_read, attr_data0, attr_data1, attr_read_data0=0, attr_read_data1=0;
     int        i, ret = 0;
     hsize_t    ds_size[2] = {DIMLEN, DIMLEN};
+    hsize_t idx = 0;
+    int nlink = 0;
     herr_t     status;
     hid_t      async_fapl;
     int        sleeptime = 100;
@@ -294,6 +308,15 @@ int main(int argc, char *argv[])
         }
     }
     printf("Finished verification\n");
+
+
+    status =  H5Literate2(grp_id, H5_INDEX_NAME, H5_ITER_INC, &idx, link_iterate_cb, &nlink);
+    if (status < 0) {
+        fprintf(stderr, "Error with H5Literate\n");
+        ret = -1;
+        goto done;
+    }
+    printf("Finished iteration\n");
 
     /* H5Fwait(file_id); */
 
