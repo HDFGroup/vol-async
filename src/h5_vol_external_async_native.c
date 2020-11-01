@@ -23917,7 +23917,6 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5ES_status_t *status)
     do {
         if (NULL == task->abt_thread) {
             if (task->is_done == 1) {
-fprintf(stderr,"  [ASYNC ABT LOG] %s err_stack = %0llx\n", __func__, task->err_stack);
                 if(task->err_stack)
                     *status = H5ES_STATUS_FAIL;
                 else
@@ -23934,7 +23933,10 @@ fprintf(stderr,"  [ASYNC ABT LOG] %s err_stack = %0llx\n", __func__, task->err_s
                 ret_value = 0;
             }
             else {
-                *status = H5ES_STATUS_SUCCEED;
+                if(task->err_stack)
+                    *status = H5ES_STATUS_FAIL;
+                else
+                    *status = H5ES_STATUS_SUCCEED;
                 ret_value = 0;
                 goto done;
             }
