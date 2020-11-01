@@ -16665,20 +16665,22 @@ async_group_close_fn(void *foo)
     fflush(stderr);
 #endif
 
-    /* Aquire async obj mutex and set the obj */
-    assert(task->async_obj->obj_mutex);
-    assert(task->async_obj->magic == ASYNC_MAGIC);
-    while (1) {
-        if (ABT_mutex_trylock(task->async_obj->obj_mutex) == ABT_SUCCESS) {
-            break;
+    // There may be cases, e.g. with link iteration, that enters group close without a valid async_obj mutex
+    if (task->async_obj->obj_mutex) {
+        /* Aquire async obj mutex and set the obj */
+        assert(task->async_obj->magic == ASYNC_MAGIC);
+        while (1) {
+            if (ABT_mutex_trylock(task->async_obj->obj_mutex) == ABT_SUCCESS) {
+                break;
+            }
+            else {
+                fprintf(stderr,"  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+                break;
+            }
+            usleep(1000);
         }
-        else {
-            fprintf(stderr,"  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
-            break;
-        }
-        usleep(1000);
+        is_lock = 1;
     }
-    is_lock = 1;
 
     // Restore previous library state
     assert(task->h5_state);
@@ -16730,9 +16732,11 @@ done:
     double time6 = get_elapsed_time(&timer5, &timer6);
 #endif
 
-    if (is_lock == 1) {
-        if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+    if (task->async_obj->obj_mutex) {
+        if (is_lock == 1) {
+            if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
+                fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+        }
     }
 
 #ifdef ENABLE_TIMING
@@ -16826,49 +16830,57 @@ async_group_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
     async_task->async_obj  = parent_obj;
     async_task->parent_obj = parent_obj;
 
-    /* Lock parent_obj */
-    while (1) {
-        if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
-            break;
+    // There may be cases, e.g. with link iteration, that enters group close without a valid async_obj mutex
+    if (parent_obj->obj_mutex) {
+        /* Lock parent_obj */
+        while (1) {
+            if (ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+                break;
+            }
+            usleep(1000);
         }
-        usleep(1000);
-    }
-    lock_parent = true;
+        lock_parent = true;
 
-    if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
-    parent_obj->task_cnt++;
-    parent_obj->pool_ptr = &aid->pool;
-    /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
-        if (NULL != parent_obj->create_task) {
-            add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
+        if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+            fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
+            goto done;
+        }
+        /* Insert it into the file task list */
+        DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
+        if (ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+            fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
+            goto done;
+        }
+        parent_obj->task_cnt++;
+        parent_obj->pool_ptr = &aid->pool;
+        /* Check if its parent has valid object */
+        if (parent_obj->is_obj_valid != 1) {
+            if (NULL != parent_obj->create_task) {
+                add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
+            }
+            else {
+                fprintf(stderr,"  [ASYNC VOL ERROR] %s parent task not created\n", __func__);
+                goto error;
+            }
         }
         else {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s parent task not created\n", __func__);
+            if (async_task->async_obj->is_col_meta == true)
+                add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
+            else
+                add_task_to_queue(&aid->qhead, async_task, REGULAR);
+        }
+
+        if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
             goto error;
         }
+        lock_parent = false;
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
-            add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
-        else
-            add_task_to_queue(&aid->qhead, async_task, REGULAR);
+        // link iteration may enter here with parent obj mutex to be NULL
+        add_task_to_queue(&aid->qhead, async_task, REGULAR);
+        is_blocking = 1;
     }
-
-    if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto error;
-    }
-    lock_parent = false;
 #ifdef ENABLE_TIMING
     struct timeval now_time;
     gettimeofday(&now_time, NULL);
