@@ -1233,7 +1233,7 @@ async_instance_init(int backing_thread_count)
     aid->start_abt_push = false;
 
     env_var = getenv("HDF5_VOL_CONNECTOR");
-    if (env_var && *env_var && strstr(env_var, "async") != NULL) {
+    if (env_var && *env_var && (strstr(env_var, "async") != NULL || strstr(env_var, H5VL_ASYNC_STR) != NULL)) {
         aid->ex_delay  = true;
         aid->env_async = true;
     }
@@ -14262,7 +14262,7 @@ async_file_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
         goto error;
     }
     // Closing a reopened file
-    if (parent_obj->is_obj_valid == 0) {
+    if (parent_obj->file_async_obj == NULL) {
         is_blocking = 1;
         args->is_reopen = true;
     }

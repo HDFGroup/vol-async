@@ -26,6 +26,7 @@
 /* Characteristics of the async VOL connector */
 #define H5VL_ASYNC_NAME        "async"
 #define H5VL_ASYNC_VALUE       707           /* VOL connector ID */
+#define H5VL_ASYNC_STR         "707"
 #define H5VL_ASYNC_VERSION     0
 #define ASYNC_VOL_DEFAULT_NTHREAD   1
 #define ALLOC_INITIAL_SIZE 2
