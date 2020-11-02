@@ -1275,16 +1275,37 @@ done:
     return hg_ret;
 } // End async_instance_init
 
-hid_t
-H5VL_async_register(void)
+static herr_t
+async_init_common(void)
 {
-    int n_thread = ASYNC_VOL_DEFAULT_NTHREAD;
     /* Initialize the Argobots I/O instance */
     if (NULL == async_instance_g) {
+        int n_thread = ASYNC_VOL_DEFAULT_NTHREAD;
+
         if (async_instance_init(n_thread) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] with async_instance_init\n");
             return -1;
         }
+    }
+
+    /* Singleton register error class */
+    if (H5I_INVALID_HID == async_error_class_g) {
+        if((async_error_class_g = H5Eregister_class("Async VOL", "Async VOL", "0.1")) < 0) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] with H5Eregister_class\n");
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+hid_t
+H5VL_async_register(void)
+{
+    /* Initialize VOL connector state */
+    if(async_init_common() < 0) {
+        fprintf(stderr,"  [ASYNC VOL ERROR] with async_init_common\n");
+        return -1;
     }
 
     /* Singleton register the pass-through VOL connector ID */
@@ -1296,27 +1317,16 @@ H5VL_async_register(void)
         }
     }
 
-    /* Register error class */
-    if (async_error_class_g == 0) {
-        if((async_error_class_g = H5Eregister_class("Async VOL", "Async VOL", "0.1")) < 0) {
-            fprintf(stderr, "  [ASYNC VOL ERROR] with H5VLregister_connector\n");
-            return -1;
-        }
-    }
-
     return H5VL_ASYNC_g;
 }
 
 static herr_t
 H5VL_async_init(hid_t __attribute__((unused)) vipl_id)
 {
-    /* Initialize the Argobots I/O instance */
-    int n_thread = ASYNC_VOL_DEFAULT_NTHREAD;
-    if (NULL == async_instance_g) {
-        if (async_instance_init(n_thread) < 0) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] with async_instance_init\n");
-            return -1;
-        }
+    /* Initialize VOL connector state */
+    if(async_init_common() < 0) {
+        fprintf(stderr,"  [ASYNC VOL ERROR] with async_init_common\n");
+        return -1;
     }
 
     return 0;
@@ -1329,15 +1339,6 @@ H5Pset_vol_async(hid_t fapl_id)
     hid_t under_vol_id;
     void *under_vol_info;
     herr_t status;
-    /* int n_thread = ASYNC_VOL_DEFAULT_NTHREAD; */
-
-    /* /1* Initialize the Argobots I/O instance *1/ */
-    /* if (NULL == async_instance_g) { */
-    /*     if (async_instance_init(n_thread) < 0) { */
-    /*         fprintf(stderr,"  [ASYNC VOL ERROR] with async_instance_init\n"); */
-    /*         return -1; */
-    /*     } */
-    /* } */
 
     if (H5VLis_connector_registered_by_name(H5VL_ASYNC_NAME) == 0) {
         if (H5VL_async_register() < 0) {
