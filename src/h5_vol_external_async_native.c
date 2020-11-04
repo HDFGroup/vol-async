@@ -44,8 +44,8 @@
 /* Universal linked lists header */
 #include "utlist.h"
 
-/* #define ENABLE_LOG                  1 */
-/* #define ENABLE_DBG_MSG              1 */
+#define ENABLE_LOG                  1
+#define ENABLE_DBG_MSG              1
 /* #define ENABLE_TIMING               1 */
 /* #define PRINT_ERROR_STACK           1 */
 
@@ -1905,13 +1905,14 @@ herr_t H5VL_async_dataset_wait(H5VL_async_t *async_obj)
     /* ABT_task_state state; */
     /* ABT_thread_state thread_state; */
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
     async_instance_g->start_abt_push = true;
 
     if (get_n_running_task_in_queue_obj(async_obj) == 0 )
         push_task_to_abt_pool(&async_instance_g->qhead, *async_obj->pool_ptr);
 
-    if (H5TSmutex_release() < 0)
+    if (H5TSmutex_release(&mutex_count) < 0)
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__);
 
     // Check for all tasks on this dset of a file
@@ -1941,7 +1942,7 @@ herr_t H5VL_async_dataset_wait(H5VL_async_t *async_obj)
         return -1;
     }
     while (false == acquired) {
-        if (H5TSmutex_acquire(&acquired) < 0)
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with H5TSmutex_acquire\n", __func__);
     }
 
@@ -1957,13 +1958,14 @@ herr_t H5VL_async_file_wait(H5VL_async_t *async_obj)
     /* ABT_task_state state; */
     /* ABT_thread_state thread_state; */
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
     async_instance_g->start_abt_push = true;
 
     if (get_n_running_task_in_queue_obj(async_obj) == 0 )
         push_task_to_abt_pool(&async_instance_g->qhead, *async_obj->pool_ptr);
 
-    if (H5TSmutex_release() < 0)
+    if (H5TSmutex_release(&mutex_count) < 0)
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__);
 
     if (ABT_mutex_lock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
@@ -1999,7 +2001,7 @@ herr_t H5VL_async_file_wait(H5VL_async_t *async_obj)
     }
 
     while (false == acquired) {
-        if (H5TSmutex_acquire(&acquired) < 0)
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with H5TSmutex_acquire\n", __func__);
     }
 
@@ -2376,6 +2378,7 @@ async_attr_create_fn(void *foo)
 {
     void *obj;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -2461,7 +2464,7 @@ async_attr_create_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -2489,7 +2492,7 @@ async_attr_create_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -2613,7 +2616,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue )
@@ -2642,6 +2645,7 @@ async_attr_create(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
     async_attr_create_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -2776,7 +2780,7 @@ async_attr_create(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -2792,7 +2796,7 @@ async_attr_create(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -2824,6 +2828,7 @@ async_attr_open_fn(void *foo)
 {
     void *obj;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -2909,7 +2914,7 @@ async_attr_open_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -2937,7 +2942,7 @@ async_attr_open_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -3058,7 +3063,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue )
@@ -3087,6 +3092,7 @@ async_attr_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
     async_attr_open_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -3215,7 +3221,7 @@ async_attr_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -3231,7 +3237,7 @@ async_attr_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -3262,6 +3268,7 @@ static void
 async_attr_read_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -3348,7 +3355,7 @@ async_attr_read_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -3376,7 +3383,7 @@ async_attr_read_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -3490,7 +3497,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -3524,6 +3531,7 @@ async_attr_read(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
     async_attr_read_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -3633,7 +3641,7 @@ async_attr_read(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -3649,7 +3657,7 @@ async_attr_read(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -3680,6 +3688,7 @@ static void
 async_attr_write_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -3766,7 +3775,7 @@ async_attr_write_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -3794,7 +3803,7 @@ async_attr_write_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -3908,7 +3917,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -3937,6 +3946,7 @@ async_attr_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     async_attr_write_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     hsize_t attr_size;
 
 #ifdef ENABLE_LOG
@@ -4058,7 +4068,7 @@ async_attr_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -4074,7 +4084,7 @@ async_attr_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -4105,6 +4115,7 @@ static void
 async_attr_get_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -4191,7 +4202,7 @@ async_attr_get_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -4219,7 +4230,7 @@ async_attr_get_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -4335,7 +4346,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -4363,6 +4374,7 @@ async_attr_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj,
     async_attr_get_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -4471,7 +4483,7 @@ async_attr_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj,
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -4487,7 +4499,7 @@ async_attr_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj,
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -4518,6 +4530,7 @@ static void
 async_attr_specific_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -4604,7 +4617,7 @@ async_attr_specific_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -4632,7 +4645,7 @@ async_attr_specific_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -4749,7 +4762,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -4777,6 +4790,7 @@ async_attr_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     async_attr_specific_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -4887,7 +4901,7 @@ async_attr_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -4903,7 +4917,7 @@ async_attr_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -4934,6 +4948,7 @@ static void
 async_attr_optional_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -5020,7 +5035,7 @@ async_attr_optional_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -5048,7 +5063,7 @@ async_attr_optional_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -5164,7 +5179,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -5192,6 +5207,7 @@ async_attr_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     async_attr_optional_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -5300,7 +5316,7 @@ async_attr_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -5316,7 +5332,7 @@ async_attr_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -5347,6 +5363,7 @@ static void
 async_attr_close_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -5433,7 +5450,7 @@ async_attr_close_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -5461,7 +5478,7 @@ async_attr_close_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -5574,7 +5591,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -5602,6 +5619,7 @@ async_attr_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     async_attr_close_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -5715,7 +5733,7 @@ async_attr_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -5731,7 +5749,7 @@ async_attr_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -5763,6 +5781,7 @@ async_dataset_create_fn(void *foo)
 {
     void *obj;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -5848,7 +5867,7 @@ async_dataset_create_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -5876,7 +5895,7 @@ async_dataset_create_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -6001,7 +6020,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue )
@@ -6030,6 +6049,7 @@ async_dataset_create(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
     async_dataset_create_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -6170,7 +6190,7 @@ async_dataset_create(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -6186,7 +6206,7 @@ async_dataset_create(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -6218,6 +6238,7 @@ async_dataset_open_fn(void *foo)
 {
     void *obj;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -6303,7 +6324,7 @@ async_dataset_open_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -6331,7 +6352,7 @@ async_dataset_open_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -6452,7 +6473,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue )
@@ -6481,6 +6502,7 @@ async_dataset_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
     async_dataset_open_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -6609,7 +6631,7 @@ async_dataset_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -6625,7 +6647,7 @@ async_dataset_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -6656,6 +6678,7 @@ static void
 async_dataset_read_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -6742,7 +6765,7 @@ async_dataset_read_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -6770,7 +6793,7 @@ async_dataset_read_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -6886,7 +6909,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue )
@@ -6920,6 +6943,7 @@ async_dataset_read(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
     async_dataset_read_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -7034,7 +7058,7 @@ async_dataset_read(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -7050,7 +7074,7 @@ async_dataset_read(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -7081,6 +7105,7 @@ static void
 async_dataset_write_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -7169,7 +7194,7 @@ async_dataset_write_fn(void *foo)
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n",
                 __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -7200,7 +7225,7 @@ async_dataset_write_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -7334,7 +7359,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue )
@@ -7399,6 +7424,7 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     async_dataset_write_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -7581,7 +7607,7 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -7597,7 +7623,7 @@ async_dataset_write(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -7628,6 +7654,7 @@ static void
 async_dataset_get_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -7714,7 +7741,7 @@ async_dataset_get_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -7742,7 +7769,7 @@ async_dataset_get_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -7858,7 +7885,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -7886,6 +7913,7 @@ async_dataset_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
     async_dataset_get_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -7994,7 +8022,7 @@ async_dataset_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -8010,7 +8038,7 @@ async_dataset_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -8041,6 +8069,7 @@ static void
 async_dataset_specific_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -8127,7 +8156,7 @@ async_dataset_specific_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -8155,7 +8184,7 @@ async_dataset_specific_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -8271,7 +8300,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -8299,6 +8328,7 @@ async_dataset_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *par
     async_dataset_specific_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -8407,7 +8437,7 @@ async_dataset_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *par
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -8423,7 +8453,7 @@ async_dataset_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *par
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -8454,6 +8484,7 @@ static void
 async_dataset_optional_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -8540,7 +8571,7 @@ async_dataset_optional_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -8568,7 +8599,7 @@ async_dataset_optional_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -8684,7 +8715,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -8712,6 +8743,7 @@ async_dataset_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *par
     async_dataset_optional_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -8820,7 +8852,7 @@ async_dataset_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *par
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -8836,7 +8868,7 @@ async_dataset_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *par
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -8867,6 +8899,7 @@ static void
 async_dataset_close_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -8953,7 +8986,7 @@ async_dataset_close_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -8981,7 +9014,7 @@ async_dataset_close_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -9094,7 +9127,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -9122,6 +9155,7 @@ async_dataset_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     async_dataset_close_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -9237,7 +9271,7 @@ async_dataset_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -9253,7 +9287,7 @@ async_dataset_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -9284,6 +9318,7 @@ static void
 async_datatype_commit_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -9370,7 +9405,7 @@ async_datatype_commit_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -9398,7 +9433,7 @@ async_datatype_commit_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -9518,7 +9553,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -9547,6 +9582,7 @@ async_datatype_commit(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
     async_datatype_commit_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -9681,7 +9717,7 @@ async_datatype_commit(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -9697,7 +9733,7 @@ async_datatype_commit(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -9729,6 +9765,7 @@ async_datatype_open_fn(void *foo)
 {
     void *obj;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -9814,7 +9851,7 @@ async_datatype_open_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -9842,7 +9879,7 @@ async_datatype_open_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -9963,7 +10000,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue )
@@ -9992,6 +10029,7 @@ async_datatype_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     async_datatype_open_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -10120,7 +10158,7 @@ async_datatype_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -10136,7 +10174,7 @@ async_datatype_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -10167,6 +10205,7 @@ static void
 async_datatype_get_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -10253,7 +10292,7 @@ async_datatype_get_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -10281,7 +10320,7 @@ async_datatype_get_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -10397,7 +10436,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -10425,6 +10464,7 @@ async_datatype_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
     async_datatype_get_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -10533,7 +10573,7 @@ async_datatype_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -10549,7 +10589,7 @@ async_datatype_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -10580,6 +10620,7 @@ static void
 async_datatype_specific_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -10666,7 +10707,7 @@ async_datatype_specific_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -10694,7 +10735,7 @@ async_datatype_specific_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -10810,7 +10851,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -10838,6 +10879,7 @@ async_datatype_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *pa
     async_datatype_specific_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -10946,7 +10988,7 @@ async_datatype_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *pa
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -10962,7 +11004,7 @@ async_datatype_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *pa
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -10993,6 +11035,7 @@ static void
 async_datatype_optional_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -11079,7 +11122,7 @@ async_datatype_optional_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -11107,7 +11150,7 @@ async_datatype_optional_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -11223,7 +11266,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -11251,6 +11294,7 @@ async_datatype_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *pa
     async_datatype_optional_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -11359,7 +11403,7 @@ async_datatype_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *pa
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -11375,7 +11419,7 @@ async_datatype_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *pa
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -11406,6 +11450,7 @@ static void
 async_datatype_close_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -11492,7 +11537,7 @@ async_datatype_close_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -11520,7 +11565,7 @@ async_datatype_close_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -11633,7 +11678,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -11661,6 +11706,7 @@ async_datatype_close(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
     async_datatype_close_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -11774,7 +11820,7 @@ async_datatype_close(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -11790,7 +11836,7 @@ async_datatype_close(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -11822,6 +11868,7 @@ async_file_create_fn(void *foo)
 {
     void *obj;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -11883,7 +11930,7 @@ async_file_create_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -11911,7 +11958,7 @@ async_file_create_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -12083,7 +12130,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue )
@@ -12113,6 +12160,7 @@ async_file_create(int is_blocking, async_instance_t* aid, const char *name, unsi
     async_file_create_args_t *args = NULL;
     bool lock_self = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -12227,7 +12275,7 @@ async_file_create(int is_blocking, async_instance_t* aid, const char *name, unsi
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -12243,7 +12291,7 @@ async_file_create(int is_blocking, async_instance_t* aid, const char *name, unsi
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -12275,6 +12323,7 @@ async_file_open_fn(void *foo)
 {
     void *obj;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -12336,7 +12385,7 @@ async_file_open_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -12364,7 +12413,7 @@ async_file_open_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -12540,7 +12589,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue )
@@ -12570,6 +12619,7 @@ async_file_open(int is_blocking, async_instance_t* aid, const char *name, unsign
     async_file_open_args_t *args = NULL;
     bool lock_self = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -12682,7 +12732,7 @@ async_file_open(int is_blocking, async_instance_t* aid, const char *name, unsign
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -12698,7 +12748,7 @@ async_file_open(int is_blocking, async_instance_t* aid, const char *name, unsign
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -12730,6 +12780,7 @@ static void
 async_file_get_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -12816,7 +12867,7 @@ async_file_get_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -12844,7 +12895,7 @@ async_file_get_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -12960,7 +13011,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -12988,6 +13039,7 @@ async_file_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj,
     async_file_get_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -13096,7 +13148,7 @@ async_file_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj,
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -13112,7 +13164,7 @@ async_file_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj,
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -13143,6 +13195,7 @@ static void
 async_file_specific_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -13229,7 +13282,7 @@ async_file_specific_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -13257,7 +13310,7 @@ async_file_specific_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -13373,7 +13426,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -13401,6 +13454,7 @@ async_file_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     async_file_specific_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -13509,7 +13563,7 @@ async_file_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -13525,7 +13579,7 @@ async_file_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -13556,6 +13610,7 @@ static void
 async_file_optional_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -13642,7 +13697,7 @@ async_file_optional_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -13670,7 +13725,7 @@ async_file_optional_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -13786,7 +13841,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -13816,6 +13871,7 @@ async_file_optional(int is_blocking, async_instance_t* aid,
     async_file_optional_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -13921,7 +13977,7 @@ async_file_optional(int is_blocking, async_instance_t* aid,
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -13937,7 +13993,7 @@ async_file_optional(int is_blocking, async_instance_t* aid,
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -13968,6 +14024,7 @@ static void
 async_file_close_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -14054,7 +14111,7 @@ async_file_close_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -14082,7 +14139,7 @@ async_file_close_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -14206,7 +14263,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -14238,6 +14295,7 @@ async_file_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     async_file_close_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -14355,7 +14413,7 @@ async_file_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -14371,7 +14429,7 @@ async_file_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -14403,6 +14461,7 @@ async_group_create_fn(void *foo)
 {
     void *obj;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -14488,7 +14547,7 @@ async_group_create_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -14516,7 +14575,7 @@ async_group_create_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -14639,7 +14698,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue )
@@ -14668,6 +14727,7 @@ async_group_create(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
     async_group_create_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -14800,7 +14860,7 @@ async_group_create(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -14816,7 +14876,7 @@ async_group_create(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -14848,6 +14908,7 @@ async_group_open_fn(void *foo)
 {
     void *obj;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -14933,7 +14994,7 @@ async_group_open_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -14961,7 +15022,7 @@ async_group_open_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -15082,7 +15143,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue )
@@ -15111,6 +15172,7 @@ async_group_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     async_group_open_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -15239,7 +15301,7 @@ async_group_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -15255,7 +15317,7 @@ async_group_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -15286,6 +15348,7 @@ static void
 async_group_get_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -15372,7 +15435,7 @@ async_group_get_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -15400,7 +15463,7 @@ async_group_get_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -15516,7 +15579,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -15544,6 +15607,7 @@ async_group_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
     async_group_get_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -15652,7 +15716,7 @@ async_group_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -15668,7 +15732,7 @@ async_group_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -15699,6 +15763,7 @@ static void
 async_group_specific_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -15785,7 +15850,7 @@ async_group_specific_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -15813,7 +15878,7 @@ async_group_specific_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -15929,7 +15994,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -15957,6 +16022,7 @@ async_group_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
     async_group_specific_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -16065,7 +16131,7 @@ async_group_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -16081,7 +16147,7 @@ async_group_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -16112,6 +16178,7 @@ static void
 async_group_optional_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -16198,7 +16265,7 @@ async_group_optional_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -16226,7 +16293,7 @@ async_group_optional_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -16342,7 +16409,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -16370,6 +16437,7 @@ async_group_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
     async_group_optional_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -16478,7 +16546,7 @@ async_group_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -16494,7 +16562,7 @@ async_group_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *paren
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -16525,6 +16593,7 @@ static void
 async_group_close_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -16611,7 +16680,7 @@ async_group_close_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -16639,7 +16708,7 @@ async_group_close_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -16756,7 +16825,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -16784,6 +16853,7 @@ async_group_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
     async_group_close_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -16907,7 +16977,7 @@ async_group_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -16923,7 +16993,7 @@ async_group_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -16954,6 +17024,7 @@ static void
 async_link_create_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -17040,7 +17111,7 @@ async_link_create_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -17068,7 +17139,7 @@ async_link_create_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -17187,7 +17258,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue )
@@ -17216,6 +17287,7 @@ async_link_create(int is_blocking, async_instance_t* aid, H5VL_link_create_type_
     async_link_create_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -17346,7 +17418,7 @@ async_link_create(int is_blocking, async_instance_t* aid, H5VL_link_create_type_
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -17362,7 +17434,7 @@ async_link_create(int is_blocking, async_instance_t* aid, H5VL_link_create_type_
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -17393,6 +17465,7 @@ static void
 async_link_copy_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -17479,7 +17552,7 @@ async_link_copy_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -17507,7 +17580,7 @@ async_link_copy_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -17624,7 +17697,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -17652,6 +17725,7 @@ async_link_copy(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
     async_link_copy_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -17767,7 +17841,7 @@ async_link_copy(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -17783,7 +17857,7 @@ async_link_copy(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -17814,6 +17888,7 @@ static void
 async_link_move_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -17900,7 +17975,7 @@ async_link_move_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -17928,7 +18003,7 @@ async_link_move_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -18045,7 +18120,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -18073,6 +18148,7 @@ async_link_move(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
     async_link_move_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -18188,7 +18264,7 @@ async_link_move(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -18204,7 +18280,7 @@ async_link_move(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -18235,6 +18311,7 @@ static void
 async_link_get_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -18321,7 +18398,7 @@ async_link_get_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -18349,7 +18426,7 @@ async_link_get_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -18466,7 +18543,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -18494,6 +18571,7 @@ async_link_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj,
     async_link_get_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -18604,7 +18682,7 @@ async_link_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj,
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -18620,7 +18698,7 @@ async_link_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_obj,
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -18651,6 +18729,7 @@ static void
 async_link_specific_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -18737,7 +18816,7 @@ async_link_specific_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -18765,7 +18844,7 @@ async_link_specific_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -18882,7 +18961,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -18910,6 +18989,7 @@ async_link_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     async_link_specific_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -19020,7 +19100,7 @@ async_link_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -19036,7 +19116,7 @@ async_link_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -19067,6 +19147,7 @@ static void
 async_link_optional_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -19153,7 +19234,7 @@ async_link_optional_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -19181,7 +19262,7 @@ async_link_optional_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -19297,7 +19378,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -19325,6 +19406,7 @@ async_link_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
     async_link_optional_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -19433,7 +19515,7 @@ async_link_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -19449,7 +19531,7 @@ async_link_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *parent
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -19480,6 +19562,7 @@ static void
 async_object_open_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -19566,7 +19649,7 @@ async_object_open_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -19594,7 +19677,7 @@ async_object_open_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -19712,7 +19795,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue )
@@ -19741,6 +19824,7 @@ async_object_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
     async_object_open_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -19866,7 +19950,7 @@ async_object_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -19882,7 +19966,7 @@ async_object_open(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -19913,6 +19997,7 @@ static void
 async_object_copy_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -19999,7 +20084,7 @@ async_object_copy_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -20027,7 +20112,7 @@ async_object_copy_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -20148,7 +20233,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -20176,6 +20261,7 @@ async_object_copy(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
     async_object_copy_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -20295,7 +20381,7 @@ async_object_copy(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -20311,7 +20397,7 @@ async_object_copy(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_o
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -20342,6 +20428,7 @@ static void
 async_object_get_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -20428,7 +20515,7 @@ async_object_get_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -20456,7 +20543,7 @@ async_object_get_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -20573,7 +20660,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -20601,6 +20688,7 @@ async_object_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     async_object_get_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -20711,7 +20799,7 @@ async_object_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -20727,7 +20815,7 @@ async_object_get(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -20758,6 +20846,7 @@ static void
 async_object_specific_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -20844,7 +20933,7 @@ async_object_specific_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -20872,7 +20961,7 @@ async_object_specific_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -20989,7 +21078,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -21017,6 +21106,7 @@ async_object_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
     async_object_specific_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -21127,7 +21217,7 @@ async_object_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -21143,7 +21233,7 @@ async_object_specific(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -21174,6 +21264,7 @@ static void
 async_object_optional_fn(void *foo)
 {
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
     int is_lock = 0, sleep_time = 500;
     unsigned int attempt_count, new_attempt_count;
     hbool_t is_lib_state_restored = false;
@@ -21260,7 +21351,7 @@ async_object_optional_fn(void *foo)
         gettimeofday(&now_time, NULL);
         fprintf(stderr,"  [ASYNC ABT DBG] %s lock count = %d, time=%ld.%06ld\n", __func__, attempt_count, now_time.tv_sec, now_time.tv_usec);
 #endif
-        if (H5TSmutex_acquire(&acquired) < 0) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             goto done;
         }
@@ -21288,7 +21379,7 @@ async_object_optional_fn(void *foo)
 #endif
 #endif
             if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release() < 0) {
+                if (H5TSmutex_release(&mutex_count) < 0) {
                     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
                 }
 #ifdef ENABLE_TIMING
@@ -21404,7 +21495,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    if (acquired == true && H5TSmutex_release() < 0) {
+    if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -21432,6 +21523,7 @@ async_object_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
     async_object_optional_args_t *args = NULL;
     bool lock_parent = false;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -21540,7 +21632,7 @@ async_object_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
-        if (H5TSmutex_release() < 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
 #ifdef ENABLE_DBG_MSG
@@ -21556,7 +21648,7 @@ async_object_optional(int is_blocking, async_instance_t* aid, H5VL_async_t *pare
         fflush(stderr);
 #endif
         while (acquired == false) {
-            if (H5TSmutex_acquire(&acquired) < 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
@@ -23890,6 +23982,7 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5ES_status_t *status)
     async_task_t *task;
     ABT_thread_state    state;
     hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
     assert(obj);
     assert(status);
@@ -23909,7 +24002,7 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5ES_status_t *status)
     if (task->async_obj && get_n_running_task_in_queue_obj(task->async_obj) == 0 )
         push_task_to_abt_pool(&async_instance_g->qhead, *task->async_obj->pool_ptr);
 
-    if (H5TSmutex_release() < 0)
+    if (H5TSmutex_release(&mutex_count) < 0)
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__);
 
     trigger = (double)timeout;
@@ -23956,7 +24049,7 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5ES_status_t *status)
 
 done:
     while (false == acquired) {
-        if (H5TSmutex_acquire(&acquired) < 0)
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with H5TSmutex_acquire\n", __func__);
     }
 
