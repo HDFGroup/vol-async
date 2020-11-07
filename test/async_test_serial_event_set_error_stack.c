@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 #include "hdf5.h"
 #include "h5_vol_external_async_native.h"
 
@@ -17,6 +18,12 @@ int main(int argc, char *argv[])
     int        i, ret = 0;
     hsize_t    ds_size[2] = {DIMLEN, DIMLEN};
     herr_t     status;
+    hid_t es_id;
+    H5ES_status_t es_status;
+    hbool_t es_err_status;
+    size_t es_err_count;
+    size_t es_err_cleared;
+    H5ES_err_info_t err_info;
     hid_t      async_fapl;
     
     async_fapl = H5Pcreate (H5P_FILE_ACCESS);
@@ -28,8 +35,7 @@ int main(int argc, char *argv[])
     if (print_dbg_msg) printf("H5Fcreate start\n");
     fflush(stdout);
 
-    H5ES_status_t es_status;
-    hid_t es_id = H5EScreate();
+    es_id = H5EScreate();
 
     file_id = H5Fcreate_async(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, async_fapl, es_id);
     if (file_id < 0) {
@@ -73,6 +79,96 @@ int main(int argc, char *argv[])
         goto done;
     }
     if (print_dbg_msg) printf("H5ESwait done\n");
+    if (H5ES_STATUS_FAIL != es_status) {
+        fprintf(stderr, "H5Greate didn't fail?!?\n");
+        ret = -1;
+        goto done;
+    }
+
+    es_err_status = 0;
+    if (print_dbg_msg) printf("H5ESget_err_status start\n");
+    status = H5ESget_err_status(es_id, &es_err_status);
+    if (status < 0) {
+        fprintf(stderr, "Error with H5ESget_err_status\n");
+        ret = -1;
+        goto done;
+    }
+    if (print_dbg_msg) printf("H5ESget_err_status done\n");
+    if (!es_err_status) {
+        fprintf(stderr, "Event set doesn't have error status set?!?\n");
+        ret = -1;
+        goto done;
+    }
+
+    es_err_count = 0;
+    if (print_dbg_msg) printf("H5ESget_err_count start\n");
+    status = H5ESget_err_count(es_id, &es_err_count);
+    if (status < 0) {
+        fprintf(stderr, "Error with H5ESget_err_count\n");
+        ret = -1;
+        goto done;
+    }
+    if (print_dbg_msg) printf("H5ESget_err_count done\n");
+    if (1 != es_err_count) {
+        fprintf(stderr, "Event set doesn't have 1 error?!?\n");
+        ret = -1;
+        goto done;
+    }
+
+    es_err_cleared = 0;
+    memset(&err_info, 0, sizeof(err_info));
+    if (print_dbg_msg) printf("H5ESget_err_info start\n");
+    status = H5ESget_err_info(es_id, 1, &err_info, &es_err_cleared);
+    if (status < 0) {
+        fprintf(stderr, "Error with H5ESget_err_info\n");
+        ret = -1;
+        goto done;
+    }
+    if (print_dbg_msg) printf("H5ESget_err_info done\n");
+    if (1 != es_err_cleared) {
+        fprintf(stderr, "Event set didn't clear 1 error?!?\n");
+        ret = -1;
+        goto done;
+    }
+    if (strcmp("H5Gcreate_async", err_info.api_name)) {
+        fprintf(stderr, "Event set didn't return API name correctly?!?\n");
+        ret = -1;
+        goto done;
+    }
+    H5free_memory(err_info.api_name);
+    if (strcmp("loc_id=0x100000000000000 (file), name=\"Group\", lcpl_id=H5P_DEFAULT, gcpl_id=H5P_DEFAULT, gapl_id=H5P_DEFAULT, es_id=0x1000000000000000 (event set)", err_info.api_args)) {
+        fprintf(stderr, "Event set didn't return API name correctly?!?\n");
+        ret = -1;
+        goto done;
+    }
+    H5free_memory(err_info.api_args);
+    if (strcmp("async_test_serial_event_set_error_stack.c", err_info.app_file_name)) {
+        fprintf(stderr, "Event set didn't return app source file name correctly?!?\n");
+        ret = -1;
+        goto done;
+    }
+    H5free_memory(err_info.app_file_name);
+    if (strcmp("main", err_info.app_func_name)) {
+        fprintf(stderr, "Event set didn't return app source function name correctly?!?\n");
+        ret = -1;
+        goto done;
+    }
+    H5free_memory(err_info.app_func_name);
+    if (53 != err_info.app_line_num) {
+        fprintf(stderr, "Event set didn't return app source line # correctly?!?\n");
+        ret = -1;
+        goto done;
+    }
+    if (1 != err_info.op_ins_count) {
+        fprintf(stderr, "Event set didn't return op counter correctly?!?\n");
+        ret = -1;
+        goto done;
+    }
+    if (0 == err_info.op_ins_ts) {
+        fprintf(stderr, "Event set didn't return op timestamp correctly?!?\n");
+        ret = -1;
+        goto done;
+    }
 
 
     data0_write = malloc (sizeof(int)*DIMLEN*DIMLEN);
@@ -174,7 +270,7 @@ int main(int argc, char *argv[])
     /* fflush(stdout); */
 
     if (print_dbg_msg) printf("H5ESwait start\n");
-    status = H5ESwait(es_id, 10000000000, &es_status);
+    status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &es_status);
     if (status < 0) {
         fprintf(stderr, "Error with H5ESwait\n");
         ret = -1;
