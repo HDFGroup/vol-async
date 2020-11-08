@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
     hid_t file_id, grp_id, grp1_id, dset1_id, dset0_id, dspace_id, mspace_id, async_dxpl, attr_space, attr0, attr1;
     const char *file_name = "async_test_serial.h5";
     const char *grp_name  = "Group";
-    int        *data0_write, *data0_read, *data1_write, *data1_read, attr_data0, attr_data1, attr_read_data0=0, attr_read_data1=0;
+    int        *data0_write = NULL, *data0_read = NULL, *data1_write = NULL, *data1_read = NULL, attr_data0, attr_data1, attr_read_data0=0, attr_read_data1=0;
     int        i, ret = 0;
     hsize_t    ds_size[2] = {DIMLEN, DIMLEN};
     herr_t     status;
@@ -154,7 +154,7 @@ int main(int argc, char *argv[])
         goto done;
     }
     H5free_memory(err_info.app_func_name);
-    if (53 != err_info.app_line_num) {
+    if (65 != err_info.app_line_num) {
         fprintf(stderr, "Event set didn't return app source line # correctly?!?\n");
         ret = -1;
         goto done;
