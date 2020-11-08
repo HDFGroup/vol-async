@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
     hid_t file_id, grp_id, grp1_id, dset1_id, dset0_id, dspace_id, mspace_id, async_dxpl, attr_space, attr0, attr1;
     const char *file_name = "async_test_serial.h5";
     const char *grp_name  = "Group";
-    int        *data0_write = NULL, *data0_read = NULL, *data1_write = NULL, *data1_read = NULL, attr_data0, attr_data1, attr_read_data0=0, attr_read_data1=0;
+    int        *data0_write = NULL, *data0_read = NULL, attr_data0, attr_data1, attr_read_data0=0, attr_read_data1=0;
     int        i, ret = 0;
     hsize_t    ds_size[2] = {DIMLEN, DIMLEN};
     herr_t     status;
@@ -171,19 +171,26 @@ int main(int argc, char *argv[])
         goto done;
     }
 
-
-    data0_write = malloc (sizeof(int)*DIMLEN*DIMLEN);
-    data1_write = malloc (sizeof(int)*DIMLEN*DIMLEN);
-    data0_read  = malloc (sizeof(int)*DIMLEN*DIMLEN);
-    data1_read  = malloc (sizeof(int)*DIMLEN*DIMLEN);
-    for(i = 0; i < DIMLEN*DIMLEN; ++i) {
-        data0_write[i] = i;
-        data1_write[i] = i*2;
-    }
-
     dspace_id  = H5Screate_simple(2, ds_size, NULL); 
     hsize_t attr_size = 1;
     attr_space = H5Screate_simple(1, &attr_size, NULL); 
+
+    if (print_dbg_msg) printf("H5Dcreate 1 start (should fail as using previous event set with failed op)\n");
+    fflush(stdout);
+    dset1_id  = H5Dcreate_async(grp1_id,"dset1",H5T_NATIVE_INT,dspace_id,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT, es_id);
+    if (dset1_id >= 0) {
+        fprintf(stderr, "Should not be able to add task to an event set with failed ops\n");
+        ret = -1;
+        goto done;
+    }
+    if (print_dbg_msg) printf("H5Dcreate 1 done\n");
+    fflush(stdout);
+
+    data0_write = malloc (sizeof(int)*DIMLEN*DIMLEN);
+    data0_read  = malloc (sizeof(int)*DIMLEN*DIMLEN);
+    for(i = 0; i < DIMLEN*DIMLEN; ++i) {
+        data0_write[i] = i;
+    }
 
     if (print_dbg_msg) printf("H5Dcreate 0 start\n");
     fflush(stdout);
@@ -195,18 +202,6 @@ int main(int argc, char *argv[])
         goto done;
     }
     if (print_dbg_msg) printf("H5Dcreate 0 done\n");
-    fflush(stdout);
-
-    if (print_dbg_msg) printf("H5Dcreate 1 start (should fail as using previous event set with failed op)\n");
-    fflush(stdout);
-    /* dset1_id  = H5Dcreate(grp_id,"dset1",H5T_NATIVE_INT,dspace_id,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT); */
-    dset1_id  = H5Dcreate_async(grp1_id,"dset1",H5T_NATIVE_INT,dspace_id,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT, es_id);
-    if (dset1_id >= 0) {
-        fprintf(stderr, "Should not be able to add task to an event set with failed ops\n");
-        ret = -1;
-        goto done;
-    }
-    if (print_dbg_msg) printf("H5Dcreate 1 done\n");
     fflush(stdout);
 
     // attribute async API have not been fully implemented, skip the test for now
@@ -290,7 +285,7 @@ done:
     H5Pclose(async_dxpl);
     H5Sclose(dspace_id);
     H5Dclose(dset0_id);
-    H5Dclose(dset1_id);
+    /* H5Dclose(dset1_id); */
     H5Gclose(grp_id);
     H5Fclose(file_id);
 
@@ -298,12 +293,7 @@ done:
         free(data0_write);
     if (data0_read != NULL) 
         free(data0_read);
-    if (data1_write != NULL) 
-        free(data1_write);
-    if (data1_read != NULL) 
-        free(data1_read);
 
-    /* H5VLasync_finalize(); */
     return ret;
 }
 
