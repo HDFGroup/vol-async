@@ -851,9 +851,9 @@ static herr_t H5VL_async_introspect_get_conn_cls(void *obj, H5VL_get_conn_lvl_t 
 static herr_t H5VL_async_introspect_opt_query(void *obj, H5VL_subclass_t cls, int opt_type, hbool_t *supported);
 
 /* Async request callbacks */
-static herr_t H5VL_async_request_wait(void *req, uint64_t timeout, H5ES_status_t *status);
+static herr_t H5VL_async_request_wait(void *req, uint64_t timeout, H5VL_request_status_t *status);
 static herr_t H5VL_async_request_notify(void *obj, H5VL_request_notify_t cb, void *ctx);
-static herr_t H5VL_async_request_cancel(void *req);
+static herr_t H5VL_async_request_cancel(void *req, H5VL_request_status_t *status);
 static herr_t H5VL_async_request_specific(void *req, H5VL_request_specific_t specific_type, va_list arguments);
 static herr_t H5VL_async_request_optional(void *req, H5VL_request_optional_t opt_type, va_list arguments);
 static herr_t H5VL_async_request_free(void *req);
@@ -23974,7 +23974,7 @@ H5VL_async_introspect_opt_query(void *obj, H5VL_subclass_t cls,
  *-------------------------------------------------------------------------
  */
 static herr_t
-H5VL_async_request_wait(void *obj, uint64_t timeout, H5ES_status_t *status)
+H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *status)
 {
     herr_t ret_value = 0;
     clock_t start_time, now_time;
@@ -24012,9 +24012,9 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5ES_status_t *status)
         if (NULL == task->abt_thread) {
             if (task->is_done == 1) {
                 if(task->err_stack)
-                    *status = H5ES_STATUS_FAIL;
+                    *status = H5VL_REQUEST_STATUS_FAIL;
                 else
-                    *status = H5ES_STATUS_SUCCEED;
+                    *status = H5VL_REQUEST_STATUS_SUCCEED;
                 ret_value = 0;
                 goto done;
             }
@@ -24023,14 +24023,14 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5ES_status_t *status)
         if (task->abt_thread) {
             ABT_thread_get_state (task->abt_thread, &state);
             if (ABT_THREAD_STATE_RUNNING == state || ABT_THREAD_STATE_READY == state) {
-                *status = H5ES_STATUS_IN_PROGRESS;
+                *status = H5VL_REQUEST_STATUS_IN_PROGRESS;
                 ret_value = 0;
             }
             else {
                 if(task->err_stack)
-                    *status = H5ES_STATUS_FAIL;
+                    *status = H5VL_REQUEST_STATUS_FAIL;
                 else
-                    *status = H5ES_STATUS_SUCCEED;
+                    *status = H5VL_REQUEST_STATUS_SUCCEED;
                 ret_value = 0;
                 goto done;
             }
@@ -24040,7 +24040,7 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5ES_status_t *status)
         now_time = clock();
         elapsed = (double)(now_time - start_time) / CLOCKS_PER_SEC * 1e9;
 
-        *status = H5ES_STATUS_IN_PROGRESS;
+        *status = H5VL_REQUEST_STATUS_IN_PROGRESS;
     } while (elapsed < trigger) ;
 
     if (elapsed > timeout) {
@@ -24104,7 +24104,7 @@ H5VL_async_request_notify(void *obj, H5VL_request_notify_t cb, void *ctx)
  *-------------------------------------------------------------------------
  */
 static herr_t
-H5VL_async_request_cancel(void *obj)
+H5VL_async_request_cancel(void *obj, H5VL_request_status_t *status)
 {
     H5VL_async_t *o = (H5VL_async_t *)obj;
     herr_t ret_value;
@@ -24113,7 +24113,7 @@ H5VL_async_request_cancel(void *obj)
     printf("------- ASYNC VOL REQUEST Cancel\n");
 #endif
 
-    ret_value = H5VLrequest_cancel(o->under_object, o->under_vol_id);
+    ret_value = H5VLrequest_cancel(o->under_object, o->under_vol_id, status);
 
     if(ret_value >= 0)
         H5VL_async_free_obj(o);
@@ -24206,12 +24206,12 @@ H5VL_async_request_specific(void *obj, H5VL_request_specific_t specific_type,
             /* Release requests that have completed */
             if(H5VL_REQUEST_WAITANY == specific_type) {
                 size_t *idx;          /* Pointer to the index of completed request */
-                H5ES_status_t *status;  /* Pointer to the request's status */
+                H5VL_request_status_t *status;  /* Pointer to the request's status */
 
                 /* Retrieve the remaining arguments */
                 idx = va_arg(tmp_arguments, size_t *);
                 assert(*idx <= req_count);
-                status = va_arg(tmp_arguments, H5ES_status_t *);
+                status = va_arg(tmp_arguments, H5VL_request_status_t *);
 
                 /* Reissue the WAITANY 'request specific' call */
                 ret_value = H5VL_async_request_specific_reissue(o->under_object, o->under_vol_id, specific_type, req_count, under_req_array, timeout,
@@ -24219,7 +24219,7 @@ H5VL_async_request_specific(void *obj, H5VL_request_specific_t specific_type,
                             status);
 
                 /* Release the completed request, if it completed */
-                if(ret_value >= 0 && *status != H5ES_STATUS_IN_PROGRESS) {
+                if(ret_value >= 0 && *status != H5VL_REQUEST_STATUS_IN_PROGRESS) {
                     H5VL_async_t *tmp_o;
 
                     tmp_o = (H5VL_async_t *)req_array[*idx];
@@ -24229,13 +24229,13 @@ H5VL_async_request_specific(void *obj, H5VL_request_specific_t specific_type,
             else if(H5VL_REQUEST_WAITSOME == specific_type) {
                 size_t *outcount;               /* # of completed requests */
                 unsigned *array_of_indices;     /* Array of indices for completed requests */
-                H5ES_status_t *array_of_statuses; /* Array of statuses for completed requests */
+                H5VL_request_status_t *array_of_statuses; /* Array of statuses for completed requests */
 
                 /* Retrieve the remaining arguments */
                 outcount = va_arg(tmp_arguments, size_t *);
                 assert(*outcount <= req_count);
                 array_of_indices = va_arg(tmp_arguments, unsigned *);
-                array_of_statuses = va_arg(tmp_arguments, H5ES_status_t *);
+                array_of_statuses = va_arg(tmp_arguments, H5VL_request_status_t *);
 
                 /* Reissue the WAITSOME 'request specific' call */
                 ret_value = H5VL_async_request_specific_reissue(o->under_object, o->under_vol_id, specific_type, req_count, under_req_array, timeout, outcount, array_of_indices, array_of_statuses);
@@ -24257,10 +24257,10 @@ H5VL_async_request_specific(void *obj, H5VL_request_specific_t specific_type,
                 } /* end if */
             } /* end else-if */
             else {      /* H5VL_REQUEST_WAITALL == specific_type */
-                H5ES_status_t *array_of_statuses; /* Array of statuses for completed requests */
+                H5VL_request_status_t *array_of_statuses; /* Array of statuses for completed requests */
 
                 /* Retrieve the remaining arguments */
-                array_of_statuses = va_arg(tmp_arguments, H5ES_status_t *);
+                array_of_statuses = va_arg(tmp_arguments, H5VL_request_status_t *);
 
                 /* Reissue the WAITALL 'request specific' call */
                 ret_value = H5VL_async_request_specific_reissue(o->under_object, o->under_vol_id, specific_type, req_count, under_req_array, timeout, array_of_statuses);
@@ -24268,7 +24268,7 @@ H5VL_async_request_specific(void *obj, H5VL_request_specific_t specific_type,
                 /* Release the completed requests */
                 if(ret_value >= 0) {
                     for(u = 0; u < req_count; u++) {
-                        if(array_of_statuses[u] != H5ES_STATUS_IN_PROGRESS) {
+                        if(array_of_statuses[u] != H5VL_REQUEST_STATUS_IN_PROGRESS) {
                             H5VL_async_t *tmp_o;
 
                             tmp_o = (H5VL_async_t *)req_array[u];
