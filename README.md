@@ -57,17 +57,25 @@ Some configuration parameters used in the instructions:
     > Edit "Makefile" by updating H5_DIR and ABT_DIR to the previously installed locations
     > make
 
-    Run the serial test
+    Run both the serial and parallel tests
 
-        > ./async_test_serial.exe
+        > make check
 
-    Run the parallel test
+    Run the serial tests only
 
-        > srun -n 2 ./async_test_parallel.exe
+        > make check_serial
+
+    May need to set the following environmental variable before running your application, e.g.:
+
+        > export LD_LIBRARY_PATH=VOL_DIR/src:H5_DIR/build/lib:$LD_LIBRARY_PATH
+
+    and on MacOS:
+
+        > export DYLD_LIBRARY_PATH=VOL_DIR/src:H5_DIR/build/lib:$DYLD_LIBRARY_PATH
 
 4, Using the Asynchronous I/O VOL connector with application code (Implicit mode with environmental variable)
 
-    The implicit mode allows an application to enable asynchronous I/O VOL connector through setting the following environemental variables and without any application code modification. By default, the dataset writes creates a copy of the data buffer, which is automatically freed after the asynchronous write, and all read operations are blocking to ensure the read data is correct.
+    The implicit mode allows an application to enable asynchronous I/O VOL connector through setting the following environemental variables and without any application code modification. By default, the HDF5 metadata operations are executed asynchronously, and the dataset operations are executed synchronously unless a cache VOL connector is used.
 
         > export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
         > export HDF5_PLUGIN_PATH="VOL_DIR"
@@ -75,39 +83,33 @@ Some configuration parameters used in the instructions:
 
 5, Using the Asynchronous I/O VOL connector with application code (Explicit mode)
 
-    Please refer to the Makefile and source code under VOL_DIR/test/ for an example 
+    Please refer to the Makefile and source code (async_test_serial_event_set*) under VOL_DIR/test/ for example usage.
 
     5.1 Include header file
 
         > #include "h5_vol_external_async_native.h" 
 
-    5.2 Create and set the file access property to be used for asynchronous task execution, currently uses 1 Argobots thread in the background. 
+    5.2 Use event set and new async API to manage asynchronous I/O operations
+        > es_id = H5EScreate();                        // Create event set for tracking async operations
+        > fid = H5Fopen_async(.., es_id);              // Asynchronous, can start immediately
+        > gid = H5Gopen_async(fid, .., es_id);         // Asynchronous, starts when H5Fopen completes
+        > did = H5Dopen_async(gid, .., es_id);         // Asynchronous, starts when H5Gopen completes
+        > status = H5Dwrite_async(did, .., es_id);     // Asynchronous, starts when H5Dopen completes, may run concurrently with other H5Dwrite in event set
+        > status = H5Dread_async(did, .., es_id);      // Asynchronous, starts when H5Dwrite completes, may run concurrently with other H5Dread in event set
+        > H5ESwait(es_id);                             // Wait for operations in event set to complete, buffers used for H5Dwrite must only be changed after wait
+        > H5ESclose(es_id);                            // Close the event set
 
-        > hid_t async_fapl = H5Pcreate (H5P_FILE_ACCESS);
-        > H5Pset_vol_async(async_fapl);
-        > H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, async_fapl);
-
-    5.3 Create and set the data transfer property for dataset reads and writes. 
-
-        > hid_t async_dxpl = H5Pcreate (H5P_DATASET_XFER);
-        > H5Pset_dxpl_async(async_dxpl, true);
-        > H5Pget_dxpl_async_cp_limit(async_dxpl, 1048576); // Optional, for a dataset read or write, if the actual data size is larger the set limit (in bytes), then it becomes blocking, to prevent the data buffer being modified by the application before the I/O operations complete.
-        > H5Dwrite(dset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, async_dxpl, data);
-
-    5.4 Finalize asynchronous I/O VOL, must be called before exiting the application to block and allow all asynchronous I/O tasks to be completed in the background thread.
-
-        > H5VLasync_finalize();
-
-    5.5 Explicitly wait for asynchronous task to be completed. (Optional)
-
-        > H5Dwait(dset_id); // Wait for all I/O tasks of the dataset
-        > H5Fwait(file_id); // Wait for all I/O tasks of the file
-
-    5.6 May need to set the following environmental variable before running your application.
-
-        > export LD_LIBRARY_PATH=VOL_DIR/src:H5_DIR/build/lib:$LD_LIBRARY_PATH
-
-        and on MacOS:
-
-        > export DYLD_LIBRARY_PATH=VOL_DIR/src:H5_DIR/build/lib:$DYLD_LIBRARY_PATH
+    5.3 Error handling with event set
+        > hbool_t es_err_status;
+        > status = H5ESget_err_status(es_id, &es_err_status);   // Check if event set has failed operations (es_err_status is set to true)
+        > size_t es_err_count;
+        > status = H5ESget_err_count(es_id, &es_err_count);     // Retrieve the number of failed operations in this event set
+        > size_t num_err_info;
+        > H5ES_err_info_t err_info;
+        > status = H5ESget_err_info(es_id, 1, &err_info, &es_err_cleared);   // Retrieve information about failed operations (the strings retrieved for each error info must be released with H5free_memory().)
+        > printf("API name: %s\nAPI args: %s\nAPI file name: %s\n API func name: %s\nAPI line number: %u\nOperation counter: %llu\nOperation timestamp: %llu\n", err_info.api_name, err_info.api_args, err_info.api_file_name, err_info.api_func_name, err_info.api_line_num, err_info.op_ins_count, err_info.op_ins_ts);    // Retrieve the faile operations's API name, arguments list, file name, function name, line number, operation counter (0-based), and operation timestamp
+        > H5free_memory(err_info.api_name);
+        > H5free_memory(err_info.api_args);
+        > H5free_memory(err_info.app_file_name);
+        > H5free_memory(err_info.app_func_name);
 
