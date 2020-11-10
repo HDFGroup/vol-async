@@ -24285,6 +24285,27 @@ H5VL_async_request_specific(void *obj, H5VL_request_specific_t specific_type,
         /* Finish use of copied vararg list */
         va_end(tmp_arguments);
     } /* end if */
+    else if(H5VL_REQUEST_GET_ERR_STACK == specific_type) {
+        async_task_t *task;
+        hid_t *err_stack_id_ptr;
+
+        task = (async_task_t*)obj;
+        if (task == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object\n", __func__);
+            return -1;
+        }
+
+        /* Retrieve pointer to error stack ID */
+        err_stack_id_ptr = va_arg(arguments, hid_t *);
+        assert(err_stack_id_ptr);
+
+        /* Increment refcount on task's error stack, if it has one */
+        if(H5I_INVALID_HID != task->err_stack)
+            H5Iinc_ref(task->err_stack);
+
+        /* Return the task's error stack (including H5I_INVALID_HID) */
+        *err_stack_id_ptr = task->err_stack;
+    } /* end if */
     else
         assert(0 && "Unknown 'specific' operation");
 
