@@ -24305,6 +24305,8 @@ H5VL_async_request_specific(void *obj, H5VL_request_specific_t specific_type,
 
         /* Return the task's error stack (including H5I_INVALID_HID) */
         *err_stack_id_ptr = task->err_stack;
+
+        ret_value = 0;
     } /* end if */
     else
         assert(0 && "Unknown 'specific' operation");
