@@ -155,7 +155,7 @@ int main(int argc, char *argv[])
         goto done;
     }
     H5free_memory(err_info.app_func_name);
-    if (66 != err_info.app_line_num) {
+    if (66 != err_info.app_line_num) { // Somewhat fragile
         fprintf(stderr, "Event set didn't return app source line # correctly?!?\n");
         ret = -1;
         goto done;
@@ -170,6 +170,12 @@ int main(int argc, char *argv[])
         ret = -1;
         goto done;
     }
+    if (9 != H5Eget_num(err_info.err_stack_id)) { // Somewhat fragile
+        fprintf(stderr, "Event set didn't return error stack correctly?!?\n");
+        ret = -1;
+        goto done;
+    }
+    H5Eclose_stack(err_info.err_stack_id);
 
     dspace_id  = H5Screate_simple(2, ds_size, NULL); 
     hsize_t attr_size = 1;
