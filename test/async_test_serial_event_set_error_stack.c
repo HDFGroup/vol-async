@@ -61,7 +61,6 @@ int main(int argc, char *argv[])
     if (print_dbg_msg) printf("H5Gcreate done\n");
     fflush(stdout);
 
-
     if (print_dbg_msg) printf("H5Gcreate 2 start (should fail when executed)\n");
     fflush(stdout);
     grp1_id = H5Gcreate_async(file_id, grp_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
@@ -309,6 +308,7 @@ done:
     if (data0_read != NULL) 
         free(data0_read);
 
+    H5VLasync_finalize();
     return ret;
 }
 
