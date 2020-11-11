@@ -85,6 +85,12 @@ int main(int argc, char *argv[])
         ret = -1;
         goto done;
     }
+    status = H5Gclose(grp1_id);
+    if (status < 0) {
+        fprintf(stderr, "Error with group close\n");
+        ret = -1;
+        goto done;
+    }
 
     es_err_status = 0;
     if (print_dbg_msg) printf("H5ESget_err_status start\n");
@@ -183,7 +189,9 @@ int main(int argc, char *argv[])
 
     if (print_dbg_msg) printf("H5Dcreate 1 start (should fail as using previous event set with failed op)\n");
     fflush(stdout);
-    dset1_id  = H5Dcreate_async(grp1_id,"dset1",H5T_NATIVE_INT,dspace_id,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT, es_id);
+    H5E_BEGIN_TRY {
+        dset1_id  = H5Dcreate_async(grp1_id,"dset1",H5T_NATIVE_INT,dspace_id,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT, es_id);
+    } H5E_END_TRY
     if (dset1_id >= 0) {
         fprintf(stderr, "Should not be able to add task to an event set with failed ops\n");
         ret = -1;
