@@ -19,7 +19,8 @@ int main(int argc, char *argv[])
     hsize_t    ds_size[2] = {DIMLEN, DIMLEN};
     herr_t     status;
     hid_t es_id, es1_id;
-    H5ES_status_t es_status;
+    hbool_t op_failed;
+    size_t num_in_progress;
     hbool_t es_err_status;
     size_t es_err_count;
     size_t es_err_cleared;
@@ -73,15 +74,15 @@ int main(int argc, char *argv[])
     fflush(stdout);
 
     if (print_dbg_msg) printf("H5ESwait start\n");
-    status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &es_status);
+    status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
     if (status < 0) {
         fprintf(stderr, "Error with H5ESwait\n");
         ret = -1;
         goto done;
     }
     if (print_dbg_msg) printf("H5ESwait done\n");
-    if (H5ES_STATUS_FAIL != es_status) {
-        fprintf(stderr, "H5Greate didn't fail?!?\n");
+    if (!op_failed) {
+        fprintf(stderr, "H5Gcreate didn't fail?!?\n");
         ret = -1;
         goto done;
     }
@@ -273,7 +274,7 @@ int main(int argc, char *argv[])
     fflush(stdout);
 
     if (print_dbg_msg) printf("H5ESwait start\n");
-    status = H5ESwait(es1_id, H5ES_WAIT_FOREVER, &es_status);
+    status = H5ESwait(es1_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
     if (status < 0) {
         fprintf(stderr, "Error with H5ESwait\n");
         ret = -1;

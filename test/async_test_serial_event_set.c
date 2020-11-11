@@ -28,7 +28,8 @@ int main(int argc, char *argv[])
     if (print_dbg_msg) printf("H5Fcreate start\n");
     fflush(stdout);
 
-    H5ES_status_t es_status;
+    hbool_t op_failed;
+    size_t num_in_progress;
     hid_t es_id = H5EScreate();
 
     file_id = H5Fcreate_async(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, async_fapl, es_id);
@@ -153,7 +154,7 @@ int main(int argc, char *argv[])
     /* fflush(stdout); */
 
     if (print_dbg_msg) printf("H5ESwait start\n");
-    status = H5ESwait(es_id, 10000000000, &es_status);
+    status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
     if (status < 0) {
         fprintf(stderr, "Error with H5ESwait\n");
         ret = -1;
@@ -193,7 +194,7 @@ int main(int argc, char *argv[])
     fflush(stdout);
 
     if (print_dbg_msg) printf("H5ESwait start\n");
-    status = H5ESwait(es_id, 10000000000, &es_status);
+    status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
     if (status < 0) {
         fprintf(stderr, "Error with H5ESwait\n");
         ret = -1;
@@ -254,7 +255,7 @@ int main(int argc, char *argv[])
     fflush(stdout);
 
     if (print_dbg_msg) printf("H5ESwait start\n");
-    status = H5ESwait(es_id, 10000000000, &es_status);
+    status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
     if (status < 0) {
         fprintf(stderr, "Error with H5ESwait\n");
         ret = -1;
@@ -285,7 +286,7 @@ int main(int argc, char *argv[])
     fflush(stdout);
 
     if (print_dbg_msg) printf("H5ESwait start\n");
-    status = H5ESwait(es_id, 10000000000, &es_status);
+    status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
     if (status < 0) {
         fprintf(stderr, "Error with H5ESwait\n");
         ret = -1;
