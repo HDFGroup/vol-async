@@ -114,6 +114,7 @@ typedef struct H5VL_async_t {
     hid_t               under_vol_id;
     int                 is_obj_valid;
     async_task_t        *create_task;           /* task that creates the object */
+    async_task_t        *close_task;
     async_task_t        *file_task_list_head;
     ABT_mutex           file_task_list_mutex;
     struct H5VL_async_t *file_async_obj;
@@ -1469,6 +1470,8 @@ free_async_task(async_task_t *task)
 /*     } */
 /* } */
 
+static void async_file_close_fn(void *foo);
+
 static void
 free_file_async_resources(H5VL_async_t *file)
 {
@@ -1488,8 +1491,11 @@ free_file_async_resources(H5VL_async_t *file)
 
     DL_FOREACH_SAFE2(file->file_async_obj->file_task_list_head, task_iter, tmp, file_list_next) {
         DL_DELETE2(file->file_async_obj->file_task_list_head, task_iter, file_list_prev, file_list_next);
-        free_async_task(task_iter);
-        free(task_iter);
+        // Defer the file close task free operation to later request free so ESwait works even after file is closed
+        if (task_iter->func != async_file_close_fn) {
+            free_async_task(task_iter);
+            free(task_iter);
+        }
     }
 
     if (file->file_task_list_mutex && ABT_mutex_unlock(file->file_task_list_mutex) != ABT_SUCCESS) {
@@ -1604,6 +1610,9 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool)
                     /* } */
                     if (thread_state != ABT_THREAD_STATE_TERMINATED && thread_state != ABT_THREAD_STATE_RUNNING) {
                         is_dep_done = 0;
+#ifdef ENABLE_DBG_MSG
+                        fprintf(stderr,"  [ASYNC VOL DBG] dependent task [%p] not finished\n", task_elt->dep_tasks[i]->func);
+#endif
                         break;
                     }
                 }
@@ -1750,7 +1759,7 @@ add_task_to_queue(async_qhead_t *qhead, async_task_t *task, task_list_qtype task
             }
         }
 
-        if (task != task->async_obj->create_task && task->async_obj->is_obj_valid != 1) {
+        if (task != task->async_obj->create_task && task->async_obj->is_obj_valid != 1 && task->parent_obj->create_task != task->async_obj->create_task) {
             /* is_dep = 1; */
             task_type = DEPENDENT;
             if (add_to_dep_task(task, task->async_obj->create_task) < 0) {
@@ -14306,6 +14315,13 @@ async_file_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
 
+    // When there is already a close task created
+    if (parent_obj->close_task) {
+        async_task = parent_obj->close_task;
+        is_blocking = 1;
+        goto wait;
+    }
+
     if ((args = (async_file_close_args_t*)calloc(1, sizeof(async_file_close_args_t))) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
@@ -14320,6 +14336,12 @@ async_file_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
+
+    if (req) {
+        *req = (void*)async_task;
+        is_blocking = 0;
+    }
+
     // Closing a reopened file
     if (parent_obj->file_async_obj == NULL) {
         is_blocking = 1;
@@ -14330,10 +14352,6 @@ async_file_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
     args->req              = req;
-
-    if (req) {
-        *req = (void*)async_task;
-    }
 
     // Retrieve current library state
     if ( H5VLretrieve_lib_state(&async_task->h5_state) < 0) {
@@ -14372,6 +14390,8 @@ async_file_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
     }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
+    parent_obj->close_task = async_task;
+
     /* Check if its parent has valid object */
     if (parent_obj->is_obj_valid != 1) {
         if (NULL != parent_obj->create_task) {
@@ -14407,6 +14427,7 @@ async_file_close(int is_blocking, async_instance_t* aid, H5VL_async_t *parent_ob
         push_task_to_abt_pool(&aid->qhead, aid->pool);
 
 
+wait:
     aid->start_abt_push = true;
     /* Wait if blocking is needed */
     if (is_blocking == 1) {
@@ -23197,7 +23218,7 @@ H5VL_async_file_close(void *file, hid_t dxpl_id, void **req)
 {
     H5VL_async_t *o = (H5VL_async_t *)file;
     herr_t ret_value;
-    int is_blocking = 0;
+    int is_blocking = 1;
     hbool_t is_term;
 
 #ifdef ENABLE_ASYNC_LOGGING
@@ -24356,7 +24377,7 @@ H5VL_async_request_optional(void *obj, H5VL_request_optional_t opt_type,
 static herr_t
 H5VL_async_request_free(void *obj)
 {
-    /* async_task_t *o = (async_task_t*)obj; */
+    async_task_t *o = (async_task_t*)obj;
     /* herr_t ret_value; */
 
 #ifdef ENABLE_ASYNC_LOGGING
@@ -24386,6 +24407,12 @@ H5VL_async_request_free(void *obj)
 
     /* if(ret_value >= 0) */
     /*     H5VL_async_free_obj(o); */
+
+    // Free the file close async that is not previously freed
+    if (o->func == async_file_close_fn) {
+        free_async_task(o);
+        free(o);
+    }
 
     return 0;
 } /* end H5VL_async_request_free() */

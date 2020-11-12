@@ -46,7 +46,7 @@ def main_test(mpi_tasks=0, cpu_allocation="", run_parallel=False, verbose=False)
     num_pass=0
     num_fail=0
 
-    serial_cases   = ['async_test_serial.exe', 'async_test_serial2.exe', 'async_test_multifile.exe', 'async_test_serial_event_set.exe', 'async_test_serial_event_set.exe']
+    serial_cases   = ['async_test_serial.exe', 'async_test_serial2.exe', 'async_test_multifile.exe', 'async_test_serial_event_set.exe', 'async_test_serial_event_set_error_stack.exe']
     parallel_cases = ['async_test_parallel.exe', 'async_test_parallel2.exe', 'async_test_parallel3.exe', 'async_test_parallel4.exe', 'async_test_parallel5.exe']
     
     print("Running serial tests")

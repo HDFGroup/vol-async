@@ -228,8 +228,6 @@ done:
     /* H5Fwait(file_id); */
     H5Fclose(file_id);
 
-    H5VLasync_finalize();
-
     if (data0_write != NULL) 
         free(data0_write);
     if (data0_read != NULL) 

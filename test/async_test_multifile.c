@@ -6,7 +6,7 @@
 #include "h5_vol_external_async_native.h"
 
 /* #define DIMLEN 10 */
-#define DIMLEN 8192
+#define DIMLEN 1024
 
 int print_dbg_msg = 1;
 
@@ -148,7 +148,6 @@ int main(int argc, char *argv[])
     H5Pclose(async_dxpl);
 
     gettimeofday(&t1, 0);
-    H5VLasync_finalize();
 
     gettimeofday(&te, 0);
     e1 = ((te.tv_sec-ts.tv_sec)*1000000 + te.tv_usec-ts.tv_usec)/1000000.0;

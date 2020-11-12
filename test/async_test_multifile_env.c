@@ -6,7 +6,7 @@
 #include "h5_vol_external_async_native.h"
 
 /* #define DIMLEN 10 */
-#define DIMLEN 8192
+#define DIMLEN 1024
 
 int print_dbg_msg = 1;
 
@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
     
     
 
-    int ifile, nfile = 5, sleeptime = 2;
+    int ifile, nfile = 3, sleeptime = 2;
 
     fpath = ".";
     if (argc >= 2) 

@@ -5,7 +5,7 @@
 #include "hdf5.h"
 #include "h5_vol_external_async_native.h"
 
-#define DIMLEN 8192
+#define DIMLEN 1024
 
 int print_dbg_msg = 1;
 
@@ -292,8 +292,6 @@ int main(int argc, char *argv[])
     printf("Finished verification\n");
 
 done:
-    H5ESclose(es_id);
-    H5ESclose(es1_id);
 
     H5Pclose(async_fapl);
     H5Pclose(async_dxpl);
@@ -301,14 +299,19 @@ done:
     H5Dclose(dset0_id);
     /* H5Dclose(dset1_id); */
     H5Gclose(grp_id);
-    H5Fclose(file_id);
+
+    /* H5Fclose(file_id); */
+    H5Fclose_async(file_id, es1_id);
+    H5ESwait(es1_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
+
+    H5ESclose(es_id);
+    H5ESclose(es1_id);
 
     if (data0_write != NULL) 
         free(data0_write);
     if (data0_read != NULL) 
         free(data0_read);
 
-    H5VLasync_finalize();
     return ret;
 }
 

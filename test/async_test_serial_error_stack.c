@@ -3,7 +3,7 @@
 #include "hdf5.h"
 #include "h5_vol_external_async_native.h"
 
-#define DIMLEN 8192
+#define DIMLEN 1024
 
 int print_dbg_msg = 1;
 
@@ -152,8 +152,6 @@ int main(int argc, char *argv[])
     H5Fclose(file_id);
 
 done:
-    H5VLasync_finalize();
-
     if (data0_write != NULL) 
         free(data0_write);
     if (data0_read != NULL) 
