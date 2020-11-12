@@ -1608,7 +1608,7 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool)
                     /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_task_get_state\n", __func__); */
                     /*     return -1; */
                     /* } */
-                    if (thread_state != ABT_THREAD_STATE_TERMINATED && thread_state != ABT_THREAD_STATE_RUNNING) {
+                    if (thread_state != ABT_THREAD_STATE_TERMINATED && thread_state != ABT_THREAD_STATE_RUNNING && thread_state != ABT_THREAD_STATE_READY) {
                         is_dep_done = 0;
 #ifdef ENABLE_DBG_MSG
                         fprintf(stderr,"  [ASYNC VOL DBG] dependent task [%p] not finished\n", task_elt->dep_tasks[i]->func);
@@ -1708,7 +1708,7 @@ int get_n_running_task_in_queue_obj(H5VL_async_t *async_obj)
     DL_FOREACH2(async_obj->file_task_list_head, task_elt, file_list_next) {
         if (task_elt->abt_thread != NULL) {
             ABT_thread_get_state(task_elt->abt_thread, &thread_state);
-            if (thread_state == ABT_THREAD_STATE_RUNNING) {
+            if (thread_state == ABT_THREAD_STATE_RUNNING && thread_state == ABT_THREAD_STATE_READY) {
                 remaining_task++;
             }
         }

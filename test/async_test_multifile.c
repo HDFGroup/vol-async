@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     herr_t     status;
     hid_t      async_fapl;
     
-    int ifile, nfile = 5, sleeptime = 2;
+    int ifile, nfile = 3, sleeptime = 1;
 
     fpath = ".";
     if (argc >= 2) 
