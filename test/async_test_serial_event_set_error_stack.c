@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
     async_fapl = H5Pcreate (H5P_FILE_ACCESS);
     async_dxpl = H5Pcreate (H5P_DATASET_XFER);
     
-    H5Pset_vol_async(async_fapl);
+//    H5Pset_vol_async(async_fapl);
     H5Pset_dxpl_async(async_dxpl, true);
 
     if (print_dbg_msg) printf("H5Fcreate start\n");
