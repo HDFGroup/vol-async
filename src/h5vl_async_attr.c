@@ -23,6 +23,7 @@
 #include "h5vl_async_public.h"
 #include "h5vl_async_req.h"
 #include "h5vl_asynci.h"
+#include "h5vl_asynci_debug.h"
 #include "h5vl_asynci_mutex.h"
 #include "h5vl_asynci_vector.h"
 
@@ -480,15 +481,17 @@ herr_t H5VL_async_attr_close (void *grp, hid_t dxpl_id, void **req) {
 
 	H5VL_asynci_mutex_lock (pp->lock);
 	pp->stat == H5VL_async_stat_close;
-	if (pp->ref) {
-		pp->close_task = task;
-	} else {
-		twerr = TW_Task_commit (task, H5VL_async_engine);
-		CHK_TWERR
+	if (is_async) {
+		if (pp->ref) {
+			pp->close_task = task;
+		} else {
+			twerr = TW_Task_commit (task, H5VL_async_engine);
+			CHK_TWERR
+		}
 	}
 	H5VL_asynci_mutex_unlock (pp->lock);
 
-	H5VL_ASYNC_CB_TASK_WAIT
+	H5VL_ASYNC_CB_CLOSE_TASK_WAIT
 
 err_out:;
 	if (err) {

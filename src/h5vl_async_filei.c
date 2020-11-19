@@ -21,6 +21,7 @@
 #include "h5vl_async_filei.h"
 #include "h5vl_async_info.h"
 #include "h5vl_asynci.h"
+#include "h5vl_asynci_debug.h"
 
 int H5VL_async_file_create_handler (void *data) {
 	H5VL_ASYNC_HANDLER_VARS
@@ -65,6 +66,11 @@ err_out:;
 	} else {
 		argp->fp->stat = H5VL_async_stat_ready;
 	}
+
+	H5VL_asynci_mutex_lock (argp->fp->lock);
+	argp->fp->init_task = NULL;
+	H5VL_async_dec_ref (argp->fp);
+	H5VL_asynci_mutex_unlock (argp->fp->lock);
 
 	H5VL_ASYNC_HANDLER_END
 
@@ -125,6 +131,11 @@ err_out:;
 	} else {
 		argp->fp->stat = H5VL_async_stat_ready;
 	}
+
+	H5VL_asynci_mutex_lock (argp->fp->lock);
+	argp->fp->init_task = NULL;
+	H5VL_async_dec_ref (argp->fp);
+	H5VL_asynci_mutex_unlock (argp->fp->lock);
 
 	H5VL_ASYNC_HANDLER_END
 
@@ -317,12 +328,11 @@ int H5VL_async_file_close_handler (void *data) {
 	err = H5VLfile_close (argp->pp->under_object, argp->pp->under_vol_id, argp->dxpl_id, NULL);
 	CHECK_ERR
 
-	err = H5VL_async_free_obj (argp->pp);
-	CHECK_ERR
-
 err_out:;
 	H5VL_ASYNC_HANDLER_END
 
+	err = H5VL_async_free_obj (argp->pp);
+	CHECK_ERR2
 	H5Pclose (argp->dxpl_id);
 	H5VL_ASYNC_HANDLER_FREE
 

@@ -21,6 +21,7 @@
 #include "h5vl_async_obj.h"
 #include "h5vl_async_obji.h"
 #include "h5vl_asynci.h"
+#include "h5vl_asynci_debug.h"
 
 int H5VL_async_object_open_handler (void *data) {
 	H5VL_ASYNC_HANDLER_VARS
@@ -44,6 +45,7 @@ err_out:;
 	}
 
 	H5VL_asynci_mutex_lock (argp->op->lock);
+	argp->op->init_task = NULL;
 	H5VL_async_dec_ref (argp->op);
 	H5VL_asynci_mutex_unlock (argp->op->lock);
 

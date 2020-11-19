@@ -12,8 +12,16 @@
 
 #pragma once
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#include <assert.h>
 #include <hdf5.h>
 #include <stdio.h>
+#include <stdlib.h>
+
+#include "h5vl_asynci_mutex.h"
 
 #define H5VL_ASYNC_UNUSED		__attribute__ ((unused))
 #define H5VL_ASYNC_FALL_THROUGH __attribute__ ((fallthrough));
@@ -48,6 +56,19 @@
 		}                                                                      \
 	}
 #define CHECK_ERR CHECK_ERR_EX ("")
+
+#define CHECK_ERR2_EX(M)                                                       \
+	{                                                                          \
+		{                                                                      \
+			if (err < 0) {                                                     \
+				printf ("Error at line %d in %s:%s\n", __LINE__, __FILE__, M); \
+				H5Eprint2 (H5E_DEFAULT, stdout);                               \
+				DEBUG_ABORT                                                    \
+				err = -1;                                                      \
+			}                                                                  \
+		}                                                                      \
+	}
+#define CHECK_ERR2 CHECK_ERR2_EX ("")
 
 #define CHECK_MPIERR                                                             \
 	{                                                                            \
@@ -107,6 +128,54 @@
 
 #define H5VL_ASYNC_LOCK_POLL_PEROID 1000
 
+#define H5VL_ASYNC_HANDLER_VARS \
+	herr_t err			  = 0;  \
+	hbool_t stat_restored = false;
+
+#ifdef ASYNCVOL_DEBUG
+#define H5VL_ASYNC_HANDLER_BEGIN                                                          \
+	{                                                                                     \
+		err = H5VL_asynci_handler_begin ((H5VL_asynci_debug_args *)argp, &stat_restored); \
+		CHECK_ERR                                                                         \
+	}
+
+#define H5VL_ASYNC_HANDLER_END                                                         \
+	{                                                                                  \
+		err = H5VL_asynci_handler_end ((H5VL_asynci_debug_args *)argp, stat_restored); \
+		CHECK_ERR                                                                      \
+	}
+
+#define H5VL_ASYNC_HANDLER_FREE                                          \
+	{                                                                    \
+		err = H5VL_asynci_handler_free ((H5VL_asynci_debug_args *)argp); \
+		CHECK_ERR                                                        \
+	}
+
+#define H5VL_ASYNC_CB_TASK_INIT                                                 \
+	{                                                                           \
+		err = H5VL_asynci_cb_task_init (dxpl_id, &is_async, req, &ret,          \
+										(H5VL_asynci_debug_args *)argp, &reqp); \
+		CHECK_ERR                                                               \
+	}
+
+#define H5VL_ASYNC_CB_TASK_COMMIT                                                          \
+	{                                                                                      \
+		err = H5VL_asynci_cb_task_commit ((H5VL_asynci_debug_args *)argp, reqp, pp, task); \
+		CHECK_ERR                                                                          \
+	}
+
+#define H5VL_ASYNC_CB_TASK_WAIT                                \
+	{                                                          \
+		err = H5VL_asynci_cb_task_wait (is_async, task, &ret); \
+		CHECK_ERR                                              \
+	}
+
+#define H5VL_ASYNC_CB_CLOSE_TASK_WAIT                                    \
+	{                                                                    \
+		err = H5VL_asynci_cb_close_task_wait (is_async, pp, task, &ret); \
+		CHECK_ERR                                                        \
+	}
+#else
 #define H5VL_ASYNC_HANDLER_BEGIN                                                                 \
 	{                                                                                            \
 		/* Acquire global lock */                                                                \
@@ -119,37 +188,45 @@
 		stat_restored = true;                                                                    \
 	}
 
-#define H5VL_ASYNC_HANDLER_END                         \
-	{                                                  \
-		/* Restore HDF5 status */                      \
-		if (stat_restored) { H5VLreset_lib_state (); } \
-		H5VLfree_lib_state (argp->stat);               \
-		/* Update reference count */                   \
-		if (argp->pp) {                                \
-			H5VL_asynci_mutex_lock (argp->pp->lock);   \
-			H5VL_async_dec_ref (argp->pp);             \
-			H5VL_asynci_mutex_unlock (argp->pp->lock); \
-		}                                              \
+#define H5VL_ASYNC_HANDLER_END                                       \
+	{                                                                \
+		/* Restore HDF5 status */                                    \
+		if (stat_restored) { H5VLreset_lib_state (); }               \
+		err = H5VLfree_lib_state (argp->stat);                       \
+		if (err) {                                                   \
+			printf ("Error at line %d in %s\n", __LINE__, __FILE__); \
+			H5Eprint2 (H5E_DEFAULT, stdout);                         \
+			DEBUG_ABORT                                              \
+		}                                                            \
+		/* Update reference count */                                 \
+		if (argp->pp) {                                              \
+			H5VL_asynci_mutex_lock (argp->pp->lock);                 \
+			H5VL_async_dec_ref (argp->pp);                           \
+			H5VL_asynci_mutex_unlock (argp->pp->lock);               \
+		}                                                            \
 	}
 
-#define H5VL_ASYNC_HANDLER_FREE                   \
-	{                                             \
-		/* Release global lock */                 \
-		err = H5TSmutex_release ();               \
-		CHECK_ERR_EX ("H5TSmutex_release failed") \
-		/* Free task */                           \
-		if (argp->ret) {                          \
-			*argp->ret = err;                     \
-		} else {                                  \
-			TW_Task_free (argp->task);            \
-		}                                         \
-		/* Free arguments */                      \
-		free (argp);                              \
+#define H5VL_ASYNC_HANDLER_FREE                                         \
+	{                                                                   \
+		/* Release global lock */                                       \
+		err = H5TSmutex_release ();                                     \
+		CHECK_ERR_EX ("H5TSmutex_release failed")                       \
+		/* Free task */                                                 \
+		if (argp->ret) {                                                \
+			*argp->ret = err;                                           \
+		} else {                                                        \
+			int twerr;                                                  \
+			twerr = TW_Task_free (argp->task);                          \
+			if (twerr != TW_SUCCESS) {                                  \
+				char msg[256];                                          \
+				sprintf (msg, "TaskWorks: %s", TW_Get_err_msg (twerr)); \
+				PRINT_ERR_MSG (twerr, msg);                             \
+				DEBUG_ABORT;                                            \
+			}                                                           \
+		}                                                               \
+		/* Free arguments */                                            \
+		free (argp);                                                    \
 	}
-
-#define H5VL_ASYNC_HANDLER_VARS \
-	herr_t err			  = 0;  \
-	hbool_t stat_restored = false;
 
 #define H5VL_ASYNC_CB_TASK_INIT                                                \
 	{                                                                          \
@@ -166,17 +243,20 @@
 			}                                                                  \
 		} else {                                                               \
 			argp->ret = &ret;                                                  \
+			assert (argp->ret);                                                \
 		}                                                                      \
-		if (reqp) { reqp->task = task; }                                       \
+		if (!is_async) { assert (argp->ret && 1); }                            \
 		/* Retrieve current library state */                                   \
 		err = H5VLretrieve_lib_state (&argp->stat);                            \
 		CHECK_ERR_EX ("H5VLretrieve_lib_state failed")                         \
+		if (!is_async) { assert (argp->ret); }                                 \
 	}
 
 #define H5VL_ASYNC_CB_TASK_COMMIT                                                           \
 	{                                                                                       \
 		/* Copy task handle in args */                                                      \
 		argp->task = task;                                                                  \
+		if (reqp) { reqp->task = task; }                                                    \
 		/* Acquire object lock */                                                           \
 		if (pp) {                                                                           \
 			H5VL_asynci_mutex_lock (pp->lock);                                              \
@@ -223,6 +303,35 @@
 		}                                                      \
 	}
 
+#define H5VL_ASYNC_CB_CLOSE_TASK_WAIT                           \
+	{                                                           \
+		/* Wait for task if the operation is sync */            \
+		if (!is_async) {                                        \
+			/* Release the lock so worker thread can acquire*/  \
+			H5TSmutex_release ();                               \
+                                                                \
+			while (pp->ref) {                                   \
+				twerr = TW_Engine_progress (H5VL_async_engine); \
+				CHK_TWERR                                       \
+			}                                                   \
+			twerr = TW_Task_commit (task, H5VL_async_engine);   \
+			CHK_TWERR                                           \
+                                                                \
+			twerr = TW_Task_wait (task, TW_TIMEOUT_NEVER);      \
+			CHK_TWERR                                           \
+                                                                \
+			err = H5VL_asynci_h5ts_mutex_lock ();               \
+			CHECK_ERR                                           \
+                                                                \
+			twerr = TW_Task_free (task);                        \
+			CHK_TWERR                                           \
+                                                                \
+			err = ret;                                          \
+			CHECK_ERR_EX ("Async operation failed")             \
+		}                                                       \
+	}
+#endif
+
 #define H5VL_ASYNC_CB_VARS         \
 	herr_t err	 = 0;              \
 	terr_t twerr = TW_SUCCESS;     \
@@ -238,3 +347,4 @@
 	void *stat;
 
 herr_t H5VL_asynci_h5ts_mutex_lock ();
+herr_t H5VL_asynci_obj_wait (void *pp);

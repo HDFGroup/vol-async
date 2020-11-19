@@ -21,6 +21,7 @@
 #include "h5vl_async_groupi.h"
 #include "h5vl_async_info.h"
 #include "h5vl_asynci.h"
+#include "h5vl_asynci_debug.h"
 
 int H5VL_async_group_create_handler (void *data) {
 	H5VL_ASYNC_HANDLER_VARS
@@ -44,6 +45,7 @@ err_out:;
 	}
 
 	H5VL_asynci_mutex_lock (argp->gp->lock);
+	argp->gp->init_task = NULL;
 	H5VL_async_dec_ref (argp->gp);
 	H5VL_asynci_mutex_unlock (argp->gp->lock);
 
@@ -80,6 +82,7 @@ err_out:;
 	}
 
 	H5VL_asynci_mutex_lock (argp->gp->lock);
+	argp->gp->init_task = NULL;
 	H5VL_async_dec_ref (argp->gp);
 	H5VL_asynci_mutex_unlock (argp->gp->lock);
 
@@ -189,12 +192,11 @@ int H5VL_async_group_close_handler (void *data) {
 	err = H5VLgroup_close (argp->pp->under_object, argp->pp->under_vol_id, argp->dxpl_id, NULL);
 	CHECK_ERR
 
-	err = H5VL_async_free_obj (argp->pp);
-	CHECK_ERR
-
 err_out:;
 	H5VL_ASYNC_HANDLER_END
 
+	err = H5VL_async_free_obj (argp->pp);
+	CHECK_ERR2
 	H5Pclose (argp->dxpl_id);
 	H5VL_ASYNC_HANDLER_FREE
 

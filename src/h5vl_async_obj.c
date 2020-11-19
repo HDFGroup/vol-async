@@ -23,6 +23,7 @@
 #include "h5vl_async_public.h"
 #include "h5vl_async_req.h"
 #include "h5vl_asynci.h"
+#include "h5vl_asynci_debug.h"
 #include "h5vl_asynci_mutex.h"
 #include "h5vl_asynci_vector.h"
 

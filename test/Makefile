@@ -95,8 +95,13 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = x86_64-pc-linux-gnu
 host_triplet = x86_64-pc-linux-gnu
-check_PROGRAMS =
-TESTS = $(am__EXEEXT_2)
+check_PROGRAMS = async_test_serial$(EXEEXT) \
+	async_test_serial2$(EXEEXT) \
+	async_test_serial_event_set$(EXEEXT) \
+	async_test_parallel$(EXEEXT) async_test_parallel2$(EXEEXT) \
+	async_test_parallel3$(EXEEXT) async_test_parallel4$(EXEEXT) \
+	async_test_parallel5$(EXEEXT) async_test_multifile$(EXEEXT) \
+	async_test_multifile_env$(EXEEXT)
 subdir = test
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/libtool.m4 \
@@ -110,6 +115,72 @@ mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/src/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
+async_test_multifile_SOURCES = async_test_multifile.c
+async_test_multifile_OBJECTS = async_test_multifile.$(OBJEXT)
+async_test_multifile_LDADD = $(LDADD)
+am__DEPENDENCIES_1 =
+async_test_multifile_DEPENDENCIES =  \
+	$(top_builddir)/src/.libs/libh5vl_async.la \
+	$(am__DEPENDENCIES_1)
+AM_V_lt = $(am__v_lt_$(V))
+am__v_lt_ = $(am__v_lt_$(AM_DEFAULT_VERBOSITY))
+am__v_lt_0 = --silent
+am__v_lt_1 = 
+async_test_multifile_env_SOURCES = async_test_multifile_env.c
+async_test_multifile_env_OBJECTS = async_test_multifile_env.$(OBJEXT)
+async_test_multifile_env_LDADD = $(LDADD)
+async_test_multifile_env_DEPENDENCIES =  \
+	$(top_builddir)/src/.libs/libh5vl_async.la \
+	$(am__DEPENDENCIES_1)
+async_test_parallel_SOURCES = async_test_parallel.c
+async_test_parallel_OBJECTS = async_test_parallel.$(OBJEXT)
+async_test_parallel_LDADD = $(LDADD)
+async_test_parallel_DEPENDENCIES =  \
+	$(top_builddir)/src/.libs/libh5vl_async.la \
+	$(am__DEPENDENCIES_1)
+async_test_parallel2_SOURCES = async_test_parallel2.c
+async_test_parallel2_OBJECTS = async_test_parallel2.$(OBJEXT)
+async_test_parallel2_LDADD = $(LDADD)
+async_test_parallel2_DEPENDENCIES =  \
+	$(top_builddir)/src/.libs/libh5vl_async.la \
+	$(am__DEPENDENCIES_1)
+async_test_parallel3_SOURCES = async_test_parallel3.c
+async_test_parallel3_OBJECTS = async_test_parallel3.$(OBJEXT)
+async_test_parallel3_LDADD = $(LDADD)
+async_test_parallel3_DEPENDENCIES =  \
+	$(top_builddir)/src/.libs/libh5vl_async.la \
+	$(am__DEPENDENCIES_1)
+async_test_parallel4_SOURCES = async_test_parallel4.c
+async_test_parallel4_OBJECTS = async_test_parallel4.$(OBJEXT)
+async_test_parallel4_LDADD = $(LDADD)
+async_test_parallel4_DEPENDENCIES =  \
+	$(top_builddir)/src/.libs/libh5vl_async.la \
+	$(am__DEPENDENCIES_1)
+async_test_parallel5_SOURCES = async_test_parallel5.c
+async_test_parallel5_OBJECTS = async_test_parallel5.$(OBJEXT)
+async_test_parallel5_LDADD = $(LDADD)
+async_test_parallel5_DEPENDENCIES =  \
+	$(top_builddir)/src/.libs/libh5vl_async.la \
+	$(am__DEPENDENCIES_1)
+async_test_serial_SOURCES = async_test_serial.c
+async_test_serial_OBJECTS = async_test_serial.$(OBJEXT)
+async_test_serial_LDADD = $(LDADD)
+async_test_serial_DEPENDENCIES =  \
+	$(top_builddir)/src/.libs/libh5vl_async.la \
+	$(am__DEPENDENCIES_1)
+async_test_serial2_SOURCES = async_test_serial2.c
+async_test_serial2_OBJECTS = async_test_serial2.$(OBJEXT)
+async_test_serial2_LDADD = $(LDADD)
+async_test_serial2_DEPENDENCIES =  \
+	$(top_builddir)/src/.libs/libh5vl_async.la \
+	$(am__DEPENDENCIES_1)
+async_test_serial_event_set_SOURCES = async_test_serial_event_set.c
+async_test_serial_event_set_OBJECTS =  \
+	async_test_serial_event_set.$(OBJEXT)
+async_test_serial_event_set_LDADD = $(LDADD)
+async_test_serial_event_set_DEPENDENCIES =  \
+	$(top_builddir)/src/.libs/libh5vl_async.la \
+	$(am__DEPENDENCIES_1)
 AM_V_P = $(am__v_P_$(V))
 am__v_P_ = $(am__v_P_$(AM_DEFAULT_VERBOSITY))
 am__v_P_0 = false
@@ -122,8 +193,48 @@ AM_V_at = $(am__v_at_$(V))
 am__v_at_ = $(am__v_at_$(AM_DEFAULT_VERBOSITY))
 am__v_at_0 = @
 am__v_at_1 = 
-SOURCES =
-DIST_SOURCES =
+DEFAULT_INCLUDES = -I. -I$(top_builddir)/src
+depcomp = $(SHELL) $(top_srcdir)/config/depcomp
+am__maybe_remake_depfiles = depfiles
+am__depfiles_remade = ./$(DEPDIR)/async_test_multifile.Po \
+	./$(DEPDIR)/async_test_multifile_env.Po \
+	./$(DEPDIR)/async_test_parallel.Po \
+	./$(DEPDIR)/async_test_parallel2.Po \
+	./$(DEPDIR)/async_test_parallel3.Po \
+	./$(DEPDIR)/async_test_parallel4.Po \
+	./$(DEPDIR)/async_test_parallel5.Po \
+	./$(DEPDIR)/async_test_serial.Po \
+	./$(DEPDIR)/async_test_serial2.Po \
+	./$(DEPDIR)/async_test_serial_event_set.Po
+am__mv = mv -f
+COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
+	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+LTCOMPILE = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) \
+	$(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) \
+	$(AM_CFLAGS) $(CFLAGS)
+AM_V_CC = $(am__v_CC_$(V))
+am__v_CC_ = $(am__v_CC_$(AM_DEFAULT_VERBOSITY))
+am__v_CC_0 = @echo "  CC      " $@;
+am__v_CC_1 = 
+CCLD = $(CC)
+LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+	$(AM_LDFLAGS) $(LDFLAGS) -o $@
+AM_V_CCLD = $(am__v_CCLD_$(V))
+am__v_CCLD_ = $(am__v_CCLD_$(AM_DEFAULT_VERBOSITY))
+am__v_CCLD_0 = @echo "  CCLD    " $@;
+am__v_CCLD_1 = 
+SOURCES = async_test_multifile.c async_test_multifile_env.c \
+	async_test_parallel.c async_test_parallel2.c \
+	async_test_parallel3.c async_test_parallel4.c \
+	async_test_parallel5.c async_test_serial.c \
+	async_test_serial2.c async_test_serial_event_set.c
+DIST_SOURCES = async_test_multifile.c async_test_multifile_env.c \
+	async_test_parallel.c async_test_parallel2.c \
+	async_test_parallel3.c async_test_parallel4.c \
+	async_test_parallel5.c async_test_serial.c \
+	async_test_serial2.c async_test_serial_event_set.c
 RECURSIVE_TARGETS = all-recursive check-recursive cscopelist-recursive \
 	ctags-recursive dvi-recursive html-recursive info-recursive \
 	install-data-recursive install-dvi-recursive \
@@ -348,14 +459,9 @@ am__set_TESTS_bases = \
   bases=`for i in $$bases; do echo $$i; done | sed 's/\.log$$//'`; \
   bases=`echo $$bases`
 RECHECK_LOGS = $(TEST_LOGS)
-am__EXEEXT_1 =
-am__EXEEXT_2 = $(am__EXEEXT_1)
 TEST_SUITE_LOG = test-suite.log
-am__test_logs1 = $(TESTS:=.log)
-am__test_logs2 = $(am__test_logs1:.log=.log)
-TEST_LOGS = $(am__test_logs2:.sh.log=.log)
-SH_LOG_DRIVER = $(SHELL) $(top_srcdir)/config/test-driver
-SH_LOG_COMPILE = $(SH_LOG_COMPILER) $(AM_SH_LOG_FLAGS) $(SH_LOG_FLAGS)
+LOG_DRIVER = $(SHELL) $(top_srcdir)/config/test-driver
+LOG_COMPILE = $(LOG_COMPILER) $(AM_LOG_FLAGS) $(LOG_FLAGS)
 am__set_b = \
   case '$@' in \
     */*) \
@@ -366,7 +472,12 @@ am__set_b = \
     *) \
       b='$*';; \
   esac
-am__DIST_COMMON = $(srcdir)/Makefile.in \
+am__test_logs1 = $(TESTS:=.log)
+am__test_logs2 = $(am__test_logs1:.log=.log)
+TEST_LOGS = $(am__test_logs2:.sh.log=.log)
+SH_LOG_DRIVER = $(SHELL) $(top_srcdir)/config/test-driver
+SH_LOG_COMPILE = $(SH_LOG_COMPILER) $(AM_SH_LOG_FLAGS) $(SH_LOG_FLAGS)
+am__DIST_COMMON = $(srcdir)/Makefile.in $(top_srcdir)/config/depcomp \
 	$(top_srcdir)/config/test-driver
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 am__relativize = \
@@ -395,7 +506,7 @@ am__relativize = \
   done; \
   reldir="$$dir2"
 ABT_DEF = 
-ACLOCAL = ${SHELL} /home/khl7265/Desktop/async/config/missing aclocal-1.16
+ACLOCAL = ${SHELL} /home/khl7265/Desktop/async/tw/config/missing aclocal-1.16
 AMTAR = $${TAR-tar}
 AM_CFLAGS = 
 AM_CPPFLAGS = -I$(top_srcdir)/src \
@@ -404,9 +515,9 @@ AM_CPPFLAGS = -I$(top_srcdir)/src \
 AM_DEFAULT_VERBOSITY = 1
 AM_LDFLAGS = 
 AR = ar
-AUTOCONF = ${SHELL} /home/khl7265/Desktop/async/config/missing autoconf
-AUTOHEADER = ${SHELL} /home/khl7265/Desktop/async/config/missing autoheader
-AUTOMAKE = ${SHELL} /home/khl7265/Desktop/async/config/missing automake-1.16
+AUTOCONF = ${SHELL} /home/khl7265/Desktop/async/tw/config/missing autoconf
+AUTOHEADER = ${SHELL} /home/khl7265/Desktop/async/tw/config/missing autoheader
+AUTOMAKE = ${SHELL} /home/khl7265/Desktop/async/tw/config/missing automake-1.16
 AWK = gawk
 CC = /bin/mpicc
 CCDEPMODE = depmode=gcc3
@@ -445,7 +556,7 @@ LIPO =
 LN_S = ln -s
 LTLIBOBJS = 
 LT_SYS_LIBRARY_PATH = 
-MAKEINFO = ${SHELL} /home/khl7265/Desktop/async/config/missing makeinfo
+MAKEINFO = ${SHELL} /home/khl7265/Desktop/async/tw/config/missing makeinfo
 MANIFEST_TOOL = :
 MKDIR_P = /bin/mkdir -p
 MPICC = /bin/mpicc
@@ -471,10 +582,10 @@ SET_MAKE =
 SHELL = /bin/bash
 STRIP = strip
 VERSION = 0.1
-abs_builddir = /home/khl7265/Desktop/async/test
-abs_srcdir = /home/khl7265/Desktop/async/test
-abs_top_builddir = /home/khl7265/Desktop/async
-abs_top_srcdir = /home/khl7265/Desktop/async
+abs_builddir = /home/khl7265/Desktop/async/tw/test
+abs_srcdir = /home/khl7265/Desktop/async/tw/test
+abs_top_builddir = /home/khl7265/Desktop/async/tw
+abs_top_srcdir = /home/khl7265/Desktop/async/tw
 ac_ct_AR = ar
 ac_ct_CC = /bin/mpicc
 ac_ct_DUMPBIN = 
@@ -506,7 +617,7 @@ host_vendor = pc
 htmldir = ${docdir}
 includedir = ${prefix}/include
 infodir = ${datarootdir}/info
-install_sh = ${SHELL} /home/khl7265/Desktop/async/config/install-sh
+install_sh = ${SHELL} /home/khl7265/Desktop/async/tw/config/install-sh
 libdir = ${exec_prefix}/lib
 libexecdir = ${exec_prefix}/libexec
 localedir = ${datarootdir}/locale
@@ -532,7 +643,6 @@ DIST_SUBDIRS = $(SUBDIRS)
 SUFFIXES = .o .c
 AM_DEFAULT_SOURCE_EXT = .c
 LDADD = $(top_builddir)/src/.libs/libh5vl_async.la ${LIBS}
-# async_test_serial
 EXTRA_DIST = # wrap_runs.sh parallel_run.sh
 TESTPROGRAMS = $(check_PROGRAMS)
 
@@ -551,10 +661,11 @@ CLEANFILES = $(H5_FILES) core core.* *.gcda *.gcno *.gcov gmon.out
 TEST_EXTENSIONS = .sh
 LOG_COMPILER = $(srcdir)/log_comp.sh
 SH_LOG_COMPILER = 
+TESTS = $(TESTPROGRAMS)
 all: all-recursive
 
 .SUFFIXES:
-.SUFFIXES: .o .c .log .sh .sh$(EXEEXT) .trs
+.SUFFIXES: .o .c .lo .log .obj .sh .sh$(EXEEXT) .trs
 $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
@@ -593,6 +704,90 @@ clean-checkPROGRAMS:
 	list=`for p in $$list; do echo "$$p"; done | sed 's/$(EXEEXT)$$//'`; \
 	echo " rm -f" $$list; \
 	rm -f $$list
+
+async_test_multifile$(EXEEXT): $(async_test_multifile_OBJECTS) $(async_test_multifile_DEPENDENCIES) $(EXTRA_async_test_multifile_DEPENDENCIES) 
+	@rm -f async_test_multifile$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(async_test_multifile_OBJECTS) $(async_test_multifile_LDADD) $(LIBS)
+
+async_test_multifile_env$(EXEEXT): $(async_test_multifile_env_OBJECTS) $(async_test_multifile_env_DEPENDENCIES) $(EXTRA_async_test_multifile_env_DEPENDENCIES) 
+	@rm -f async_test_multifile_env$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(async_test_multifile_env_OBJECTS) $(async_test_multifile_env_LDADD) $(LIBS)
+
+async_test_parallel$(EXEEXT): $(async_test_parallel_OBJECTS) $(async_test_parallel_DEPENDENCIES) $(EXTRA_async_test_parallel_DEPENDENCIES) 
+	@rm -f async_test_parallel$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(async_test_parallel_OBJECTS) $(async_test_parallel_LDADD) $(LIBS)
+
+async_test_parallel2$(EXEEXT): $(async_test_parallel2_OBJECTS) $(async_test_parallel2_DEPENDENCIES) $(EXTRA_async_test_parallel2_DEPENDENCIES) 
+	@rm -f async_test_parallel2$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(async_test_parallel2_OBJECTS) $(async_test_parallel2_LDADD) $(LIBS)
+
+async_test_parallel3$(EXEEXT): $(async_test_parallel3_OBJECTS) $(async_test_parallel3_DEPENDENCIES) $(EXTRA_async_test_parallel3_DEPENDENCIES) 
+	@rm -f async_test_parallel3$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(async_test_parallel3_OBJECTS) $(async_test_parallel3_LDADD) $(LIBS)
+
+async_test_parallel4$(EXEEXT): $(async_test_parallel4_OBJECTS) $(async_test_parallel4_DEPENDENCIES) $(EXTRA_async_test_parallel4_DEPENDENCIES) 
+	@rm -f async_test_parallel4$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(async_test_parallel4_OBJECTS) $(async_test_parallel4_LDADD) $(LIBS)
+
+async_test_parallel5$(EXEEXT): $(async_test_parallel5_OBJECTS) $(async_test_parallel5_DEPENDENCIES) $(EXTRA_async_test_parallel5_DEPENDENCIES) 
+	@rm -f async_test_parallel5$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(async_test_parallel5_OBJECTS) $(async_test_parallel5_LDADD) $(LIBS)
+
+async_test_serial$(EXEEXT): $(async_test_serial_OBJECTS) $(async_test_serial_DEPENDENCIES) $(EXTRA_async_test_serial_DEPENDENCIES) 
+	@rm -f async_test_serial$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(async_test_serial_OBJECTS) $(async_test_serial_LDADD) $(LIBS)
+
+async_test_serial2$(EXEEXT): $(async_test_serial2_OBJECTS) $(async_test_serial2_DEPENDENCIES) $(EXTRA_async_test_serial2_DEPENDENCIES) 
+	@rm -f async_test_serial2$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(async_test_serial2_OBJECTS) $(async_test_serial2_LDADD) $(LIBS)
+
+async_test_serial_event_set$(EXEEXT): $(async_test_serial_event_set_OBJECTS) $(async_test_serial_event_set_DEPENDENCIES) $(EXTRA_async_test_serial_event_set_DEPENDENCIES) 
+	@rm -f async_test_serial_event_set$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(async_test_serial_event_set_OBJECTS) $(async_test_serial_event_set_LDADD) $(LIBS)
+
+mostlyclean-compile:
+	-rm -f *.$(OBJEXT)
+
+distclean-compile:
+	-rm -f *.tab.c
+
+include ./$(DEPDIR)/async_test_multifile.Po # am--include-marker
+include ./$(DEPDIR)/async_test_multifile_env.Po # am--include-marker
+include ./$(DEPDIR)/async_test_parallel.Po # am--include-marker
+include ./$(DEPDIR)/async_test_parallel2.Po # am--include-marker
+include ./$(DEPDIR)/async_test_parallel3.Po # am--include-marker
+include ./$(DEPDIR)/async_test_parallel4.Po # am--include-marker
+include ./$(DEPDIR)/async_test_parallel5.Po # am--include-marker
+include ./$(DEPDIR)/async_test_serial.Po # am--include-marker
+include ./$(DEPDIR)/async_test_serial2.Po # am--include-marker
+include ./$(DEPDIR)/async_test_serial_event_set.Po # am--include-marker
+
+$(am__depfiles_remade):
+	@$(MKDIR_P) $(@D)
+	@echo '# dummy' >$@-t && $(am__mv) $@-t $@
+
+am--depfiles: $(am__depfiles_remade)
+
+.c.o:
+	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
+	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+#	$(AM_V_CC)source='$<' object='$@' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(AM_V_CC_no)$(COMPILE) -c -o $@ $<
+
+.c.obj:
+	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
+	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+#	$(AM_V_CC)source='$<' object='$@' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(AM_V_CC_no)$(COMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
+
+.c.lo:
+	$(AM_V_CC)$(LTCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
+	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Plo
+#	$(AM_V_CC)source='$<' object='$@' libtool=yes \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(AM_V_CC_no)$(LTCOMPILE) -c -o $@ $<
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -841,6 +1036,76 @@ recheck: all $(check_PROGRAMS)
 	        am__force_recheck=am--force-recheck \
 	        TEST_LOGS="$$log_list"; \
 	exit $$?
+async_test_serial.log: async_test_serial$(EXEEXT)
+	@p='async_test_serial$(EXEEXT)'; \
+	b='async_test_serial'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+async_test_serial2.log: async_test_serial2$(EXEEXT)
+	@p='async_test_serial2$(EXEEXT)'; \
+	b='async_test_serial2'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+async_test_serial_event_set.log: async_test_serial_event_set$(EXEEXT)
+	@p='async_test_serial_event_set$(EXEEXT)'; \
+	b='async_test_serial_event_set'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+async_test_parallel.log: async_test_parallel$(EXEEXT)
+	@p='async_test_parallel$(EXEEXT)'; \
+	b='async_test_parallel'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+async_test_parallel2.log: async_test_parallel2$(EXEEXT)
+	@p='async_test_parallel2$(EXEEXT)'; \
+	b='async_test_parallel2'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+async_test_parallel3.log: async_test_parallel3$(EXEEXT)
+	@p='async_test_parallel3$(EXEEXT)'; \
+	b='async_test_parallel3'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+async_test_parallel4.log: async_test_parallel4$(EXEEXT)
+	@p='async_test_parallel4$(EXEEXT)'; \
+	b='async_test_parallel4'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+async_test_parallel5.log: async_test_parallel5$(EXEEXT)
+	@p='async_test_parallel5$(EXEEXT)'; \
+	b='async_test_parallel5'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+async_test_multifile.log: async_test_multifile$(EXEEXT)
+	@p='async_test_multifile$(EXEEXT)'; \
+	b='async_test_multifile'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+async_test_multifile_env.log: async_test_multifile_env$(EXEEXT)
+	@p='async_test_multifile_env$(EXEEXT)'; \
+	b='async_test_multifile_env'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
 .sh.log:
 	@p='$<'; \
 	$(am__set_b); \
@@ -961,8 +1226,19 @@ clean-am: clean-checkPROGRAMS clean-generic clean-libtool \
 	mostlyclean-am
 
 distclean: distclean-recursive
+		-rm -f ./$(DEPDIR)/async_test_multifile.Po
+	-rm -f ./$(DEPDIR)/async_test_multifile_env.Po
+	-rm -f ./$(DEPDIR)/async_test_parallel.Po
+	-rm -f ./$(DEPDIR)/async_test_parallel2.Po
+	-rm -f ./$(DEPDIR)/async_test_parallel3.Po
+	-rm -f ./$(DEPDIR)/async_test_parallel4.Po
+	-rm -f ./$(DEPDIR)/async_test_parallel5.Po
+	-rm -f ./$(DEPDIR)/async_test_serial.Po
+	-rm -f ./$(DEPDIR)/async_test_serial2.Po
+	-rm -f ./$(DEPDIR)/async_test_serial_event_set.Po
 	-rm -f Makefile
-distclean-am: clean-am distclean-generic distclean-tags
+distclean-am: clean-am distclean-compile distclean-generic \
+	distclean-tags
 
 dvi: dvi-recursive
 
@@ -1005,12 +1281,23 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-recursive
+		-rm -f ./$(DEPDIR)/async_test_multifile.Po
+	-rm -f ./$(DEPDIR)/async_test_multifile_env.Po
+	-rm -f ./$(DEPDIR)/async_test_parallel.Po
+	-rm -f ./$(DEPDIR)/async_test_parallel2.Po
+	-rm -f ./$(DEPDIR)/async_test_parallel3.Po
+	-rm -f ./$(DEPDIR)/async_test_parallel4.Po
+	-rm -f ./$(DEPDIR)/async_test_parallel5.Po
+	-rm -f ./$(DEPDIR)/async_test_serial.Po
+	-rm -f ./$(DEPDIR)/async_test_serial2.Po
+	-rm -f ./$(DEPDIR)/async_test_serial_event_set.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
 mostlyclean: mostlyclean-recursive
 
-mostlyclean-am: mostlyclean-generic mostlyclean-libtool
+mostlyclean-am: mostlyclean-compile mostlyclean-generic \
+	mostlyclean-libtool
 
 pdf: pdf-recursive
 
@@ -1028,17 +1315,18 @@ uninstall-am:
 
 .MAKE: $(am__recursive_targets) check-am install-am install-strip
 
-.PHONY: $(am__recursive_targets) CTAGS GTAGS TAGS all all-am check \
-	check-TESTS check-am clean clean-checkPROGRAMS clean-generic \
-	clean-libtool cscopelist-am ctags ctags-am distclean \
-	distclean-generic distclean-libtool distclean-tags distdir dvi \
-	dvi-am html html-am info info-am install install-am \
-	install-data install-data-am install-dvi install-dvi-am \
-	install-exec install-exec-am install-html install-html-am \
-	install-info install-info-am install-man install-pdf \
-	install-pdf-am install-ps install-ps-am install-strip \
-	installcheck installcheck-am installdirs installdirs-am \
-	maintainer-clean maintainer-clean-generic mostlyclean \
+.PHONY: $(am__recursive_targets) CTAGS GTAGS TAGS all all-am \
+	am--depfiles check check-TESTS check-am clean \
+	clean-checkPROGRAMS clean-generic clean-libtool cscopelist-am \
+	ctags ctags-am distclean distclean-compile distclean-generic \
+	distclean-libtool distclean-tags distdir dvi dvi-am html \
+	html-am info info-am install install-am install-data \
+	install-data-am install-dvi install-dvi-am install-exec \
+	install-exec-am install-html install-html-am install-info \
+	install-info-am install-man install-pdf install-pdf-am \
+	install-ps install-ps-am install-strip installcheck \
+	installcheck-am installdirs installdirs-am maintainer-clean \
+	maintainer-clean-generic mostlyclean mostlyclean-compile \
 	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
 	recheck tags tags-am tests-am tests-local uninstall \
 	uninstall-am

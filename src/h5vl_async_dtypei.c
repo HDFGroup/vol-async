@@ -21,6 +21,45 @@
 #include "h5vl_async_dtypei.h"
 #include "h5vl_async_info.h"
 #include "h5vl_asynci.h"
+#include "h5vl_asynci_debug.h"
+
+int H5VL_async_datatype_commit_handler (void *data) {
+	H5VL_ASYNC_HANDLER_VARS
+	H5VL_async_datatype_commit_args *argp = (H5VL_async_datatype_commit_args *)data;
+
+	H5VL_ASYNC_HANDLER_BEGIN
+
+	/* Open the pp with the underlying VOL connector */
+	argp->tp->under_vol_id = argp->pp->under_vol_id;
+	H5Iinc_ref (argp->pp->under_vol_id);
+	argp->tp->under_object = H5VLdatatype_commit (
+		argp->pp->under_object, argp->loc_params, argp->pp->under_vol_id, argp->name, argp->type_id,
+		argp->lcpl_id, argp->tcpl_id, argp->tapl_id, argp->dxpl_id, NULL);
+	CHECK_ERR
+
+err_out:;
+	if (err) {
+		argp->tp->stat = H5VL_async_stat_err;
+	} else {
+		argp->tp->stat = H5VL_async_stat_ready;
+	}
+
+	H5VL_asynci_mutex_lock (argp->tp->lock);
+	argp->tp->init_task = NULL;
+	H5VL_async_dec_ref (argp->tp);
+	H5VL_asynci_mutex_unlock (argp->tp->lock);
+
+	H5VL_ASYNC_HANDLER_END
+
+	H5Pclose (argp->dxpl_id);
+	H5Pclose (argp->lcpl_id);
+	H5Pclose (argp->tcpl_id);
+	H5Pclose (argp->tapl_id);
+	H5Tclose (argp->type_id);
+	H5VL_ASYNC_HANDLER_FREE
+
+	return 0;
+}
 
 int H5VL_async_datatype_open_handler (void *data) {
 	H5VL_ASYNC_HANDLER_VARS
@@ -44,6 +83,7 @@ err_out:;
 	}
 
 	H5VL_asynci_mutex_lock (argp->tp->lock);
+	argp->tp->init_task = NULL;
 	H5VL_async_dec_ref (argp->tp);
 	H5VL_asynci_mutex_unlock (argp->tp->lock);
 
@@ -51,31 +91,6 @@ err_out:;
 
 	H5Pclose (argp->dxpl_id);
 	H5Pclose (argp->tapl_id);
-	H5VL_ASYNC_HANDLER_FREE
-
-	return 0;
-}
-
-int H5VL_async_datatype_commit_handler (void *data) {
-	H5VL_ASYNC_HANDLER_VARS
-	H5VL_async_datatype_commit_args *argp = (H5VL_async_datatype_commit_args *)data;
-
-	H5VL_ASYNC_HANDLER_BEGIN
-
-	/* Open the pp with the underlying VOL connector */
-	err = H5VLdatatype_commit (argp->pp->under_object, argp->loc_params, argp->pp->under_vol_id,
-							   argp->name, argp->type_id, argp->lcpl_id, argp->tcpl_id,
-							   argp->tapl_id, argp->dxpl_id, NULL);
-	CHECK_ERR
-
-err_out:;
-	H5VL_ASYNC_HANDLER_END
-
-	H5Pclose (argp->dxpl_id);
-	H5Pclose (argp->lcpl_id);
-	H5Pclose (argp->tcpl_id);
-	H5Pclose (argp->tapl_id);
-	H5Tclose (argp->type_id);
 	H5VL_ASYNC_HANDLER_FREE
 
 	return 0;
@@ -150,12 +165,11 @@ int H5VL_async_datatype_close_handler (void *data) {
 	err = H5VLdatatype_close (argp->pp->under_object, argp->pp->under_vol_id, argp->dxpl_id, NULL);
 	CHECK_ERR
 
-	err = H5VL_async_free_obj (argp->pp);
-	CHECK_ERR
-
 err_out:;
 	H5VL_ASYNC_HANDLER_END
 
+	err = H5VL_async_free_obj (argp->pp);
+	CHECK_ERR2
 	H5Pclose (argp->dxpl_id);
 	H5VL_ASYNC_HANDLER_FREE
 

@@ -19,8 +19,16 @@ AM_CPPFLAGS = -I$(top_srcdir)/src \
 
 LDADD = $(top_builddir)/src/.libs/libh5vl_async.la ${LIBS}
 
-check_PROGRAMS =   
-# async_test_serial
+check_PROGRAMS =	async_test_serial \
+					async_test_serial2 \
+					async_test_serial_event_set \
+					async_test_parallel \
+					async_test_parallel2 \
+					async_test_parallel3 \
+					async_test_parallel4 \
+					async_test_parallel5 \
+					async_test_multifile \
+					async_test_multifile_env
 
 EXTRA_DIST = # wrap_runs.sh parallel_run.sh
 

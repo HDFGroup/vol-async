@@ -20,6 +20,7 @@
 #endif
 
 /* Async VOL headers */
+#include "h5vl_async.h"
 #include "h5vl_asynci.h"
 
 static inline void H5VL_asynci_sleep (int ms) {
@@ -40,6 +41,19 @@ herr_t H5VL_asynci_h5ts_mutex_lock () {
 		H5VL_asynci_sleep (H5VL_ASYNC_LOCK_POLL_PEROID);
 		err = H5TSmutex_acquire (&locked);
 		CHECK_ERR
+	}
+
+err_out:;
+	return err;
+}
+
+herr_t H5VL_asynci_obj_wait (void *pp) {
+	herr_t err = 0;
+	int twerr;
+
+	while (((H5VL_async_t *)pp)->ref) {
+		twerr = TW_Engine_progress (H5VL_async_engine);
+		CHK_TWERR
 	}
 
 err_out:;

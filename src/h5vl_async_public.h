@@ -25,8 +25,6 @@ herr_t H5Pget_dxpl_async (hid_t dxpl, hbool_t *is_async);
 herr_t H5Pset_dxpl_async (hid_t dxpl, hbool_t is_async);
 herr_t H5Pget_dxpl_async_cp_limit (hid_t dxpl, hsize_t *size);
 herr_t H5Pset_dxpl_async_cp_limit (hid_t dxpl, hsize_t size);
-herr_t H5Dwait (hid_t dset);
-herr_t H5Fwait (hid_t file);
 void H5VLasync_waitall ();
 void H5VLasync_finalize ();
 

@@ -19,17 +19,9 @@
 #include "h5vl_async.h"
 #include "h5vl_asynci.h"
 
-typedef struct H5VL_async_datatype_open_args {
-	H5VL_ASYNC_ARG_VARS
-	H5VL_async_t *tp;
-	H5VL_loc_params_t *loc_params;
-	char *name;
-	hid_t tapl_id;
-	hid_t dxpl_id;
-} H5VL_async_datatype_open_args;
-
 typedef struct H5VL_async_datatype_commit_args {
 	H5VL_ASYNC_ARG_VARS
+	H5VL_async_t *tp;
 	H5VL_loc_params_t *loc_params;
 	char *name;
 	hid_t type_id;
@@ -38,6 +30,15 @@ typedef struct H5VL_async_datatype_commit_args {
 	hid_t tapl_id;
 	hid_t dxpl_id;
 } H5VL_async_datatype_commit_args;
+
+typedef struct H5VL_async_datatype_open_args {
+	H5VL_ASYNC_ARG_VARS
+	H5VL_async_t *tp;
+	H5VL_loc_params_t *loc_params;
+	char *name;
+	hid_t tapl_id;
+	hid_t dxpl_id;
+} H5VL_async_datatype_open_args;
 
 typedef struct H5VL_async_datatype_get_args {
 	H5VL_ASYNC_ARG_VARS

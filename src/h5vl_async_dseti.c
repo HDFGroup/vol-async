@@ -21,6 +21,7 @@
 #include "h5vl_async_dseti.h"
 #include "h5vl_async_info.h"
 #include "h5vl_asynci.h"
+#include "h5vl_asynci_debug.h"
 
 int H5VL_async_dataset_create_handler (void *data) {
 	H5VL_ASYNC_HANDLER_VARS
@@ -28,24 +29,25 @@ int H5VL_async_dataset_create_handler (void *data) {
 
 	H5VL_ASYNC_HANDLER_BEGIN
 
-	/* Open the gp with the underlying VOL connector */
-	argp->gp->under_vol_id = argp->pp->under_vol_id;
-	H5Iinc_ref (argp->gp->under_vol_id);
-	argp->gp->under_object = H5VLdataset_create (
-		argp->pp->under_object, argp->loc_params, argp->gp->under_vol_id, argp->name, argp->lcpl_id,
+	/* Open the dp with the underlying VOL connector */
+	argp->dp->under_vol_id = argp->pp->under_vol_id;
+	H5Iinc_ref (argp->dp->under_vol_id);
+	argp->dp->under_object = H5VLdataset_create (
+		argp->pp->under_object, argp->loc_params, argp->dp->under_vol_id, argp->name, argp->lcpl_id,
 		argp->type_id, argp->space_id, argp->dcpl_id, argp->dapl_id, argp->dxpl_id, NULL);
-	CHECK_PTR (argp->gp->under_object)
+	CHECK_PTR (argp->dp->under_object)
 
 err_out:;
 	if (err) {
-		argp->gp->stat = H5VL_async_stat_err;
+		argp->dp->stat = H5VL_async_stat_err;
 	} else {
-		argp->gp->stat = H5VL_async_stat_ready;
+		argp->dp->stat = H5VL_async_stat_ready;
 	}
 
-	H5VL_asynci_mutex_lock (argp->gp->lock);
-	H5VL_async_dec_ref (argp->gp);
-	H5VL_asynci_mutex_unlock (argp->gp->lock);
+	H5VL_asynci_mutex_lock (argp->dp->lock);
+	argp->dp->init_task = NULL;
+	H5VL_async_dec_ref (argp->dp);
+	H5VL_asynci_mutex_unlock (argp->dp->lock);
 
 	H5VL_ASYNC_HANDLER_END
 
@@ -67,23 +69,24 @@ int H5VL_async_dataset_open_handler (void *data) {
 	H5VL_ASYNC_HANDLER_BEGIN
 
 	/* Open the dataset with the underlying VOL connector */
-	argp->gp->under_vol_id = argp->pp->under_vol_id;
-	H5Iinc_ref (argp->gp->under_vol_id);
-	argp->gp->under_object =
-		H5VLdataset_open (argp->pp->under_object, argp->loc_params, argp->gp->under_vol_id,
+	argp->dp->under_vol_id = argp->pp->under_vol_id;
+	H5Iinc_ref (argp->dp->under_vol_id);
+	argp->dp->under_object =
+		H5VLdataset_open (argp->pp->under_object, argp->loc_params, argp->dp->under_vol_id,
 						  argp->name, argp->dapl_id, argp->dxpl_id, NULL);
-	CHECK_PTR (argp->gp->under_object)
+	CHECK_PTR (argp->dp->under_object)
 
 err_out:;
 	if (err) {
-		argp->gp->stat = H5VL_async_stat_err;
+		argp->dp->stat = H5VL_async_stat_err;
 	} else {
-		argp->gp->stat = H5VL_async_stat_ready;
+		argp->dp->stat = H5VL_async_stat_ready;
 	}
 
-	H5VL_asynci_mutex_lock (argp->gp->lock);
-	H5VL_async_dec_ref (argp->gp);
-	H5VL_asynci_mutex_unlock (argp->gp->lock);
+	H5VL_asynci_mutex_lock (argp->dp->lock);
+	argp->dp->init_task = NULL;
+	H5VL_async_dec_ref (argp->dp);
+	H5VL_asynci_mutex_unlock (argp->dp->lock);
 
 	H5VL_ASYNC_HANDLER_END
 
@@ -212,12 +215,11 @@ int H5VL_async_dataset_close_handler (void *data) {
 	err = H5VLdataset_close (argp->pp->under_object, argp->pp->under_vol_id, argp->dxpl_id, NULL);
 	CHECK_ERR
 
-	err = H5VL_async_free_obj (argp->pp);
-	CHECK_ERR
-
 err_out:;
 	H5VL_ASYNC_HANDLER_END
 
+	err = H5VL_async_free_obj (argp->pp);
+	CHECK_ERR2
 	H5Pclose (argp->dxpl_id);
 	H5VL_ASYNC_HANDLER_FREE
 

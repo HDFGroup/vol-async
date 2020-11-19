@@ -76,7 +76,7 @@ herr_t H5Pget_dxpl_async (hid_t dxpl, hbool_t *is_async) {
 		pexist = H5Pexist (dxpl, ASYNC_VOL_PROP_NAME);
 		CHECK_ID (pexist)
 		if (pexist) {
-			err = H5Pget (dxpl, ASYNC_VOL_PROP_NAME, &is_async);
+			err = H5Pget (dxpl, ASYNC_VOL_PROP_NAME, is_async);
 			CHECK_ERR
 
 		} else {
@@ -119,16 +119,6 @@ herr_t H5Pget_dxpl_async_cp_limit (hid_t dxpl, hsize_t *size) {
 }
 
 herr_t H5Pset_dxpl_async_cp_limit (hid_t dxpl, hsize_t size) {
-	herr_t ret;
-	return ret;
-}
-
-herr_t H5Dwait (hid_t dset) {
-	herr_t ret;
-	return ret;
-}
-
-herr_t H5Fwait (hid_t file) {
 	herr_t ret;
 	return ret;
 }

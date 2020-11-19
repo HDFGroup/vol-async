@@ -43,7 +43,8 @@ C_SRCS =    h5vl_async.c \
             h5vl_async_token.c \
             h5vl_async_wrap.c \
             h5vl_asynci_vector.c \
-            h5vl_asynci_mutex.c 
+            h5vl_asynci_mutex.c \
+            h5vl_asynci_debug.c 
             
 # if ASYNCVOL_DEBUG
 # C_SRCS += h5vl_async_debug.c

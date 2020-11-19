@@ -286,7 +286,7 @@ herr_t H5VL_async_init (hid_t H5VL_ASYNC_UNUSED vipl_id) {
 	twerr = TW_Init (TW_Backend_native, TW_Event_backend_none, NULL, NULL);
 	CHK_TWERR
 
-	twerr = TW_Engine_create (1, &H5VL_async_engine);
+	twerr = TW_Engine_create (0, &H5VL_async_engine);
 	CHK_TWERR
 
 err_out:;

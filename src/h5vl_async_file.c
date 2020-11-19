@@ -23,6 +23,7 @@
 #include "h5vl_async_public.h"
 #include "h5vl_async_req.h"
 #include "h5vl_asynci.h"
+#include "h5vl_asynci_debug.h"
 #include "h5vl_asynci_mutex.h"
 #include "h5vl_asynci_vector.h"
 
@@ -68,8 +69,9 @@ void *H5VL_async_file_create (
 	twerr =
 		TW_Task_create (H5VL_async_file_create_handler, argp, TW_TASK_DEP_ALL_COMPLETE, 0, &task);
 	CHK_TWERR
-	fp->init_task = task;
+	argp->fp->init_task = task;
 
+	H5VL_async_inc_ref (argp->fp);
 	H5VL_ASYNC_CB_TASK_COMMIT
 	H5VL_ASYNC_CB_TASK_WAIT
 
@@ -134,8 +136,9 @@ void *H5VL_async_file_open (
 
 	twerr = TW_Task_create (H5VL_async_file_open_handler, argp, TW_TASK_DEP_ALL_COMPLETE, 0, &task);
 	CHK_TWERR
-	fp->init_task = task;
+	argp->fp->init_task = task;
 
+	H5VL_async_inc_ref (argp->fp);
 	H5VL_ASYNC_CB_TASK_COMMIT
 	H5VL_ASYNC_CB_TASK_WAIT
 
@@ -190,7 +193,6 @@ herr_t H5VL_async_file_get (
 
 	twerr = TW_Task_create (H5VL_async_file_get_handler, argp, TW_TASK_DEP_ALL_COMPLETE, 0, &task);
 	CHK_TWERR
-	argp->task = task;
 
 	H5VL_ASYNC_CB_TASK_COMMIT
 	H5VL_ASYNC_CB_TASK_WAIT
@@ -228,6 +230,8 @@ herr_t H5VL_async_file_specific (
 	printf ("------- ASYNC VOL FILE Specific\n");
 #endif
 
+	if (specific_type == H5VL_FILE_WAIT) { return (H5VL_asynci_obj_wait (file)); }
+
 	argp = (H5VL_async_file_specific_args *)malloc (sizeof (H5VL_async_file_specific_args));
 	CHECK_PTR (argp)
 	argp->pp			= pp;
@@ -240,7 +244,6 @@ herr_t H5VL_async_file_specific (
 	twerr =
 		TW_Task_create (H5VL_async_file_specific_handler, argp, TW_TASK_DEP_ALL_COMPLETE, 0, &task);
 	CHK_TWERR
-	argp->task = task;
 
 	H5VL_ASYNC_CB_TASK_COMMIT
 	H5VL_ASYNC_CB_TASK_WAIT
@@ -289,7 +292,6 @@ herr_t H5VL_async_file_optional (
 	twerr =
 		TW_Task_create (H5VL_async_file_optional_handler, argp, TW_TASK_DEP_ALL_COMPLETE, 0, &task);
 	CHK_TWERR
-	argp->task = task;
 
 	H5VL_ASYNC_CB_TASK_COMMIT
 	H5VL_ASYNC_CB_TASK_WAIT
@@ -334,19 +336,20 @@ herr_t H5VL_async_file_close (void *file, hid_t dxpl_id, void **req) {
 	twerr = TW_Task_create (H5VL_async_file_close_handler, argp, TW_TASK_DEP_ALL_COMPLETE, pp->cnt,
 							&task);
 	CHK_TWERR
-	argp->task = task;
 
 	H5VL_asynci_mutex_lock (pp->lock);
 	pp->stat == H5VL_async_stat_close;
-	if (pp->ref) {
-		pp->close_task = task;
-	} else {
-		twerr = TW_Task_commit (task, H5VL_async_engine);
-		CHK_TWERR
+	if (is_async) {
+		if (pp->ref) {
+			pp->close_task = task;
+		} else {
+			twerr = TW_Task_commit (task, H5VL_async_engine);
+			CHK_TWERR
+		}
 	}
 	H5VL_asynci_mutex_unlock (pp->lock);
 
-	H5VL_ASYNC_CB_TASK_WAIT
+	H5VL_ASYNC_CB_CLOSE_TASK_WAIT
 
 err_out:;
 	if (err) {
