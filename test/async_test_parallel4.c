@@ -3,7 +3,7 @@
 #include <assert.h>
 #include "hdf5.h"
 #include "mpi.h"
-#include "h5_vol_external_async_native.h"
+#include "h5_async_lib.h"
 
 /* #define DIMLEN 1024 */
 #define DIMLEN 10
@@ -78,8 +78,6 @@ int main(int argc, char *argv[])
     dxpl_ind_id = H5Pcreate(H5P_DATASET_XFER);
     H5Pset_dxpl_mpio(dxpl_col_id, H5FD_MPIO_COLLECTIVE);
     H5Pset_dxpl_mpio(dxpl_ind_id, H5FD_MPIO_INDEPENDENT);
-    H5Pset_dxpl_async(dxpl_col_id, true);
-    H5Pset_dxpl_async(dxpl_ind_id, true);
 
     mspace_id = H5Screate_simple(2, my_size, NULL);
     fspace_id = H5Screate_simple(2, ds_size, NULL);
@@ -140,7 +138,7 @@ int main(int argc, char *argv[])
     else
         printf("Succeed with CR0\n");
 
-    status = H5Dwait(dset0_id);
+    status = H5Dwait(dset0_id, H5P_DEFAULT);
     if (status < 0) {
         fprintf(stderr, "Error with H5Dwait\n");
         ret = -1;
@@ -173,7 +171,7 @@ int main(int argc, char *argv[])
     else
         printf("Succeed with CR1\n");
 
-    status = H5Dwait(dset1_id);
+    status = H5Dwait(dset1_id, H5P_DEFAULT);
     if (status < 0) {
         fprintf(stderr, "Error with H5Dwait\n");
         ret = -1;
@@ -207,7 +205,7 @@ int main(int argc, char *argv[])
     else
         printf("Succeed with CR1'\n");
 
-    status = H5Dwait(dset1_id);
+    status = H5Dwait(dset1_id, H5P_DEFAULT);
     if (status < 0) {
         fprintf(stderr, "Error with H5Dwait\n");
         ret = -1;
@@ -230,7 +228,7 @@ int main(int argc, char *argv[])
     else
         printf("Succeed with CR0'\n");
 
-    status = H5Dwait(dset0_id);
+    status = H5Dwait(dset0_id, H5P_DEFAULT);
     if (status < 0) {
         fprintf(stderr, "Error with H5Dwait\n");
         ret = -1;

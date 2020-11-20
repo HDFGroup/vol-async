@@ -3,7 +3,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include "hdf5.h"
-#include "h5_vol_external_async_native.h"
+#include "h5_async_lib.h"
 
 /* #define DIMLEN 10 */
 #define DIMLEN 1024
@@ -47,7 +47,6 @@ int main(int argc, char *argv[])
     async_fapl = H5Pcreate (H5P_FILE_ACCESS);
     async_dxpl = H5Pcreate (H5P_DATASET_XFER);
     H5Pset_vol_async(async_fapl);
-    H5Pset_dxpl_async(async_dxpl, true);
 
     gettimeofday(&ts, 0);
     for (ifile = 0; ifile < nfile; ifile++) {

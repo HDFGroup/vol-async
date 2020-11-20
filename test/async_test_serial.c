@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "hdf5.h"
-#include "h5_vol_external_async_native.h"
+#include "h5_async_lib.h"
 
 #define DIMLEN 1024
 
@@ -37,7 +37,6 @@ int main(int argc, char *argv[])
     async_dxpl = H5Pcreate (H5P_DATASET_XFER);
 
     H5Pset_vol_async(async_fapl);
-    H5Pset_dxpl_async(async_dxpl, true);
 
     if (print_dbg_msg) printf("H5Fcreate start\n");
     fflush(stdout);
@@ -126,7 +125,7 @@ int main(int argc, char *argv[])
 
     H5Sclose(attr_space);
 
-    H5Fwait(file_id);
+    H5Fwait(file_id, H5P_DEFAULT);
     if (attr_data0 != attr_read_data0) {
         fprintf(stderr, "Error with attr 0 read\n");
         ret = -1;
@@ -167,7 +166,7 @@ int main(int argc, char *argv[])
 
     if (print_dbg_msg) printf("Start H5Dwait\n");
     fflush(stdout);
-    H5Dwait(dset0_id);
+    H5Dwait(dset0_id, H5P_DEFAULT);
     if (print_dbg_msg) printf("Done H5Dwait\n");
     fflush(stdout);
     // Verify read data
@@ -206,7 +205,7 @@ int main(int argc, char *argv[])
 
     if (print_dbg_msg) printf("Start H5Dwait\n");
     fflush(stdout);
-    H5Dwait(dset1_id);
+    H5Dwait(dset1_id, H5P_DEFAULT);
     if (print_dbg_msg) printf("Done H5Dwait\n");
     fflush(stdout);
     // Verify read data
@@ -238,8 +237,6 @@ int main(int argc, char *argv[])
     fflush(stdout);
     /* usleep(sleeptime); */
 
-    H5Pset_dxpl_async_cp_limit(async_dxpl, 0);
-
     if (print_dbg_msg) printf("H5Dwrite 0 start\n");
     fflush(stdout);
     status = H5Dwrite(dset0_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, async_dxpl, data0_write);
@@ -266,7 +263,7 @@ int main(int argc, char *argv[])
 
     if (print_dbg_msg) printf("Start H5Dwait\n");
     fflush(stdout);
-    H5Dwait(dset0_id);
+    H5Dwait(dset0_id, H5P_DEFAULT);
     if (print_dbg_msg) printf("Done H5Dwait\n");
     fflush(stdout);
     // Verify read data
@@ -295,7 +292,7 @@ int main(int argc, char *argv[])
 
     if (print_dbg_msg) printf("Start H5Dwait\n");
     fflush(stdout);
-    H5Dwait(dset1_id);
+    H5Dwait(dset1_id, H5P_DEFAULT);
     if (print_dbg_msg) printf("Done H5Dwait\n");
     fflush(stdout);
     // Verify read data

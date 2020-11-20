@@ -3,7 +3,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include "hdf5.h"
-#include "h5_vol_external_async_native.h"
+#include "h5_async_lib.h"
 
 /* #define DIMLEN 10 */
 #define DIMLEN 1024
@@ -27,9 +27,6 @@ int main(int argc, char *argv[])
     int        i;
     herr_t     status;
     hid_t      async_fapl;
-    
-    
-
     int ifile, nfile = 3, sleeptime = 2;
 
     fpath = ".";
@@ -45,8 +42,6 @@ int main(int argc, char *argv[])
 
     async_fapl = H5Pcreate (H5P_FILE_ACCESS);
     async_dxpl = H5Pcreate (H5P_DATASET_XFER);
-    /* H5Pset_vol_async(async_fapl); */
-    /* H5Pset_dxpl_async(async_dxpl, true); */
 
     dspace_id  = H5Screate_simple(2, ds_size, NULL); 
     attr_space = H5Screate_simple(1, &attr_size, NULL); 
@@ -144,13 +139,14 @@ int main(int argc, char *argv[])
     H5Pclose(async_dxpl);
 
     gettimeofday(&t1, 0);
-    H5VLasync_finalize();
+    H5close();
 
     gettimeofday(&te, 0);
     e1 = ((te.tv_sec-ts.tv_sec)*1000000 + te.tv_usec-ts.tv_usec)/1000000.0;
     e2 = ((te.tv_sec-t1.tv_sec)*1000000 + te.tv_usec-t1.tv_usec)/1000000.0;
     printf("Total execution time: %f\n", e1);
     printf("Finalize time: %f\n", e2);
+
 done:
     if (write_data != NULL) 
         free(write_data);

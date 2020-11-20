@@ -1,25 +1,44 @@
-#HDF5_DIR = /global/homes/h/houhun/hdf5_tmp/hdf5/async_threadsafe/hdf5
-#ABT_DIR = /global/homes/h/houhun/cori/argobots/install
-HDF5_DIR = /global/homes/h/houhun/hdf5/async_gnu/hdf5
-ABT_DIR = /global/homes/h/houhun/cori/argobots/install
+HDF5_DIR  = ../../../build_parallel_debug/hdf5
+#ABT_DIR = /Users/koziol/HDF5/github/hdfgroup/async/argobots/build_argobots
+ABT_DIR = /Users/koziol/HDF5/github/hdfgroup/async/argobots-dyn/install_shared/
 
-CC = cc
+#CC = cc
 #CC = gcc-9
-# CC = mpicc
+CC = mpicc
 
-DEBUG = -g -O0
+DEBUG = -g -O0 -DENABLE_ASYNC_LOGGING
 CFLAGS = $(DEBUG) -fPIC -I$(ABT_DIR)/include -I$(HDF5_DIR)/include -Wall
-LDFLAGS = $(DEBUG) -shared -fPIC -L$(HDF5_DIR)/lib -L$(ABT_DIR)/lib -labt -lhdf5 -lz
-# LDFLAGS = $(DEBUG) -dynamiclib -current_version 1.0  -fPIC -L$(HDF5_DIR)/lib -L$(ABT_DIR)/lib -labt -lhdf5 -lz
+LIBS = -L$(HDF5_DIR)/lib -L$(ABT_DIR)/lib -labt -lhdf5 -lz
+# DYNLDFLAGS = $(DEBUG) -shared -fPIC $(LIBS)
+DYNLDFLAGS = $(DEBUG) -dynamiclib -current_version 1.0  -fPIC $(LIBS)
+ARFLAGS = rs
 
-SRC = h5_vol_external_async_native.c
-OBJ = $(SRC:.c=.o)
-LIB = libh5async.so
-# LIB = libh5async.dylib
+DYNSRC = h5_vol_external_async_native.c
+DYNHDR = h5_vol_external_async_native.h
+DYNOBJ = $(DYNSRC:.c=.o)
+DYNPCH = $(DYNHDR:.h=.h.gch)
+# DYNLIB = libh5async.so
+DYNLIB = libh5async.dylib
 
-$(LIB): $(OBJ)
-	$(CC) $(LDFLAGS) $^ -o $@
+STATSRC = h5_async_lib.c
+STATHDR = h5_async_lib.h
+STATOBJ = $(STATSRC:.c=.o)
+STATPCH = $(STATHDR:.h=.h.gch)
+STATLIB = libasynchdf5.a
+
+all: $(DYNLIB) $(STATLIB)
+
+$(DYNOBJ): $(DYNSRC) $(DYNHDR)
+
+$(DYNLIB): $(DYNOBJ)
+	$(CC) $(CFLAGS) $(DYNLDFLAGS) $^ -o $@
+
+$(STATOBJ): $(STATSRC) $(STATHDR)
+	$(CC) -c $(CFLAGS) $^
+
+$(STATLIB): $(STATOBJ)
+	$(AR) $(ARFLAGS) $@ $^
 
 .PHONY: clean
 clean:
-	rm -rf $(LIB) $(OBJ)
+	rm -rf $(DYNLIB) $(DYNOBJ) $(DYNPCH) $(STATLIB) $(STATOBJ) $(STATPCH)

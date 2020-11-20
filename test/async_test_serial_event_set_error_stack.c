@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "hdf5.h"
-#include "h5_vol_external_async_native.h"
+#include "h5_async_lib.h"
 
 #define DIMLEN 1024
 
@@ -31,7 +31,6 @@ int main(int argc, char *argv[])
     async_dxpl = H5Pcreate (H5P_DATASET_XFER);
     
 //    H5Pset_vol_async(async_fapl);
-    H5Pset_dxpl_async(async_dxpl, true);
 
     if (print_dbg_msg) printf("H5Fcreate start\n");
     fflush(stdout);
@@ -161,8 +160,8 @@ int main(int argc, char *argv[])
         goto done;
     }
     H5free_memory(err_info.app_func_name);
-    if (66 != err_info.app_line_num) { // Somewhat fragile
-        fprintf(stderr, "Event set didn't return app source line # correctly?!?\n");
+    if (65 != err_info.app_line_num) { // Somewhat fragile
+        fprintf(stderr, "Event set didn't return app source line # correctly?!?, got: %u\n", err_info.app_line_num);
         ret = -1;
         goto done;
     }
@@ -235,7 +234,7 @@ int main(int argc, char *argv[])
 
     H5Sclose(attr_space);
 
-    H5Fwait(file_id);
+    H5Fwait(file_id, H5P_DEFAULT);
 
     if (attr_data0 != attr_read_data0) {
         fprintf(stderr, "Error with attr 0 read\n");

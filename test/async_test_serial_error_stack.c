@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "hdf5.h"
-#include "h5_vol_external_async_native.h"
+#include "h5_async_lib.h"
 
 #define DIMLEN 1024
 
@@ -21,7 +21,6 @@ int main(int argc, char *argv[])
     async_dxpl = H5Pcreate (H5P_DATASET_XFER);
 
     H5Pset_vol_async(async_fapl);
-    H5Pset_dxpl_async(async_dxpl, true);
 
     if (print_dbg_msg) printf("H5Fcreate start\n");
     fflush(stdout);
@@ -128,7 +127,7 @@ int main(int argc, char *argv[])
 
     if (print_dbg_msg) printf("Start H5Dwait\n");
     fflush(stdout);
-    H5Dwait(dset0_id);
+    H5Dwait(dset0_id, H5P_DEFAULT);
     if (print_dbg_msg) printf("Done H5Dwait\n");
     fflush(stdout);
     // Verify read data

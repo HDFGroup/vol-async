@@ -1,17 +1,22 @@
 ASYNC_DIR = ../src
 # HDF5_DIR  = /ccs/home/houjun/summit/hdf5/async_threadsafe/hdf5
 # ABT_DIR = /ccs/home/houjun/summit/argobots/install/
-HDF5_DIR = /global/u1/h/houhun/hdf5/async_gnu/hdf5
-ABT_DIR = /global/homes/h/houhun/cori/argobots/install
+HDF5_DIR  = ../../../build_parallel_debug/hdf5
+#ABT_DIR = /Users/koziol/HDF5/github/hdfgroup/async/argobots/build_argobots
+ABT_DIR = /Users/koziol/HDF5/github/hdfgroup/async/argobots-dyn/install_shared/
 
-CC = cc
+DYNLIB = libh5async.dylib
+STATLIB = libasynchdf5.a
+
+#CC = cc
 #CC = gcc-9
-# CC = mpicc
+CC = mpicc
 
 DEBUG = -g -O0
 CFLAGS = $(DEBUG) -I$(ABT_DIR)/include -I$(ASYNC_DIR) -I$(HDF5_DIR)/include
 #-Wall
-LDFLAGS = $(DEBUG) -L$(ASYNC_DIR) -L$(ABT_DIR)/lib -L$(HDF5_DIR)/lib -Wl,-rpath=$(ASYNC_DIR) -Wl,-rpath=$(ABT_DIR)/lib -Wl,-rpath=$(HDF5_DIR)/lib -labt -lhdf5 -lh5async
+#LDFLAGS = $(DEBUG) -L$(ASYNC_DIR) -L$(ABT_DIR)/lib -L$(HDF5_DIR)/lib -Wl,-rpath=$(ASYNC_DIR) -Wl,-rpath=$(ABT_DIR)/lib -Wl,-rpath=$(HDF5_DIR)/lib -labt -lhdf5 -lh5async
+LDFLAGS = $(DEBUG) -L$(ASYNC_DIR) -L$(ABT_DIR)/lib -L$(HDF5_DIR)/lib -labt -lhdf5 -lasynchdf5 -lh5async 
 
 SRC = async_test_serial.c async_test_serial2.c \
     async_test_multifile.c async_test_multifile_env.c \
@@ -23,13 +28,11 @@ SRC = async_test_serial.c async_test_serial2.c \
 OBJ = $(SRC:.c=.o)
 EXE = $(SRC:.c=.exe)
 DBG = $(SRC:.c=.exe.dSYM)
-LIB = libh5async.so
-# LIB = libh5async.dylib
 
 # Add '.exe' as a targetable suffix
 .SUFFIXES: .exe
 
-.c.exe:
+.c.exe: $(ASYNC_DIR)/$(DYNLIB) $(ASYNC_DIR)/$(STATLIB)
 	$(CC) $(CFLAGS) $^ -o $*.exe $(LDFLAGS)
 
 all: $(EXE)
