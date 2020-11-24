@@ -1491,7 +1491,9 @@ free_file_async_resources(H5VL_async_t *file)
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_free\n", __func__);
         return;
     }
-    free(file);
+
+    // File object is freed later at request free time for event set to working after file close
+    /* free(file); */
 }
 
 static herr_t
@@ -2533,6 +2535,7 @@ async_attr_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_lo
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -2986,6 +2989,7 @@ async_attr_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -3417,6 +3421,7 @@ async_attr_read(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type_
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -3844,6 +3849,7 @@ async_attr_write(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -4283,6 +4289,7 @@ async_attr_get(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_attr_get_t 
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -4713,6 +4720,7 @@ async_attr_specific(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -5140,6 +5148,7 @@ async_attr_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_attr_o
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -5562,6 +5571,7 @@ async_attr_close(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id,
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -6031,6 +6041,7 @@ async_dataset_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -6484,6 +6495,7 @@ async_dataset_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_l
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -6921,6 +6933,7 @@ async_dataset_read(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_ty
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -7364,6 +7377,7 @@ async_dataset_write(async_instance_t* aid, H5VL_async_t *parent_obj,
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -7793,6 +7807,7 @@ async_dataset_get(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_dataset_
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -8220,6 +8235,7 @@ async_dataset_specific(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_dat
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -8647,6 +8663,7 @@ async_dataset_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_dat
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -9069,6 +9086,7 @@ async_dataset_close(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -9533,6 +9551,7 @@ async_datatype_commit(async_instance_t* aid, H5VL_async_t *parent_obj, const H5V
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -9986,6 +10005,7 @@ async_datatype_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -10416,6 +10436,7 @@ async_datatype_get(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_datatyp
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -10843,6 +10864,7 @@ async_datatype_specific(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_da
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -11270,6 +11292,7 @@ async_datatype_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_da
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -11692,6 +11715,7 @@ async_datatype_close(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -12164,11 +12188,12 @@ async_file_create(async_instance_t* aid, const char *name, unsigned flags, hid_t
 
     if (req) {
         H5VL_async_t *new_req;
-        if ((new_req = H5VL_async_new_obj(NULL, under_vol_id)) == NULL) {
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
             goto error;
         }
         new_req->my_task = async_task;
+        new_req->file_async_obj = async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -12621,11 +12646,12 @@ async_file_open(async_instance_t* aid, const char *name, unsigned flags, hid_t f
 
     if (req) {
         H5VL_async_t *new_req;
-        if ((new_req = H5VL_async_new_obj(NULL, under_vol_id)) == NULL) {
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
             goto error;
         }
         new_req->my_task = async_task;
+        new_req->file_async_obj = async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -13041,6 +13067,7 @@ async_file_get(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_file_get_t 
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -13468,6 +13495,7 @@ async_file_specific(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_file_s
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -13896,6 +13924,7 @@ async_file_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_file_o
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -14332,6 +14361,7 @@ async_file_close(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id,
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -14808,6 +14838,7 @@ async_group_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_l
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -15261,6 +15292,7 @@ async_group_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -15691,6 +15723,7 @@ async_group_get(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_group_get_
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -16118,6 +16151,7 @@ async_group_specific(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_group
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -16545,6 +16579,7 @@ async_group_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_group
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -16971,6 +17006,7 @@ async_group_close(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -17438,6 +17474,7 @@ async_link_create(async_instance_t* aid, H5VL_link_create_type_t create_type, H5
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -17876,6 +17913,7 @@ async_link_copy(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -18311,6 +18349,7 @@ async_link_move(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -18741,6 +18780,7 @@ async_link_get(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_p
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -19171,6 +19211,7 @@ async_link_specific(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -19598,6 +19639,7 @@ async_link_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_link_o
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -20042,6 +20084,7 @@ async_object_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_lo
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -20488,6 +20531,7 @@ async_object_copy(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_lo
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -20918,6 +20962,7 @@ async_object_get(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -21348,6 +21393,7 @@ async_object_specific(async_instance_t* aid, H5VL_async_t *parent_obj, const H5V
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -21775,6 +21821,7 @@ async_object_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_obje
         }
         new_req->my_task = async_task;
         new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
         *req = (void*)new_req;
     }
     else {
@@ -22208,7 +22255,7 @@ static herr_t
 H5VL_async_get_wrap_ctx(const void *obj, void **wrap_ctx)
 {
     const H5VL_async_t *o_async = (const H5VL_async_t *)obj;
-    const async_task_t *o_task  = (const async_task_t *)obj;
+    /* const async_task_t *o_task  = (const async_task_t *)obj; */
     hid_t under_vol_id = 0;
     void *under_object = NULL;
     H5VL_async_wrap_ctx_t *new_wrap_ctx;
@@ -22222,13 +22269,13 @@ H5VL_async_get_wrap_ctx(const void *obj, void **wrap_ctx)
 
     /* Increment reference count on underlying VOL ID, and copy the VOL info */
     if (o_async->magic == ASYNC_MAGIC) {
-        under_vol_id = o_async->under_vol_id;
+        under_vol_id = o_async->file_async_obj->under_vol_id;
         under_object = o_async->under_object;
     }
-    else if (o_task->magic == TASK_MAGIC && o_task->async_obj != NULL) {
-        under_vol_id = o_task->async_obj->under_vol_id;
-        under_object = o_task->async_obj->under_object;
-    }
+    /* else if (o_task->magic == TASK_MAGIC && o_task->async_obj != NULL) { */
+    /*     under_vol_id = o_task->async_obj->under_vol_id; */
+    /*     under_object = o_task->async_obj->under_object; */
+    /* } */
     else {
         fprintf(stderr,"  [ASYNC VOL ERROR] with H5VL_async_get_wrap_ctx\n");
         return -1;
@@ -24571,10 +24618,12 @@ H5VL_async_request_specific(void *obj, H5VL_request_specific_t specific_type,
         va_end(tmp_arguments);
     } /* end if */
     else if(H5VL_REQUEST_GET_ERR_STACK == specific_type) {
+        H5VL_async_t *async_obj;
         async_task_t *task;
         hid_t *err_stack_id_ptr;
 
-        task = (async_task_t*)obj;
+        async_obj = (H5VL_async_t*)obj;
+        task = async_obj->my_task;
         if (task == NULL) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object\n", __func__);
             return -1;
@@ -24643,14 +24692,17 @@ H5VL_async_request_free(void *obj)
 {
     H5VL_async_t *o = (H5VL_async_t *)obj;
 
+    assert(obj);
+
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL REQUEST Free\n");
 #endif
 
-    // Free the file close async that is not previously freed
+    // Free the file close task that is not previously freed
     if (o->my_task->func == async_file_close_fn) {
         free_async_task(o->my_task);
         free(o->my_task);
+        free(o->file_async_obj);
     }
 
     H5VL_async_free_obj(o);
