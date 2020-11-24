@@ -98,13 +98,13 @@ const char* qtype_names_g[4] = {"QTYPE_NONE", "REGULAR", "DEPENDENT", "COLLECTIV
 struct H5VL_async_t;
 
 typedef struct async_task_t {
+    hid_t               under_vol_id;
     int                 magic;
     ABT_mutex           task_mutex;
     void                *h5_state;
     void                (*func)(void *);
     void                *args;
     obj_op_type         op;
-    hid_t               under_vol_id;
     struct H5VL_async_t *async_obj;
     ABT_eventual        eventual;
     int                 in_abt_pool;
@@ -126,9 +126,9 @@ typedef struct async_task_t {
 } async_task_t;
 
 typedef struct H5VL_async_t {
-    int                 magic;
-    void                *under_object;
     hid_t               under_vol_id;
+    void                *under_object;
+    int                 magic;
     int                 is_obj_valid;
     async_task_t        *create_task;           /* task that creates the object */
     async_task_t        *close_task;
