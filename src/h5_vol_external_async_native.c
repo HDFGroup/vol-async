@@ -98,13 +98,13 @@ const char* qtype_names_g[4] = {"QTYPE_NONE", "REGULAR", "DEPENDENT", "COLLECTIV
 struct H5VL_async_t;
 
 typedef struct async_task_t {
+    hid_t               under_vol_id;
     int                 magic;
     ABT_mutex           task_mutex;
     void                *h5_state;
     void                (*func)(void *);
     void                *args;
     obj_op_type         op;
-    hid_t               under_vol_id;
     struct H5VL_async_t *async_obj;
     ABT_eventual        eventual;
     int                 in_abt_pool;
@@ -126,12 +126,13 @@ typedef struct async_task_t {
 } async_task_t;
 
 typedef struct H5VL_async_t {
-    int                 magic;
-    void                *under_object;
     hid_t               under_vol_id;
+    void                *under_object;
+    int                 magic;
     int                 is_obj_valid;
     async_task_t        *create_task;           /* task that creates the object */
     async_task_t        *close_task;
+    async_task_t        *my_task;               /* for request */
     async_task_t        *file_task_list_head;
     ABT_mutex           file_task_list_mutex;
     struct H5VL_async_t *file_async_obj;
@@ -1481,7 +1482,9 @@ free_file_async_resources(H5VL_async_t *file)
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_free\n", __func__);
         return;
     }
-    free(file);
+
+    // File object is freed later at request free time for event set to working after file close
+    /* free(file); */
 }
 
 static herr_t
@@ -2480,7 +2483,7 @@ async_attr_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_lo
     fflush(stderr);
 #endif
     /* create a new async object */
-    if ((async_obj = H5VL_async_new_obj(NULL, parent_obj->under_vol_id)) == NULL) {
+    if ((async_obj = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
@@ -2515,8 +2518,17 @@ async_attr_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_lo
         args->dxpl_id = H5Pcopy(dxpl_id);
     args->req              = req;
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -2931,7 +2943,7 @@ async_attr_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
     fflush(stderr);
 #endif
     /* create a new async object */
-    if ((async_obj = H5VL_async_new_obj(NULL, parent_obj->under_vol_id)) == NULL) {
+    if ((async_obj = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
@@ -2960,8 +2972,17 @@ async_attr_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
         args->dxpl_id = H5Pcopy(dxpl_id);
     args->req              = req;
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -3383,8 +3404,17 @@ async_attr_read(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type_
         args->dxpl_id = H5Pcopy(dxpl_id);
     args->req              = req;
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -3802,8 +3832,17 @@ async_attr_write(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type
         args->dxpl_id = H5Pcopy(dxpl_id);
     args->req              = req;
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -4233,8 +4272,17 @@ async_attr_get(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_attr_get_t 
     args->req              = req;
     va_copy(args->arguments, arguments);
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -4655,8 +4703,17 @@ async_attr_specific(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_
     args->req              = req;
     va_copy(args->arguments, arguments);
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -5074,8 +5131,17 @@ async_attr_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_attr_o
     args->req              = req;
     va_copy(args->arguments, arguments);
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -5488,8 +5554,17 @@ async_attr_close(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id,
         args->dxpl_id = H5Pcopy(dxpl_id);
     args->req              = req;
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -5912,7 +5987,7 @@ async_dataset_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL
     fflush(stderr);
 #endif
     /* create a new async object */
-    if ((async_obj = H5VL_async_new_obj(NULL, parent_obj->under_vol_id)) == NULL) {
+    if ((async_obj = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
@@ -5949,8 +6024,17 @@ async_dataset_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL
         args->dxpl_id = H5Pcopy(dxpl_id);
     args->req              = req;
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -6365,7 +6449,7 @@ async_dataset_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_l
     fflush(stderr);
 #endif
     /* create a new async object */
-    if ((async_obj = H5VL_async_new_obj(NULL, parent_obj->under_vol_id)) == NULL) {
+    if ((async_obj = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
@@ -6394,8 +6478,17 @@ async_dataset_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_l
         args->dxpl_id = H5Pcopy(dxpl_id);
     args->req              = req;
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -6823,8 +6916,17 @@ async_dataset_read(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_ty
     args->buf              = buf;
     args->req              = req;
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -7258,8 +7360,17 @@ async_dataset_write(async_instance_t* aid, H5VL_async_t *parent_obj,
     args->buf              = (void*)buf;
     args->req              = req;
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -7679,8 +7790,17 @@ async_dataset_get(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_dataset_
     args->req              = req;
     va_copy(args->arguments, arguments);
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -8098,8 +8218,17 @@ async_dataset_specific(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_dat
     args->req              = req;
     va_copy(args->arguments, arguments);
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -8517,8 +8646,17 @@ async_dataset_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_dat
     args->req              = req;
     va_copy(args->arguments, arguments);
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -8931,8 +9069,17 @@ async_dataset_close(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_
         args->dxpl_id = H5Pcopy(dxpl_id);
     args->req              = req;
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -9352,7 +9499,7 @@ async_datatype_commit(async_instance_t* aid, H5VL_async_t *parent_obj, const H5V
     fflush(stderr);
 #endif
     /* create a new async object */
-    if ((async_obj = H5VL_async_new_obj(NULL, parent_obj->under_vol_id)) == NULL) {
+    if ((async_obj = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
@@ -9387,8 +9534,17 @@ async_datatype_commit(async_instance_t* aid, H5VL_async_t *parent_obj, const H5V
         args->dxpl_id = H5Pcopy(dxpl_id);
     args->req              = req;
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -9803,7 +9959,7 @@ async_datatype_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_
     fflush(stderr);
 #endif
     /* create a new async object */
-    if ((async_obj = H5VL_async_new_obj(NULL, parent_obj->under_vol_id)) == NULL) {
+    if ((async_obj = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
@@ -9832,8 +9988,17 @@ async_datatype_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_
         args->dxpl_id = H5Pcopy(dxpl_id);
     args->req              = req;
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -10254,8 +10419,17 @@ async_datatype_get(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_datatyp
     args->req              = req;
     va_copy(args->arguments, arguments);
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -10673,8 +10847,17 @@ async_datatype_specific(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_da
     args->req              = req;
     va_copy(args->arguments, arguments);
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -11092,8 +11275,17 @@ async_datatype_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_da
     args->req              = req;
     va_copy(args->arguments, arguments);
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -11506,8 +11698,17 @@ async_datatype_close(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl
         args->dxpl_id = H5Pcopy(dxpl_id);
     args->req              = req;
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -11976,8 +12177,16 @@ async_file_create(async_instance_t* aid, const char *name, unsigned flags, hid_t
         args->dxpl_id = H5P_DEFAULT;
     args->req              = req;
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->file_async_obj = async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -12426,8 +12635,16 @@ async_file_open(async_instance_t* aid, const char *name, unsigned flags, hid_t f
         args->dxpl_id = H5P_DEFAULT;
     args->req              = req;
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->file_async_obj = async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -12833,8 +13050,17 @@ async_file_get(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_file_get_t 
     args->req              = req;
     va_copy(args->arguments, arguments);
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -13252,8 +13478,17 @@ async_file_specific(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_file_s
     args->req              = req;
     va_copy(args->arguments, arguments);
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -13672,8 +13907,17 @@ async_file_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_file_o
     args->req              = req;
     va_copy(args->arguments, arguments);
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -14100,8 +14344,17 @@ async_file_close(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id,
         goto error;
     }
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -14535,7 +14788,7 @@ async_group_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_l
     fflush(stderr);
 #endif
     /* create a new async object */
-    if ((async_obj = H5VL_async_new_obj(NULL, parent_obj->under_vol_id)) == NULL) {
+    if ((async_obj = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
@@ -14568,8 +14821,17 @@ async_group_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_l
         args->dxpl_id = H5Pcopy(dxpl_id);
     args->req              = req;
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -14984,7 +15246,7 @@ async_group_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc
     fflush(stderr);
 #endif
     /* create a new async object */
-    if ((async_obj = H5VL_async_new_obj(NULL, parent_obj->under_vol_id)) == NULL) {
+    if ((async_obj = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
@@ -15013,8 +15275,17 @@ async_group_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc
         args->dxpl_id = H5Pcopy(dxpl_id);
     args->req              = req;
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -15435,8 +15706,17 @@ async_group_get(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_group_get_
     args->req              = req;
     va_copy(args->arguments, arguments);
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -15854,8 +16134,17 @@ async_group_specific(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_group
     args->req              = req;
     va_copy(args->arguments, arguments);
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -16273,8 +16562,17 @@ async_group_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_group
     args->req              = req;
     va_copy(args->arguments, arguments);
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -16691,8 +16989,17 @@ async_group_close(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id
         args->dxpl_id = H5Pcopy(dxpl_id);
     args->req              = req;
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -17119,7 +17426,7 @@ async_link_create(async_instance_t* aid, H5VL_link_create_type_t create_type, H5
     fflush(stderr);
 #endif
     /* create a new async object */
-    if ((async_obj = H5VL_async_new_obj(NULL, parent_obj->under_vol_id)) == NULL) {
+    if ((async_obj = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
@@ -17150,8 +17457,17 @@ async_link_create(async_instance_t* aid, H5VL_link_create_type_t create_type, H5
     args->req              = req;
     va_copy(args->arguments, arguments);
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -17580,8 +17896,17 @@ async_link_copy(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
         args->dxpl_id = H5Pcopy(dxpl_id);
     args->req              = req;
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -18007,8 +18332,17 @@ async_link_move(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
         args->dxpl_id = H5Pcopy(dxpl_id);
     args->req              = req;
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -18429,8 +18763,17 @@ async_link_get(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_p
     args->req              = req;
     va_copy(args->arguments, arguments);
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -18851,8 +19194,17 @@ async_link_specific(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_
     args->req              = req;
     va_copy(args->arguments, arguments);
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -19270,8 +19622,17 @@ async_link_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_link_o
     args->req              = req;
     va_copy(args->arguments, arguments);
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -19680,7 +20041,7 @@ async_object_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_lo
     fflush(stderr);
 #endif
     /* create a new async object */
-    if ((async_obj = H5VL_async_new_obj(NULL, parent_obj->under_vol_id)) == NULL) {
+    if ((async_obj = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
@@ -19706,8 +20067,17 @@ async_object_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_lo
         args->dxpl_id = H5Pcopy(dxpl_id);
     args->req              = req;
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -20144,8 +20514,17 @@ async_object_copy(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_lo
         args->dxpl_id = H5Pcopy(dxpl_id);
     args->req              = req;
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -20566,8 +20945,17 @@ async_object_get(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc
     args->req              = req;
     va_copy(args->arguments, arguments);
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -20988,8 +21376,17 @@ async_object_specific(async_instance_t* aid, H5VL_async_t *parent_obj, const H5V
     args->req              = req;
     va_copy(args->arguments, arguments);
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -21407,8 +21804,17 @@ async_object_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_obje
     args->req              = req;
     va_copy(args->arguments, arguments);
 
-    if (req)
-        *req = (void*)async_task;
+    if (req) {
+        H5VL_async_t *new_req;
+        if ((new_req = H5VL_async_new_obj(NULL, H5VLget_connector_id_by_name(H5VL_ASYNC_NAME))) == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            goto error;
+        }
+        new_req->my_task = async_task;
+        new_req->under_object = new_req;
+        new_req->file_async_obj = parent_obj->file_async_obj;
+        *req = (void*)new_req;
+    }
     else {
         is_blocking = true;
         async_instance_g->start_abt_push = true;
@@ -21840,7 +22246,7 @@ static herr_t
 H5VL_async_get_wrap_ctx(const void *obj, void **wrap_ctx)
 {
     const H5VL_async_t *o_async = (const H5VL_async_t *)obj;
-    const async_task_t *o_task  = (const async_task_t *)obj;
+    /* const async_task_t *o_task  = (const async_task_t *)obj; */
     hid_t under_vol_id = 0;
     void *under_object = NULL;
     H5VL_async_wrap_ctx_t *new_wrap_ctx;
@@ -21854,13 +22260,13 @@ H5VL_async_get_wrap_ctx(const void *obj, void **wrap_ctx)
 
     /* Increment reference count on underlying VOL ID, and copy the VOL info */
     if (o_async->magic == ASYNC_MAGIC) {
-        under_vol_id = o_async->under_vol_id;
+        under_vol_id = o_async->file_async_obj->under_vol_id;
         under_object = o_async->under_object;
     }
-    else if (o_task->magic == TASK_MAGIC && o_task->async_obj != NULL) {
-        under_vol_id = o_task->async_obj->under_vol_id;
-        under_object = o_task->async_obj->under_object;
-    }
+    /* else if (o_task->magic == TASK_MAGIC && o_task->async_obj != NULL) { */
+    /*     under_vol_id = o_task->async_obj->under_vol_id; */
+    /*     under_object = o_task->async_obj->under_object; */
+    /* } */
     else {
         fprintf(stderr,"  [ASYNC VOL ERROR] with H5VL_async_get_wrap_ctx\n");
         return -1;
@@ -23815,6 +24221,7 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
     herr_t ret_value = 0;
     clock_t start_time, now_time;
     double elapsed, trigger;
+    H5VL_async_t *async_obj;
     async_task_t *task;
     ABT_thread_state    state;
     hbool_t acquired = false;
@@ -23827,7 +24234,8 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
     printf("------- ASYNC VOL REQUEST Wait\n");
 #endif
 
-    task = (async_task_t*)obj;
+    async_obj = (H5VL_async_t*)obj;
+    task = async_obj->my_task;
     if (task == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object\n", __func__);
         return -1;
@@ -24094,10 +24502,12 @@ H5VL_async_request_specific(void *obj, H5VL_request_specific_t specific_type,
         va_end(tmp_arguments);
     } /* end if */
     else if(H5VL_REQUEST_GET_ERR_STACK == specific_type) {
+        H5VL_async_t *async_obj;
         async_task_t *task;
         hid_t *err_stack_id_ptr;
 
-        task = (async_task_t*)obj;
+        async_obj = (H5VL_async_t*)obj;
+        task = async_obj->my_task;
         if (task == NULL) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object\n", __func__);
             return -1;
@@ -24164,42 +24574,22 @@ H5VL_async_request_optional(void *obj, H5VL_request_optional_t opt_type,
 static herr_t
 H5VL_async_request_free(void *obj)
 {
-    async_task_t *o = (async_task_t*)obj;
-    /* herr_t ret_value; */
+    H5VL_async_t *o = (H5VL_async_t *)obj;
+
+    assert(obj);
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL REQUEST Free\n");
 #endif
 
-    /* if (ABT_mutex_lock(o->async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) { */
-    /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__); */
-    /*     return -1; */
-    /* } */
-
-    /* DL_DELETE2(o->async_obj->file_async_obj->file_task_list_head, o, file_list_prev, file_list_next); */
-
-    /* if (ABT_mutex_unlock(o->async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) { */
-    /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__); */
-    /*     return -1; */
-    /* } */
-
-    /* if (o->prev && o->prev != o) */ 
-    /*     o->prev->next = o->next; */
-    /* if (o->next && o->prev != o) */ 
-    /*     o->next->prev = o->prev; */
-
-    /* free_async_task(o); */
-    /* free(o); */
-
-
-    /* if(ret_value >= 0) */
-    /*     H5VL_async_free_obj(o); */
-
-    // Free the file close async that is not previously freed
-    if (o->func == async_file_close_fn) {
-        free_async_task(o);
-        free(o);
+    // Free the file close task that is not previously freed
+    if (o->my_task->func == async_file_close_fn) {
+        free_async_task(o->my_task);
+        free(o->my_task);
+        free(o->file_async_obj);
     }
+
+    H5VL_async_free_obj(o);
 
     return 0;
 } /* end H5VL_async_request_free() */
