@@ -763,15 +763,6 @@ hid_t               async_error_class_g = H5I_INVALID_HID;
 /********************* */
 
 /* Helper routines */
-static herr_t H5VL_async_file_specific_reissue(void *obj, hid_t connector_id,
-        H5VL_file_specific_t specific_type, hid_t dxpl_id, void **req, ...);
-static herr_t H5VL_async_file_optional_reissue(void *obj, hid_t connector_id,
-        H5VL_file_optional_t optional_type, hid_t dxpl_id, void **req, ...);
-static herr_t H5VL_async_request_specific_reissue(void *obj, hid_t connector_id,
-        H5VL_request_specific_t specific_type, ...);
-static herr_t H5VL_async_link_create_reissue(H5VL_link_create_type_t create_type,
-        void *obj, const H5VL_loc_params_t *loc_params, hid_t connector_id,
-        hid_t lcpl_id, hid_t lapl_id, hid_t dxpl_id, void **req, ...);
 static H5VL_async_t *H5VL_async_new_obj(void *under_obj, hid_t under_vol_id);
 static herr_t H5VL_async_free_obj(H5VL_async_t *obj);
 
@@ -11819,7 +11810,7 @@ async_file_create_fn(void *foo)
         /* Make the 'post open' callback */
         /* Try executing operation, without default error stack handling */
         H5E_BEGIN_TRY {
-            status = H5VL_async_file_optional_reissue(obj, under_vol_id, H5VL_NATIVE_FILE_POST_OPEN, args->dxpl_id, NULL);
+            status = H5VLfile_optional_vararg(obj, under_vol_id, H5VL_NATIVE_FILE_POST_OPEN, args->dxpl_id, NULL);
         } H5E_END_TRY
         if ( status < 0 ) {
             if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -12274,7 +12265,7 @@ async_file_open_fn(void *foo)
         /* Make the 'post open' callback */
         /* Try executing operation, without default error stack handling */
         H5E_BEGIN_TRY {
-            status = H5VL_async_file_optional_reissue(obj, under_vol_id, H5VL_NATIVE_FILE_POST_OPEN, args->dxpl_id, NULL);
+            status = H5VLfile_optional_vararg(obj, under_vol_id, H5VL_NATIVE_FILE_POST_OPEN, args->dxpl_id, NULL);
         } H5E_END_TRY
         if ( status < 0 ) {
             if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -22875,32 +22866,6 @@ H5VL_async_file_get(void *file, H5VL_file_get_t get_type, hid_t dxpl_id,
 
 
 /*-------------------------------------------------------------------------
- * Function:    H5VL_async_file_specific_reissue
- *
- * Purpose:     Re-wrap vararg arguments into a va_list and reissue the
- *              file specific callback to the underlying VOL connector.
- *
- * Return:      Success:    0
- *              Failure:    -1
- *
- *-------------------------------------------------------------------------
- */
-static herr_t
-H5VL_async_file_specific_reissue(void *obj, hid_t connector_id,
-                                 H5VL_file_specific_t specific_type, hid_t dxpl_id, void **req, ...)
-{
-    va_list arguments;
-    herr_t ret_value;
-
-    va_start(arguments, req);
-    ret_value = H5VLfile_specific(obj, connector_id, specific_type, dxpl_id, req, arguments);
-    va_end(arguments);
-
-    return ret_value;
-} /* end H5VL_async_file_specific_reissue() */
-
-
-/*-------------------------------------------------------------------------
  * Function:    H5VL_async_file_specific
  *
  * Purpose:     Specific operation on file
@@ -22953,7 +22918,7 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_t specific_type,
         under_vol_id = o->under_vol_id;
 
         /* Re-issue 'file specific' call, using the unwrapped pieces */
-        ret_value = H5VL_async_file_specific_reissue(o->under_object, under_vol_id, specific_type, dxpl_id, req, (int)loc_type, name, child_file->under_object, plist_id);
+        ret_value = H5VLfile_specific_vararg(o->under_object, under_vol_id, specific_type, dxpl_id, req, (int)loc_type, name, child_file->under_object, plist_id);
     } /* end if */
     else if(specific_type == H5VL_FILE_IS_ACCESSIBLE || specific_type == H5VL_FILE_DELETE) {
         H5VL_async_info_t *info;
@@ -22979,7 +22944,7 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_t specific_type,
         under_vol_id = info->under_vol_id;
 
         /* Re-issue 'file specific' call */
-        ret_value = H5VL_async_file_specific_reissue(NULL, under_vol_id, specific_type, dxpl_id, req, under_fapl_id, name, ret);
+        ret_value = H5VLfile_specific_vararg(NULL, under_vol_id, specific_type, dxpl_id, req, under_fapl_id, name, ret);
 
         /* Close underlying FAPL */
         H5Pclose(under_fapl_id);
@@ -23016,32 +22981,6 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_t specific_type,
 
     return ret_value;
 } /* end H5VL_async_file_specific() */
-
-
-/*-------------------------------------------------------------------------
- * Function:    H5VL_async_file_optional_reissue
- *
- * Purpose:     Re-wrap vararg arguments into a va_list and reissue the
- *              file optional callback to the underlying VOL connector.
- *
- * Return:      Success:    0
- *              Failure:    -1
- *
- *-------------------------------------------------------------------------
- */
-static herr_t
-H5VL_async_file_optional_reissue(void *obj, hid_t connector_id,
-                                 H5VL_file_optional_t optional_type, hid_t dxpl_id, void **req, ...)
-{
-    va_list arguments;
-    herr_t ret_value;
-
-    va_start(arguments, req);
-    ret_value = H5VLfile_optional(obj, connector_id, optional_type, dxpl_id, req, arguments);
-    va_end(arguments);
-
-    return ret_value;
-} /* end H5VL_async_file_optional_reissue() */
 
 
 /*-------------------------------------------------------------------------
@@ -23319,33 +23258,6 @@ H5VL_async_group_close(void *grp, hid_t dxpl_id, void **req)
     return ret_value;
 } /* end H5VL_async_group_close() */
 
-
-/*-------------------------------------------------------------------------
- * Function:    H5VL_async_link_create_reissue
- *
- * Purpose:     Re-wrap vararg arguments into a va_list and reissue the
- *              link create callback to the underlying VOL connector.
- *
- * Return:      Success:    0
- *              Failure:    -1
- *
- *-------------------------------------------------------------------------
- */
-static herr_t
-H5VL_async_link_create_reissue(H5VL_link_create_type_t create_type,
-                               void *obj, const H5VL_loc_params_t *loc_params, hid_t connector_id,
-                               hid_t lcpl_id, hid_t lapl_id, hid_t dxpl_id, void **req, ...)
-{
-    va_list arguments;
-    herr_t ret_value;
-
-    va_start(arguments, req);
-    ret_value = H5VLlink_create(create_type, obj, loc_params, connector_id, lcpl_id, lapl_id, dxpl_id, req, arguments);
-    va_end(arguments);
-
-    return ret_value;
-} /* end H5VL_async_link_create_reissue() */
-
 /*-------------------------------------------------------------------------
  * Function:    H5VL_async_link_create
  *
@@ -23407,7 +23319,7 @@ H5VL_async_link_create(H5VL_link_create_type_t create_type, void *obj,
         } /* end if */
 
         /* Re-issue 'link create' call, using the unwrapped pieces */
-        ret_value = H5VL_async_link_create_reissue(create_type, (o ? o->under_object : NULL), loc_params, under_vol_id, lcpl_id, lapl_id, dxpl_id, req, cur_obj, cur_params);
+        ret_value = H5VLlink_create_vararg(create_type, (o ? o->under_object : NULL), loc_params, under_vol_id, lcpl_id, lapl_id, dxpl_id, req, cur_obj, cur_params);
     } /* end if */
     else
         ret_value = async_link_create(async_instance_g, create_type, o, loc_params, lcpl_id, lapl_id, dxpl_id, req, arguments);
@@ -24047,32 +23959,6 @@ H5VL_async_request_cancel(void *obj, H5VL_request_status_t *status)
 
 
 /*-------------------------------------------------------------------------
- * Function:    H5VL_async_request_specific_reissue
- *
- * Purpose:     Re-wrap vararg arguments into a va_list and reissue the
- *              request specific callback to the underlying VOL connector.
- *
- * Return:      Success:    0
- *              Failure:    -1
- *
- *-------------------------------------------------------------------------
- */
-static herr_t
-H5VL_async_request_specific_reissue(void *obj, hid_t connector_id,
-                                    H5VL_request_specific_t specific_type, ...)
-{
-    va_list arguments;
-    herr_t ret_value;
-
-    va_start(arguments, specific_type);
-    ret_value = H5VLrequest_specific(obj, connector_id, specific_type, arguments);
-    va_end(arguments);
-
-    return ret_value;
-} /* end H5VL_async_request_specific_reissue() */
-
-
-/*-------------------------------------------------------------------------
  * Function:    H5VL_async_request_specific
  *
  * Purpose:     Specific operation on a request
@@ -24138,9 +24024,7 @@ H5VL_async_request_specific(void *obj, H5VL_request_specific_t specific_type,
                 status = va_arg(tmp_arguments, H5VL_request_status_t *);
 
                 /* Reissue the WAITANY 'request specific' call */
-                ret_value = H5VL_async_request_specific_reissue(o->under_object, o->under_vol_id, specific_type, req_count, under_req_array, timeout,
-                            idx,
-                            status);
+                ret_value = H5VLrequest_specific_vararg(o->under_object, o->under_vol_id, specific_type, req_count, under_req_array, timeout, idx, status);
 
                 /* Release the completed request, if it completed */
                 if(ret_value >= 0 && *status != H5VL_REQUEST_STATUS_IN_PROGRESS) {
@@ -24162,7 +24046,7 @@ H5VL_async_request_specific(void *obj, H5VL_request_specific_t specific_type,
                 array_of_statuses = va_arg(tmp_arguments, H5VL_request_status_t *);
 
                 /* Reissue the WAITSOME 'request specific' call */
-                ret_value = H5VL_async_request_specific_reissue(o->under_object, o->under_vol_id, specific_type, req_count, under_req_array, timeout, outcount, array_of_indices, array_of_statuses);
+                ret_value = H5VLrequest_specific_vararg(o->under_object, o->under_vol_id, specific_type, req_count, under_req_array, timeout, outcount, array_of_indices, array_of_statuses);
 
                 /* If any requests completed, release them */
                 if(ret_value >= 0 && *outcount > 0) {
@@ -24187,7 +24071,7 @@ H5VL_async_request_specific(void *obj, H5VL_request_specific_t specific_type,
                 array_of_statuses = va_arg(tmp_arguments, H5VL_request_status_t *);
 
                 /* Reissue the WAITALL 'request specific' call */
-                ret_value = H5VL_async_request_specific_reissue(o->under_object, o->under_vol_id, specific_type, req_count, under_req_array, timeout, array_of_statuses);
+                ret_value = H5VLrequest_specific_vararg(o->under_object, o->under_vol_id, specific_type, req_count, under_req_array, timeout, array_of_statuses);
 
                 /* Release the completed requests */
                 if(ret_value >= 0) {
