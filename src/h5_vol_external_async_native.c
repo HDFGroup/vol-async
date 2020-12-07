@@ -91,9 +91,9 @@ typedef struct H5VL_async_wrap_ctx_t {
     void *under_wrap_ctx;       /* Object wrapping context for under VOL */
 } H5VL_async_wrap_ctx_t;
 
-typedef enum {QTYPE_NONE, REGULAR, DEPENDENT, COLLECTIVE} task_list_qtype;
+typedef enum {QTYPE_NONE, REGULAR, DEPENDENT, COLLECTIVE, ISOLATED} task_list_qtype;
 typedef enum {OP_NONE, READ, WRITE} obj_op_type;
-const char* qtype_names_g[4] = {"QTYPE_NONE", "REGULAR", "DEPENDENT", "COLLECTIVE"};
+const char* qtype_names_g[5] = {"QTYPE_NONE", "REGULAR", "DEPENDENT", "COLLECTIVE", "ISOLATED"};
 
 struct H5VL_async_t;
 
@@ -2582,7 +2582,9 @@ async_attr_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_lo
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -3036,7 +3038,9 @@ async_attr_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -3465,7 +3469,9 @@ async_attr_read(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type_
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -3905,7 +3911,9 @@ async_attr_write(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -4333,7 +4341,9 @@ async_attr_get(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_attr_get_t 
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -4764,7 +4774,9 @@ async_attr_specific(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -5192,7 +5204,9 @@ async_attr_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_attr_o
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -5615,7 +5629,9 @@ async_attr_close(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id,
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -6088,7 +6104,9 @@ async_dataset_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -6542,7 +6560,9 @@ async_dataset_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_l
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -7851,7 +7871,9 @@ async_dataset_get(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_dataset_
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -8279,7 +8301,9 @@ async_dataset_specific(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_dat
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -8707,7 +8731,9 @@ async_dataset_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_dat
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -9130,7 +9156,9 @@ async_dataset_close(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -9598,7 +9626,9 @@ async_datatype_commit(async_instance_t* aid, H5VL_async_t *parent_obj, const H5V
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -10052,7 +10082,9 @@ async_datatype_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -10480,7 +10512,9 @@ async_datatype_get(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_datatyp
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -10908,7 +10942,9 @@ async_datatype_specific(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_da
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -11336,7 +11372,9 @@ async_datatype_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_da
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -11759,7 +11797,9 @@ async_datatype_close(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -13111,7 +13151,9 @@ async_file_get(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_file_get_t 
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -13539,7 +13581,9 @@ async_file_specific(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_file_s
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -13968,7 +14012,9 @@ async_file_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_file_o
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -14423,7 +14469,9 @@ async_file_close(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id,
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -14885,7 +14933,9 @@ async_group_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_l
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -15339,7 +15389,9 @@ async_group_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -15767,7 +15819,9 @@ async_group_get(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_group_get_
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -16195,7 +16249,9 @@ async_group_specific(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_group
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -16623,7 +16679,9 @@ async_group_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_group
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -17052,7 +17110,9 @@ async_group_close(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id
             }
         }
         else {
-            if (async_task->async_obj->is_col_meta == true)
+            if (NULL == req)
+                add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+            else if (async_task->async_obj->is_col_meta == true)
                 add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
             else
                 add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -17521,7 +17581,9 @@ async_link_create(async_instance_t* aid, H5VL_link_create_type_t create_type, H5
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -17957,7 +18019,9 @@ async_link_copy(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -18393,7 +18457,9 @@ async_link_move(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -18824,7 +18890,9 @@ async_link_get(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_p
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -19255,7 +19323,9 @@ async_link_specific(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -19683,7 +19753,9 @@ async_link_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_link_o
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -20131,7 +20203,9 @@ async_object_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_lo
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -20575,7 +20649,9 @@ async_object_copy(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_lo
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -21006,7 +21082,9 @@ async_object_get(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -21437,7 +21515,9 @@ async_object_specific(async_instance_t* aid, H5VL_async_t *parent_obj, const H5V
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
@@ -21865,7 +21945,9 @@ async_object_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_obje
         }
     }
     else {
-        if (async_task->async_obj->is_col_meta == true)
+        if (NULL == req)
+            add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+        else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
