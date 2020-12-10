@@ -878,9 +878,10 @@ static herr_t H5VL_async_optional(void *obj, int op_type, hid_t dxpl_id, void **
 
 /* async VOL connector class struct */
 static const H5VL_class_t H5VL_async_g = {
-    H5VL_ASYNC_VERSION,                      /* version      */
+    H5VL_VERSION,                            /* VOL class struct version */
     (H5VL_class_value_t)H5VL_ASYNC_VALUE,    /* value        */
     H5VL_ASYNC_NAME,                         /* name         */
+    H5VL_ASYNC_VERSION,                      /* connector version */
     0,                                       /* capability flags */
     H5VL_async_init,                         /* initialize   */
     H5VL_async_term,                         /* terminate    */

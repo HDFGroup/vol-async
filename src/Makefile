@@ -1,6 +1,7 @@
-HDF5_DIR  = ../../../build_parallel_debug/hdf5
+#HDF5_DIR  = ../../../build_parallel_debug/hdf5
 #ABT_DIR = /Users/koziol/HDF5/github/hdfgroup/async/argobots/build_argobots
-ABT_DIR = /Users/koziol/HDF5/github/hdfgroup/async/argobots-dyn/install_shared/
+HDF5_DIR  = /Users/koziol/HDF5/github/hpc-io/async_vol_register_optional/build_parallel_debug/hdf5
+ABT_DIR = /Users/koziol/NERSC/install
 
 #CC = cc
 #CC = gcc-9

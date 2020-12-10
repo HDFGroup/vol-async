@@ -1,9 +1,8 @@
-ASYNC_DIR = ../src
+ASYNC_DIR = /Users/koziol/HDF5/github/hpc-io/async_vol_register_optional/vol-async/src
 # HDF5_DIR  = /ccs/home/houjun/summit/hdf5/async_threadsafe/hdf5
 # ABT_DIR = /ccs/home/houjun/summit/argobots/install/
-HDF5_DIR  = ../../../build_parallel_debug/hdf5
-#ABT_DIR = /Users/koziol/HDF5/github/hdfgroup/async/argobots/build_argobots
-ABT_DIR = /Users/koziol/HDF5/github/hdfgroup/async/argobots-dyn/install_shared/
+HDF5_DIR  = /Users/koziol/HDF5/github/hpc-io/async_vol_register_optional/build_parallel_debug/hdf5
+ABT_DIR = /Users/koziol/NERSC/install
 
 DYNLIB = libh5async.dylib
 STATLIB = libasynchdf5.a
