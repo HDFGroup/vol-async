@@ -1,0 +1,31 @@
+	    SUMMARY OF THE Task Engine CONFIGURATION
+	    =================================
+
+General Information:
+-------------------
+             Installation point: @prefix@
+
+Compiling Options:
+------------------
+                     C Compiler: @CC@
+                   C++ Compiler: @CXX@
+
+Linking Options:
+----------------
+                        LDFLAGS: @LDFLAGS@
+                     AM_LDFLAGS: @AM_LDFLAGS@
+                Extra libraries: @LIBS@
+
+Languages:
+----------
+                              C: yes
+                       CPPFLAGS: @CPPFLAGS@
+                    AM_CPPFLAGS: @AM_CPPFLAGS@
+                        C Flags: @CFLAGS@
+                     AM C Flags: @AM_CFLAGS@
+               Shared C Library: @enable_shared@
+               C Library: @enable_static@
+
+Features:
+---------
+                    MPI support: @HAVE_MPI@
