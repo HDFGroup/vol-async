@@ -30,26 +30,26 @@ int H5VL_async_datatype_commit_handler (void *data) {
 	H5VL_ASYNC_HANDLER_BEGIN
 
 	/* Open the pp with the underlying VOL connector */
-	argp->tp->under_vol_id = argp->pp->under_vol_id;
+	argp->op->under_vol_id = argp->pp->under_vol_id;
 	H5Iinc_ref (argp->pp->under_vol_id);
-	argp->tp->under_object = H5VLdatatype_commit (
+	argp->op->under_object = H5VLdatatype_commit (
 		argp->pp->under_object, argp->loc_params, argp->pp->under_vol_id, argp->name, argp->type_id,
 		argp->lcpl_id, argp->tcpl_id, argp->tapl_id, argp->dxpl_id, NULL);
 	CHECK_ERR
 
 err_out:;
 	if (err) {
-		argp->tp->stat = H5VL_async_stat_err;
+		argp->op->stat = H5VL_async_stat_err;
 	} else {
-		argp->tp->stat = H5VL_async_stat_ready;
+		argp->op->stat = H5VL_async_stat_ready;
 	}
 
-	H5VL_asynci_mutex_lock (argp->tp->lock);
-	argp->tp->init_task = NULL;
-	H5VL_async_dec_ref (argp->tp);
-	H5VL_asynci_mutex_unlock (argp->tp->lock);
-
 	H5VL_ASYNC_HANDLER_END
+
+	/* Update reference count of parent obj*/
+	H5VL_asynci_mutex_lock (argp->pp->lock);
+	H5VL_async_dec_ref (argp->pp);
+	H5VL_asynci_mutex_unlock (argp->pp->lock);
 
 	H5Pclose (argp->dxpl_id);
 	H5Pclose (argp->lcpl_id);
@@ -68,26 +68,26 @@ int H5VL_async_datatype_open_handler (void *data) {
 	H5VL_ASYNC_HANDLER_BEGIN
 
 	/* Open the datatype with the underlying VOL connector */
-	argp->tp->under_vol_id = argp->pp->under_vol_id;
+	argp->op->under_vol_id = argp->pp->under_vol_id;
 	H5Iinc_ref (argp->pp->under_vol_id);
-	argp->tp->under_object =
+	argp->op->under_object =
 		H5VLdatatype_open (argp->pp->under_object, argp->loc_params, argp->pp->under_vol_id,
 						   argp->name, argp->tapl_id, argp->dxpl_id, NULL);
 	CHECK_PTR (argp->pp->under_object)
 
 err_out:;
 	if (err) {
-		argp->tp->stat = H5VL_async_stat_err;
+		argp->op->stat = H5VL_async_stat_err;
 	} else {
-		argp->tp->stat = H5VL_async_stat_ready;
+		argp->op->stat = H5VL_async_stat_ready;
 	}
 
-	H5VL_asynci_mutex_lock (argp->tp->lock);
-	argp->tp->init_task = NULL;
-	H5VL_async_dec_ref (argp->tp);
-	H5VL_asynci_mutex_unlock (argp->tp->lock);
-
 	H5VL_ASYNC_HANDLER_END
+
+	/* Update reference count of parent obj*/
+	H5VL_asynci_mutex_lock (argp->pp->lock);
+	H5VL_async_dec_ref (argp->pp);
+	H5VL_asynci_mutex_unlock (argp->pp->lock);
 
 	H5Pclose (argp->dxpl_id);
 	H5Pclose (argp->tapl_id);
@@ -103,7 +103,7 @@ int H5VL_async_datatype_get_handler (void *data) {
 
 	H5VL_ASYNC_HANDLER_BEGIN
 
-	err = H5VLdatatype_get (argp->pp->under_object, argp->pp->under_vol_id, argp->get_type,
+	err = H5VLdatatype_get (argp->op->under_object, argp->op->under_vol_id, argp->get_type,
 							argp->dxpl_id, NULL, argp->arguments);
 	CHECK_ERR
 
@@ -123,7 +123,7 @@ int H5VL_async_datatype_specific_handler (void *data) {
 
 	H5VL_ASYNC_HANDLER_BEGIN
 
-	err = H5VLdatatype_specific (argp->pp->under_object, argp->pp->under_vol_id,
+	err = H5VLdatatype_specific (argp->op->under_object, argp->op->under_vol_id,
 								 argp->specific_type, argp->dxpl_id, NULL, argp->arguments);
 
 err_out:;
@@ -142,7 +142,7 @@ int H5VL_async_datatype_optional_handler (void *data) {
 
 	H5VL_ASYNC_HANDLER_BEGIN
 
-	err = H5VLdatatype_optional (argp->pp->under_object, argp->pp->under_vol_id, argp->opt_type,
+	err = H5VLdatatype_optional (argp->op->under_object, argp->op->under_vol_id, argp->opt_type,
 								 argp->dxpl_id, NULL, argp->arguments);
 	CHECK_ERR
 
@@ -162,13 +162,13 @@ int H5VL_async_datatype_close_handler (void *data) {
 
 	H5VL_ASYNC_HANDLER_BEGIN
 
-	err = H5VLdatatype_close (argp->pp->under_object, argp->pp->under_vol_id, argp->dxpl_id, NULL);
+	err = H5VLdatatype_close (argp->op->under_object, argp->op->under_vol_id, argp->dxpl_id, NULL);
 	CHECK_ERR
 
 err_out:;
 	H5VL_ASYNC_HANDLER_END
 
-	err = H5VL_async_free_obj (argp->pp);
+	err = H5VL_async_free_obj (argp->op);
 	CHECK_ERR2
 	H5Pclose (argp->dxpl_id);
 	H5VL_ASYNC_HANDLER_FREE

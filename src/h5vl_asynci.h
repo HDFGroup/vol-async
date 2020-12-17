@@ -151,29 +151,29 @@
 		CHECK_ERR                                                        \
 	}
 
-#define H5VL_ASYNC_CB_TASK_INIT                                                 \
-	{                                                                           \
-		err = H5VL_asynci_cb_task_init (dxpl_id, &is_async, req, &ret,          \
-										(H5VL_asynci_debug_args *)argp, &reqp); \
-		CHECK_ERR                                                               \
+#define H5VL_ASYNC_CB_TASK_INIT                                                                   \
+	{                                                                                             \
+		err =                                                                                     \
+			H5VL_asynci_cb_task_init (dxpl_id, req, &ret, (H5VL_asynci_debug_args *)argp, &reqp); \
+		CHECK_ERR                                                                                 \
 	}
 
 #define H5VL_ASYNC_CB_TASK_COMMIT                                                          \
 	{                                                                                      \
-		err = H5VL_asynci_cb_task_commit ((H5VL_asynci_debug_args *)argp, reqp, pp, task); \
+		err = H5VL_asynci_cb_task_commit ((H5VL_asynci_debug_args *)argp, reqp, op, task); \
 		CHECK_ERR                                                                          \
 	}
 
-#define H5VL_ASYNC_CB_TASK_WAIT                                \
-	{                                                          \
-		err = H5VL_asynci_cb_task_wait (is_async, task, &ret); \
-		CHECK_ERR                                              \
+#define H5VL_ASYNC_CB_TASK_WAIT                           \
+	{                                                     \
+		err = H5VL_asynci_cb_task_wait (req, task, &ret); \
+		CHECK_ERR                                         \
 	}
 
-#define H5VL_ASYNC_CB_CLOSE_TASK_WAIT                                    \
-	{                                                                    \
-		err = H5VL_asynci_cb_close_task_wait (is_async, pp, task, &ret); \
-		CHECK_ERR                                                        \
+#define H5VL_ASYNC_CB_CLOSE_TASK_WAIT                               \
+	{                                                               \
+		err = H5VL_asynci_cb_close_task_wait (req, op, task, &ret); \
+		CHECK_ERR                                                   \
 	}
 #else
 #define H5VL_ASYNC_HANDLER_BEGIN                                                                 \
@@ -231,9 +231,9 @@
 #define H5VL_ASYNC_CB_TASK_INIT                                                \
 	{                                                                          \
 		/* Check if the operations is async */                                 \
-		err = H5Pget_dxpl_async (dxpl_id, &is_async);                          \
+		err = H5Pget_dxpl_async (dxpl_id, &req);                               \
 		CHECK_ERR_EX ("H5Pget_dxpl_async failed")                              \
-		if (is_async) {                                                        \
+		if (req) {                                                             \
 			if (req) {                                                         \
 				reqp = (H5VL_async_req_t *)malloc (sizeof (H5VL_async_req_t)); \
 				CHECK_PTR (reqp)                                               \
@@ -245,11 +245,11 @@
 			argp->ret = &ret;                                                  \
 			assert (argp->ret);                                                \
 		}                                                                      \
-		if (!is_async) { assert (argp->ret && 1); }                            \
+		if (req == NULL) { assert (argp->ret && 1); }                          \
 		/* Retrieve current library state */                                   \
 		err = H5VLretrieve_lib_state (&argp->stat);                            \
 		CHECK_ERR_EX ("H5VLretrieve_lib_state failed")                         \
-		if (!is_async) { assert (argp->ret); }                                 \
+		if (req == NULL) { assert (argp->ret); }                               \
 	}
 
 #define H5VL_ASYNC_CB_TASK_COMMIT                                                           \
@@ -266,8 +266,8 @@
 				RET_ERR ("Parent object in wrong status");                                  \
 			}                                                                               \
 			/* Add dependency to init task */                                               \
-			if (pp->init_task) {                                                            \
-				twerr = TW_Task_add_dep (task, pp->init_task);                              \
+			if (pp->tasks[0]) {                                                             \
+				twerr = TW_Task_add_dep (task, pp->tasks[0]);                               \
 				CHK_TWERR                                                                   \
 			}                                                                               \
 			/* Increase reference count and commit task*/                                   \
@@ -285,7 +285,7 @@
 #define H5VL_ASYNC_CB_TASK_WAIT                                \
 	{                                                          \
 		/* Wait for task if the operation is sync */           \
-		if (!is_async) {                                       \
+		if (req == NULL) {                                     \
 			/* Release the lock so worker thread can acquire*/ \
 			H5TSmutex_release ();                              \
                                                                \
@@ -306,7 +306,7 @@
 #define H5VL_ASYNC_CB_CLOSE_TASK_WAIT                           \
 	{                                                           \
 		/* Wait for task if the operation is sync */            \
-		if (!is_async) {                                        \
+		if (req == NULL) {                                      \
 			/* Release the lock so worker thread can acquire*/  \
 			H5TSmutex_release ();                               \
                                                                 \
@@ -335,13 +335,12 @@
 #define H5VL_ASYNC_CB_VARS         \
 	herr_t err	 = 0;              \
 	terr_t twerr = TW_SUCCESS;     \
-	hbool_t is_async;              \
 	herr_t ret;                    \
 	H5VL_async_req_t *reqp = NULL; \
 	TW_Task_handle_t task;
 
 #define H5VL_ASYNC_ARG_VARS \
-	H5VL_async_t *pp;       \
+	H5VL_async_t *op;       \
 	TW_Task_handle_t task;  \
 	herr_t *ret;            \
 	void *stat;
