@@ -21,7 +21,7 @@
 
 typedef struct H5VL_async_object_open_args {
 	H5VL_ASYNC_ARG_VARS
-	H5VL_async_t *op;
+	H5VL_async_t *pp;
 	H5VL_loc_params_t *loc_params;
 	H5I_type_t *opened_type;
 	hid_t dxpl_id;

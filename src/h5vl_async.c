@@ -174,6 +174,7 @@ TW_Engine_handle_t H5VL_async_engine;
  *
  *-------------------------------------------------------------------------
  */
+#define H5VL_ASYNC_OBJ_NTASK_INIT 32
 H5VL_async_t *H5VL_async_new_obj () {
 	herr_t err = 0;
 	H5VL_async_t *new_obj;
@@ -186,8 +187,12 @@ H5VL_async_t *H5VL_async_new_obj () {
 	// CHECK_PTR (new_obj->tasks)
 	new_obj->lock = H5VL_asynci_mutex_create ();
 	CHECK_PTR (new_obj->lock)
-	new_obj->init_task	= TW_HANDLE_NULL;
+	new_obj->tasks[0]	= TW_HANDLE_NULL;
 	new_obj->close_task = TW_HANDLE_NULL;
+
+	new_obj->ntask		 = 0;
+	new_obj->ntask_alloc = H5VL_ASYNC_OBJ_NTASK_INIT;
+	new_obj->tasks == (TW_Task_handle_t *)malloc (sizeof (TW_Task_handle_t));
 
 err_out:;
 	if (err) { free (new_obj); }

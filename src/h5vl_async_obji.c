@@ -44,12 +44,12 @@ err_out:;
 		argp->op->stat = H5VL_async_stat_ready;
 	}
 
-	H5VL_asynci_mutex_lock (argp->op->lock);
-	argp->op->init_task = NULL;
-	H5VL_async_dec_ref (argp->op);
-	H5VL_asynci_mutex_unlock (argp->op->lock);
-
 	H5VL_ASYNC_HANDLER_END
+
+	/* Update reference count of parent obj*/
+	H5VL_asynci_mutex_lock (argp->pp->lock);
+	H5VL_async_dec_ref (argp->pp);
+	H5VL_asynci_mutex_unlock (argp->pp->lock);
 
 	H5Pclose (argp->dxpl_id);
 	H5VL_ASYNC_HANDLER_FREE
@@ -63,10 +63,10 @@ int H5VL_async_object_copy_handler (void *data) {
 
 	H5VL_ASYNC_HANDLER_BEGIN
 
-	/* Open the pp with the underlying VOL connector */
-	err = H5VLobject_copy (argp->pp->under_object, argp->src_loc_params, argp->src_name,
+	/* Open the op with the underlying VOL connector */
+	err = H5VLobject_copy (argp->op->under_object, argp->src_loc_params, argp->src_name,
 						   argp->dst_obj->under_object, argp->dst_loc_params, argp->dst_name,
-						   argp->pp->under_vol_id, argp->ocpypl_id, argp->lcpl_id, argp->dxpl_id,
+						   argp->op->under_vol_id, argp->ocpypl_id, argp->lcpl_id, argp->dxpl_id,
 						   NULL);
 	CHECK_ERR
 
@@ -92,7 +92,7 @@ int H5VL_async_object_get_handler (void *data) {
 
 	H5VL_ASYNC_HANDLER_BEGIN
 
-	err = H5VLobject_get (argp->pp->under_object, argp->loc_params, argp->pp->under_vol_id,
+	err = H5VLobject_get (argp->op->under_object, argp->loc_params, argp->op->under_vol_id,
 						  argp->get_type, argp->dxpl_id, NULL, argp->arguments);
 	CHECK_ERR
 
@@ -112,7 +112,7 @@ int H5VL_async_object_specific_handler (void *data) {
 
 	H5VL_ASYNC_HANDLER_BEGIN
 
-	err = H5VLobject_specific (argp->pp->under_object, argp->loc_params, argp->pp->under_vol_id,
+	err = H5VLobject_specific (argp->op->under_object, argp->loc_params, argp->op->under_vol_id,
 							   argp->specific_type, argp->dxpl_id, NULL, argp->arguments);
 
 err_out:;
@@ -131,7 +131,7 @@ int H5VL_async_object_optional_handler (void *data) {
 
 	H5VL_ASYNC_HANDLER_BEGIN
 
-	err = H5VLobject_optional (argp->pp->under_object, argp->pp->under_vol_id, argp->opt_type,
+	err = H5VLobject_optional (argp->op->under_object, argp->op->under_vol_id, argp->opt_type,
 							   argp->dxpl_id, NULL, argp->arguments);
 	CHECK_ERR
 
