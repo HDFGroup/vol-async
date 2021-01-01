@@ -68,7 +68,7 @@ herr_t H5VL_async_link_create_handler (void *data) {
 	H5VL_ASYNC_HANDLER_VARS
 	terr_t twerr					  = TW_SUCCESS;
 	H5VL_async_link_create_args *argp = (H5VL_async_link_create_args *)data;
-	H5VL_async_t *o					  = (H5VL_async_t *)argp->op;
+	H5VL_async_t *o					  = (H5VL_async_t *)argp->target_obj;
 	hid_t under_vol_id				  = -1;
 	herr_t ret_value;
 
@@ -113,10 +113,10 @@ herr_t H5VL_async_link_create_handler (void *data) {
 err_out:;
 	H5VL_ASYNC_HANDLER_END
 
-	/* Update reference count of parent obj*/
-	H5VL_asynci_mutex_lock (argp->pp->lock);
-	H5VL_async_dec_ref (argp->pp);
-	H5VL_asynci_mutex_unlock (argp->pp->lock);
+	/* Mark task as finished */
+	H5VL_asynci_mutex_lock (argp->op->lock);
+	if (argp->op->prev_task == argp->task) { argp->op->prev_task = TW_HANDLE_NULL; }
+	H5VL_asynci_mutex_unlock (argp->op->lock);
 
 	H5Pclose (argp->lcpl_id);
 	H5Pclose (argp->lapl_id);
@@ -145,7 +145,7 @@ herr_t H5VL_async_link_copy_handler (void *data) {
 	H5VL_ASYNC_HANDLER_VARS
 	terr_t twerr					= TW_SUCCESS;
 	H5VL_async_link_copy_args *argp = (H5VL_async_link_copy_args *)data;
-	H5VL_async_t *o_src				= (H5VL_async_t *)argp->op;
+	H5VL_async_t *o_src				= (H5VL_async_t *)argp->target_obj;
 	H5VL_async_t *o_dst				= (H5VL_async_t *)argp->dst_obj;
 	hid_t under_vol_id				= -1;
 
@@ -170,7 +170,7 @@ err_out:;
 	/* Decrease reference count of dependent objects */
 	if (argp->dst_obj) {
 		H5VL_asynci_mutex_lock (argp->dst_obj->lock);
-		H5VL_async_dec_ref (argp->dst_obj);
+		if (argp->dst_obj->prev_task == argp->task) { argp->dst_obj->prev_task = TW_HANDLE_NULL; }
 		H5VL_asynci_mutex_unlock (argp->dst_obj->lock);
 	}
 	H5VL_ASYNC_HANDLER_END
@@ -202,7 +202,7 @@ herr_t H5VL_async_link_move_handler (void *data) {
 	H5VL_ASYNC_HANDLER_VARS
 	terr_t twerr					= TW_SUCCESS;
 	H5VL_async_link_move_args *argp = (H5VL_async_link_move_args *)data;
-	H5VL_async_t *o_src				= (H5VL_async_t *)argp->op;
+	H5VL_async_t *o_src				= (H5VL_async_t *)argp->target_obj;
 	H5VL_async_t *o_dst				= (H5VL_async_t *)argp->dst_obj;
 	hid_t under_vol_id				= -1;
 
@@ -227,7 +227,7 @@ err_out:;
 	/* Decrease reference count of dependent objects */
 	if (argp->dst_obj) {
 		H5VL_asynci_mutex_lock (argp->dst_obj->lock);
-		H5VL_async_dec_ref (argp->dst_obj);
+		if (argp->dst_obj->prev_task == argp->task) { argp->dst_obj->prev_task = TW_HANDLE_NULL; }
 		H5VL_asynci_mutex_unlock (argp->dst_obj->lock);
 	}
 	H5VL_ASYNC_HANDLER_END
@@ -247,8 +247,9 @@ int H5VL_async_link_get_handler (void *data) {
 
 	H5VL_ASYNC_HANDLER_BEGIN
 
-	err = H5VLlink_get (argp->op->under_object, argp->loc_params, argp->op->under_vol_id,
-						argp->get_type, argp->dxpl_id, NULL, argp->arguments);
+	err = H5VLlink_get (argp->target_obj->under_object, argp->loc_params,
+						argp->target_obj->under_vol_id, argp->get_type, argp->dxpl_id, NULL,
+						argp->arguments);
 	CHECK_ERR
 
 err_out:;
@@ -267,8 +268,9 @@ int H5VL_async_link_specific_handler (void *data) {
 
 	H5VL_ASYNC_HANDLER_BEGIN
 
-	err = H5VLlink_specific (argp->op->under_object, argp->loc_params, argp->op->under_vol_id,
-							 argp->specific_type, argp->dxpl_id, NULL, argp->arguments);
+	err = H5VLlink_specific (argp->target_obj->under_object, argp->loc_params,
+							 argp->target_obj->under_vol_id, argp->specific_type, argp->dxpl_id,
+							 NULL, argp->arguments);
 
 err_out:;
 	H5VL_ASYNC_HANDLER_END
@@ -286,8 +288,8 @@ int H5VL_async_link_optional_handler (void *data) {
 
 	H5VL_ASYNC_HANDLER_BEGIN
 
-	err = H5VLlink_optional (argp->op->under_object, argp->op->under_vol_id, argp->opt_type,
-							 argp->dxpl_id, NULL, argp->arguments);
+	err = H5VLlink_optional (argp->target_obj->under_object, argp->target_obj->under_vol_id,
+							 argp->opt_type, argp->dxpl_id, NULL, argp->arguments);
 	CHECK_ERR
 
 err_out:;

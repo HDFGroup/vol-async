@@ -21,7 +21,7 @@
 
 typedef struct H5VL_async_file_create_args {
 	H5VL_ASYNC_ARG_VARS
-	H5VL_async_t *pp;
+	H5VL_async_t *op;
 	char *name;
 	unsigned flags;
 	hid_t fcpl_id;
@@ -31,7 +31,7 @@ typedef struct H5VL_async_file_create_args {
 
 typedef struct H5VL_async_file_open_args {
 	H5VL_ASYNC_ARG_VARS
-	H5VL_async_t *pp;
+	H5VL_async_t *op;
 	char *name;
 	unsigned flags;
 	hid_t fapl_id;

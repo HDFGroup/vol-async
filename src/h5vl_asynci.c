@@ -47,12 +47,13 @@ err_out:;
 	return err;
 }
 
-herr_t H5VL_asynci_obj_wait (void *pp) {
+herr_t H5VL_asynci_obj_wait (void *obj) {
 	herr_t err = 0;
 	int twerr;
+	H5VL_async_t *op = (H5VL_async_t *)obj;
 
-	while (((H5VL_async_t *)pp)->ref) {
-		twerr = TW_Engine_progress (H5VL_async_engine);
+	if (op->prev_task) {
+		twerr = TW_Task_wait (op->prev_task, TW_TIMEOUT_NEVER);
 		CHK_TWERR
 	}
 

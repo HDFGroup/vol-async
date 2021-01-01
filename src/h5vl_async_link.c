@@ -47,8 +47,8 @@ herr_t H5VL_async_link_create (H5VL_link_create_type_t create_type,
 							   va_list arguments) {
 	H5VL_ASYNC_CB_VARS
 	H5VL_async_link_create_args *argp;
-	H5VL_async_t *pp = (H5VL_async_t *)obj;
-	H5VL_async_t *op = NULL;
+	H5VL_async_t *target_obj = (H5VL_async_t *)obj;
+	H5VL_async_t *op		 = NULL;
 
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL link Create\n");
@@ -57,7 +57,7 @@ herr_t H5VL_async_link_create (H5VL_link_create_type_t create_type,
 	argp = (H5VL_async_link_create_args *)malloc (sizeof (H5VL_async_link_create_args) +
 												  sizeof (H5VL_loc_params_t));
 	CHECK_PTR (argp)
-	argp->pp		 = pp;
+	argp->target_obj = target_obj;
 	argp->loc_params = (H5VL_loc_params_t *)((char *)argp + sizeof (H5VL_async_link_create_args));
 	memcpy (argp->loc_params, loc_params, sizeof (H5VL_loc_params_t));
 	argp->dxpl_id	  = H5Pcopy (dxpl_id);
@@ -115,7 +115,7 @@ herr_t H5VL_async_link_copy (void *src_obj,
 							 void **req) {
 	H5VL_ASYNC_CB_VARS
 	H5VL_async_link_copy_args *argp;
-	H5VL_async_t *op = (H5VL_async_t *)src_obj;
+	H5VL_async_t *target_obj = (H5VL_async_t *)src_obj;
 
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL link Copy\n");
@@ -124,7 +124,7 @@ herr_t H5VL_async_link_copy (void *src_obj,
 	argp = (H5VL_async_link_copy_args *)malloc (sizeof (H5VL_async_link_copy_args) +
 												sizeof (H5VL_loc_params_t) * 2);
 	CHECK_PTR (argp)
-	argp->op		  = op;
+	argp->target_obj  = target_obj;
 	argp->loc_params1 = (H5VL_loc_params_t *)((char *)argp + sizeof (H5VL_async_link_get_args));
 	memcpy (argp->loc_params1, loc_params1, sizeof (H5VL_loc_params_t));
 	argp->loc_params2 =
@@ -141,12 +141,11 @@ herr_t H5VL_async_link_copy (void *src_obj,
 
 	H5VL_asynci_mutex_lock (argp->dst_obj->lock);
 	/* Add dependency to init task */
-	if (argp->dst_obj->tasks[0]) {
-		twerr = TW_Task_add_dep (task, argp->dst_obj->tasks[0]);
+	if (argp->dst_obj->prev_task == TW_HANDLE_NULL) {
+		twerr = TW_Task_add_dep (task, argp->dst_obj->prev_task);
 		CHK_TWERR
 	}
-	/* Increase reference count and commit task*/
-	H5VL_async_inc_ref (argp->dst_obj);
+
 	/* Release object lock */
 	H5VL_asynci_mutex_unlock (argp->dst_obj->lock);
 	H5VL_ASYNC_CB_TASK_COMMIT
@@ -193,7 +192,7 @@ herr_t H5VL_async_link_move (void *src_obj,
 							 void **req) {
 	H5VL_ASYNC_CB_VARS
 	H5VL_async_link_move_args *argp;
-	H5VL_async_t *op = (H5VL_async_t *)src_obj;
+	H5VL_async_t *target_obj = (H5VL_async_t *)src_obj;
 
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL link Move\n");
@@ -202,7 +201,7 @@ herr_t H5VL_async_link_move (void *src_obj,
 	argp = (H5VL_async_link_move_args *)malloc (sizeof (H5VL_async_link_move_args) +
 												sizeof (H5VL_loc_params_t) * 2);
 	CHECK_PTR (argp)
-	argp->op		  = op;
+	argp->target_obj  = target_obj;
 	argp->loc_params1 = (H5VL_loc_params_t *)((char *)argp + sizeof (H5VL_async_link_get_args));
 	memcpy (argp->loc_params1, loc_params1, sizeof (H5VL_loc_params_t));
 	argp->loc_params2 =
@@ -219,12 +218,10 @@ herr_t H5VL_async_link_move (void *src_obj,
 
 	H5VL_asynci_mutex_lock (argp->dst_obj->lock);
 	/* Add dependency to init task */
-	if (argp->dst_obj->tasks[0]) {
-		twerr = TW_Task_add_dep (task, argp->dst_obj->tasks[0]);
+	if (argp->dst_obj->prev_task == TW_HANDLE_NULL) {
+		twerr = TW_Task_add_dep (task, argp->dst_obj->prev_task);
 		CHK_TWERR
 	}
-	/* Increase reference count and commit task*/
-	H5VL_async_inc_ref (argp->dst_obj);
 	/* Release object lock */
 	H5VL_asynci_mutex_unlock (argp->dst_obj->lock);
 	H5VL_ASYNC_CB_TASK_COMMIT
@@ -264,7 +261,7 @@ herr_t H5VL_async_link_get (void *obj,
 							va_list arguments) {
 	H5VL_ASYNC_CB_VARS
 	H5VL_async_link_get_args *argp;
-	H5VL_async_t *op = (H5VL_async_t *)obj;
+	H5VL_async_t *target_obj = (H5VL_async_t *)obj;
 
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL link Get\n");
@@ -273,7 +270,7 @@ herr_t H5VL_async_link_get (void *obj,
 	argp = (H5VL_async_link_get_args *)malloc (sizeof (H5VL_async_link_get_args) +
 											   sizeof (H5VL_loc_params_t));
 	CHECK_PTR (argp)
-	argp->op		 = op;
+	argp->target_obj = target_obj;
 	argp->loc_params = (H5VL_loc_params_t *)((char *)argp + sizeof (H5VL_async_link_get_args));
 	memcpy (argp->loc_params, loc_params, sizeof (H5VL_loc_params_t));
 	argp->dxpl_id  = H5Pcopy (dxpl_id);
@@ -320,7 +317,7 @@ herr_t H5VL_async_link_specific (void *obj,
 								 va_list arguments) {
 	H5VL_ASYNC_CB_VARS
 	H5VL_async_link_specific_args *argp;
-	H5VL_async_t *op = (H5VL_async_t *)obj;
+	H5VL_async_t *target_obj = (H5VL_async_t *)obj;
 
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL link Specific\n");
@@ -329,7 +326,7 @@ herr_t H5VL_async_link_specific (void *obj,
 	argp = (H5VL_async_link_specific_args *)malloc (sizeof (H5VL_async_link_specific_args) +
 													sizeof (H5VL_link_get_t));
 	CHECK_PTR (argp)
-	argp->op		 = op;
+	argp->target_obj = target_obj;
 	argp->loc_params = (H5VL_loc_params_t *)((char *)argp + sizeof (H5VL_async_link_specific_args));
 	memcpy (argp->loc_params, loc_params, sizeof (H5VL_loc_params_t));
 	argp->dxpl_id		= H5Pcopy (dxpl_id);
@@ -371,7 +368,7 @@ herr_t H5VL_async_link_optional (
 	void *obj, H5VL_link_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments) {
 	H5VL_ASYNC_CB_VARS
 	H5VL_async_link_optional_args *argp;
-	H5VL_async_t *op = (H5VL_async_t *)obj;
+	H5VL_async_t *target_obj = (H5VL_async_t *)obj;
 
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL link Optional\n");
@@ -379,9 +376,9 @@ herr_t H5VL_async_link_optional (
 
 	argp = (H5VL_async_link_optional_args *)malloc (sizeof (H5VL_async_link_optional_args));
 	CHECK_PTR (argp)
-	argp->op	   = op;
-	argp->dxpl_id  = H5Pcopy (dxpl_id);
-	argp->opt_type = opt_type;
+	argp->target_obj = target_obj;
+	argp->dxpl_id	 = H5Pcopy (dxpl_id);
+	argp->opt_type	 = opt_type;
 	va_copy (argp->arguments, arguments);
 	H5VL_ASYNC_CB_TASK_INIT
 

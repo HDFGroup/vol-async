@@ -49,8 +49,8 @@ void *H5VL_async_datatype_commit (void *obj,
 	H5VL_ASYNC_CB_VARS
 	H5VL_async_datatype_commit_args *argp = NULL;
 	size_t name_len;
-	H5VL_async_t *op = NULL;
-	H5VL_async_t *pp = (H5VL_async_t *)obj;
+	H5VL_async_t *op		 = NULL;
+	H5VL_async_t *target_obj = (H5VL_async_t *)obj;
 
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL datatype Commit\n");
@@ -63,13 +63,13 @@ void *H5VL_async_datatype_commit (void *obj,
 	argp	 = (H5VL_async_datatype_commit_args *)malloc (sizeof (H5VL_async_datatype_commit_args) +
 													  sizeof (H5VL_loc_params_t) + name_len + 1);
 	CHECK_PTR (argp)
-	argp->op	  = op;
-	argp->dxpl_id = H5Pcopy (dxpl_id);
-	argp->tcpl_id = H5Pcopy (tcpl_id);
-	argp->tapl_id = H5Pcopy (tapl_id);
-	argp->lcpl_id = H5Pcopy (lcpl_id);
-	argp->pp	  = pp;
-	argp->type_id = H5Tcopy (type_id);
+	argp->op		 = op;
+	argp->dxpl_id	 = H5Pcopy (dxpl_id);
+	argp->tcpl_id	 = H5Pcopy (tcpl_id);
+	argp->tapl_id	 = H5Pcopy (tapl_id);
+	argp->lcpl_id	 = H5Pcopy (lcpl_id);
+	argp->target_obj = target_obj;
+	argp->type_id	 = H5Tcopy (type_id);
 	argp->loc_params =
 		(H5VL_loc_params_t *)((char *)argp + sizeof (H5VL_async_datatype_commit_args));
 	memcpy (argp->loc_params, loc_params, sizeof (H5VL_loc_params_t));
@@ -80,9 +80,8 @@ void *H5VL_async_datatype_commit (void *obj,
 	twerr = TW_Task_create (H5VL_async_datatype_commit_handler, argp, TW_TASK_DEP_ALL_COMPLETE, 0,
 							&task);
 	CHK_TWERR
-	op->tasks[0] = task;
+	op->prev_task = task;
 
-	H5VL_async_inc_ref (argp->op);
 	H5VL_ASYNC_CB_TASK_COMMIT
 
 	H5VL_ASYNC_CB_TASK_WAIT
@@ -129,7 +128,7 @@ void *H5VL_async_datatype_open (void *obj,
 	size_t name_len;
 	H5VL_async_datatype_open_args *argp = NULL;
 	H5VL_async_t *op					= NULL;
-	H5VL_async_t *pp					= (H5VL_async_t *)obj;
+	H5VL_async_t *target_obj			= (H5VL_async_t *)obj;
 
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL datatype Open\n");
@@ -143,7 +142,7 @@ void *H5VL_async_datatype_open (void *obj,
 													sizeof (H5VL_loc_params_t) + name_len + 1);
 	CHECK_PTR (argp)
 	argp->op		 = op;
-	argp->pp		 = pp;
+	argp->target_obj = target_obj;
 	argp->dxpl_id	 = H5Pcopy (dxpl_id);
 	argp->tapl_id	 = H5Pcopy (tapl_id);
 	argp->loc_params = (H5VL_loc_params_t *)((char *)argp + sizeof (H5VL_async_datatype_open_args));
@@ -155,9 +154,8 @@ void *H5VL_async_datatype_open (void *obj,
 	twerr =
 		TW_Task_create (H5VL_async_datatype_open_handler, argp, TW_TASK_DEP_ALL_COMPLETE, 0, &task);
 	CHK_TWERR
-	op->tasks[0] = task;
+	op->prev_task = task;
 
-	H5VL_async_inc_ref (argp->op);
 	H5VL_ASYNC_CB_TASK_COMMIT
 
 	H5VL_ASYNC_CB_TASK_WAIT
@@ -195,7 +193,7 @@ herr_t H5VL_async_datatype_get (
 	void *obj, H5VL_datatype_get_t get_type, hid_t dxpl_id, void **req, va_list arguments) {
 	H5VL_ASYNC_CB_VARS
 	H5VL_async_datatype_get_args *argp;
-	H5VL_async_t *op = (H5VL_async_t *)obj;
+	H5VL_async_t *target_obj = (H5VL_async_t *)obj;
 
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL datatype Get\n");
@@ -203,9 +201,9 @@ herr_t H5VL_async_datatype_get (
 
 	argp = (H5VL_async_datatype_get_args *)malloc (sizeof (H5VL_async_datatype_get_args));
 	CHECK_PTR (argp)
-	argp->op	   = op;
-	argp->dxpl_id  = H5Pcopy (dxpl_id);
-	argp->get_type = get_type;
+	argp->target_obj = target_obj;
+	argp->dxpl_id	 = H5Pcopy (dxpl_id);
+	argp->get_type	 = get_type;
 	va_copy (argp->arguments, arguments);
 	H5VL_ASYNC_CB_TASK_INIT
 
@@ -248,7 +246,7 @@ herr_t H5VL_async_datatype_specific (void *obj,
 									 va_list arguments) {
 	H5VL_ASYNC_CB_VARS
 	H5VL_async_datatype_specific_args *argp;
-	H5VL_async_t *op = (H5VL_async_t *)obj;
+	H5VL_async_t *target_obj = (H5VL_async_t *)obj;
 
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL datatype Specific\n");
@@ -256,7 +254,7 @@ herr_t H5VL_async_datatype_specific (void *obj,
 
 	argp = (H5VL_async_datatype_specific_args *)malloc (sizeof (H5VL_async_datatype_specific_args));
 	CHECK_PTR (argp)
-	argp->op			= op;
+	argp->target_obj	= target_obj;
 	argp->dxpl_id		= H5Pcopy (dxpl_id);
 	argp->specific_type = specific_type;
 	va_copy (argp->arguments, arguments);
@@ -296,7 +294,7 @@ herr_t H5VL_async_datatype_optional (
 	void *obj, H5VL_datatype_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments) {
 	H5VL_ASYNC_CB_VARS
 	H5VL_async_datatype_optional_args *argp;
-	H5VL_async_t *op = (H5VL_async_t *)obj;
+	H5VL_async_t *target_obj = (H5VL_async_t *)obj;
 
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL datatype Optional\n");
@@ -304,9 +302,9 @@ herr_t H5VL_async_datatype_optional (
 
 	argp = (H5VL_async_datatype_optional_args *)malloc (sizeof (H5VL_async_datatype_optional_args));
 	CHECK_PTR (argp)
-	argp->op	   = op;
-	argp->dxpl_id  = H5Pcopy (dxpl_id);
-	argp->opt_type = opt_type;
+	argp->target_obj = target_obj;
+	argp->dxpl_id	 = H5Pcopy (dxpl_id);
+	argp->opt_type	 = opt_type;
 	va_copy (argp->arguments, arguments);
 	H5VL_ASYNC_CB_TASK_INIT
 
@@ -344,37 +342,30 @@ err_out:;
 herr_t H5VL_async_datatype_close (void *grp, hid_t dxpl_id, void **req) {
 	H5VL_ASYNC_CB_VARS
 	H5VL_async_datatype_close_args *argp;
-	H5VL_async_t *op = (H5VL_async_t *)grp;
+	H5VL_async_t *target_obj = (H5VL_async_t *)grp;
 
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL datatype Close\n");
 #endif
 
+	/* Mark as closed so no operation can be performed */
+	H5VL_asynci_mutex_lock (target_obj->lock);
+	target_obj->stat == H5VL_async_stat_close;
+	H5VL_asynci_mutex_unlock (target_obj->lock);
+
 	argp = (H5VL_async_datatype_close_args *)malloc (sizeof (H5VL_async_datatype_close_args));
 	CHECK_PTR (argp)
-	argp->op	  = op;
-	argp->dxpl_id = H5Pcopy (dxpl_id);
+	argp->target_obj = target_obj;
+	argp->dxpl_id	 = H5Pcopy (dxpl_id);
 	H5VL_ASYNC_CB_TASK_INIT
 
-	twerr = TW_Task_create (H5VL_async_datatype_close_handler, argp, TW_TASK_DEP_ALL_COMPLETE,
-							op->cnt, &task);
+	twerr = TW_Task_create (H5VL_async_datatype_close_handler, argp, TW_TASK_DEP_ALL_COMPLETE, 0,
+							&task);
 	CHK_TWERR
 	argp->task = task;
 
-	H5VL_asynci_mutex_lock (op->lock);
-	op->stat == H5VL_async_stat_close;
-	if (req) {
-		if (op->ref) {
-			op->close_task = task;
-		} else {
-			twerr = TW_Task_commit (task, H5VL_async_engine);
-			CHK_TWERR
-		}
-	}
-	H5VL_asynci_mutex_unlock (op->lock);
-
-	H5VL_ASYNC_CB_CLOSE_TASK_WAIT
-
+	H5VL_ASYNC_CB_TASK_COMMIT
+	H5VL_ASYNC_CB_TASK_WAIT
 err_out:;
 	if (err) {
 		if (argp) {
