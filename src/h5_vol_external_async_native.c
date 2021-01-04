@@ -47,11 +47,6 @@
 /* Universal linked lists header */
 #include "utlist.h"
 
-/* #define ENABLE_LOG                  1 */
-/* #define ENABLE_DBG_MSG              1 */
-/* #define ENABLE_TIMING               1 */
-/* #define PRINT_ERROR_STACK           1 */
-
 #include "node_local_util.h"
 /**********/
 /* Macros */
@@ -59,7 +54,12 @@
 
 /* Whether to display log messge when callback is invoked */
 /* (Uncomment to enable) */
+/* #define ENABLE_LOG                  1 */
+/* #define ENABLE_DBG_MSG              1 */
+/* #define ENABLE_TIMING               1 */
+/* #define PRINT_ERROR_STACK           1 */
 /* #define ENABLE_ASYNC_LOGGING */
+
 
 /* Default # of background threads */
 #define ASYNC_VOL_DEFAULT_NTHREAD   1
@@ -91,9 +91,9 @@ typedef struct H5VL_async_wrap_ctx_t {
     void *under_wrap_ctx;       /* Object wrapping context for under VOL */
 } H5VL_async_wrap_ctx_t;
 
-typedef enum {QTYPE_NONE, REGULAR, DEPENDENT, COLLECTIVE, ISOLATED} task_list_qtype;
+typedef enum {QTYPE_NONE, REGULAR, DEPENDENT, COLLECTIVE, BLOCKING, ISOLATED} task_list_qtype;
 typedef enum {OP_NONE, READ, WRITE} obj_op_type;
-const char* qtype_names_g[5] = {"QTYPE_NONE", "REGULAR", "DEPENDENT", "COLLECTIVE", "ISOLATED"};
+const char* qtype_names_g[10] = {"QTYPE_NONE", "REGULAR", "DEPENDENT", "COLLECTIVE", "BLOCKING", "ISOLATED"};
 
 struct H5VL_async_t;
 
@@ -162,6 +162,7 @@ typedef struct async_instance_t {
     int                 num_xstreams;
     ABT_xstream         *xstreams;
     ABT_xstream         *scheds;
+    ABT_sched           *progress_scheds;
     int                 nfopen;
     bool                ex_delay;            /* Delay background thread execution */
     bool                ex_fclose;           /* Delay background thread execution until file close */
@@ -169,10 +170,6 @@ typedef struct async_instance_t {
     bool                ex_dclose;           /* Delay background thread execution until dset close */
     bool                start_abt_push;      /* Start pushing tasks to Argobots pool */
 } async_instance_t;
-
-/* typedef struct H5RQ_token_int_t { */
-/*     struct async_task_t *task; */
-/* } H5RQ_token_int_t; */
 
 typedef struct async_attr_create_args_t {
     void                     *obj;
@@ -755,8 +752,6 @@ typedef struct async_object_optional_args_t {
 ABT_mutex           async_instance_mutex_g;
 async_instance_t   *async_instance_g  = NULL;
 hid_t               async_connector_id_g = -1;
-mmap_file          *MMAP_FILE;
-int                 USE_MMAP = 0;
 hid_t               async_error_class_g = H5I_INVALID_HID;
 
 /********************* */
@@ -1065,6 +1060,7 @@ async_instance_finalize(void)
         /* Pool gets implicitly freed */
     }
 
+    free(async_instance_g->progress_scheds);
     free(async_instance_g);
     async_instance_g = NULL;
 
@@ -1104,16 +1100,16 @@ async_term(void)
         async_instance_mutex_g = NULL;
     }
 
-    /* abt_ret = ABT_finalize(); */
-    /* if (ABT_SUCCESS != abt_ret) { */
-    /*     fprintf(stderr, "  [ASYNC VOL ERROR] with finalize argobots\n"); */
-    /*     ret_val = -1; */
-    /*     goto done; */
-    /* } */
-    /* #ifdef ENABLE_DBG_MSG */
-    /* else */
-    /*     fprintf(stderr, "  [ASYNC VOL DBG] Success with Argobots finalize\n"); */
-    /* #endif */
+    abt_ret = ABT_finalize();
+    if (ABT_SUCCESS != abt_ret) {
+        fprintf(stderr, "  [ASYNC VOL ERROR] with finalize argobots\n");
+        ret_val = -1;
+        goto done;
+    }
+    #ifdef ENABLE_DBG_MSG
+    else
+        fprintf(stderr, "  [ASYNC VOL DBG] Success with Argobots finalize\n");
+    #endif
 
 done:
     return ret_val;
@@ -1229,6 +1225,7 @@ async_instance_init(int backing_thread_count)
     aid->pool         = pool;
     aid->xstreams     = progress_xstreams;
     aid->num_xstreams = backing_thread_count;
+    aid->progress_scheds = progress_scheds;
     aid->nfopen       = 0;
     aid->ex_delay     = true;
     aid->ex_fclose    = true;
@@ -1394,14 +1391,9 @@ create_async_task(void)
 static void
 free_async_task(async_task_t *task)
 {
-    if (ABT_mutex_free(&task->task_mutex) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_free\n", __func__);
-        return;
-    }
+    assert(task->magic == TASK_MAGIC);
 
-    /* if (task->token) { */
-    /*     task->token->task = NULL; */
-    /* } */
+    ABT_mutex_lock(task->task_mutex);
 
     if (task->args) free(task->args);
 
@@ -1413,6 +1405,16 @@ free_async_task(async_task_t *task)
     if (task->dep_tasks) free(task->dep_tasks);
     
     if (task->err_stack != 0) H5Eclose_stack(task->err_stack);
+
+    ABT_mutex_unlock(task->task_mutex);
+
+    if (ABT_mutex_free(&task->task_mutex) != ABT_SUCCESS) {
+        fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_free\n", __func__);
+        return;
+    }
+
+    memset(task, 0, sizeof(async_task_t));
+    free(task);
 
     return;
 }
@@ -1449,6 +1451,7 @@ free_file_async_resources(H5VL_async_t *file)
     async_task_t *task_iter, *tmp;
 
     assert(file);
+    assert(file->magic == ASYNC_MAGIC);
 
     // When closing a reopened file
     if (NULL == file->file_async_obj) {
@@ -1462,10 +1465,13 @@ free_file_async_resources(H5VL_async_t *file)
 
     DL_FOREACH_SAFE2(file->file_async_obj->file_task_list_head, task_iter, tmp, file_list_next) {
         DL_DELETE2(file->file_async_obj->file_task_list_head, task_iter, file_list_prev, file_list_next);
-        // Defer the file close task free operation to later request free so ESwait works even after file is closed
+        // Defer the file close task free operation to later request free so H5ESwait works even after file is closed
         if (task_iter->func != async_file_close_fn) {
             free_async_task(task_iter);
-            free(task_iter);
+        }
+        else {
+            // debug
+            assert(task_iter);
         }
     }
 
@@ -1680,7 +1686,7 @@ int get_n_running_task_in_queue_obj(H5VL_async_t *async_obj)
     async_task_t *task_elt;
 
     DL_FOREACH2(async_obj->file_task_list_head, task_elt, file_list_next) {
-        if (task_elt->abt_thread != NULL) {
+        if (task_elt->magic == TASK_MAGIC && task_elt->abt_thread != NULL) {
             ABT_thread_get_state(task_elt->abt_thread, &thread_state);
             if (thread_state == ABT_THREAD_STATE_RUNNING || thread_state == ABT_THREAD_STATE_READY)
                 remaining_task++;
@@ -3780,7 +3786,7 @@ done:
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr);
-    free(args->buf);
+    /* free(args->buf); */
 #ifdef ENABLE_TIMING
     gettimeofday(&timer9, NULL);
     double exec_time   = get_elapsed_time(&args->start_time, &timer9);
@@ -3806,7 +3812,7 @@ async_attr_write(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type
     bool is_blocking = false;
     hbool_t acquired = false;
     unsigned int mutex_count = 1;
-    hsize_t attr_size;
+    /* hsize_t attr_size; */
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -3855,17 +3861,19 @@ async_attr_write(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type
         async_instance_g->start_abt_push = true;
     }
 
-    attr_size = H5Tget_size(mem_type_id);
-    if (attr_size == 0) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s H5Tget_size failed!\n", __func__);
-        goto done;
-    }
+    /* attr_size = H5Tget_size(mem_type_id); */
+    /* attr_size = H5Aget_storage_size((hid_t)args->attr); */
+    /* if (attr_size <= 0) { */
+    /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s H5Aget_storage_size failed!\n", __func__); */
+    /*     goto done; */
+    /* } */
 
-    if (NULL == (args->buf = malloc(attr_size))) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s malloc failed!\n", __func__);
-        goto done;
-    }
-    memcpy(args->buf, buf, attr_size);
+    /* if (NULL == (args->buf = malloc(attr_size))) { */
+    /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s malloc failed!\n", __func__); */
+    /*     goto done; */
+    /* } */
+    /* memcpy(args->buf, buf, attr_size); */
+    args->buf = (void*)buf;
 
     // Retrieve current library state
     if ( H5VLretrieve_lib_state(&async_task->h5_state) < 0) {
@@ -4241,7 +4249,7 @@ done:
 } // End async_attr_get_fn
 
 static herr_t
-async_attr_get(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_attr_get_t get_type, hid_t dxpl_id, void **req, va_list arguments)
+async_attr_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_attr_get_t get_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
     async_attr_get_args_t *args = NULL;
@@ -4342,7 +4350,7 @@ async_attr_get(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_attr_get_t 
         }
     }
     else {
-        if (NULL == req)
+        if (NULL == req || qtype == ISOLATED)
             add_task_to_queue(&aid->qhead, async_task, ISOLATED);
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
@@ -4672,7 +4680,7 @@ done:
 } // End async_attr_specific_fn
 
 static herr_t
-async_attr_specific(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, H5VL_attr_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
+async_attr_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, H5VL_attr_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
     async_attr_specific_args_t *args = NULL;
@@ -4775,7 +4783,7 @@ async_attr_specific(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_
         }
     }
     else {
-        if (NULL == req)
+        if (NULL == req || qtype == ISOLATED)
             add_task_to_queue(&aid->qhead, async_task, ISOLATED);
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
@@ -5104,7 +5112,7 @@ done:
 } // End async_attr_optional_fn
 
 static herr_t
-async_attr_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_attr_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
+async_attr_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_attr_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
     async_attr_optional_args_t *args = NULL;
@@ -5205,7 +5213,7 @@ async_attr_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_attr_o
         }
     }
     else {
-        if (NULL == req)
+        if (NULL == req || qtype == ISOLATED)
             add_task_to_queue(&aid->qhead, async_task, ISOLATED);
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
@@ -5531,7 +5539,7 @@ done:
 } // End async_attr_close_fn
 
 static herr_t
-async_attr_close(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id, void **req)
+async_attr_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id, void **req)
 {
     async_task_t *async_task = NULL;
     async_attr_close_args_t *args = NULL;
@@ -5548,6 +5556,9 @@ async_attr_close(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id,
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    if (qtype == BLOCKING)
+        is_blocking = true;
 
     if ((args = (async_attr_close_args_t*)calloc(1, sizeof(async_attr_close_args_t))) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -5630,7 +5641,7 @@ async_attr_close(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id,
         }
     }
     else {
-        if (NULL == req)
+        if (NULL == req || qtype == BLOCKING || qtype == ISOLATED)
             add_task_to_queue(&aid->qhead, async_task, ISOLATED);
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
@@ -6439,7 +6450,7 @@ done:
 } // End async_dataset_open_fn
 
 static H5VL_async_t*
-async_dataset_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, const char *name, hid_t dapl_id, hid_t dxpl_id, void **req)
+async_dataset_open(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, const char *name, hid_t dapl_id, hid_t dxpl_id, void **req)
 {
     H5VL_async_t *async_obj = NULL;
     async_task_t *async_task = NULL;
@@ -6561,7 +6572,7 @@ async_dataset_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_l
         }
     }
     else {
-        if (NULL == req)
+        if (NULL == req || qtype == ISOLATED)
             add_task_to_queue(&aid->qhead, async_task, ISOLATED);
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
@@ -6998,11 +7009,13 @@ async_dataset_read(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_ty
         }
     }
     else {
+#ifndef ASYNC_VOL_NO_MPI
         H5FD_mpio_xfer_t xfer_mode;
         H5Pget_dxpl_mpio(plist_id, &xfer_mode);
         if (xfer_mode == H5FD_MPIO_COLLECTIVE)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
+#endif
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
     }
 
@@ -7257,6 +7270,8 @@ async_dataset_write_fn(void *foo)
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s failed\n", __func__);
+        H5Eprint2(task->err_stack, stderr);
         goto done;
     }
 
@@ -7442,11 +7457,13 @@ async_dataset_write(async_instance_t* aid, H5VL_async_t *parent_obj,
         }
     }
     else {
+#ifndef ASYNC_VOL_NO_MPI
         H5FD_mpio_xfer_t xfer_mode;
         H5Pget_dxpl_mpio(plist_id, &xfer_mode);
         if (xfer_mode == H5FD_MPIO_COLLECTIVE)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
+#endif
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
     }
 
@@ -7771,7 +7788,7 @@ done:
 } // End async_dataset_get_fn
 
 static herr_t
-async_dataset_get(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_dataset_get_t get_type, hid_t dxpl_id, void **req, va_list arguments)
+async_dataset_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_dataset_get_t get_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
     async_dataset_get_args_t *args = NULL;
@@ -7872,7 +7889,7 @@ async_dataset_get(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_dataset_
         }
     }
     else {
-        if (NULL == req)
+        if (NULL == req || qtype == ISOLATED)
             add_task_to_queue(&aid->qhead, async_task, ISOLATED);
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
@@ -8201,7 +8218,7 @@ done:
 } // End async_dataset_specific_fn
 
 static herr_t
-async_dataset_specific(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_dataset_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
+async_dataset_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_dataset_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
     async_dataset_specific_args_t *args = NULL;
@@ -8302,7 +8319,7 @@ async_dataset_specific(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_dat
         }
     }
     else {
-        if (NULL == req)
+        if (NULL == req || qtype == ISOLATED)
             add_task_to_queue(&aid->qhead, async_task, ISOLATED);
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
@@ -8631,7 +8648,7 @@ done:
 } // End async_dataset_optional_fn
 
 static herr_t
-async_dataset_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_dataset_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
+async_dataset_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_dataset_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
     async_dataset_optional_args_t *args = NULL;
@@ -8732,7 +8749,7 @@ async_dataset_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_dat
         }
     }
     else {
-        if (NULL == req)
+        if (NULL == req || qtype == ISOLATED)
             add_task_to_queue(&aid->qhead, async_task, ISOLATED);
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
@@ -9058,7 +9075,7 @@ done:
 } // End async_dataset_close_fn
 
 static herr_t
-async_dataset_close(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id, void **req)
+async_dataset_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id, void **req)
 {
     async_task_t *async_task = NULL;
     async_dataset_close_args_t *args = NULL;
@@ -9075,6 +9092,9 @@ async_dataset_close(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    if (qtype == BLOCKING)
+        is_blocking = true;
 
     if ((args = (async_dataset_close_args_t*)calloc(1, sizeof(async_dataset_close_args_t))) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -9157,7 +9177,7 @@ async_dataset_close(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_
         }
     }
     else {
-        if (NULL == req)
+        if (NULL == req || qtype == ISOLATED)
             add_task_to_queue(&aid->qhead, async_task, ISOLATED);
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
@@ -10412,7 +10432,7 @@ done:
 } // End async_datatype_get_fn
 
 static herr_t
-async_datatype_get(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_datatype_get_t get_type, hid_t dxpl_id, void **req, va_list arguments)
+async_datatype_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_datatype_get_t get_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
     async_datatype_get_args_t *args = NULL;
@@ -10513,7 +10533,7 @@ async_datatype_get(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_datatyp
         }
     }
     else {
-        if (NULL == req)
+        if (NULL == req || qtype == ISOLATED)
             add_task_to_queue(&aid->qhead, async_task, ISOLATED);
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
@@ -10842,7 +10862,7 @@ done:
 } // End async_datatype_specific_fn
 
 static herr_t
-async_datatype_specific(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_datatype_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
+async_datatype_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_datatype_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
     async_datatype_specific_args_t *args = NULL;
@@ -10943,7 +10963,7 @@ async_datatype_specific(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_da
         }
     }
     else {
-        if (NULL == req)
+        if (NULL == req || qtype == ISOLATED)
             add_task_to_queue(&aid->qhead, async_task, ISOLATED);
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
@@ -11272,7 +11292,7 @@ done:
 } // End async_datatype_optional_fn
 
 static herr_t
-async_datatype_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_datatype_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
+async_datatype_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_datatype_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
     async_datatype_optional_args_t *args = NULL;
@@ -11373,7 +11393,7 @@ async_datatype_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_da
         }
     }
     else {
-        if (NULL == req)
+        if (NULL == req || qtype == ISOLATED)
             add_task_to_queue(&aid->qhead, async_task, ISOLATED);
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
@@ -11699,7 +11719,7 @@ done:
 } // End async_datatype_close_fn
 
 static herr_t
-async_datatype_close(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id, void **req)
+async_datatype_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id, void **req)
 {
     async_task_t *async_task = NULL;
     async_datatype_close_args_t *args = NULL;
@@ -11798,7 +11818,7 @@ async_datatype_close(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl
         }
     }
     else {
-        if (NULL == req)
+        if (NULL == req || qtype == ISOLATED)
             add_task_to_queue(&aid->qhead, async_task, ISOLATED);
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
@@ -12271,7 +12291,9 @@ async_file_create(async_instance_t* aid, const char *name, unsigned flags, hid_t
     }
     async_obj->task_cnt++;
     async_obj->pool_ptr = &aid->pool;
+#ifndef ASYNC_VOL_NO_MPI
     H5Pget_coll_metadata_write(fapl_id, &async_obj->is_col_meta);
+#endif
     add_task_to_queue(&aid->qhead, async_task, REGULAR);
     if (ABT_mutex_unlock(async_obj->obj_mutex) != ABT_SUCCESS) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
@@ -12613,7 +12635,7 @@ done:
 } // End async_file_open_fn
 
 static H5VL_async_t*
-async_file_open(async_instance_t* aid, const char *name, unsigned flags, hid_t fapl_id, hid_t dxpl_id, void **req)
+async_file_open(task_list_qtype qtype, async_instance_t* aid, const char *name, unsigned flags, hid_t fapl_id, hid_t dxpl_id, void **req)
 {
     hid_t under_vol_id;
     H5VL_async_t *async_obj = NULL;
@@ -12729,8 +12751,13 @@ async_file_open(async_instance_t* aid, const char *name, unsigned flags, hid_t f
     }
     async_obj->task_cnt++;
     async_obj->pool_ptr = &aid->pool;
+#ifndef ASYNC_VOL_NO_MPI
     H5Pget_coll_metadata_write(fapl_id, &async_obj->is_col_meta);
-    add_task_to_queue(&aid->qhead, async_task, REGULAR);
+#endif
+    if (qtype == ISOLATED) 
+        add_task_to_queue(&aid->qhead, async_task, ISOLATED);
+    else
+        add_task_to_queue(&aid->qhead, async_task, REGULAR);
     if (ABT_mutex_unlock(async_obj->obj_mutex) != ABT_SUCCESS) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
@@ -13051,7 +13078,7 @@ done:
 } // End async_file_get_fn
 
 static herr_t
-async_file_get(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_file_get_t get_type, hid_t dxpl_id, void **req, va_list arguments)
+async_file_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_file_get_t get_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
     async_file_get_args_t *args = NULL;
@@ -13152,7 +13179,7 @@ async_file_get(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_file_get_t 
         }
     }
     else {
-        if (NULL == req)
+        if (NULL == req || qtype == ISOLATED)
             add_task_to_queue(&aid->qhead, async_task, ISOLATED);
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
@@ -13481,7 +13508,7 @@ done:
 } // End async_file_specific_fn
 
 static herr_t
-async_file_specific(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_file_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
+async_file_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_file_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
     async_file_specific_args_t *args = NULL;
@@ -13582,7 +13609,7 @@ async_file_specific(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_file_s
         }
     }
     else {
-        if (NULL == req)
+        if (NULL == req || qtype == ISOLATED)
             add_task_to_queue(&aid->qhead, async_task, ISOLATED);
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
@@ -13911,7 +13938,7 @@ done:
 } // End async_file_optional_fn
 
 static herr_t
-async_file_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_file_optional_t opt_type,
+async_file_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_file_optional_t opt_type,
                     hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
@@ -14013,7 +14040,7 @@ async_file_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_file_o
         }
     }
     else {
-        if (NULL == req)
+        if (NULL == req || qtype == ISOLATED)
             add_task_to_queue(&aid->qhead, async_task, ISOLATED);
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
@@ -14332,7 +14359,11 @@ done:
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr);
 
     // Free all the resources allocated for this file, e.g. tasks
-    free_file_async_resources(task->async_obj);
+    if (task->task_mutex) {
+        ABT_mutex_lock(task->task_mutex);
+        free_file_async_resources(task->async_obj);
+        ABT_mutex_unlock(task->task_mutex);
+    }
 
 #ifdef ENABLE_TIMING
     gettimeofday(&timer9, NULL);
@@ -14351,7 +14382,7 @@ done:
 } // End async_file_close_fn
 
 static herr_t
-async_file_close(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id, void **req)
+async_file_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id, void **req)
 {
     async_task_t *async_task = NULL;
     async_file_close_args_t *args = NULL;
@@ -14375,6 +14406,9 @@ async_file_close(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id,
         is_blocking = 1;
         goto wait;
     }
+
+    if (qtype == BLOCKING)
+        is_blocking = true;
 
     if ((args = (async_file_close_args_t*)calloc(1, sizeof(async_file_close_args_t))) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -14470,7 +14504,7 @@ async_file_close(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id,
         }
     }
     else {
-        if (NULL == req)
+        if (NULL == req || qtype == ISOLATED)
             add_task_to_queue(&aid->qhead, async_task, ISOLATED);
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
@@ -15719,7 +15753,7 @@ done:
 } // End async_group_get_fn
 
 static herr_t
-async_group_get(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_group_get_t get_type, hid_t dxpl_id, void **req, va_list arguments)
+async_group_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_group_get_t get_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
     async_group_get_args_t *args = NULL;
@@ -15820,7 +15854,7 @@ async_group_get(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_group_get_
         }
     }
     else {
-        if (NULL == req)
+        if (NULL == req || qtype == ISOLATED)
             add_task_to_queue(&aid->qhead, async_task, ISOLATED);
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
@@ -16149,7 +16183,7 @@ done:
 } // End async_group_specific_fn
 
 static herr_t
-async_group_specific(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_group_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
+async_group_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_group_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
     async_group_specific_args_t *args = NULL;
@@ -16250,7 +16284,7 @@ async_group_specific(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_group
         }
     }
     else {
-        if (NULL == req)
+        if (NULL == req || qtype == ISOLATED)
             add_task_to_queue(&aid->qhead, async_task, ISOLATED);
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
@@ -16579,7 +16613,7 @@ done:
 } // End async_group_optional_fn
 
 static herr_t
-async_group_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_group_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
+async_group_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_group_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
     async_group_optional_args_t *args = NULL;
@@ -16680,7 +16714,7 @@ async_group_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_group
         }
     }
     else {
-        if (NULL == req)
+        if (NULL == req || qtype == ISOLATED)
             add_task_to_queue(&aid->qhead, async_task, ISOLATED);
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
@@ -17010,7 +17044,7 @@ done:
 } // End async_group_close_fn
 
 static herr_t
-async_group_close(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id, void **req)
+async_group_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id, void **req)
 {
     async_task_t *async_task = NULL;
     async_group_close_args_t *args = NULL;
@@ -17111,7 +17145,7 @@ async_group_close(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t dxpl_id
             }
         }
         else {
-            if (NULL == req)
+            if (NULL == req || qtype == ISOLATED)
                 add_task_to_queue(&aid->qhead, async_task, ISOLATED);
             else if (async_task->async_obj->is_col_meta == true)
                 add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
@@ -17458,7 +17492,7 @@ done:
 } // End async_link_create_fn
 
 herr_t
-async_link_create(async_instance_t* aid, H5VL_link_create_type_t create_type, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, hid_t lcpl_id, hid_t lapl_id, hid_t dxpl_id, void **req, va_list arguments)
+async_link_create(task_list_qtype qtype, async_instance_t* aid, H5VL_link_create_type_t create_type, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, hid_t lcpl_id, hid_t lapl_id, hid_t dxpl_id, void **req, va_list arguments)
 {
     H5VL_async_t *async_obj = NULL;
     async_task_t *async_task = NULL;
@@ -17582,7 +17616,7 @@ async_link_create(async_instance_t* aid, H5VL_link_create_type_t create_type, H5
         }
     }
     else {
-        if (NULL == req)
+        if (NULL == req || qtype == ISOLATED)
             add_task_to_queue(&aid->qhead, async_task, ISOLATED);
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
@@ -18788,7 +18822,7 @@ done:
 } // End async_link_get_fn
 
 static herr_t
-async_link_get(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, H5VL_link_get_t get_type, hid_t dxpl_id, void **req, va_list arguments)
+async_link_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, H5VL_link_get_t get_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
     async_link_get_args_t *args = NULL;
@@ -18891,7 +18925,7 @@ async_link_get(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_p
         }
     }
     else {
-        if (NULL == req)
+        if (NULL == req || qtype == ISOLATED)
             add_task_to_queue(&aid->qhead, async_task, ISOLATED);
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
@@ -19221,7 +19255,7 @@ done:
 } // End async_link_specific_fn
 
 static herr_t
-async_link_specific(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, H5VL_link_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
+async_link_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, H5VL_link_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
     async_link_specific_args_t *args = NULL;
@@ -19324,7 +19358,7 @@ async_link_specific(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_
         }
     }
     else {
-        if (NULL == req)
+        if (NULL == req || qtype == ISOLATED)
             add_task_to_queue(&aid->qhead, async_task, ISOLATED);
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
@@ -19653,7 +19687,7 @@ done:
 } // End async_link_optional_fn
 
 static herr_t
-async_link_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_link_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
+async_link_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_link_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
     async_link_optional_args_t *args = NULL;
@@ -19754,7 +19788,7 @@ async_link_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_link_o
         }
     }
     else {
-        if (NULL == req)
+        if (NULL == req || qtype == ISOLATED)
             add_task_to_queue(&aid->qhead, async_task, ISOLATED);
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
@@ -20085,7 +20119,7 @@ done:
 } // End async_object_open_fn
 
 static H5VL_async_t*
-async_object_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, H5I_type_t *opened_type, hid_t dxpl_id, void **req)
+async_object_open(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, H5I_type_t *opened_type, hid_t dxpl_id, void **req)
 {
     H5VL_async_t *async_obj = NULL;
     async_task_t *async_task = NULL;
@@ -20103,6 +20137,9 @@ async_object_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_lo
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    if (qtype == BLOCKING)
+        is_blocking = true;
 
     if ((args = (async_object_open_args_t*)calloc(1, sizeof(async_object_open_args_t))) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -20538,7 +20575,7 @@ done:
 } // End async_object_copy_fn
 
 static herr_t
-async_object_copy(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *src_loc_params, const char *src_name, H5VL_async_t *parent_obj2, const H5VL_loc_params_t *dst_loc_params, const char *dst_name, hid_t ocpypl_id, hid_t lcpl_id, hid_t dxpl_id, void **req)
+async_object_copy(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *src_loc_params, const char *src_name, H5VL_async_t *parent_obj2, const H5VL_loc_params_t *dst_loc_params, const char *dst_name, hid_t ocpypl_id, hid_t lcpl_id, hid_t dxpl_id, void **req)
 {
     async_task_t *async_task = NULL;
     async_object_copy_args_t *args = NULL;
@@ -20650,7 +20687,7 @@ async_object_copy(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_lo
         }
     }
     else {
-        if (NULL == req)
+        if (NULL == req || qtype == ISOLATED)
             add_task_to_queue(&aid->qhead, async_task, ISOLATED);
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
@@ -20980,7 +21017,7 @@ done:
 } // End async_object_get_fn
 
 static herr_t
-async_object_get(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, H5VL_object_get_t get_type, hid_t dxpl_id, void **req, va_list arguments)
+async_object_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, H5VL_object_get_t get_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
     async_object_get_args_t *args = NULL;
@@ -21083,7 +21120,7 @@ async_object_get(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc
         }
     }
     else {
-        if (NULL == req)
+        if (NULL == req || qtype == ISOLATED)
             add_task_to_queue(&aid->qhead, async_task, ISOLATED);
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
@@ -21413,7 +21450,7 @@ done:
 } // End async_object_specific_fn
 
 static herr_t
-async_object_specific(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, H5VL_object_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
+async_object_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, H5VL_object_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
     async_object_specific_args_t *args = NULL;
@@ -21516,7 +21553,7 @@ async_object_specific(async_instance_t* aid, H5VL_async_t *parent_obj, const H5V
         }
     }
     else {
-        if (NULL == req)
+        if (NULL == req || qtype == ISOLATED)
             add_task_to_queue(&aid->qhead, async_task, ISOLATED);
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
@@ -21845,7 +21882,7 @@ done:
 } // End async_object_optional_fn
 
 static herr_t
-async_object_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_object_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
+async_object_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_object_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
     async_object_optional_args_t *args = NULL;
@@ -21946,7 +21983,7 @@ async_object_optional(async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_obje
         }
     }
     else {
-        if (NULL == req)
+        if (NULL == req || qtype == ISOLATED)
             add_task_to_queue(&aid->qhead, async_task, ISOLATED);
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
@@ -22074,6 +22111,7 @@ H5VL_async_free_obj(H5VL_async_t *obj)
 
     H5Eset_current_stack(err_id);
 
+    memset(obj, 0, sizeof(H5VL_async_t));
     free(obj);
 
     return 0;
@@ -22357,7 +22395,8 @@ H5VL_async_get_wrap_ctx(const void *obj, void **wrap_ctx)
 
     new_wrap_ctx->under_vol_id = under_vol_id;
     H5Iinc_ref(new_wrap_ctx->under_vol_id);
-    /* ==== added for aysnc vol ==== */
+
+    /* added for aysnc vol */
     if (under_object) {
         H5VLget_wrap_ctx(under_object, under_vol_id, &new_wrap_ctx->under_wrap_ctx);
     }
@@ -22608,20 +22647,13 @@ H5VL_async_attr_get(void *obj, H5VL_attr_get_t get_type, hid_t dxpl_id,
 {
     H5VL_async_t *o = (H5VL_async_t *)obj;
     herr_t ret_value;
+    task_list_qtype qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL ATTRIBUTE Get\n");
 #endif
 
-    /* The operations for this callback don't support asynchronous execution
-     * yet, reset the request to NULL until they are ready.
-     */
-    if(req) {
-        *req = NULL;
-        req = NULL;
-    }
-
-    if ((ret_value = async_attr_get(async_instance_g, o, get_type, dxpl_id, req, arguments)) < 0 )
+    if ((ret_value = async_attr_get(qtype, async_instance_g, o, get_type, dxpl_id, req, arguments)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_attr_get\n");
 
     return ret_value;
@@ -22644,20 +22676,13 @@ H5VL_async_attr_specific(void *obj, const H5VL_loc_params_t *loc_params,
 {
     H5VL_async_t *o = (H5VL_async_t *)obj;
     herr_t ret_value;
+    task_list_qtype qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL ATTRIBUTE Specific\n");
 #endif
 
-    /* The operations for this callback don't support asynchronous execution
-     * yet, reset the request to NULL until they are ready.
-     */
-    if(req) {
-        *req = NULL;
-        req = NULL;
-    }
-
-    if ((ret_value = async_attr_specific(async_instance_g, o, loc_params, specific_type, dxpl_id, req, arguments)) < 0 )
+    if ((ret_value = async_attr_specific(qtype, async_instance_g, o, loc_params, specific_type, dxpl_id, req, arguments)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_attr_specific\n");
 
     return ret_value;
@@ -22680,20 +22705,13 @@ H5VL_async_attr_optional(void *obj, H5VL_attr_optional_t opt_type,
 {
     H5VL_async_t *o = (H5VL_async_t *)obj;
     herr_t ret_value;
+    task_list_qtype qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL ATTRIBUTE Optional\n");
 #endif
 
-    /* The operations for this callback don't support asynchronous execution
-     * yet, reset the request to NULL until they are ready.
-     */
-    if(req) {
-        *req = NULL;
-        req = NULL;
-    }
-
-    if ((ret_value = async_attr_optional(async_instance_g, o, opt_type, dxpl_id, req, arguments)) < 0 )
+    if ((ret_value = async_attr_optional(qtype, async_instance_g, o, opt_type, dxpl_id, req, arguments)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_attr_optional\n");
 
     return ret_value;
@@ -22716,6 +22734,7 @@ H5VL_async_attr_close(void *attr, hid_t dxpl_id, void **req)
     H5VL_async_t *o = (H5VL_async_t *)attr;
     herr_t ret_value;
     hbool_t is_term;
+    task_list_qtype qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL ATTRIBUTE Close\n");
@@ -22725,12 +22744,10 @@ H5VL_async_attr_close(void *attr, hid_t dxpl_id, void **req)
         fprintf(stderr,"  [ASYNC VOL ERROR] with H5is_library_terminating\n");
 
     /* If the library is shutting down, execute the close synchronously */
-    if (is_term && req) {
-        *req = NULL;
-        req = NULL;
-    }
+    if (is_term) 
+        qtype = BLOCKING;
 
-    if ((ret_value = async_attr_close(async_instance_g, o, dxpl_id, req)) < 0 )
+    if ((ret_value = async_attr_close(qtype, async_instance_g, o, dxpl_id, req)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_attr_close\n");
 
     return ret_value;
@@ -22781,20 +22798,13 @@ H5VL_async_dataset_open(void *obj, const H5VL_loc_params_t *loc_params,
 {
     H5VL_async_t *dset;
     H5VL_async_t *o = (H5VL_async_t *)obj;
+    task_list_qtype qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATASET Open\n");
 #endif
 
-    /* The operations for this callback don't support asynchronous execution
-     * yet, reset the request to NULL until they are ready.
-     */
-    if(req) {
-        *req = NULL;
-        req = NULL;
-    }
-
-    dset = async_dataset_open(async_instance_g, o, loc_params, name, dapl_id, dxpl_id, req);
+    dset = async_dataset_open(qtype, async_instance_g, o, loc_params, name, dapl_id, dxpl_id, req);
 
     return (void *)dset;
 } /* end H5VL_async_dataset_open() */
@@ -22882,20 +22892,13 @@ H5VL_async_dataset_get(void *dset, H5VL_dataset_get_t get_type,
 {
     H5VL_async_t *o = (H5VL_async_t *)dset;
     herr_t ret_value;
+    task_list_qtype qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATASET Get\n");
 #endif
 
-    /* The operations for this callback don't support asynchronous execution
-     * yet, reset the request to NULL until they are ready.
-     */
-    if(req) {
-        *req = NULL;
-        req = NULL;
-    }
-
-    if ((ret_value = async_dataset_get(async_instance_g, o, get_type, dxpl_id, req, arguments)) < 0 )
+    if ((ret_value = async_dataset_get(qtype, async_instance_g, o, get_type, dxpl_id, req, arguments)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_dataset_get\n");
 
     return ret_value;
@@ -22917,8 +22920,8 @@ H5VL_async_dataset_specific(void *obj, H5VL_dataset_specific_t specific_type,
                             hid_t dxpl_id, void **req, va_list arguments)
 {
     H5VL_async_t *o = (H5VL_async_t *)obj;
-    /* hid_t under_vol_id; */
     herr_t ret_value;
+    task_list_qtype qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL H5Dspecific\n");
@@ -22928,15 +22931,7 @@ H5VL_async_dataset_specific(void *obj, H5VL_dataset_specific_t specific_type,
     // refresh destroying the current object
     /* under_vol_id = o->under_vol_id; */
 
-    /* The operations for this callback don't support asynchronous execution
-     * yet, reset the request to NULL until they are ready.
-     */
-    if(req) {
-        *req = NULL;
-        req = NULL;
-    }
-
-    if ((ret_value = async_dataset_specific(async_instance_g, o, specific_type, dxpl_id, req, arguments)) < 0 )
+    if ((ret_value = async_dataset_specific(qtype, async_instance_g, o, specific_type, dxpl_id, req, arguments)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_dataset_specific\n");
 
     return ret_value;
@@ -22959,6 +22954,7 @@ H5VL_async_dataset_optional(void *obj, H5VL_dataset_optional_t opt_type,
 {
     H5VL_async_t *o = (H5VL_async_t *)obj;
     herr_t ret_value;
+    task_list_qtype qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATASET Optional\n");
@@ -22968,15 +22964,7 @@ H5VL_async_dataset_optional(void *obj, H5VL_dataset_optional_t opt_type,
     if (H5VL_async_dataset_wait_op_g == opt_type)
         return (H5VL_async_dataset_wait(o));
 
-    /* The operations for this callback don't support asynchronous execution
-     * yet, reset the request to NULL until they are ready.
-     */
-    if(req) {
-        *req = NULL;
-        req = NULL;
-    }
-
-    if ((ret_value = async_dataset_optional(async_instance_g, o, opt_type, dxpl_id, req, arguments)) < 0 )
+    if ((ret_value = async_dataset_optional(qtype, async_instance_g, o, opt_type, dxpl_id, req, arguments)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_dataset_optional\n");
 
     return ret_value;
@@ -22999,6 +22987,7 @@ H5VL_async_dataset_close(void *dset, hid_t dxpl_id, void **req)
     H5VL_async_t *o = (H5VL_async_t *)dset;
     herr_t ret_value;
     hbool_t is_term;
+    task_list_qtype qtype = REGULAR;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATASET Close\n");
@@ -23008,12 +22997,10 @@ H5VL_async_dataset_close(void *dset, hid_t dxpl_id, void **req)
         fprintf(stderr,"  [ASYNC VOL ERROR] with H5is_library_terminating\n");
 
     /* If the library is shutting down, execute the close synchronously */
-    if (is_term && req) {
-        *req = NULL;
-        req = NULL;
-    }
+    if (is_term)
+        qtype = BLOCKING;
 
-    if ((ret_value = async_dataset_close(async_instance_g, o, dxpl_id, req)) < 0 )
+    if ((ret_value = async_dataset_close(qtype, async_instance_g, o, dxpl_id, req)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_dataset_close\n");
 
     return ret_value;
@@ -23091,20 +23078,13 @@ H5VL_async_datatype_get(void *dt, H5VL_datatype_get_t get_type,
 {
     H5VL_async_t *o = (H5VL_async_t *)dt;
     herr_t ret_value;
+    task_list_qtype qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATATYPE Get\n");
 #endif
 
-    /* The operations for this callback don't support asynchronous execution
-     * yet, reset the request to NULL until they are ready.
-     */
-    if(req) {
-        *req = NULL;
-        req = NULL;
-    }
-
-    if ((ret_value = async_datatype_get(async_instance_g, o, get_type, dxpl_id, req, arguments)) < 0 )
+    if ((ret_value = async_datatype_get(qtype, async_instance_g, o, get_type, dxpl_id, req, arguments)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_datatype_get\n");
 
     return ret_value;
@@ -23126,22 +23106,14 @@ H5VL_async_datatype_specific(void *obj, H5VL_datatype_specific_t specific_type,
                              hid_t dxpl_id, void **req, va_list arguments)
 {
     H5VL_async_t *o = (H5VL_async_t *)obj;
-    /* hid_t under_vol_id; */
     herr_t ret_value;
+    task_list_qtype qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATATYPE Specific\n");
 #endif
 
-    /* The operations for this callback don't support asynchronous execution
-     * yet, reset the request to NULL until they are ready.
-     */
-    if(req) {
-        *req = NULL;
-        req = NULL;
-    }
-
-    if ((ret_value = async_datatype_specific(async_instance_g, o, specific_type, dxpl_id, req, arguments)) < 0 )
+    if ((ret_value = async_datatype_specific(qtype, async_instance_g, o, specific_type, dxpl_id, req, arguments)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_datatype_specific\n");
 
     return ret_value;
@@ -23164,19 +23136,13 @@ H5VL_async_datatype_optional(void *obj, H5VL_datatype_optional_t opt_type,
 {
     H5VL_async_t *o = (H5VL_async_t *)obj;
     herr_t ret_value;
+    task_list_qtype qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATATYPE Optional\n");
 #endif
 
-    /* The operations for this callback don't support asynchronous execution
-     * yet, reset the request to NULL until they are ready.
-     */
-    if(req) {
-        *req = NULL;
-        req = NULL;
-    }
-    if ((ret_value = async_datatype_optional(async_instance_g, o, opt_type, dxpl_id, req, arguments)) < 0 )
+    if ((ret_value = async_datatype_optional(qtype, async_instance_g, o, opt_type, dxpl_id, req, arguments)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_datatype_optional\n");
 
     return ret_value;
@@ -23199,6 +23165,7 @@ H5VL_async_datatype_close(void *dt, hid_t dxpl_id, void **req)
     H5VL_async_t *o = (H5VL_async_t *)dt;
     herr_t ret_value;
     hbool_t is_term;
+    task_list_qtype qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATATYPE Close\n");
@@ -23210,12 +23177,10 @@ H5VL_async_datatype_close(void *dt, hid_t dxpl_id, void **req)
         fprintf(stderr,"  [ASYNC VOL ERROR] with H5is_library_terminating\n");
 
     /* If the library is shutting down, execute the close synchronously */
-    if (is_term && req) {
-        *req = NULL;
-        req = NULL;
-    }
+    if (is_term)
+        qtype = BLOCKING;
 
-    if ((ret_value = async_datatype_close(async_instance_g, o, dxpl_id, req)) < 0 )
+    if ((ret_value = async_datatype_close(qtype, async_instance_g, o, dxpl_id, req)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_datatype_close\n");
 
     return ret_value;
@@ -23283,6 +23248,7 @@ H5VL_async_file_open(const char *name, unsigned flags, hid_t fapl_id,
     H5VL_async_info_t *info;
     H5VL_async_t *file;
     hid_t under_fapl_id;
+    task_list_qtype qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL FILE Open\n");
@@ -23297,16 +23263,8 @@ H5VL_async_file_open(const char *name, unsigned flags, hid_t fapl_id,
     /* Set the VOL ID and info for the underlying FAPL */
     H5Pset_vol(under_fapl_id, info->under_vol_id, info->under_vol_info);
 
-    /* The operations for this callback don't support asynchronous execution
-     * yet, reset the request to NULL until they are ready.
-     */
-    if(req) {
-        *req = NULL;
-        req = NULL;
-    }
-
     /* Open the file with the underlying VOL connector */
-    file = async_file_open(async_instance_g, name, flags, under_fapl_id, dxpl_id, req);
+    file = async_file_open(qtype, async_instance_g, name, flags, under_fapl_id, dxpl_id, req);
 
     /* Close underlying FAPL */
     H5Pclose(under_fapl_id);
@@ -23334,20 +23292,13 @@ H5VL_async_file_get(void *file, H5VL_file_get_t get_type, hid_t dxpl_id,
 {
     H5VL_async_t *o = (H5VL_async_t *)file;
     herr_t ret_value;
+    task_list_qtype qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL FILE Get\n");
 #endif
 
-    /* The operations for this callback don't support asynchronous execution
-     * yet, reset the request to NULL until they are ready.
-     */
-    if(req) {
-        *req = NULL;
-        req = NULL;
-    }
-
-    if ((ret_value = async_file_get(async_instance_g, o, get_type, dxpl_id, req, arguments)) < 0 )
+    if ((ret_value = async_file_get(qtype, async_instance_g, o, get_type, dxpl_id, req, arguments)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_file_get\n");
 
     return ret_value;
@@ -23371,6 +23322,7 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_t specific_type,
     H5VL_async_t *o = (H5VL_async_t *)file;
     hid_t under_vol_id;
     herr_t ret_value;
+    task_list_qtype qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL FILE Specific\n");
@@ -23380,14 +23332,6 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_t specific_type,
     if(!o->is_obj_valid) {
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_file_specific, invalid object\n");
         return(-1);
-    }
-
-    /* The operations for this callback don't support asynchronous execution
-     * yet, reset the request to NULL until they are ready.
-     */
-    if(req) {
-        *req = NULL;
-        req = NULL;
     }
 
     /* Unpack arguments to get at the child file pointer when mounting a file */
@@ -23451,7 +23395,7 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_t specific_type,
         /* Keep the correct underlying VOL ID for possible async request token */
         under_vol_id = o->under_vol_id;
 
-        if ((ret_value = async_file_specific(async_instance_g, o, specific_type, dxpl_id, req, arguments)) < 0 )
+        if ((ret_value = async_file_specific(qtype, async_instance_g, o, specific_type, dxpl_id, req, arguments)) < 0 )
             fprintf(stderr,"  [ASYNC VOL ERROR] with async_file_specific\n");
 
         /* Wrap file struct pointer, if we reopened one */
@@ -23488,6 +23432,7 @@ H5VL_async_file_optional(void *file, H5VL_file_optional_t opt_type,
 {
     H5VL_async_t *o = (H5VL_async_t *)file;
     herr_t ret_value;
+    task_list_qtype qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL File Optional\n");
@@ -23497,15 +23442,7 @@ H5VL_async_file_optional(void *file, H5VL_file_optional_t opt_type,
     if(opt_type == H5VL_async_file_wait_op_g)
         return (H5VL_async_file_wait(o));
 
-    /* The operations for this callback don't support asynchronous execution
-     * yet, reset the request to NULL until they are ready.
-     */
-    if(req) {
-        *req = NULL;
-        req = NULL;
-    }
-
-    if ((ret_value = async_file_optional(async_instance_g, o, opt_type, dxpl_id, req, arguments)) < 0 )
+    if ((ret_value = async_file_optional(qtype, async_instance_g, o, opt_type, dxpl_id, req, arguments)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_file_optional\n");
 
     return ret_value;
@@ -23528,6 +23465,7 @@ H5VL_async_file_close(void *file, hid_t dxpl_id, void **req)
     H5VL_async_t *o = (H5VL_async_t *)file;
     herr_t ret_value;
     hbool_t is_term;
+    task_list_qtype qtype = REGULAR;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL FILE Close\n");
@@ -23536,12 +23474,10 @@ H5VL_async_file_close(void *file, hid_t dxpl_id, void **req)
         fprintf(stderr,"  [ASYNC VOL ERROR] with H5is_library_terminating\n");
 
     /* If the library is shutting down, execute the close synchronously */
-    if (is_term && req) {
-        *req = NULL;
-        req = NULL;
-    }
+    if (is_term)
+        qtype = BLOCKING;
 
-    if ((ret_value = async_file_close(async_instance_g, o, dxpl_id, req)) < 0 )
+    if ((ret_value = async_file_close(qtype, async_instance_g, o, dxpl_id, req)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_file_close\n");
 
     return ret_value;
@@ -23619,20 +23555,13 @@ H5VL_async_group_get(void *obj, H5VL_group_get_t get_type, hid_t dxpl_id,
 {
     H5VL_async_t *o = (H5VL_async_t *)obj;
     herr_t ret_value;
+    task_list_qtype qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL GROUP Get\n");
 #endif
 
-    /* The operations for this callback don't support asynchronous execution
-     * yet, reset the request to NULL until they are ready.
-     */
-    if(req) {
-        *req = NULL;
-        req = NULL;
-    }
-
-    if ((ret_value = async_group_get(async_instance_g, o, get_type, dxpl_id, req, arguments)) < 0 )
+    if ((ret_value = async_group_get(qtype, async_instance_g, o, get_type, dxpl_id, req, arguments)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_group_get\n");
 
     return ret_value;
@@ -23654,22 +23583,14 @@ H5VL_async_group_specific(void *obj, H5VL_group_specific_t specific_type,
                           hid_t dxpl_id, void **req, va_list arguments)
 {
     H5VL_async_t *o = (H5VL_async_t *)obj;
-    /* hid_t under_vol_id; */
     herr_t ret_value;
+    task_list_qtype qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL GROUP Specific\n");
 #endif
 
-    /* The operations for this callback don't support asynchronous execution
-     * yet, reset the request to NULL until they are ready.
-     */
-    if(req) {
-        *req = NULL;
-        req = NULL;
-    }
-
-    if ((ret_value = async_group_specific(async_instance_g, o, specific_type, dxpl_id, req, arguments)) < 0 )
+    if ((ret_value = async_group_specific(qtype, async_instance_g, o, specific_type, dxpl_id, req, arguments)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_group_specific\n");
 
     return ret_value;
@@ -23692,20 +23613,13 @@ H5VL_async_group_optional(void *obj, H5VL_group_optional_t opt_type,
 {
     H5VL_async_t *o = (H5VL_async_t *)obj;
     herr_t ret_value;
+    task_list_qtype qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL GROUP Optional\n");
 #endif
 
-    /* The operations for this callback don't support asynchronous execution
-     * yet, reset the request to NULL until they are ready.
-     */
-    if(req) {
-        *req = NULL;
-        req = NULL;
-    }
-
-    if ((ret_value = async_group_optional(async_instance_g, o, opt_type, dxpl_id, req, arguments)) < 0 )
+    if ((ret_value = async_group_optional(qtype, async_instance_g, o, opt_type, dxpl_id, req, arguments)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_group_optional\n");
 
     return ret_value;
@@ -23728,6 +23642,7 @@ H5VL_async_group_close(void *grp, hid_t dxpl_id, void **req)
     H5VL_async_t *o = (H5VL_async_t *)grp;
     herr_t ret_value;
     hbool_t is_term;
+    task_list_qtype qtype = REGULAR;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL H5Gclose\n");
@@ -23736,12 +23651,10 @@ H5VL_async_group_close(void *grp, hid_t dxpl_id, void **req)
         fprintf(stderr,"  [ASYNC VOL ERROR] with H5is_library_terminating\n");
 
     /* If the library is shutting down, execute the close synchronously */
-    if (is_term && req) {
-        *req = NULL;
-        req = NULL;
-    }
+    if (is_term)
+        qtype = BLOCKING;
 
-    if ((ret_value = async_group_close(async_instance_g, o, dxpl_id, req)) < 0 )
+    if ((ret_value = async_group_close(qtype, async_instance_g, o, dxpl_id, req)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_group_close\n");
 
     return ret_value;
@@ -23765,6 +23678,7 @@ H5VL_async_link_create(H5VL_link_create_type_t create_type, void *obj,
     H5VL_async_t *o = (H5VL_async_t *)obj;
     hid_t under_vol_id = -1;
     herr_t ret_value;
+    task_list_qtype qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL LINK Create\n");
@@ -23779,14 +23693,6 @@ H5VL_async_link_create(H5VL_link_create_type_t create_type, void *obj,
     /* Try to retrieve the "under" VOL id */
     if(o)
         under_vol_id = o->under_vol_id;
-
-    /* The operations for this callback don't support asynchronous execution
-     * yet, reset the request to NULL until they are ready.
-     */
-    if(req) {
-        *req = NULL;
-        req = NULL;
-    }
 
     /* Fix up the link target object for hard link creation */
     if(H5VL_LINK_CREATE_HARD == create_type) {
@@ -23811,7 +23717,7 @@ H5VL_async_link_create(H5VL_link_create_type_t create_type, void *obj,
         ret_value = H5VLlink_create_vararg(create_type, (o ? o->under_object : NULL), loc_params, under_vol_id, lcpl_id, lapl_id, dxpl_id, req, cur_obj, cur_params);
     } /* end if */
     else
-        ret_value = async_link_create(async_instance_g, create_type, o, loc_params, lcpl_id, lapl_id, dxpl_id, req, arguments);
+        ret_value = async_link_create(qtype, async_instance_g, create_type, o, loc_params, lcpl_id, lapl_id, dxpl_id, req, arguments);
 
     return ret_value;
 } /* end H5VL_async_link_create() */
@@ -23937,6 +23843,7 @@ H5VL_async_link_get(void *obj, const H5VL_loc_params_t *loc_params,
 {
     H5VL_async_t *o = (H5VL_async_t *)obj;
     herr_t ret_value;
+    task_list_qtype qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL LINK Get\n");
@@ -23948,15 +23855,7 @@ H5VL_async_link_get(void *obj, const H5VL_loc_params_t *loc_params,
         return(-1);
     }
 
-    /* The operations for this callback don't support asynchronous execution
-     * yet, reset the request to NULL until they are ready.
-     */
-    if(req) {
-        *req = NULL;
-        req = NULL;
-    }
-
-    ret_value = async_link_get(async_instance_g, o, loc_params, get_type, dxpl_id, req, arguments);
+    ret_value = async_link_get(qtype, async_instance_g, o, loc_params, get_type, dxpl_id, req, arguments);
 
     return ret_value;
 } /* end H5VL_async_link_get() */
@@ -23978,20 +23877,13 @@ H5VL_async_link_specific(void *obj, const H5VL_loc_params_t *loc_params,
 {
     H5VL_async_t *o = (H5VL_async_t *)obj;
     herr_t ret_value;
+    task_list_qtype qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL LINK Specific\n");
 #endif
 
-    /* The operations for this callback don't support asynchronous execution
-     * yet, reset the request to NULL until they are ready.
-     */
-    if(req) {
-        *req = NULL;
-        req = NULL;
-    }
-
-    ret_value = async_link_specific(async_instance_g, o, loc_params, specific_type, dxpl_id, req, arguments);
+    ret_value = async_link_specific(qtype, async_instance_g, o, loc_params, specific_type, dxpl_id, req, arguments);
 
     return ret_value;
 } /* end H5VL_async_link_specific() */
@@ -24013,20 +23905,13 @@ H5VL_async_link_optional(void *obj, H5VL_link_optional_t opt_type,
 {
     H5VL_async_t *o = (H5VL_async_t *)obj;
     herr_t ret_value;
+    task_list_qtype qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL LINK Optional\n");
 #endif
 
-    /* The operations for this callback don't support asynchronous execution
-     * yet, reset the request to NULL until they are ready.
-     */
-    if(req) {
-        *req = NULL;
-        req = NULL;
-    }
-
-    ret_value = async_link_optional(async_instance_g, o, opt_type, dxpl_id, req, arguments);
+    ret_value = async_link_optional(qtype, async_instance_g, o, opt_type, dxpl_id, req, arguments);
 
     return ret_value;
 } /* end H5VL_async_link_optional() */
@@ -24048,20 +23933,13 @@ H5VL_async_object_open(void *obj, const H5VL_loc_params_t *loc_params,
 {
     H5VL_async_t *new_obj;
     H5VL_async_t *o = (H5VL_async_t *)obj;
+    task_list_qtype qtype = BLOCKING;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL OBJECT Open\n");
 #endif
 
-    /* The operations for this callback don't support asynchronous execution
-     * yet, reset the request to NULL until they are ready.
-     */
-    if(req) {
-        *req = NULL;
-        req = NULL;
-    }
-
-    new_obj = async_object_open(async_instance_g, o, loc_params, opened_type, dxpl_id, req);
+    new_obj = async_object_open(qtype, async_instance_g, o, loc_params, opened_type, dxpl_id, req);
 
     return (void *)new_obj;
 } /* end H5VL_async_object_open() */
@@ -24086,20 +23964,13 @@ H5VL_async_object_copy(void *src_obj, const H5VL_loc_params_t *src_loc_params,
     H5VL_async_t *o_src = (H5VL_async_t *)src_obj;
     H5VL_async_t *o_dst = (H5VL_async_t *)dst_obj;
     herr_t ret_value;
+    task_list_qtype qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL OBJECT Copy\n");
 #endif
 
-    /* The operations for this callback don't support asynchronous execution
-     * yet, reset the request to NULL until they are ready.
-     */
-    if(req) {
-        *req = NULL;
-        req = NULL;
-    }
-
-    if ((ret_value = async_object_copy(async_instance_g, o_src, src_loc_params, src_name, o_dst, dst_loc_params, dst_name, ocpypl_id, lcpl_id, dxpl_id, req)) < 0 )
+    if ((ret_value = async_object_copy(qtype, async_instance_g, o_src, src_loc_params, src_name, o_dst, dst_loc_params, dst_name, ocpypl_id, lcpl_id, dxpl_id, req)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_object_copy\n");
 
     return ret_value;
@@ -24121,19 +23992,13 @@ H5VL_async_object_get(void *obj, const H5VL_loc_params_t *loc_params, H5VL_objec
 {
     H5VL_async_t *o = (H5VL_async_t *)obj;
     herr_t ret_value;
+    task_list_qtype qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL OBJECT Get\n");
 #endif
 
-    /* The operations for this callback don't support asynchronous execution
-     * yet, reset the request to NULL until they are ready.
-     */
-    if(req) {
-        *req = NULL;
-        req = NULL;
-    }
-    if ((ret_value = async_object_get(async_instance_g, o, loc_params, get_type, dxpl_id, req, arguments)) < 0 )
+    if ((ret_value = async_object_get(qtype, async_instance_g, o, loc_params, get_type, dxpl_id, req, arguments)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_object_get\n");
 
     return ret_value;
@@ -24156,22 +24021,14 @@ H5VL_async_object_specific(void *obj, const H5VL_loc_params_t *loc_params,
                            va_list arguments)
 {
     H5VL_async_t *o = (H5VL_async_t *)obj;
-    /* hid_t under_vol_id; */
     herr_t ret_value;
+    task_list_qtype qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL OBJECT Specific\n");
 #endif
 
-    /* The operations for this callback don't support asynchronous execution
-     * yet, reset the request to NULL until they are ready.
-     */
-    if(req) {
-        *req = NULL;
-        req = NULL;
-    }
-
-    if ((ret_value = async_object_specific(async_instance_g, o, loc_params, specific_type, dxpl_id, req, arguments)) < 0 )
+    if ((ret_value = async_object_specific(qtype, async_instance_g, o, loc_params, specific_type, dxpl_id, req, arguments)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_object_specific\n");
 
     return ret_value;
@@ -24194,20 +24051,13 @@ H5VL_async_object_optional(void *obj, H5VL_object_optional_t opt_type,
 {
     H5VL_async_t *o = (H5VL_async_t *)obj;
     herr_t ret_value;
+    task_list_qtype qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL OBJECT Optional\n");
 #endif
 
-    /* The operations for this callback don't support asynchronous execution
-     * yet, reset the request to NULL until they are ready.
-     */
-    if(req) {
-        *req = NULL;
-        req = NULL;
-    }
-
-    if ((ret_value = async_object_optional(async_instance_g, o, opt_type, dxpl_id, req, arguments)) < 0 )
+    if ((ret_value = async_object_optional(qtype, async_instance_g, o, opt_type, dxpl_id, req, arguments)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_object_optional\n");
 
     return ret_value;
@@ -24282,7 +24132,6 @@ H5VL_async_introspect_opt_query(void *obj, H5VL_subclass_t cls,
 
     return ret_value;
 } /* end H5VL_async_introspect_opt_query() */
-/* ====REPLACE_END==== */
 
 
 /*-------------------------------------------------------------------------
@@ -24304,7 +24153,7 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
     herr_t ret_value = 0;
     clock_t start_time, now_time;
     double elapsed, trigger;
-    H5VL_async_t *async_obj;
+    H5VL_async_t *request;
     async_task_t *task;
     ABT_thread_state    state;
     hbool_t acquired = false;
@@ -24317,11 +24166,17 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
     printf("------- ASYNC VOL REQUEST Wait\n");
 #endif
 
-    async_obj = (H5VL_async_t*)obj;
-    task = async_obj->my_task;
+    request = (H5VL_async_t*)obj;
+    task = request->my_task;
     if (task == NULL) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object\n", __func__);
+        fprintf(stderr, "  [ASYNC VOL ERROR] %s task from request is invalid\n", __func__);
+        *status = H5VL_REQUEST_STATUS_FAIL;
         return -1;
+    }
+    else if (task->magic != TASK_MAGIC) {
+        // Task already completed and freed
+        *status = H5VL_REQUEST_STATUS_SUCCEED;
+        return ret_value;
     }
 
     async_instance_g->start_abt_push = true;
@@ -24337,28 +24192,31 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
 
     do {
         if (NULL == task->abt_thread) {
-            if (task->is_done == 1) {
+            if (task->is_done == 1 || task->magic != TASK_MAGIC) {
                 if(task->err_stack)
                     *status = H5VL_REQUEST_STATUS_FAIL;
                 else
                     *status = H5VL_REQUEST_STATUS_SUCCEED;
-                ret_value = 0;
                 goto done;
             }
         }
 
-        if (task->abt_thread) {
-            ABT_thread_get_state (task->abt_thread, &state);
-            if (ABT_THREAD_STATE_RUNNING == state || ABT_THREAD_STATE_READY == state) {
-                *status = H5VL_REQUEST_STATUS_IN_PROGRESS;
-                ret_value = 0;
+        if (timeout == H5ES_WAIT_FOREVER && task->eventual) {
+            ABT_eventual_wait(task->eventual, NULL);
+            *status = H5VL_REQUEST_STATUS_SUCCEED;
+            if(task->err_stack != 0) {
+                *status = H5VL_REQUEST_STATUS_FAIL;
+                goto done;
             }
-            else {
-                if(task->err_stack)
-                    *status = H5VL_REQUEST_STATUS_FAIL;
-                else
-                    *status = H5VL_REQUEST_STATUS_SUCCEED;
-                ret_value = 0;
+            goto done;
+        }
+        else if (task->abt_thread) {
+            ABT_thread_get_state (task->abt_thread, &state);
+            if (ABT_THREAD_STATE_TERMINATED != state) {
+                *status = H5VL_REQUEST_STATUS_IN_PROGRESS;
+            }
+            if(task->err_stack != 0) {
+                *status = H5VL_REQUEST_STATUS_FAIL;
                 goto done;
             }
         }
@@ -24371,7 +24229,7 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
     } while (elapsed < trigger) ;
 
     if (elapsed > timeout) {
-        printf("Timedout during wait (elapsed=%.1f, timeout=%.1f)\n", elapsed, trigger);
+        printf("HDF5 async VOL: timedout during wait (elapsed=%.1fs, timeout=%.1fs)\n", elapsed, trigger);
     }
 
 done:
@@ -24668,8 +24526,7 @@ H5VL_async_request_free(void *obj)
     // Free the file close task that is not previously freed
     if (o->my_task->func == async_file_close_fn) {
         free_async_task(o->my_task);
-        free(o->my_task);
-        free(o->file_async_obj);
+        H5VL_async_free_obj(o->file_async_obj);
     }
 
     H5VL_async_free_obj(o);
