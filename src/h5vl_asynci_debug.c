@@ -54,6 +54,18 @@ herr_t H5VL_asynci_handler_end (H5VL_asynci_debug_args *argp, hbool_t stat_resto
 		H5Eprint2 (H5E_DEFAULT, stdout);
 		DEBUG_ABORT
 	}
+
+	/* Clear task flag */
+	if (argp->target_obj) {
+		/* Acquire object lock */
+		H5VL_asynci_mutex_lock (argp->target_obj->lock);
+		if (argp->target_obj->prev_task == argp->task) {
+			argp->target_obj->prev_task = TW_HANDLE_NULL;
+		}
+		/* Release object lock */
+		H5VL_asynci_mutex_unlock (argp->target_obj->lock);
+	}
+
 err_out:;
 	return err;
 }
@@ -64,19 +76,10 @@ herr_t H5VL_asynci_handler_free (H5VL_asynci_debug_args *argp) {
 	/* Release global lock */
 	err = H5TSmutex_release ();
 	CHECK_ERR_EX ("H5TSmutex_release failed")
-	/* Free task */
-	if (argp->ret) {
-		*argp->ret = err;
-	} else {
-		int twerr;
-		twerr = TW_Task_free (argp->task);
-		if (twerr != TW_SUCCESS) {
-			char msg[256];
-			sprintf (msg, "TaskWorks: %s", TW_Get_err_msg (twerr));
-			PRINT_ERR_MSG (twerr, msg);
-			DEBUG_ABORT;
-		}
-	}
+
+	/* Record return val in request handle */
+	*argp->ret = err;
+
 	/* Free arguments */
 	free (argp);
 
@@ -107,7 +110,7 @@ err_out:;
 
 herr_t H5VL_asynci_cb_task_commit (H5VL_asynci_debug_args *argp,
 								   H5VL_async_req_t *reqp,
-								   H5VL_async_t *pp,
+								   H5VL_async_t *op,
 								   TW_Task_handle_t task) {
 	herr_t err = 0;
 	int twerr  = TW_SUCCESS;
@@ -116,35 +119,28 @@ herr_t H5VL_asynci_cb_task_commit (H5VL_asynci_debug_args *argp,
 	argp->task = task;
 	if (reqp) { reqp->task = task; }
 
-	if (pp) {
+	if (op) {
 		/* Acquire object lock */
-		H5VL_asynci_mutex_lock (pp->lock);
+		H5VL_asynci_mutex_lock (op->lock);
 		/* Check status */
-		if ((pp->stat == H5VL_async_stat_err) || (pp->stat == H5VL_async_stat_close)) {
-			H5VL_asynci_mutex_unlock (pp->lock);
+		if ((op->stat == H5VL_async_stat_err) || (op->stat == H5VL_async_stat_close)) {
+			H5VL_asynci_mutex_unlock (op->lock);
 			RET_ERR ("Parent object in wrong status");
 		}
-		/* Add dependency to init task */
-		if (pp->ntask) {
-			twerr = TW_Task_add_dep (task, pp->tasks[pp->ntask - 1]);
+		/* Add dependency to prev task */
+		if (op->prev_task != TW_HANDLE_NULL) {
+			twerr = TW_Task_add_dep (task, op->prev_task);
 			CHK_TWERR
 		}
-		/* Insert to task list */
-		if (pp->ntask == pp->ntask_alloc) {
-			TW_Task_handle_t *tmp;
+		/* Record current task */
+		op->prev_task = task;
 
-			tmp = (TW_Task_handle_t *)realloc (pp->tasks, pp->ntask_alloc << 1);
-			CHECK_PTR (tmp);
-			pp->ntask_alloc <<= 1;
-		}
-		pp->tasks[pp->ntask++] = task;
-
-		/* Increase reference count and commit task*/
-		H5VL_async_inc_ref (pp);
+		/* Commit task*/
+		// H5VL_async_inc_ref (op);
 		twerr = TW_Task_commit (task, H5VL_async_engine);
 		CHK_TWERR
 		/* Release object lock */
-		H5VL_asynci_mutex_unlock (pp->lock);
+		H5VL_asynci_mutex_unlock (op->lock);
 	} else {
 		twerr = TW_Task_commit (task, H5VL_async_engine);
 		CHK_TWERR
@@ -159,7 +155,7 @@ herr_t H5VL_asynci_cb_task_wait (void **req, TW_Task_handle_t task, herr_t *ret)
 	int twerr  = TW_SUCCESS;
 
 	/* Wait for task if the operation is sync */
-	if (req == NULL) {
+	if (!req) {
 		/* Release the lock so worker thread can acquire*/
 		H5TSmutex_release ();
 
@@ -169,44 +165,8 @@ herr_t H5VL_asynci_cb_task_wait (void **req, TW_Task_handle_t task, herr_t *ret)
 		err = H5VL_asynci_h5ts_mutex_lock ();
 		CHECK_ERR
 
-		twerr = TW_Task_free (task);
-		CHK_TWERR
-
-		err = *ret;
-		CHECK_ERR_EX ("Async operation failed")
-	}
-
-err_out:;
-	return err;
-}
-
-herr_t H5VL_asynci_cb_close_task_wait (void **req,
-									   H5VL_async_t *pp,
-									   TW_Task_handle_t task,
-									   herr_t *ret) {
-	herr_t err = 0;
-	int twerr  = TW_SUCCESS;
-
-	/* Wait for task if the operation is sync */
-	if (req == NULL) {
-		/* Release the lock so worker thread can acquire*/
-		H5TSmutex_release ();
-
-		while (pp->ref) {
-			twerr = TW_Engine_progress (H5VL_async_engine);
-			CHK_TWERR
-		}
-		twerr = TW_Task_commit (task, H5VL_async_engine);
-		CHK_TWERR
-
-		twerr = TW_Task_wait (task, TW_TIMEOUT_NEVER);
-		CHK_TWERR
-
-		err = H5VL_asynci_h5ts_mutex_lock ();
-		CHECK_ERR
-
-		twerr = TW_Task_free (task);
-		CHK_TWERR
+		// twerr = TW_Task_free (task);
+		// CHK_TWERR
 
 		err = *ret;
 		CHECK_ERR_EX ("Async operation failed")

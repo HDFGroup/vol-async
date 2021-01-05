@@ -54,13 +54,15 @@ typedef struct H5VL_async_t {
 	hid_t under_vol_id; /* ID for underlying VOL connector */
 	void *under_object; /* Info object for underlying VOL connector */
 	volatile H5VL_async_stat_t stat;
-	TW_Task_handle_t close_task;
-	TW_Task_handle_t *tasks;
-	int ntask, ntask_alloc;
+	TW_Task_handle_t prev_task;
+	// TW_Task_handle_t open_task;
+	// TW_Task_handle_t close_task;
+	// TW_Task_handle_t *tasks;
+	// int ntask, ntask_alloc;
 	// H5VL_asynci_vector_handle_t tasks;
 	H5VL_asynci_mutex_handle_t lock;
-	int ref;
-	int cnt;
+	// int ref;
+	// int cnt;
 	// struct H5VL_async_t *parent;
 } H5VL_async_t;
 
@@ -74,7 +76,7 @@ extern TW_Engine_handle_t H5VL_async_engine;
 /* Internal functions */
 H5VL_async_t *H5VL_async_new_obj ();
 herr_t H5VL_async_free_obj (H5VL_async_t *obj);
-herr_t H5VL_async_dec_ref (H5VL_async_t *obj);
+// herr_t H5VL_async_dec_ref (H5VL_async_t *obj);
 
 /* "Management" callbacks */
 herr_t H5VL_async_init (hid_t vipl_id);

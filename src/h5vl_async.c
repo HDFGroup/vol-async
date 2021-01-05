@@ -182,17 +182,18 @@ H5VL_async_t *H5VL_async_new_obj () {
 	new_obj		  = (H5VL_async_t *)calloc (1, sizeof (H5VL_async_t));
 	new_obj->stat = H5VL_async_stat_init;
 	// new_obj->tasks = NULL;
-	new_obj->ref = 0;
+	// new_obj->ref = 0;
 	// new_obj->tasks = H5VL_asynci_vector_create ();
 	// CHECK_PTR (new_obj->tasks)
 	new_obj->lock = H5VL_asynci_mutex_create ();
 	CHECK_PTR (new_obj->lock)
-	new_obj->tasks[0]	= TW_HANDLE_NULL;
-	new_obj->close_task = TW_HANDLE_NULL;
+	// new_obj->prev_task	= TW_HANDLE_NULL;
+	// new_obj->close_task = TW_HANDLE_NULL;
+	new_obj->prev_task = TW_HANDLE_NULL;
 
-	new_obj->ntask		 = 0;
-	new_obj->ntask_alloc = H5VL_ASYNC_OBJ_NTASK_INIT;
-	new_obj->tasks == (TW_Task_handle_t *)malloc (sizeof (TW_Task_handle_t));
+	// new_obj->ntask		 = 0;
+	// new_obj->ntask_alloc = H5VL_ASYNC_OBJ_NTASK_INIT;
+	// new_obj->tasks == (TW_Task_handle_t *)malloc (sizeof (TW_Task_handle_t));
 
 err_out:;
 	if (err) { free (new_obj); }
@@ -232,6 +233,7 @@ herr_t H5VL_async_free_obj (H5VL_async_t *obj) {
 	return 0;
 } /* end H5VL_async_free_obj() */
 
+/*
 herr_t H5VL_async_dec_ref (H5VL_async_t *obj) {
 	herr_t err	 = 0;
 	terr_t twerr = TW_SUCCESS;
@@ -247,6 +249,7 @@ herr_t H5VL_async_dec_ref (H5VL_async_t *obj) {
 err_out:;
 	return err;
 }
+*/
 
 /*-------------------------------------------------------------------------
  * Function:    H5VL_async_register

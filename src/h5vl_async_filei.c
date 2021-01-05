@@ -69,10 +69,10 @@ err_out:;
 
 	H5VL_ASYNC_HANDLER_END
 
-	/* Update reference count of parent obj*/
-	H5VL_asynci_mutex_lock (argp->pp->lock);
-	H5VL_async_dec_ref (argp->pp);
-	H5VL_asynci_mutex_unlock (argp->pp->lock);
+	/* Mark task as finished */
+	H5VL_asynci_mutex_lock (argp->op->lock);
+	if (argp->op->prev_task == argp->task) { argp->op->prev_task = TW_HANDLE_NULL; }
+	H5VL_asynci_mutex_unlock (argp->op->lock);
 
 	/* Close underlying FAPL */
 	H5Pclose (under_fapl_id);
@@ -134,10 +134,10 @@ err_out:;
 
 	H5VL_ASYNC_HANDLER_END
 
-	/* Update reference count of parent obj*/
-	H5VL_asynci_mutex_lock (argp->pp->lock);
-	H5VL_async_dec_ref (argp->pp);
-	H5VL_asynci_mutex_unlock (argp->pp->lock);
+	/* Mark task as finished */
+	H5VL_asynci_mutex_lock (argp->op->lock);
+	if (argp->op->prev_task == argp->task) { argp->op->prev_task = TW_HANDLE_NULL; }
+	H5VL_asynci_mutex_unlock (argp->op->lock);
 
 	/* Close underlying FAPL */
 	H5Pclose (under_fapl_id);
@@ -158,8 +158,8 @@ int H5VL_async_file_get_handler (void *data) {
 
 	H5VL_ASYNC_HANDLER_BEGIN
 
-	err = H5VLfile_get (argp->op->under_object, argp->op->under_vol_id, argp->get_type,
-						argp->dxpl_id, NULL, argp->arguments);
+	err = H5VLfile_get (argp->target_obj->under_object, argp->target_obj->under_vol_id,
+						argp->get_type, argp->dxpl_id, NULL, argp->arguments);
 	CHECK_ERR
 
 err_out:;
@@ -221,12 +221,12 @@ int H5VL_async_file_specific_handler (void *data) {
 		plist_id   = va_arg (argp->arguments, hid_t);
 
 		/* Keep the correct underlying VOL ID for possible async request token */
-		under_vol_id = argp->op->under_vol_id;
+		under_vol_id = argp->target_obj->under_vol_id;
 
 		/* Re-issue 'file specific' call, using the unwrapped pieces */
 		err = H5VL_async_file_specific_reissue (
-			argp->op->under_object, argp->op->under_vol_id, argp->specific_type, argp->dxpl_id,
-			NULL, (int)loc_type, name, child_file->under_object, plist_id);
+			argp->target_obj->under_object, argp->target_obj->under_vol_id, argp->specific_type,
+			argp->dxpl_id, NULL, (int)loc_type, name, child_file->under_object, plist_id);
 	} /* end if */
 	else if (argp->specific_type == H5VL_FILE_IS_ACCESSIBLE ||
 			 argp->specific_type == H5VL_FILE_DELETE) {
@@ -269,9 +269,9 @@ int H5VL_async_file_specific_handler (void *data) {
 		if (argp->specific_type == H5VL_FILE_REOPEN) va_copy (my_arguments, argp->arguments);
 
 		/* Keep the correct underlying VOL ID for possible async request token */
-		under_vol_id = argp->op->under_vol_id;
+		under_vol_id = argp->target_obj->under_vol_id;
 
-		err = H5VLfile_specific (argp->op->under_object, argp->op->under_vol_id,
+		err = H5VLfile_specific (argp->target_obj->under_object, argp->target_obj->under_vol_id,
 								 argp->specific_type, argp->dxpl_id, NULL, argp->arguments);
 
 		/* Wrap file struct pointer, if we reopened one */
@@ -279,7 +279,7 @@ int H5VL_async_file_specific_handler (void *data) {
 			if (err >= 0) {
 				void **ret = va_arg (my_arguments, void **);
 
-				if (ret && *ret) *ret = H5VL_async_new_obj (*ret, argp->op->under_vol_id);
+				if (ret && *ret) *ret = H5VL_async_new_obj (*ret, argp->target_obj->under_vol_id);
 			} /* end if */
 
 			/* Finish use of copied vararg list */
@@ -304,8 +304,8 @@ int H5VL_async_file_optional_handler (void *data) {
 
 	H5VL_ASYNC_HANDLER_BEGIN
 
-	err = H5VLfile_optional (argp->op->under_object, argp->op->under_vol_id, argp->opt_type,
-							 argp->dxpl_id, NULL, argp->arguments);
+	err = H5VLfile_optional (argp->target_obj->under_object, argp->target_obj->under_vol_id,
+							 argp->opt_type, argp->dxpl_id, NULL, argp->arguments);
 	CHECK_ERR
 
 err_out:;
@@ -325,13 +325,14 @@ int H5VL_async_file_close_handler (void *data) {
 
 	H5VL_ASYNC_HANDLER_BEGIN
 
-	err = H5VLfile_close (argp->op->under_object, argp->op->under_vol_id, argp->dxpl_id, NULL);
+	err = H5VLfile_close (argp->target_obj->under_object, argp->target_obj->under_vol_id,
+						  argp->dxpl_id, NULL);
 	CHECK_ERR
 
 err_out:;
 	H5VL_ASYNC_HANDLER_END
 
-	err = H5VL_async_free_obj (argp->op);
+	err = H5VL_async_free_obj (argp->target_obj);
 	CHECK_ERR2
 	H5Pclose (argp->dxpl_id);
 	H5VL_ASYNC_HANDLER_FREE
