@@ -3,10 +3,10 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include "hdf5.h"
-#include "h5_vol_external_async_native.h"
+//#include "h5_async_lib.h"
 
 /* #define DIMLEN 10 */
-#define DIMLEN 8192
+#define DIMLEN 1024
 
 int print_dbg_msg = 1;
 
@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     herr_t     status;
     hid_t      async_fapl;
     
-    int ifile, nfile = 5, sleeptime = 2;
+    int ifile, nfile = 3, sleeptime = 1;
 
     fpath = ".";
     if (argc >= 2) 
@@ -47,7 +47,6 @@ int main(int argc, char *argv[])
     async_fapl = H5Pcreate (H5P_FILE_ACCESS);
     async_dxpl = H5Pcreate (H5P_DATASET_XFER);
     H5Pset_vol_async(async_fapl);
-    H5Pset_dxpl_async(async_dxpl, true);
 
     gettimeofday(&ts, 0);
     for (ifile = 0; ifile < nfile; ifile++) {
@@ -148,7 +147,6 @@ int main(int argc, char *argv[])
     H5Pclose(async_dxpl);
 
     gettimeofday(&t1, 0);
-    H5VLasync_finalize();
 
     gettimeofday(&te, 0);
     e1 = ((te.tv_sec-ts.tv_sec)*1000000 + te.tv_usec-ts.tv_usec)/1000000.0;

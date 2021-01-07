@@ -23,6 +23,7 @@
 
 #include "h5vl_asynci_mutex.h"
 
+static int LOCK_COUNT_GLOBAL = 1;
 #define H5VL_ASYNC_UNUSED		__attribute__ ((unused))
 #define H5VL_ASYNC_FALL_THROUGH __attribute__ ((fallthrough));
 

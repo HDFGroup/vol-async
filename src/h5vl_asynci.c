@@ -35,11 +35,11 @@ herr_t H5VL_asynci_h5ts_mutex_lock () {
 	herr_t err = 0;
 	hbool_t locked;
 
-	err = H5TSmutex_acquire (&locked);
+	err = H5TSmutex_acquire (LOCK_COUNT_GLOBAL, &locked);
 	CHECK_ERR
 	while (!locked) {
 		H5VL_asynci_sleep (H5VL_ASYNC_LOCK_POLL_PEROID);
-		err = H5TSmutex_acquire (&locked);
+		err = H5TSmutex_acquire (LOCK_COUNT_GLOBAL, &locked);
 		CHECK_ERR
 	}
 

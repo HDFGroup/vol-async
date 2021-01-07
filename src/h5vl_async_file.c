@@ -228,7 +228,7 @@ herr_t H5VL_async_file_specific (
 	printf ("------- ASYNC VOL FILE Specific\n");
 #endif
 
-	if (specific_type == H5VL_FILE_WAIT) { return (H5VL_asynci_obj_wait (file)); }
+	//if (specific_type == H5VL_FILE_WAIT) { return (H5VL_asynci_obj_wait (file)); }
 
 	argp = (H5VL_async_file_specific_args *)malloc (sizeof (H5VL_async_file_specific_args));
 	CHECK_PTR (argp)

@@ -1,11 +1,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "hdf5.h"
-#include "h5_vol_external_async_native.h"
+//#include "h5_async_lib.h"
 
-#define DIMLEN 8192
+#define DIMLEN 1024
 
 int print_dbg_msg = 1;
+
+static int
+link_iterate_cb(hid_t group_id, const char *link_name, const H5L_info2_t *info, void *_op_data)
+{
+    int *nlink = (int *)_op_data;
+
+    ++(*nlink);
+    printf("nlink = %d, link_name = %s\n", *nlink, link_name);
+
+    return H5_ITER_CONT;
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -15,15 +27,16 @@ int main(int argc, char *argv[])
     int        *data0_write, *data0_read, *data1_write, *data1_read, attr_data0, attr_data1, attr_read_data0=0, attr_read_data1=0;
     int        i, ret = 0;
     hsize_t    ds_size[2] = {DIMLEN, DIMLEN};
+    hsize_t idx = 0;
+    int nlink = 0;
     herr_t     status;
     hid_t      async_fapl;
     int        sleeptime = 100;
-    
+
     async_fapl = H5Pcreate (H5P_FILE_ACCESS);
     async_dxpl = H5Pcreate (H5P_DATASET_XFER);
-    
+
     H5Pset_vol_async(async_fapl);
-    H5Pset_dxpl_async(async_dxpl, true);
 
     if (print_dbg_msg) printf("H5Fcreate start\n");
     fflush(stdout);
@@ -88,21 +101,31 @@ int main(int argc, char *argv[])
 
     attr0 = H5Acreate(dset0_id, "attr_0", H5T_NATIVE_INT, attr_space, H5P_DEFAULT, H5P_DEFAULT);
     attr1 = H5Acreate(dset1_id, "attr_1", H5T_NATIVE_INT, attr_space, H5P_DEFAULT, H5P_DEFAULT);
+    if (print_dbg_msg) printf("H5Acreate 0 & 1 done\n");
+    fflush(stdout);
 
     attr_data0 = 123456;
     attr_data1 = -654321;
     H5Awrite(attr0, H5T_NATIVE_INT, &attr_data0);
     H5Awrite(attr1, H5T_NATIVE_INT, &attr_data1);
+    if (print_dbg_msg) printf("H5Awrite 0 & 1 done\n");
+    fflush(stdout);
 
     H5Aread(attr0, H5T_NATIVE_INT, &attr_read_data0);
+    if (print_dbg_msg) printf("H5Aread 0 done\n");
+    fflush(stdout);
     H5Aread(attr1, H5T_NATIVE_INT, &attr_read_data1);
+    if (print_dbg_msg) printf("H5Aread 1 done\n");
+    fflush(stdout);
 
     H5Aclose(attr0);
     H5Aclose(attr1);
+    if (print_dbg_msg) printf("H5Aclose 0 & 1 done\n");
+    fflush(stdout);
 
     H5Sclose(attr_space);
 
-    H5Fwait(file_id);
+    H5Fwait(file_id, H5P_DEFAULT);
     if (attr_data0 != attr_read_data0) {
         fprintf(stderr, "Error with attr 0 read\n");
         ret = -1;
@@ -143,7 +166,7 @@ int main(int argc, char *argv[])
 
     if (print_dbg_msg) printf("Start H5Dwait\n");
     fflush(stdout);
-    H5Dwait(dset0_id);
+    H5Dwait(dset0_id, H5P_DEFAULT);
     if (print_dbg_msg) printf("Done H5Dwait\n");
     fflush(stdout);
     // Verify read data
@@ -182,7 +205,7 @@ int main(int argc, char *argv[])
 
     if (print_dbg_msg) printf("Start H5Dwait\n");
     fflush(stdout);
-    H5Dwait(dset1_id);
+    H5Dwait(dset1_id, H5P_DEFAULT);
     if (print_dbg_msg) printf("Done H5Dwait\n");
     fflush(stdout);
     // Verify read data
@@ -214,8 +237,6 @@ int main(int argc, char *argv[])
     fflush(stdout);
     /* usleep(sleeptime); */
 
-    H5Pset_dxpl_async_cp_limit(async_dxpl, 0);
-
     if (print_dbg_msg) printf("H5Dwrite 0 start\n");
     fflush(stdout);
     status = H5Dwrite(dset0_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, async_dxpl, data0_write);
@@ -242,7 +263,7 @@ int main(int argc, char *argv[])
 
     if (print_dbg_msg) printf("Start H5Dwait\n");
     fflush(stdout);
-    H5Dwait(dset0_id);
+    H5Dwait(dset0_id, H5P_DEFAULT);
     if (print_dbg_msg) printf("Done H5Dwait\n");
     fflush(stdout);
     // Verify read data
@@ -271,7 +292,7 @@ int main(int argc, char *argv[])
 
     if (print_dbg_msg) printf("Start H5Dwait\n");
     fflush(stdout);
-    H5Dwait(dset1_id);
+    H5Dwait(dset1_id, H5P_DEFAULT);
     if (print_dbg_msg) printf("Done H5Dwait\n");
     fflush(stdout);
     // Verify read data
@@ -284,6 +305,15 @@ int main(int argc, char *argv[])
         }
     }
     printf("Finished verification\n");
+
+
+    status =  H5Literate2(grp_id, H5_INDEX_NAME, H5_ITER_INC, &idx, link_iterate_cb, &nlink);
+    if (status < 0) {
+        fprintf(stderr, "Error with H5Literate\n");
+        ret = -1;
+        goto done;
+    }
+    printf("Finished iteration\n");
 
     /* H5Fwait(file_id); */
 
@@ -305,6 +335,5 @@ done:
     if (data1_read != NULL) 
         free(data1_read);
 
-    H5VLasync_finalize();
     return ret;
 }

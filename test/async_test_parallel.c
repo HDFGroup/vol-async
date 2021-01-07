@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include "hdf5.h"
 #include "mpi.h"
-#include "h5_vol_external_async_native.h"
+//#include "h5_async_lib.h"
 
 #define DIMLEN 10
 /* #define DIMLEN 1024 */
@@ -65,7 +65,6 @@ int main(int argc, char *argv[])
 
     // Set collective operation
     dxpl_id = H5Pcreate(H5P_DATASET_XFER);
-    H5Pset_dxpl_async(dxpl_id, true);
     H5Pset_dxpl_mpio(dxpl_id, H5FD_MPIO_COLLECTIVE);
 
     mspace_id = H5Screate_simple(2, my_size, NULL);
@@ -108,7 +107,7 @@ int main(int argc, char *argv[])
     }
 
     // Verify read data
-    H5Dwait(dset0_id);
+    H5Dwait(dset0_id, H5P_DEFAULT);
     is_verified = 1;
     for(i = 0; i < DIMLEN*DIMLEN; ++i) {
         if (data0_read[i] != i) {
@@ -138,7 +137,7 @@ int main(int argc, char *argv[])
     }
 
     // Verify read data
-    H5Dwait(dset1_id);
+    H5Dwait(dset1_id, H5P_DEFAULT);
     is_verified = 1;
     for(i = 0; i < DIMLEN*DIMLEN; ++i) {
         if (data1_read[i] != 2*i) {
@@ -183,7 +182,7 @@ int main(int argc, char *argv[])
     }
 
     // Verify read data
-    H5Dwait(dset0_id);
+    H5Dwait(dset0_id, H5P_DEFAULT);
     is_verified = 1;
     for(i = 0; i < DIMLEN*DIMLEN; ++i) {
         if (data0_read[i] != -i) {
@@ -203,7 +202,7 @@ int main(int argc, char *argv[])
         ret = -1;
         goto done;
     }
-    H5Dwait(dset1_id);
+    H5Dwait(dset1_id, H5P_DEFAULT);
     // Verify read data
     is_verified = 1;
     for(i = 0; i < DIMLEN*DIMLEN; ++i) {
@@ -227,8 +226,6 @@ int main(int argc, char *argv[])
 done:
     /* H5Fwait(file_id); */
     H5Fclose(file_id);
-
-    H5VLasync_finalize();
 
     if (data0_write != NULL) 
         free(data0_write);

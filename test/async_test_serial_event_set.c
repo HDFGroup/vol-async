@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include "hdf5.h"
-#include "h5_vol_external_async_native.h"
+//#include "h5_async_lib.h"
 
-#define DIMLEN 8192
+#define DIMLEN 1024
 
 int print_dbg_msg = 1;
 
@@ -18,17 +18,17 @@ int main(int argc, char *argv[])
     hsize_t    ds_size[2] = {DIMLEN, DIMLEN};
     herr_t     status;
     hid_t      async_fapl;
-    
+
     async_fapl = H5Pcreate (H5P_FILE_ACCESS);
     async_dxpl = H5Pcreate (H5P_DATASET_XFER);
-    
-    H5Pset_vol_async(async_fapl);
-    H5Pset_dxpl_async(async_dxpl, true);
+
+//    H5Pset_vol_async(async_fapl);
 
     if (print_dbg_msg) printf("H5Fcreate start\n");
     fflush(stdout);
 
-    H5ES_status_t es_status;
+    hbool_t op_failed;
+    size_t num_in_progress;
     hid_t es_id = H5EScreate();
 
     file_id = H5Fcreate_async(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, async_fapl, es_id);
@@ -92,35 +92,35 @@ int main(int argc, char *argv[])
     fflush(stdout);
 
     // attribute async API have not been fully implemented, skip the test for now
-    /* attr0 = H5Acreate(dset0_id, "attr_0", H5T_NATIVE_INT, attr_space, H5P_DEFAULT, H5P_DEFAULT); */
-    /* attr1 = H5Acreate(dset1_id, "attr_1", H5T_NATIVE_INT, attr_space, H5P_DEFAULT, H5P_DEFAULT); */
+    attr0 = H5Acreate(dset0_id, "attr_0", H5T_NATIVE_INT, attr_space, H5P_DEFAULT, H5P_DEFAULT);
+    attr1 = H5Acreate(dset1_id, "attr_1", H5T_NATIVE_INT, attr_space, H5P_DEFAULT, H5P_DEFAULT);
 
-    /* attr_data0 = 123456; */
-    /* attr_data1 = -654321; */
-    /* H5Awrite(attr0, H5T_NATIVE_INT, &attr_data0); */
-    /* H5Awrite(attr1, H5T_NATIVE_INT, &attr_data1); */
+    attr_data0 = 123456;
+    attr_data1 = -654321;
+    H5Awrite(attr0, H5T_NATIVE_INT, &attr_data0);
+    H5Awrite(attr1, H5T_NATIVE_INT, &attr_data1);
 
-    /* H5Aread(attr0, H5T_NATIVE_INT, &attr_read_data0); */
-    /* H5Aread(attr1, H5T_NATIVE_INT, &attr_read_data1); */
+    H5Aread(attr0, H5T_NATIVE_INT, &attr_read_data0);
+    H5Aread(attr1, H5T_NATIVE_INT, &attr_read_data1);
 
-    /* H5Aclose(attr0); */
-    /* H5Aclose(attr1); */
+    H5Aclose(attr0);
+    H5Aclose(attr1);
 
-    /* H5Sclose(attr_space); */
+    H5Sclose(attr_space);
 
-    /* H5Fwait(file_id); */
+    H5Fwait(file_id, H5P_DEFAULT);
 
-    /* if (attr_data0 != attr_read_data0) { */
-    /*     fprintf(stderr, "Error with attr 0 read\n"); */
-    /*     ret = -1; */
-    /*     goto done; */
-    /* } */
-    /* if (attr_data1 != attr_read_data1) { */
-    /*     fprintf(stderr, "Error with attr 1 read\n"); */
-    /*     ret = -1; */
-    /*     goto done; */
-    /* } */
-    /* if (print_dbg_msg) printf("H5Aread done\n"); */
+    if (attr_data0 != attr_read_data0) {
+        fprintf(stderr, "Error with attr 0 read\n");
+        ret = -1;
+        goto done;
+    }
+    if (attr_data1 != attr_read_data1) {
+        fprintf(stderr, "Error with attr 1 read\n");
+        ret = -1;
+        goto done;
+    }
+    if (print_dbg_msg) printf("H5Aread done\n");
 
 
     // W0, R0, W1, R1, W1', W0', R0', R1'
@@ -153,7 +153,7 @@ int main(int argc, char *argv[])
     /* fflush(stdout); */
 
     if (print_dbg_msg) printf("H5ESwait start\n");
-    status = H5ESwait(es_id, 10000000000, &es_status);
+    status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
     if (status < 0) {
         fprintf(stderr, "Error with H5ESwait\n");
         ret = -1;
@@ -193,7 +193,7 @@ int main(int argc, char *argv[])
     fflush(stdout);
 
     if (print_dbg_msg) printf("H5ESwait start\n");
-    status = H5ESwait(es_id, 10000000000, &es_status);
+    status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
     if (status < 0) {
         fprintf(stderr, "Error with H5ESwait\n");
         ret = -1;
@@ -229,8 +229,6 @@ int main(int argc, char *argv[])
     if (print_dbg_msg) printf("H5Dwrite 1 done\n");
     fflush(stdout);
 
-    H5Pset_dxpl_async_cp_limit(async_dxpl, 0);
-
     if (print_dbg_msg) printf("H5Dwrite 0 start\n");
     fflush(stdout);
     status = H5Dwrite_async(dset0_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, async_dxpl, data0_write, es_id);
@@ -254,7 +252,7 @@ int main(int argc, char *argv[])
     fflush(stdout);
 
     if (print_dbg_msg) printf("H5ESwait start\n");
-    status = H5ESwait(es_id, 10000000000, &es_status);
+    status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
     if (status < 0) {
         fprintf(stderr, "Error with H5ESwait\n");
         ret = -1;
@@ -285,7 +283,7 @@ int main(int argc, char *argv[])
     fflush(stdout);
 
     if (print_dbg_msg) printf("H5ESwait start\n");
-    status = H5ESwait(es_id, 10000000000, &es_status);
+    status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
     if (status < 0) {
         fprintf(stderr, "Error with H5ESwait\n");
         ret = -1;
@@ -326,6 +324,5 @@ done:
     if (data1_read != NULL) 
         free(data1_read);
 
-    H5VLasync_finalize();
     return ret;
 }

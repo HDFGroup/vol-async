@@ -28,6 +28,12 @@ herr_t H5Pset_dxpl_async_cp_limit (hid_t dxpl, hsize_t size);
 void H5VLasync_waitall ();
 void H5VLasync_finalize ();
 
+#define H5VL_ASYNC_DYN_DATASET_WAIT     "gov.lbl.async.dataset.wait"
+#define H5VL_ASYNC_DYN_FILE_WAIT        "gov.lbl.async.file.wait"
+
+static int async_setup(void);
+herr_t H5Fwait(hid_t file_id, hid_t dxpl_id);
+herr_t H5Dwait(hid_t dset_id, hid_t dxpl_id);
 #ifdef __cplusplus
 }
 #endif

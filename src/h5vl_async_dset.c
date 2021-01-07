@@ -391,7 +391,7 @@ herr_t H5VL_async_dataset_specific (void *obj,
 		RET_ERR ("target_obj object in wrong status");
 	}
 
-	if (specific_type == H5VL_DATASET_WAIT) { return (H5VL_asynci_obj_wait (obj)); }
+	//if (specific_type == H5VL_DATASET_WAIT) { return (H5VL_asynci_obj_wait (obj)); }
 
 	argp = (H5VL_async_dataset_specific_args *)malloc (sizeof (H5VL_async_dataset_specific_args));
 	CHECK_PTR (argp)

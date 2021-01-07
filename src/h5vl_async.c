@@ -39,6 +39,7 @@ const H5VL_class_t H5VL_async_g = {
 	H5VL_ASYNC_VERSION,					  /* version      */
 	(H5VL_class_value_t)H5VL_ASYNC_VALUE, /* value        */
 	H5VL_ASYNC_NAME,					  /* name         */
+	H5VL_ASYNC_VERSION,                   /* version      */
 	0,									  /* capability flags */
 	H5VL_async_init,					  /* initialize   */
 	H5VL_async_term,					  /* terminate    */

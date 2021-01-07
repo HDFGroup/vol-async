@@ -74,7 +74,7 @@ herr_t H5VL_asynci_handler_free (H5VL_asynci_debug_args *argp) {
 	herr_t err = 0;
 
 	/* Release global lock */
-	err = H5TSmutex_release ();
+	err = H5TSmutex_release (&LOCK_COUNT_GLOBAL);
 	CHECK_ERR_EX ("H5TSmutex_release failed")
 
 	/* Record return val in request handle */
@@ -157,7 +157,7 @@ herr_t H5VL_asynci_cb_task_wait (void **req, TW_Task_handle_t task, herr_t *ret)
 	/* Wait for task if the operation is sync */
 	if (!req) {
 		/* Release the lock so worker thread can acquire*/
-		H5TSmutex_release ();
+		H5TSmutex_release (&LOCK_COUNT_GLOBAL);
 
 		twerr = TW_Task_wait (task, TW_TIMEOUT_NEVER);
 		CHK_TWERR
