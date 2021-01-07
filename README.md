@@ -6,54 +6,45 @@ Asynchronous I/O is becoming increasingly popular with the large amount of data 
 
 Some configuration parameters used in the instructions:
 
-        VOL_DIR               : directory of unpacked Asynchronous I/O VOL connector source code
-        ABT_DIR               : directory of unpacked Argobots source code
+        VOL_DIR               : directory of HDF5 Asynchronous I/O VOL connector source code
+        ABT_DIR               : directory of Argobots source code
         H5_DIR                : directory of HDF5 source code
 
 1, Preparation
 
-    1.1 Download the Asynchronous I/O VOL connector code (this repository)
+    1.1 Download the Asynchronous I/O VOL connector code (this repository) with Argobots git submodule 
 
-       > git clone https://bitbucket.hdfgroup.org/scm/hdf5vol/async.git 
+       > git clone --recursive https://github.com/hpc-io/vol-async.git
+       > Argobots can also be downloaded separately from https://github.com/pmodels/argobots
 
-    1.2 Download the Argobots code
+    1.2 Download the HDF5 code (hpc-io HDF5 async_vol_register_optional branch has the latest async-related features, they will be merged to the main HDF5 repo later)
 
-       > wget https://github.com/pmodels/argobots/releases/download/v1.0/argobots-1.0.tar.gz
-       > tar xf argobots-1.0.tar.gz
-
-    1.3 Download the HDF5 code 
-
-       > git clone https://github.com/HDFGroup/hdf5.git
-
-    1.4 (optional) automake/autoconf may be needed on NERSC machines, if there are any "configuration errors", do the following:
-
-       > module load automake
-       > module load autoconf
+       > git clone https://github.com/hpc-io/hdf5.git
 
 2, Installation
 
-    2.1 Compile HDF5 ( need to switch to the "async" branch )
+    2.1 Compile HDF5 ( need to switch to the "async_vol_register_optional" branch )
 
-        > cd H5_DIR && git checkout async
-        > ./autogen.sh  (may skip this step if ./configure exists)
-        > CC=cc ./configure --prefix=H5_DIR/build --enable-parallel --enable-threadsafe --enable-unsupported
+        > cd $H5_DIR && git checkout async_vol_register_optional
+        > ./autogen.sh  (may skip this step if the configure file exists)
+        > ./configure --prefix=$H5_DIR/install --enable-parallel --enable-threadsafe --enable-unsupported (may need to add CC=cc or CC=mpicc)
         > make install
 
     2.2 Compile Argobots
 
-        >  cd ABT_DIR
-        >  ./autogen.sh  (may skip this step if ./configure exists)
-        >  CC=cc ./configure --prefix=ABT_DIR/build 
-        >  make install
+        > cd $ABT_DIR
+        > ./autogen.sh  (may skip this step if the configure file exists)
+        > CC=cc ./configure --prefix=ABT_DIR/build 
+        > make install
         
     2.3 Compile Asynchronous VOL connector
-        > cd VOL_DIR
+        > cd $VOL_DIR
         > Edit "Makefile" by updating H5_DIR and ABT_DIR to the previously installed locations
         > make
 
 3, Test
 
-    > cd VOL_DIR/test
+    > cd $VOL_DIR/test
     > Edit "Makefile" by updating H5_DIR and ABT_DIR to the previously installed locations
     > make
 
@@ -67,23 +58,25 @@ Some configuration parameters used in the instructions:
 
     May need to set the following environmental variable before running your application, e.g.:
 
-        > export LD_LIBRARY_PATH=VOL_DIR/src:H5_DIR/build/lib:$LD_LIBRARY_PATH
+        > export LD_LIBRARY_PATH=$VOL_DIR/src:$H5_DIR/build/lib:$LD_LIBRARY_PATH
+        > export HDF5_PLUGIN_PATH="$VOL_DIR"
 
     and on MacOS:
 
-        > export DYLD_LIBRARY_PATH=VOL_DIR/src:H5_DIR/build/lib:$DYLD_LIBRARY_PATH
+        > export DYLD_LIBRARY_PATH=$VOL_DIR/src:$H5_DIR/build/lib:$DYLD_LIBRARY_PATH
+        > export HDF5_PLUGIN_PATH="$VOL_DIR"
 
 4, Using the Asynchronous I/O VOL connector with application code (Implicit mode with environmental variable)
 
     The implicit mode allows an application to enable asynchronous I/O VOL connector through setting the following environemental variables and without any application code modification. By default, the HDF5 metadata operations are executed asynchronously, and the dataset operations are executed synchronously unless a cache VOL connector is used.
 
         > export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
-        > export HDF5_PLUGIN_PATH="VOL_DIR"
+        > export HDF5_PLUGIN_PATH="$VOL_DIR"
         > Run your application
 
 5, Using the Asynchronous I/O VOL connector with application code (Explicit mode)
 
-    Please refer to the Makefile and source code (async_test_serial_event_set*) under VOL_DIR/test/ for example usage.
+    Please refer to the Makefile and source code (async_test_serial_event_set*) under $VOL_DIR/test/ for example usage.
 
     5.1 Include header file
 
@@ -112,4 +105,8 @@ Some configuration parameters used in the instructions:
         > H5free_memory(err_info.api_args);
         > H5free_memory(err_info.app_file_name);
         > H5free_memory(err_info.app_func_name);
-
+        
+    5.4 Run with async
+        > export HDF5_PLUGIN_PATH="$VOL_DIR"
+        > Run your application
+        
