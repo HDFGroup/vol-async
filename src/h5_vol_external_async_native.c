@@ -54,8 +54,8 @@
 
 /* Whether to display log messge when callback is invoked */
 /* (Uncomment to enable) */
-#define ENABLE_LOG                  1
-#define ENABLE_DBG_MSG              1
+/* #define ENABLE_LOG                  1 */
+/* #define ENABLE_DBG_MSG              1 */
 /* #define ENABLE_TIMING               1 */
 /* #define PRINT_ERROR_STACK           1 */
 /* #define ENABLE_ASYNC_LOGGING */
@@ -2572,7 +2572,7 @@ async_attr_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_lo
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -3024,7 +3024,7 @@ async_attr_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -3899,7 +3899,7 @@ async_attr_write(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -4329,7 +4329,7 @@ async_attr_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -4762,7 +4762,7 @@ async_attr_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -5192,7 +5192,7 @@ async_attr_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -5620,7 +5620,7 @@ async_attr_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *par
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -6091,7 +6091,7 @@ async_dataset_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -6543,7 +6543,7 @@ async_dataset_open(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *p
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -6980,7 +6980,7 @@ async_dataset_read(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_ty
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -7428,7 +7428,7 @@ async_dataset_write(async_instance_t* aid, H5VL_async_t *parent_obj,
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -7860,7 +7860,7 @@ async_dataset_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -8290,7 +8290,7 @@ async_dataset_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -8720,7 +8720,7 @@ async_dataset_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -9148,7 +9148,7 @@ async_dataset_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -9614,7 +9614,7 @@ async_datatype_commit(async_instance_t* aid, H5VL_async_t *parent_obj, const H5V
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -10066,7 +10066,7 @@ async_datatype_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -10496,7 +10496,7 @@ async_datatype_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *p
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -10926,7 +10926,7 @@ async_datatype_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -11356,7 +11356,7 @@ async_datatype_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -11781,7 +11781,7 @@ async_datatype_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -13134,7 +13134,7 @@ async_file_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -13564,7 +13564,7 @@ async_file_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -13995,7 +13995,7 @@ async_file_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -14457,7 +14457,7 @@ async_file_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *par
     parent_obj->close_task = async_task;
 
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -14919,7 +14919,7 @@ async_group_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_l
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -15371,7 +15371,7 @@ async_group_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -15801,7 +15801,7 @@ async_group_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pare
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -16231,7 +16231,7 @@ async_group_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -16661,7 +16661,7 @@ async_group_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -17559,7 +17559,7 @@ async_link_create(task_list_qtype qtype, async_instance_t* aid, H5VL_link_create
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -17997,7 +17997,7 @@ async_link_copy(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -18435,7 +18435,7 @@ async_link_move(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -18868,7 +18868,7 @@ async_link_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -19304,7 +19304,7 @@ async_link_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -19734,7 +19734,7 @@ async_link_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -20183,7 +20183,7 @@ async_object_open(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -20629,7 +20629,7 @@ async_object_copy(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -21503,7 +21503,7 @@ async_object_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
@@ -21933,7 +21933,7 @@ async_object_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
-    if (parent_obj->is_obj_valid != 1) {
+    if (NULL == parent_obj->under_object) {
         if (NULL != parent_obj->create_task) {
             add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
