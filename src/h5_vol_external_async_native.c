@@ -2608,7 +2608,7 @@ async_attr_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_lo
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -3060,7 +3060,7 @@ async_attr_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -3491,7 +3491,7 @@ async_attr_read(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type_
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -3935,7 +3935,7 @@ async_attr_write(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -4365,7 +4365,7 @@ async_attr_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -4560,17 +4560,19 @@ async_attr_specific_fn(void *foo)
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
-    while (1) {
-        if (ABT_mutex_trylock(task->async_obj->obj_mutex) == ABT_SUCCESS) {
-            break;
+    if (args->specific_type != H5VL_ATTR_ITER) {
+        while (1) {
+            if (ABT_mutex_trylock(task->async_obj->obj_mutex) == ABT_SUCCESS) {
+                is_lock = 1;
+                break;
+            }
+            else {
+                fprintf(stderr,"  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+                break;
+            }
+            usleep(1000);
         }
-        else {
-            fprintf(stderr,"  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
-            break;
-        }
-        usleep(1000);
     }
-    is_lock = 1;
 
     // Restore previous library state
     assert(task->h5_state);
@@ -4798,7 +4800,7 @@ async_attr_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -5228,7 +5230,7 @@ async_attr_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -5663,7 +5665,7 @@ async_attr_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *par
     aid->start_abt_push = true;
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -6127,7 +6129,7 @@ async_dataset_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -7017,7 +7019,7 @@ async_dataset_read(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_ty
     }
 
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -7465,7 +7467,7 @@ async_dataset_write(async_instance_t* aid, H5VL_async_t *parent_obj,
     }
 
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -8326,7 +8328,7 @@ async_dataset_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -8756,7 +8758,7 @@ async_dataset_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -9650,7 +9652,7 @@ async_datatype_commit(async_instance_t* aid, H5VL_async_t *parent_obj, const H5V
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -10102,7 +10104,7 @@ async_datatype_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -10532,7 +10534,7 @@ async_datatype_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *p
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -10962,7 +10964,7 @@ async_datatype_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -11392,7 +11394,7 @@ async_datatype_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -11824,7 +11826,7 @@ async_datatype_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
     aid->start_abt_push = true;
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -12280,7 +12282,7 @@ async_file_create(async_instance_t* aid, const char *name, unsigned flags, hid_t
         push_task_to_abt_pool(&aid->qhead, aid->pool);
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -12739,7 +12741,7 @@ async_file_open(task_list_qtype qtype, async_instance_t* aid, const char *name, 
         push_task_to_abt_pool(&aid->qhead, aid->pool);
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -13170,7 +13172,7 @@ async_file_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -13600,7 +13602,7 @@ async_file_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -14028,7 +14030,7 @@ async_file_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
         push_task_to_abt_pool(&aid->qhead, aid->pool);
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -14497,7 +14499,7 @@ wait:
     aid->start_abt_push = true;
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -14955,7 +14957,7 @@ async_group_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_l
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -15407,7 +15409,7 @@ async_group_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -15837,7 +15839,7 @@ async_group_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pare
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -16267,7 +16269,7 @@ async_group_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -16697,7 +16699,7 @@ async_group_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -17595,7 +17597,7 @@ async_link_create(task_list_qtype qtype, async_instance_t* aid, H5VL_link_create
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -18033,7 +18035,7 @@ async_link_copy(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -18471,7 +18473,7 @@ async_link_move(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -18904,7 +18906,7 @@ async_link_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -19340,7 +19342,7 @@ async_link_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -19770,7 +19772,7 @@ async_link_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -20665,7 +20667,7 @@ async_object_copy(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -21106,7 +21108,7 @@ async_object_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *par
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -21539,7 +21541,7 @@ async_object_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
@@ -21969,7 +21971,7 @@ async_object_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t
 
     /* Wait if blocking is needed */
     if (is_blocking) {
-        if (get_n_running_task_in_queue(async_task) == 0)
+        if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
 
         if (H5TSmutex_release(&mutex_count) < 0) {
