@@ -35,8 +35,8 @@
 /*******************/
 
 /* async VOL connector class struct */
-const H5VL_class_t H5VL_async_g = {
-	H5VL_ASYNC_VERSION,					  /* version      */
+static const H5VL_class_t H5VL_async_g = {
+	H5VL_VERSION,	
 	(H5VL_class_value_t)H5VL_ASYNC_VALUE, /* value        */
 	H5VL_ASYNC_NAME,					  /* name         */
 	H5VL_ASYNC_VERSION,                   /* version      */
@@ -162,6 +162,13 @@ hid_t H5VL_ASYNC_g = H5I_INVALID_HID;
 /* Engine to run task */
 TW_Engine_handle_t H5VL_async_engine;
 
+H5PL_type_t H5PLget_plugin_type(void) {
+    return H5PL_TYPE_VOL;
+}
+const void *H5PLget_plugin_info(void) {
+    return &H5VL_async_g;
+}
+
 /*-------------------------------------------------------------------------
  * Function:    H5VL_async_new_obj
  *
@@ -269,10 +276,60 @@ err_out:;
 hid_t H5VL_async_register (void) {
 	/* Singleton register the pass-through VOL connector ID */
 	if (H5VL_ASYNC_g < 0) H5VL_ASYNC_g = H5VLregister_connector (&H5VL_async_g, H5P_DEFAULT);
-
+	DEBUG_PRINT
+	printf("H5VL_ASYNC_g = %d\n", H5VL_ASYNC_g);
 	return H5VL_ASYNC_g;
 } /* end H5VL_async_register() */
 
+static int H5VL_async_file_wait_op_g = -1;
+static int H5VL_async_dataset_wait_op_g = -1;
+
+int _optional_ops_reg(){
+    /* Register operation values for new API routines to use for operations */
+    assert(-1 == H5VL_async_file_wait_op_g);
+    if(H5VLregister_opt_operation(H5VL_SUBCLS_FILE, H5VL_ASYNC_DYN_FILE_WAIT, &H5VL_async_file_wait_op_g) < 0) {
+        fprintf(stderr,"  [ASYNC VOL ERROR] with H5VLregister_opt_operation\n");
+        return(-1);
+    }
+    assert(-1 != H5VL_async_file_wait_op_g);
+    assert(-1 == H5VL_async_dataset_wait_op_g);
+    if(H5VLregister_opt_operation(H5VL_SUBCLS_DATASET, H5VL_ASYNC_DYN_DATASET_WAIT, &H5VL_async_dataset_wait_op_g) < 0) {
+        fprintf(stderr,"  [ASYNC VOL ERROR] with H5VLregister_opt_operation\n");
+        return(-1);
+    }
+    assert(-1 != H5VL_async_dataset_wait_op_g);
+
+//    /* Singleton register error class */
+//    if (H5I_INVALID_HID == async_error_class_g) {
+//        if((async_error_class_g = H5Eregister_class("Async VOL", "Async VOL", "0.1")) < 0) {
+//            fprintf(stderr, "  [ASYNC VOL ERROR] with H5Eregister_class\n");
+//            return -1;
+//        }
+//    }
+    return 0;
+}
+
+int _optional_ops_unreg(){
+    /* Reset operation values for new "API" routines */
+    if(-1 != H5VL_async_file_wait_op_g) {
+        if(H5VLunregister_opt_operation(H5VL_SUBCLS_FILE, H5VL_ASYNC_DYN_FILE_WAIT) < 0)
+            return(-1);
+        H5VL_async_file_wait_op_g = (-1);
+    } /* end if */
+    if(-1 != H5VL_async_dataset_wait_op_g) {
+        if(H5VLunregister_opt_operation(H5VL_SUBCLS_DATASET, H5VL_ASYNC_DYN_DATASET_WAIT) < 0)
+            return(-1);
+        H5VL_async_dataset_wait_op_g = (-1);
+    } /* end if */
+
+    /* Unregister error class */
+//    if(H5I_INVALID_HID != async_error_class_g) {
+//        if (H5Eunregister_class(async_error_class_g) < 0)
+//            fprintf(stderr,"  [ASYNC VOL ERROR] ASYNC VOL unregister error class failed\n");
+//        async_error_class_g = H5I_INVALID_HID;
+//    }
+    return 0;
+}
 /*-------------------------------------------------------------------------
  * Function:    H5VL_async_init
  *
@@ -297,7 +354,8 @@ herr_t H5VL_async_init (hid_t H5VL_ASYNC_UNUSED vipl_id) {
 
 	twerr = TW_Engine_create (0, &H5VL_async_engine);
 	CHK_TWERR
-
+	if(_optional_ops_reg() < 0)
+	    return -1;
 err_out:;
 	return err;
 } /* end H5VL_async_init() */
@@ -327,6 +385,9 @@ herr_t H5VL_async_term (void) {
 
 	twerr = TW_Finalize ();
 	CHK_TWERR
+
+    if(_optional_ops_unreg() < 0)
+        return -1;
 
 	/* Reset VOL ID */
 	H5VL_ASYNC_g = H5I_INVALID_HID;

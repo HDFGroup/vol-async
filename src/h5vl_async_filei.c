@@ -46,7 +46,7 @@ int H5VL_async_file_create_handler (void *data) {
 		CHECK_ID (under_vol_id)
 		under_vol_info = NULL;
 	}
-
+printf("%s:%d: under_vol_id = %llu\n", __func__, __LINE__, under_vol_id);
 	/* Copy the FAPL */
 	under_fapl_id = H5Pcopy (argp->fapl_id);
 
@@ -56,8 +56,10 @@ int H5VL_async_file_create_handler (void *data) {
 	/* Open the file with the underlying VOL connector */
 	argp->op->under_vol_id = under_vol_id;
 	H5Iinc_ref (argp->op->under_vol_id);
+
 	argp->op->under_object = H5VLfile_create (argp->name, argp->flags, argp->fcpl_id, under_fapl_id,
 											  argp->dxpl_id, NULL);
+
 	CHECK_PTR (argp->op->under_object)
 
 err_out:;

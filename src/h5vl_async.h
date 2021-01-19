@@ -37,6 +37,9 @@
 		A->cnt++;             \
 	}
 
+#define H5VL_ASYNC_DYN_FILE_WAIT        "gov.lbl.async.file.wait"
+#define H5VL_ASYNC_DYN_DATASET_WAIT     "gov.lbl.async.dataset.wait"
+#define DEBUG_PRINT printf("%s:%s:%d\n", __FILE__, __func__, __LINE__); fflush(stdout); fflush(stderr);
 /************/
 /* Typedefs */
 /************/

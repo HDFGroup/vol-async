@@ -55,7 +55,9 @@ void *H5VL_async_file_create (
 	argp = (H5VL_async_file_create_args *)malloc (sizeof (H5VL_async_file_create_args));
 	CHECK_PTR (argp)
 	argp->dxpl_id	 = H5Pcopy (dxpl_id);
+
 	argp->fapl_id	 = H5Pcopy (fapl_id);
+
 	argp->fcpl_id	 = H5Pcopy (fcpl_id);
 	argp->op		 = op;
 	argp->target_obj = NULL;
@@ -69,12 +71,16 @@ void *H5VL_async_file_create (
 	twerr =
 		TW_Task_create (H5VL_async_file_create_handler, argp, TW_TASK_DEP_ALL_COMPLETE, 0, &task);
 	CHK_TWERR
+
 	op->prev_task = task;
 
 	H5VL_ASYNC_CB_TASK_COMMIT
+
 	H5VL_ASYNC_CB_TASK_WAIT
 
+    target_obj = op;
 err_out:;
+
 	if (err) {
 		if (task != TW_HANDLE_NULL) { TW_Task_free (task); }
 

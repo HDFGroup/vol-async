@@ -43,6 +43,7 @@ void *H5VL_async_info_copy (const void *_info) {
 	/* Increment reference count on underlying VOL ID, and copy the VOL info */
 	new_info->under_vol_id = info->under_vol_id;
 	H5Iinc_ref (new_info->under_vol_id);
+	printf("%s:%d: under_vol_id = %llu\n", __func__, __LINE__, new_info->under_vol_id);
 	if (info->under_vol_info)
 		H5VLcopy_connector_info (new_info->under_vol_id, &(new_info->under_vol_info),
 								 info->under_vol_info);
@@ -188,8 +189,10 @@ herr_t H5VL_async_str_to_info (const char *str, void **_info) {
 
 	/* Retrieve the underlying VOL connector value and info */
 	sscanf (str, "under_vol=%u;", &under_vol_value);
+	printf("%s:%d: under_vol_value = %lu\n", __func__, __LINE__, under_vol_value);
 	under_vol_id =
 		H5VLregister_connector_by_value ((H5VL_class_value_t)under_vol_value, H5P_DEFAULT);
+	printf("%s:%d: under_vol_id = %llu\n", __func__, __LINE__, under_vol_id);
 	under_vol_info_start = strchr (str, '{');
 	under_vol_info_end	 = strrchr (str, '}');
 	assert (under_vol_info_end > under_vol_info_start);

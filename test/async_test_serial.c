@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "hdf5.h"
+#include "h5vl_async_public.h"
 //#include "h5_async_lib.h"
 
 #define DIMLEN 1024
@@ -37,7 +38,7 @@ int main(int argc, char *argv[])
     async_dxpl = H5Pcreate (H5P_DATASET_XFER);
 
     H5Pset_vol_async(async_fapl);
-
+H5Pset_dxpl_async(async_dxpl, true);
     if (print_dbg_msg) printf("H5Fcreate start\n");
     fflush(stdout);
 

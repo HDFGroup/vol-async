@@ -75,16 +75,17 @@ void *H5VL_async_attr_create (void *obj,
 	argp->name = (char *)argp->loc_params + sizeof (H5VL_loc_params_t);
 	strncpy (argp->name, name, name_len + 1);
 	H5VL_ASYNC_CB_TASK_INIT
-
+DEBUG_PRINT
 	twerr =
-		TW_Task_create (H5VL_async_attr_create_handler, argp, TW_TASK_DEP_ALL_COMPLETE, 0, &task);
+		TW_Task_create (H5VL_async_attr_create_handler,
+		        argp, TW_TASK_DEP_ALL_COMPLETE, 0, &task);
 	CHK_TWERR
 	op->prev_task = task;
-
+DEBUG_PRINT
 	H5VL_ASYNC_CB_TASK_COMMIT
-
+DEBUG_PRINT
 	H5VL_ASYNC_CB_TASK_WAIT
-
+DEBUG_PRINT
 err_out:;
 	if (err) {
 		if (task != TW_HANDLE_NULL) { TW_Task_free (task); }
