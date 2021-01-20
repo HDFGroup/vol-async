@@ -2555,11 +2555,11 @@ async_attr_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_lo
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -2633,6 +2633,12 @@ async_attr_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_lo
                 fprintf(stderr,"  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                 goto done;
             }
+        }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0) {
+            async_obj = NULL;
+            goto error;
         }
     }
 
@@ -3009,11 +3015,11 @@ async_attr_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -3088,6 +3094,10 @@ async_attr_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -3442,11 +3452,11 @@ async_attr_read(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type_
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -3521,6 +3531,10 @@ async_attr_read(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type_
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -3888,11 +3902,11 @@ async_attr_write(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -3967,6 +3981,10 @@ async_attr_write(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -4320,11 +4338,11 @@ async_attr_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -4399,6 +4417,10 @@ async_attr_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -4755,11 +4777,11 @@ async_attr_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -4834,6 +4856,10 @@ async_attr_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -5187,11 +5213,11 @@ async_attr_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -5266,6 +5292,10 @@ async_attr_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -5617,11 +5647,11 @@ async_attr_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *par
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -5703,6 +5733,10 @@ async_attr_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *par
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -6090,11 +6124,11 @@ async_dataset_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -6169,6 +6203,10 @@ async_dataset_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -6544,21 +6582,23 @@ async_dataset_open(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *p
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
-    if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
+    if (parent_obj->file_async_obj && parent_obj->file_async_obj->file_task_list_mutex) {
+        if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+            fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
+            goto done;
+        }
+        /* Insert it into the file task list */
+        DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
+        if (ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+            fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
+            goto done;
+        }
     }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
@@ -6623,6 +6663,10 @@ async_dataset_open(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *p
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -6981,11 +7025,11 @@ async_dataset_read(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_ty
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -7061,6 +7105,10 @@ async_dataset_read(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_ty
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -7429,11 +7477,11 @@ async_dataset_write(async_instance_t* aid, H5VL_async_t *parent_obj,
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -7509,6 +7557,10 @@ async_dataset_write(async_instance_t* aid, H5VL_async_t *parent_obj,
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -7863,11 +7915,11 @@ async_dataset_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -7942,6 +7994,10 @@ async_dataset_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -8295,11 +8351,11 @@ async_dataset_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -8374,6 +8430,10 @@ async_dataset_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -8727,11 +8787,11 @@ async_dataset_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -8806,6 +8866,10 @@ async_dataset_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -9157,21 +9221,23 @@ async_dataset_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
-    if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
+    if (parent_obj->file_async_obj && parent_obj->file_async_obj->file_task_list_mutex) {
+        if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+            fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
+            goto done;
+        }
+        /* Insert it into the file task list */
+        DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
+        if (ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+            fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
+            goto done;
+        }
     }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
@@ -9194,7 +9260,7 @@ async_dataset_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
             add_task_to_queue(&aid->qhead, async_task, REGULAR);
     }
 
-    if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS) {
+    if (lock_parent && ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto error;
     }
@@ -9245,6 +9311,10 @@ async_dataset_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -9630,11 +9700,11 @@ async_datatype_commit(async_instance_t* aid, H5VL_async_t *parent_obj, const H5V
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -9709,6 +9779,10 @@ async_datatype_commit(async_instance_t* aid, H5VL_async_t *parent_obj, const H5V
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -10084,11 +10158,11 @@ async_datatype_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -10163,6 +10237,10 @@ async_datatype_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -10516,11 +10594,11 @@ async_datatype_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *p
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -10595,6 +10673,10 @@ async_datatype_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *p
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -10948,11 +11030,11 @@ async_datatype_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -11027,6 +11109,10 @@ async_datatype_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -11380,11 +11466,11 @@ async_datatype_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -11459,6 +11545,10 @@ async_datatype_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -11807,11 +11897,11 @@ async_datatype_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -11893,6 +11983,10 @@ async_datatype_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -12350,6 +12444,10 @@ async_file_create(async_instance_t* aid, const char *name, unsigned flags, hid_t
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -12809,6 +12907,10 @@ async_file_open(task_list_qtype qtype, async_instance_t* aid, const char *name, 
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -13163,11 +13265,11 @@ async_file_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -13242,6 +13344,10 @@ async_file_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -13595,11 +13701,11 @@ async_file_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -13674,6 +13780,10 @@ async_file_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -14028,11 +14138,11 @@ async_file_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -14104,6 +14214,10 @@ async_file_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -14487,6 +14601,7 @@ async_file_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *par
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         else if (parent_obj->obj_mutex == NULL) {
@@ -14494,7 +14609,6 @@ async_file_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *par
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -14575,6 +14689,10 @@ wait:
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -14958,11 +15076,11 @@ async_group_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_l
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -15037,6 +15155,10 @@ async_group_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_l
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -15412,11 +15534,11 @@ async_group_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -15491,6 +15613,10 @@ async_group_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -15844,11 +15970,11 @@ async_group_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pare
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -15923,6 +16049,10 @@ async_group_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pare
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -16276,11 +16406,11 @@ async_group_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -16355,6 +16485,10 @@ async_group_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -16708,11 +16842,11 @@ async_group_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -16787,6 +16921,10 @@ async_group_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -17141,11 +17279,11 @@ async_group_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
         /* Lock parent_obj */
         while (1) {
             if (ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+                lock_parent = true;
                 break;
             }
             usleep(1000);
         }
-        lock_parent = true;
 
         if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
             fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -17235,6 +17373,10 @@ async_group_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -17612,11 +17754,11 @@ async_link_create(task_list_qtype qtype, async_instance_t* aid, H5VL_link_create
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -17691,6 +17833,10 @@ async_link_create(task_list_qtype qtype, async_instance_t* aid, H5VL_link_create
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -18054,11 +18200,11 @@ async_link_copy(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -18133,6 +18279,10 @@ async_link_copy(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -18494,11 +18644,11 @@ async_link_move(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -18573,6 +18723,10 @@ async_link_move(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -18929,11 +19083,11 @@ async_link_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -19008,6 +19162,10 @@ async_link_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -19367,11 +19525,11 @@ async_link_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -19446,6 +19604,10 @@ async_link_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -19799,11 +19961,11 @@ async_link_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -19878,6 +20040,10 @@ async_link_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -20250,11 +20416,11 @@ async_object_open(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -20329,6 +20495,10 @@ async_object_open(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -20700,11 +20870,11 @@ async_object_copy(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
         usleep(1000);
     }
-    lock_parent = true;
 
     if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
@@ -20779,6 +20949,10 @@ async_object_copy(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -21222,6 +21396,10 @@ async_object_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *par
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -21659,6 +21837,10 @@ async_object_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
@@ -22091,6 +22273,10 @@ async_object_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t
                 goto done;
             }
         }
+
+        /* Failed background thread execution */
+        if (async_task->err_stack != 0)
+            goto error;
     }
 
 #ifdef ENABLE_TIMING
