@@ -6,9 +6,9 @@ Asynchronous I/O is becoming increasingly popular with the large amount of data 
 
 Some configuration parameters used in the instructions:
 
-        VOL_DIR               : directory of HDF5 Asynchronous I/O VOL connector source code
-        ABT_DIR               : directory of Argobots source code
-        H5_DIR                : directory of HDF5 source code
+        VOL_DIR : directory of HDF5 Asynchronous I/O VOL connector repository
+        ABT_DIR : directory of Argobots source code
+        H5_DIR  : directory of HDF5 source code
 
 1, Preparation
 
@@ -34,18 +34,39 @@ Some configuration parameters used in the instructions:
 
         > cd $ABT_DIR
         > ./autogen.sh  (may skip this step if the configure file exists)
-        > CC=cc ./configure --prefix=ABT_DIR/build 
+        > CC=cc ./configure --prefix=ABT_DIR/build
         > make install
-        
+
     2.3 Compile Asynchronous VOL connector
-        > cd $VOL_DIR
-        > Edit "Makefile" by updating H5_DIR and ABT_DIR to the previously installed locations
+        > cd $VOL_DIR/src
+        > Edit "Makefile"
+            > Update H5_DIR and ABT_DIR to the previously installed locations
+            > Possibly update the compiler flag macros: DEBUG, CFLAGS, LIBS, ARFLAGS
+            > Uncomment the correct DYNLDFLAGS & DYNLIB macros
         > make
 
-3, Test
+3, Set Environment Variables
+
+    Will need to set the following environmental variable before running the
+    asynchronous operation tests and your async application, e.g.:
+
+    for Linux:
+        > export LD_LIBRARY_PATH=$VOL_DIR/src:$H5_DIR/lib:$LD_LIBRARY_PATH
+        > export HDF5_PLUGIN_PATH="$VOL_DIR"
+        > export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
+
+    and on MacOS:
+        > export DYLD_LIBRARY_PATH=$VOL_DIR/src:$H5_DIR/lib:$DYLD_LIBRARY_PATH
+        > export HDF5_PLUGIN_PATH="$VOL_DIR"
+        > export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
+
+4, Test
 
     > cd $VOL_DIR/test
-    > Edit "Makefile" by updating H5_DIR and ABT_DIR to the previously installed locations
+    > Edit "Makefile":
+        > Update H5_DIR, ABT_DIR and ASYNC_DIR to the correct locations
+        > Possibly update the compiler flag macros: DEBUG, CFLAGS, LIBS, ARFLAGS
+        > Uncomment the correct DYNLIB & LDFLAGS macro
     > make
 
     Run both the serial and parallel tests
@@ -56,22 +77,11 @@ Some configuration parameters used in the instructions:
 
         > make check_serial
 
-    May need to set the following environmental variable before running your application, e.g.:
-
-        > export LD_LIBRARY_PATH=$VOL_DIR/src:$H5_DIR/build/lib:$LD_LIBRARY_PATH
-        > export HDF5_PLUGIN_PATH="$VOL_DIR"
-
-    and on MacOS:
-
-        > export DYLD_LIBRARY_PATH=$VOL_DIR/src:$H5_DIR/build/lib:$DYLD_LIBRARY_PATH
-        > export HDF5_PLUGIN_PATH="$VOL_DIR"
-
 4, Using the Asynchronous I/O VOL connector with application code (Implicit mode with environmental variable)
 
     The implicit mode allows an application to enable asynchronous I/O VOL connector through setting the following environemental variables and without any application code modification. By default, the HDF5 metadata operations are executed asynchronously, and the dataset operations are executed synchronously unless a cache VOL connector is used.
 
-        > export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
-        > export HDF5_PLUGIN_PATH="$VOL_DIR"
+        > [Set environment variables, from step 3 above]
         > Run your application
 
 5, Using the Asynchronous I/O VOL connector with application code (Explicit mode)
@@ -105,8 +115,8 @@ Some configuration parameters used in the instructions:
         > H5free_memory(err_info.api_args);
         > H5free_memory(err_info.app_file_name);
         > H5free_memory(err_info.app_func_name);
-        
+
     5.4 Run with async
-        > export HDF5_PLUGIN_PATH="$VOL_DIR"
+        > [Set environment variables, from step 3 above]
         > Run your application
-        
+

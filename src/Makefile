@@ -7,18 +7,24 @@ ABT_DIR = /Users/koziol/NERSC/install
 #CC = gcc-9
 CC = mpicc
 
+# These lines may need to be adjusted for your compiler environment:
 DEBUG = -g -O0 -DENABLE_ASYNC_LOGGING
 CFLAGS = $(DEBUG) -fPIC -I$(ABT_DIR)/include -I$(HDF5_DIR)/include -Wall
 LIBS = -L$(HDF5_DIR)/lib -L$(ABT_DIR)/lib -labt -lhdf5 -lz
-# DYNLDFLAGS = $(DEBUG) -shared -fPIC $(LIBS)
-DYNLDFLAGS = $(DEBUG) -dynamiclib -current_version 1.0  -fPIC $(LIBS)
 ARFLAGS = rs
+
+# Uncomment this line Linux builds:
+# DYNLDFLAGS = $(DEBUG) -shared -fPIC $(LIBS)
+# Uncomment this line MacOS builds:
+DYNLDFLAGS = $(DEBUG) -dynamiclib -current_version 1.0  -fPIC $(LIBS)
 
 DYNSRC = h5_vol_external_async_native.c
 DYNHDR = h5_vol_external_async_native.h
 DYNOBJ = $(DYNSRC:.c=.o)
 DYNPCH = $(DYNHDR:.h=.h.gch)
+# Uncomment this line Linux builds:
 # DYNLIB = libh5async.so
+# Uncomment this line MacOS builds:
 DYNLIB = libh5async.dylib
 
 STATSRC = h5_async_lib.c

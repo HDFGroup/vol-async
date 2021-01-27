@@ -4,17 +4,23 @@ ASYNC_DIR = /Users/koziol/HDF5/github/hpc-io/async_vol_register_optional/vol-asy
 HDF5_DIR  = /Users/koziol/HDF5/github/hpc-io/async_vol_register_optional/build_parallel_debug/hdf5
 ABT_DIR = /Users/koziol/NERSC/install
 
-DYNLIB = libh5async.dylib
 STATLIB = libasynchdf5.a
+# Uncomment this line Linux builds:
+# DYNLIB = libh5async.so
+# Uncomment this line MacOS builds:
+DYNLIB = libh5async.dylib
 
 #CC = cc
 #CC = gcc-9
 CC = mpicc
 
-DEBUG = -g -O0
+# These lines may need to be adjusted for your compiler environment:
+DEBUG = -g -O0 #-Wall
 CFLAGS = $(DEBUG) -I$(ABT_DIR)/include -I$(ASYNC_DIR) -I$(HDF5_DIR)/include
-#-Wall
+
+# Uncomment this line Linux builds:
 #LDFLAGS = $(DEBUG) -L$(ASYNC_DIR) -L$(ABT_DIR)/lib -L$(HDF5_DIR)/lib -Wl,-rpath=$(ASYNC_DIR) -Wl,-rpath=$(ABT_DIR)/lib -Wl,-rpath=$(HDF5_DIR)/lib -labt -lhdf5 -lh5async
+# Uncomment this line MacOS builds:
 LDFLAGS = $(DEBUG) -L$(ASYNC_DIR) -L$(ABT_DIR)/lib -L$(HDF5_DIR)/lib -labt -lhdf5 -lasynchdf5 -lh5async 
 
 SRC = async_test_serial.c async_test_serial2.c \
