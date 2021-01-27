@@ -60,11 +60,10 @@ int main(int argc, char *argv[])
     if (print_dbg_msg) fprintf(stderr, "H5Fcreate done\n");
     fflush(stdout);
 
-
     if (print_dbg_msg) fprintf(stderr, "H5Gcreate start\n");
     fflush(stdout);
     grp_id = H5Gcreate_async(file_id, grp_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
-fprintf(stderr, "After opening group: grp_id = %0llx\n", grp_id);
+/* fprintf(stderr, "After opening group: grp_id = %0llx\n", grp_id); */
     if (grp_id < 0) {
         fprintf(stderr, "Error with group create\n");
         ret = -1;
@@ -84,7 +83,14 @@ fprintf(stderr, "After opening group: grp_id = %0llx\n", grp_id);
     if (print_dbg_msg) fprintf(stderr, "H5Gcreate 2 done\n");
     fflush(stdout);
 
-    if (print_dbg_msg) fprintf(stderr, "H5ESwait start\n");
+    status = H5Gclose_async(grp1_id, es_id);
+    if (status > 0) {
+        fprintf(stderr, "Error with group close\n");
+        ret = -1;
+        goto done;
+    }
+
+    if (print_dbg_msg) printf("H5ESwait start\n");
     status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
     if (status < 0) {
         fprintf(stderr, "Error with H5ESwait\n");
@@ -94,12 +100,6 @@ fprintf(stderr, "After opening group: grp_id = %0llx\n", grp_id);
     if (print_dbg_msg) fprintf(stderr, "H5ESwait done\n");
     if (!op_failed) {
         fprintf(stderr, "H5Gcreate didn't fail?!?\n");
-        ret = -1;
-        goto done;
-    }
-    status = H5Gclose(grp1_id);
-    if (status < 0) {
-        fprintf(stderr, "Error with group close\n");
         ret = -1;
         goto done;
     }
@@ -173,7 +173,7 @@ fprintf(stderr, "After opening group: grp_id = %0llx\n", grp_id);
         goto done;
     }
     H5free_memory(err_info.app_func_name);
-    if (65 != err_info.app_line_num) { // Somewhat fragile
+    if (77 != err_info.app_line_num) { // Somewhat fragile
         fprintf(stderr, "Event set didn't return app source line # correctly?!?, got: %u\n", err_info.app_line_num);
         ret = -1;
         goto done;
@@ -233,7 +233,16 @@ fprintf(stderr, "After opening group: grp_id = %0llx\n", grp_id);
         data0_write[i] = i;
     }
 
-    if (print_dbg_msg) fprintf(stderr, "H5Dcreate 0 start\n");
+    status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
+    if (status < 0) {
+        fprintf(stderr, "Error with H5ESwait\n");
+        ret = -1;
+        goto done;
+    }
+    H5ESclose(es_id);
+
+    if (print_dbg_msg) printf("H5Dcreate 0 start\n");
+
     fflush(stdout);
     dset0_id  = H5Dcreate_async(grp_id,"dset0",H5T_NATIVE_INT,dspace_id,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT, es1_id);
     if (dset0_id < 0) {
@@ -369,7 +378,7 @@ fprintf(stderr, "After opening group: grp_id = %0llx\n", grp_id);
 
 done:
 
-fprintf(stderr, "Before shutting things down\n");
+/* fprintf(stderr, "Before shutting things down\n"); */
     status = H5Pclose(async_fapl);
     if (status < 0) {
         fprintf(stderr, "H5Pclose failed\n");
@@ -385,7 +394,7 @@ fprintf(stderr, "Before shutting things down\n");
         fprintf(stderr, "Closing dataset failed\n");
         ret = -1;
     }
-fprintf(stderr, "Before close group: grp_id = %0llx\n", grp_id);
+/* fprintf(stderr, "Before close group: grp_id = %0llx\n", grp_id); */
     status = H5Gclose(grp_id);
     if (status < 0) {
         fprintf(stderr, "Closing group failed\n");
@@ -403,11 +412,6 @@ fprintf(stderr, "Before close group: grp_id = %0llx\n", grp_id);
         ret = -1;
     }
 
-    status = H5ESclose(es_id);
-    if (status < 0) {
-        fprintf(stderr, "Can't close first event set\n");
-        ret = -1;
-    }
     status = H5ESclose(es1_id);
     if (status < 0) {
         fprintf(stderr, "Can't close second event set\n");
