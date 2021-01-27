@@ -90,13 +90,14 @@ def main_test(mpi_tasks=0, cpu_allocation="", run_parallel=False, verbose=False)
             num_test = num_test+1
 
             test_case = parallel_cases[qq]
-            run_cmd = mpirun_cmd + ' ' + test_case
+            run_cmd = mpirun_cmd + ' ./' + test_case
 
             stdout_file = open('async_vol_test.out', 'wt')
             stderr_file = open('async_vol_test.err', 'wt')
 
             status = subprocess.run(
                         run_cmd,
+                        shell=True,
                         stdout=stdout_file,
                         stderr=stderr_file,
                      )
