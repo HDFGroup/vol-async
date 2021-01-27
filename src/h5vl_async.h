@@ -71,7 +71,8 @@ typedef struct H5VL_async_t {
 
 extern hid_t H5VL_ASYNC_g;
 extern TW_Engine_handle_t H5VL_async_engine;
-
+extern int H5VL_async_file_wait_op_g;
+extern int H5VL_async_dataset_wait_op_g;
 /********************* */
 /* Function prototypes */
 /********************* */
@@ -96,3 +97,4 @@ herr_t H5VL_async_introspect_opt_query (void *obj,
 
 /* Generic optional callback */
 herr_t H5VL_async_optional (void *obj, int op_type, hid_t dxpl_id, void **req, va_list arguments);
+void dup_loc_param(H5VL_loc_params_t *dest, H5VL_loc_params_t const *loc_params);

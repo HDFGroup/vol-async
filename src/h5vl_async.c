@@ -161,6 +161,8 @@ hid_t H5VL_ASYNC_g = H5I_INVALID_HID;
 
 /* Engine to run task */
 TW_Engine_handle_t H5VL_async_engine;
+int H5VL_async_file_wait_op_g = -1;
+int H5VL_async_dataset_wait_op_g = -1;
 
 H5PL_type_t H5PLget_plugin_type(void) {
     return H5PL_TYPE_VOL;
@@ -281,8 +283,6 @@ hid_t H5VL_async_register (void) {
 	return H5VL_ASYNC_g;
 } /* end H5VL_async_register() */
 
-static int H5VL_async_file_wait_op_g = -1;
-static int H5VL_async_dataset_wait_op_g = -1;
 
 int _optional_ops_reg(){
     /* Register operation values for new API routines to use for operations */
@@ -473,3 +473,30 @@ herr_t H5VL_async_optional (void *obj, int op_type, hid_t dxpl_id, void **req, v
 
 	return ret_value;
 } /* end H5VL_async_optional() */
+
+void dup_loc_param(H5VL_loc_params_t *dest, H5VL_loc_params_t const *loc_params)
+{
+    size_t ref_size;
+
+    assert(dest);
+    assert(loc_params);
+
+    memcpy(dest, loc_params, sizeof(*loc_params));
+
+    if (loc_params->type == H5VL_OBJECT_BY_NAME) {
+        if (NULL != loc_params->loc_data.loc_by_name.name)
+            dest->loc_data.loc_by_name.name = strdup(loc_params->loc_data.loc_by_name.name);
+        dest->loc_data.loc_by_name.lapl_id = H5Pcopy(loc_params->loc_data.loc_by_name.lapl_id);
+    }
+    else if (loc_params->type == H5VL_OBJECT_BY_IDX) {
+        if (NULL != loc_params->loc_data.loc_by_idx.name)
+            dest->loc_data.loc_by_idx.name = strdup(loc_params->loc_data.loc_by_idx.name);
+        dest->loc_data.loc_by_idx.lapl_id = H5Pcopy(loc_params->loc_data.loc_by_idx.lapl_id);
+    }
+    else if (loc_params->type == H5VL_OBJECT_BY_TOKEN) {
+        ref_size = 16; // taken from H5VLnative_object.c
+        dest->loc_data.loc_by_token.token = malloc(ref_size);
+        memcpy((void*)(dest->loc_data.loc_by_token.token), loc_params->loc_data.loc_by_token.token, ref_size);
+    }
+
+}

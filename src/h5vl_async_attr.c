@@ -50,7 +50,7 @@ void *H5VL_async_attr_create (void *obj,
 	H5VL_async_attr_create_args *argp = NULL;
 	size_t name_len;
 	H5VL_async_t *op		 = NULL;
-	H5VL_async_t *target_obj = (H5VL_async_t *)obj;
+	H5VL_async_t *target_obj = (H5VL_async_t *)obj;//parent obj
 
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL attr Create\n");
@@ -70,8 +70,9 @@ void *H5VL_async_attr_create (void *obj,
 	argp->type_id	 = H5Tcopy (type_id);
 	argp->target_obj = target_obj;
 	argp->op		 = op;
-	argp->loc_params = (H5VL_loc_params_t *)((char *)argp + sizeof (H5VL_async_attr_create_args));
-	memcpy (argp->loc_params, loc_params, sizeof (H5VL_loc_params_t));
+	argp->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
+    dup_loc_param(argp->loc_params, loc_params);
+
 	argp->name = (char *)argp->loc_params + sizeof (H5VL_loc_params_t);
 	strncpy (argp->name, name, name_len + 1);
 	H5VL_ASYNC_CB_TASK_INIT
@@ -145,8 +146,8 @@ void *H5VL_async_attr_open (void *obj,
 	argp->aapl_id	 = H5Pcopy (aapl_id);
 	argp->op		 = op;
 	argp->target_obj = target_obj;
-	argp->loc_params = (H5VL_loc_params_t *)((char *)argp + sizeof (H5VL_async_attr_open_args));
-	memcpy (argp->loc_params, loc_params, sizeof (H5VL_loc_params_t));
+    argp->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
+    dup_loc_param(argp->loc_params, loc_params);
 	argp->name = (char *)argp->loc_params + sizeof (H5VL_loc_params_t);
 	strncpy (argp->name, name, name_len + 1);
 
@@ -238,10 +239,10 @@ err_out:;
  *-------------------------------------------------------------------------
  */
 herr_t H5VL_async_attr_write (
-	void *dset, hid_t mem_type_id, const void *buf, hid_t dxpl_id, void **req) {
+	void *attr, hid_t mem_type_id, const void *buf, hid_t dxpl_id, void **req) {
 	H5VL_ASYNC_CB_VARS
 	H5VL_async_attr_write_args *argp;
-	H5VL_async_t *target_obj = (H5VL_async_t *)dset;
+	H5VL_async_t *target_obj = (H5VL_async_t *)attr;
 
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL attr Get\n");
@@ -254,15 +255,15 @@ herr_t H5VL_async_attr_write (
 	argp->dxpl_id	  = H5Pcopy (dxpl_id);
 	argp->buf		  = buf;
 	H5VL_ASYNC_CB_TASK_INIT
-
+DEBUG_PRINT
 	twerr =
 		TW_Task_create (H5VL_async_attr_write_handler, argp, TW_TASK_DEP_ALL_COMPLETE, 0, &task);
 	CHK_TWERR
-
+DEBUG_PRINT
 	H5VL_ASYNC_CB_TASK_COMMIT
-
+DEBUG_PRINT
 	H5VL_ASYNC_CB_TASK_WAIT
-
+DEBUG_PRINT
 err_out:;
 	if (err) {
 		if (argp) {
@@ -359,8 +360,8 @@ herr_t H5VL_async_attr_specific (void *obj,
 	CHECK_PTR (argp)
 	argp->target_obj = target_obj;
 	argp->dxpl_id	 = H5Pcopy (dxpl_id);
-	argp->loc_params = (H5VL_loc_params_t *)((char *)argp + sizeof (H5VL_async_attr_specific_args));
-	memcpy (argp->loc_params, loc_params, sizeof (H5VL_loc_params_t));
+    argp->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
+    dup_loc_param(argp->loc_params, loc_params);
 	argp->specific_type = specific_type;
 	va_copy (argp->arguments, arguments);
 	H5VL_ASYNC_CB_TASK_INIT

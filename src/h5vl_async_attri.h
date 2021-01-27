@@ -53,6 +53,7 @@ typedef struct H5VL_async_attr_read_args {
 
 typedef struct H5VL_async_attr_write_args {
 	H5VL_ASYNC_ARG_VARS
+	void* attr;
 	hid_t mem_type_id;
 	hid_t dxpl_id;
 	const void *buf;

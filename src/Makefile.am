@@ -12,7 +12,7 @@ AM_CPPFLAGS = -I.
 
 M4FLAGS = -I${top_srcdir}/m4
 
-lib_LTLIBRARIES = libh5vl_async.la
+lib_LTLIBRARIES = libh5vl_async.la libasync_static_lib.la
 
 M4_SRCS = 
 
@@ -59,7 +59,7 @@ $(M4_SRCS:.m4=.c): Makefile
 
 libh5vl_async_la_SOURCES = $(C_SRCS) $(CXX_SRCS) $(H_SRCS)
 nodist_libh5vl_async_la_SOURCES = $(M4_SRCS:.m4=.c) $(M4H_SRCS:.m4h=.h)
-
+libasync_static_lib_la_SOURCES = h5vl_async_static_lib.c h5vl_async_static_lib.h
 dist-hook:
 	$(SED_I) -e "s|RELEASE_DATE|@ASYNCVOL_RELEASE_DATE@|g" $(distdir)/main.c
 	$(SED_I) -e "1,10s|_ASYNCVOL_RELEASE_DATE_|@ASYNCVOL_RELEASE_DATE@|" $(distdir)/RELEASE_NOTES.md

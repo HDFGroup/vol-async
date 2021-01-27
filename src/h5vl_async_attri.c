@@ -30,15 +30,16 @@ int H5VL_async_attr_create_handler (void *data) {
 	H5VL_ASYNC_HANDLER_BEGIN
 
 	/* Open the target_obj with the underlying VOL connector */
-	argp->op->under_vol_id = argp->target_obj->under_vol_id;
-	argp->op->under_object = argp->target_obj->under_object;
+//	argp->op->under_vol_id = argp->target_obj->under_vol_id;
+//	argp->op->under_object = argp->target_obj->under_object;
 DEBUG_PRINT
 	H5Iinc_ref (argp->target_obj->under_vol_id);//???
 DEBUG_PRINT
-	argp->target_obj->under_object = H5VLattr_create (
-	        argp->op->under_object, argp->loc_params, argp->target_obj->under_vol_id, argp->name,
+	argp->op->under_object = H5VLattr_create (
+	        argp->target_obj->under_object, argp->loc_params, argp->target_obj->under_vol_id, argp->name,
 		argp->type_id, argp->space_id, argp->acpl_id, argp->acpl_id, argp->dxpl_id, NULL);
-	CHECK_PTR (argp->target_obj->under_object)
+	CHECK_PTR (argp->op->under_object)
+	argp->op->under_vol_id = argp->target_obj->under_vol_id;
 DEBUG_PRINT
 err_out:;
 	if (err) {
@@ -126,9 +127,10 @@ int H5VL_async_attr_write_handler (void *data) {
 	H5VL_async_attr_write_args *argp = (H5VL_async_attr_write_args *)data;
 
 	H5VL_ASYNC_HANDLER_BEGIN
-
+	DEBUG_PRINT
 	err = H5VLattr_write (argp->target_obj->under_object, argp->target_obj->under_vol_id,
 						  argp->mem_type_id, argp->buf, argp->dxpl_id, NULL);
+
 	CHECK_ERR
 
 err_out:;

@@ -145,7 +145,7 @@ void *H5VL_async_file_open (
 
 	H5VL_ASYNC_CB_TASK_COMMIT
 	H5VL_ASYNC_CB_TASK_WAIT
-
+	target_obj = op;
 err_out:;
 	if (err) {
 		if (task != TW_HANDLE_NULL) { TW_Task_free (task); }
@@ -274,15 +274,19 @@ err_out:;
  *
  *-------------------------------------------------------------------------
  */
+
 herr_t H5VL_async_file_optional (
 	void *file, H5VL_file_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments) {
 	H5VL_ASYNC_CB_VARS
 	H5VL_async_file_optional_args *argp;
 	H5VL_async_t *target_obj = (H5VL_async_t *)file;
-
+printf("opt_type = %d\n", opt_type);fflush(stdout);
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL File Optional\n");
 #endif
+
+    if(opt_type == H5VL_async_file_wait_op_g)
+        return (H5VL_asynci_obj_wait(target_obj));
 
 	argp = (H5VL_async_file_optional_args *)malloc (sizeof (H5VL_async_file_optional_args));
 	CHECK_PTR (argp)

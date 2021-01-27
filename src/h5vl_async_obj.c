@@ -61,8 +61,9 @@ void *H5VL_async_object_open (void *obj,
 	argp->opened_type = opened_type;
 	argp->op		  = op;
 	argp->target_obj  = target_obj;
-	argp->loc_params  = (H5VL_loc_params_t *)((char *)argp + sizeof (H5VL_async_object_open_args));
-	memcpy (argp->loc_params, loc_params, sizeof (H5VL_loc_params_t));
+	argp->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
+    dup_loc_param(argp->loc_params, loc_params);
+
 	H5VL_ASYNC_CB_TASK_INIT
 
 	twerr =

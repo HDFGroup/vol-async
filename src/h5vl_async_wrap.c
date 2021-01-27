@@ -91,8 +91,11 @@ void *H5VL_async_wrap_object (void *obj, H5I_type_t obj_type, void *_wrap_ctx) {
 
 	/* Wrap the object with the underlying VOL */
 	under = H5VLwrap_object (obj, obj_type, wrap_ctx->under_vol_id, wrap_ctx->under_wrap_ctx);
-	if (under)
-		new_obj = H5VL_async_new_obj (under, wrap_ctx->under_vol_id);
+	if (under){
+		new_obj = H5VL_async_new_obj ();
+		new_obj->under_object = under;
+		new_obj->under_vol_id = wrap_ctx->under_vol_id;
+	}
 	else
 		new_obj = NULL;
 

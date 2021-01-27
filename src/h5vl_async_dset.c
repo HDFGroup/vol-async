@@ -73,9 +73,10 @@ void *H5VL_async_dataset_create (void *obj,
 	argp->type_id	 = H5Tcopy (type_id);
 	argp->target_obj = target_obj;
 	argp->op		 = op;
-	argp->loc_params =
-		(H5VL_loc_params_t *)((char *)argp + sizeof (H5VL_async_dataset_create_args));
-	memcpy (argp->loc_params, loc_params, sizeof (H5VL_loc_params_t));
+
+	argp->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
+    dup_loc_param(argp->loc_params, loc_params);
+
 	argp->name = (char *)argp->loc_params + sizeof (H5VL_loc_params_t);
 	strncpy (argp->name, name, name_len + 1);
 	H5VL_ASYNC_CB_TASK_INIT
@@ -149,8 +150,8 @@ void *H5VL_async_dataset_open (void *obj,
 	argp->dapl_id	 = H5Pcopy (dapl_id);
 	argp->op		 = op;
 	argp->target_obj = target_obj;
-	argp->loc_params = (H5VL_loc_params_t *)((char *)argp + sizeof (H5VL_async_dataset_open_args));
-	memcpy (argp->loc_params, loc_params, sizeof (H5VL_loc_params_t));
+    argp->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
+    dup_loc_param(argp->loc_params, loc_params);
 	argp->name = (char *)argp->loc_params + sizeof (H5VL_loc_params_t);
 	strncpy (argp->name, name, name_len + 1);
 
@@ -441,6 +442,8 @@ herr_t H5VL_async_dataset_optional (
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL dataset Optional\n");
 #endif
+    if(opt_type == H5VL_async_dataset_wait_op_g)
+        return (H5VL_asynci_obj_wait(target_obj));
 
 	if ((target_obj->stat == H5VL_async_stat_err) || (target_obj->stat == H5VL_async_stat_close)) {
 		RET_ERR ("target_obj object in wrong status");
