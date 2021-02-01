@@ -20,8 +20,7 @@
 #include "h5vl_asynci.h"
 
 typedef struct H5VL_async_link_create_args {
-	H5VL_ASYNC_ARG_VARS
-	H5VL_async_t *op;
+	H5VL_ASYNC_ARG_VARS	
 	H5VL_link_create_type_t create_type;
 	H5VL_loc_params_t *loc_params;
 	hid_t lcpl_id;

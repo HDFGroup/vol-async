@@ -17,7 +17,7 @@
 typedef struct H5VL_async_req_t {
 	TW_Task_handle_t task;
 	herr_t ret;
-	hid_t err_stk_id;	//error stack id.
+//	hid_t error_stack;	//error stack id.
 } H5VL_async_req_t;
 
 herr_t H5VL_async_request_wait (void *req, uint64_t timeout, H5ES_status_t *status);

@@ -32,10 +32,19 @@ int H5VL_async_dataset_create_handler (void *data) {
 	/* Open the op with the underlying VOL connector */
 	argp->op->under_vol_id = argp->target_obj->under_vol_id;
 	H5Iinc_ref (argp->op->under_vol_id);
-	argp->op->under_object =
-		H5VLdataset_create (argp->target_obj->under_object, argp->loc_params,
-							argp->op->under_vol_id, argp->name, argp->lcpl_id, argp->type_id,
-							argp->space_id, argp->dcpl_id, argp->dapl_id, argp->dxpl_id, NULL);
+    void* obj;
+	H5E_BEGIN_TRY {
+        obj = H5VLdataset_create (argp->target_obj->under_object, argp->loc_params,
+                    argp->op->under_vol_id, argp->name, argp->lcpl_id, argp->type_id,
+                    argp->space_id, argp->dcpl_id, argp->dapl_id, argp->dxpl_id, NULL);
+    } H5E_END_TRY
+
+    if (NULL == obj) {
+        if ((argp->op->error_stack = H5Eget_current_stack()) < 0)
+            fprintf(stderr,"  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+        goto err_out;
+    }
+    argp->op->under_object = obj;
 	CHECK_PTR (argp->op->under_object)
 
 err_out:;
@@ -133,10 +142,18 @@ int H5VL_async_dataset_write_handler (void *data) {
 	H5VL_async_dataset_write_args *argp = (H5VL_async_dataset_write_args *)data;
 
 	H5VL_ASYNC_HANDLER_BEGIN
-
+	H5E_BEGIN_TRY {
 	err = H5VLdataset_write (argp->target_obj->under_object, argp->target_obj->under_vol_id,
 							 argp->mem_type_id, argp->mem_space_id, argp->file_space_id,
 							 argp->dxpl_id, argp->buf, NULL);
+    } H5E_END_TRY
+
+    if (err < 0) {
+        if ((argp->op->error_stack = H5Eget_current_stack()) < 0)
+            fprintf(stderr,"  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+        goto err_out;
+    }
+
 	CHECK_ERR
 
 err_out:;
@@ -217,9 +234,16 @@ int H5VL_async_dataset_close_handler (void *data) {
 	H5VL_async_dataset_close_args *argp = (H5VL_async_dataset_close_args *)data;
 
 	H5VL_ASYNC_HANDLER_BEGIN
+	H5E_BEGIN_TRY {
+        err = H5VLdataset_close (argp->target_obj->under_object, argp->target_obj->under_vol_id,
+                                 argp->dxpl_id, NULL);
+	} H5E_END_TRY
+    if (err < 0) {
+        if ((argp->op->error_stack = H5Eget_current_stack()) < 0)
+            fprintf(stderr,"  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+        goto err_out;
+    }
 
-	err = H5VLdataset_close (argp->target_obj->under_object, argp->target_obj->under_vol_id,
-							 argp->dxpl_id, NULL);
 	CHECK_ERR
 
 err_out:;

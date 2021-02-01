@@ -32,9 +32,20 @@ int H5VL_async_group_create_handler (void *data) {
 	/* Open the op with the underlying VOL connector */
 	argp->op->under_vol_id = argp->target_obj->under_vol_id;
 	H5Iinc_ref (argp->op->under_vol_id);
-	argp->op->under_object = H5VLgroup_create (argp->target_obj->under_object, argp->loc_params,
-											   argp->op->under_vol_id, argp->name, argp->lcpl_id,
-											   argp->gcpl_id, argp->gapl_id, argp->dxpl_id, NULL);
+	void* obj;
+    H5E_BEGIN_TRY {
+        obj = H5VLgroup_create (argp->target_obj->under_object, argp->loc_params,
+                                   argp->op->under_vol_id, argp->name, argp->lcpl_id,
+                                   argp->gcpl_id, argp->gapl_id, argp->dxpl_id, argp->req);
+    } H5E_END_TRY
+
+    if (NULL == obj) {
+        if ((argp->op->error_stack = H5Eget_current_stack()) < 0)
+            fprintf(stderr,"  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+        goto err_out;
+    }
+
+	argp->op->under_object = obj;
 	CHECK_PTR (argp->op->under_object)
 
 err_out:;
@@ -188,9 +199,15 @@ int H5VL_async_group_close_handler (void *data) {
 	H5VL_async_group_close_args *argp = (H5VL_async_group_close_args *)data;
 
 	H5VL_ASYNC_HANDLER_BEGIN
-
-	err = H5VLgroup_close (argp->target_obj->under_object, argp->target_obj->under_vol_id,
-						   argp->dxpl_id, NULL);
+	H5E_BEGIN_TRY {
+        err = H5VLgroup_close (argp->target_obj->under_object, argp->target_obj->under_vol_id,
+                               argp->dxpl_id, NULL);
+    } H5E_END_TRY
+    if (err < 0) {
+        if ((argp->op->error_stack = H5Eget_current_stack()) < 0)
+            fprintf(stderr,"  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+        goto err_out;
+    }
 	CHECK_ERR
 
 err_out:;

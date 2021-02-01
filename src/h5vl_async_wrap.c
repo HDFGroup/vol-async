@@ -62,7 +62,8 @@ herr_t H5VL_async_get_wrap_ctx (const void *obj, void **wrap_ctx) {
 	/* Increment reference count on underlying VOL ID, and copy the VOL info */
 	new_wrap_ctx->under_vol_id = o->under_vol_id;
 	H5Iinc_ref (new_wrap_ctx->under_vol_id);
-	H5VLget_wrap_ctx (o->under_object, o->under_vol_id, &new_wrap_ctx->under_wrap_ctx);
+	if(o->under_object)
+	    H5VLget_wrap_ctx (o->under_object, o->under_vol_id, &new_wrap_ctx->under_wrap_ctx);
 
 	/* Set wrap context to return */
 	*wrap_ctx = new_wrap_ctx;

@@ -21,7 +21,6 @@
 
 typedef struct H5VL_async_dataset_create_args {
 	H5VL_ASYNC_ARG_VARS
-	H5VL_async_t *op;
 	H5VL_loc_params_t *loc_params;
 	char *name;
 	unsigned flags;
@@ -35,7 +34,6 @@ typedef struct H5VL_async_dataset_create_args {
 
 typedef struct H5VL_async_dataset_open_args {
 	H5VL_ASYNC_ARG_VARS
-	H5VL_async_t *op;
 	H5VL_loc_params_t *loc_params;
 	char *name;
 	unsigned flags;

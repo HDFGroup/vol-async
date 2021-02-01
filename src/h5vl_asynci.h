@@ -222,12 +222,15 @@ static unsigned int LOCK_COUNT_GLOBAL = 1;
 #define H5VL_ASYNC_CB_TASK_INIT                                             \
 	{                                                                       \
 		/* Check if the operations is async */                              \
+		                                                   \
 		if (req) {                                                          \
-			*reqp = (H5VL_async_req_t *)malloc (sizeof (H5VL_async_req_t)); \
-			CHECK_PTR (*reqp)                                               \
-			argp->ret = &((*reqp)->ret);                                    \
+			reqp = (H5VL_async_req_t *)malloc (sizeof (H5VL_async_req_t)); \
+			CHECK_PTR (reqp)                                               \
+			/* argp->ret = &(reqp->ret); ??? */                                   \
+			*req = (void*)reqp;                                            \
 		} else {                                                            \
 			argp->ret = ret;                                                \
+			argp->req = NULL;                                               \
 		}                                                                   \
                                                                             \
 		/* Retrieve current library state */                                \
@@ -297,8 +300,10 @@ static unsigned int LOCK_COUNT_GLOBAL = 1;
 #define H5VL_ASYNC_ARG_VARS   \
 	H5VL_async_t *target_obj; \
 	TW_Task_handle_t task;    \
+	void** req;             \
 	herr_t *ret;              \
-	void *stat;
+	void *stat;             \
+    H5VL_async_t *op;
 
 herr_t H5VL_asynci_h5ts_mutex_lock ();
 herr_t H5VL_asynci_obj_wait (void *target_obj);

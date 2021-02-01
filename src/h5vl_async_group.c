@@ -68,9 +68,12 @@ void *H5VL_async_group_create (void *obj,
 	argp->lcpl_id	 = H5Pcopy (lcpl_id);
 	argp->target_obj = target_obj;
 	argp->op		 = op;
-	argp->loc_params = (H5VL_loc_params_t *)((char *)argp + sizeof (H5VL_async_group_create_args));
-	memcpy (argp->loc_params, loc_params, sizeof (H5VL_loc_params_t));
+
+	argp->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
+    dup_loc_param(argp->loc_params, loc_params);
+
 	argp->name = (char *)argp->loc_params + sizeof (H5VL_loc_params_t);
+	argp->req = NULL;
 	strncpy (argp->name, name, name_len + 1);
 	H5VL_ASYNC_CB_TASK_INIT
 
@@ -346,7 +349,7 @@ herr_t H5VL_async_group_close (void *grp, hid_t dxpl_id, void **req) {
 	H5VL_ASYNC_CB_VARS
 	H5VL_async_group_close_args *argp;
 	H5VL_async_t *target_obj = (H5VL_async_t *)grp;
-
+    H5VL_async_t * op =	H5VL_async_new_obj ();
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL group Close\n");
 #endif
@@ -360,6 +363,7 @@ herr_t H5VL_async_group_close (void *grp, hid_t dxpl_id, void **req) {
 	CHECK_PTR (argp)
 	argp->target_obj = target_obj;
 	argp->dxpl_id	 = H5Pcopy (dxpl_id);
+    argp->op = op;
 	H5VL_ASYNC_CB_TASK_INIT
 
 	twerr =
@@ -374,6 +378,7 @@ err_out:;
 			if (argp->task != TW_HANDLE_NULL) { TW_Task_free (argp->task); }
 			H5Pclose (argp->dxpl_id);
 			free (argp);
+			free (op);
 		}
 	}
 

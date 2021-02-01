@@ -43,7 +43,7 @@ void *H5VL_async_info_copy (const void *_info) {
 	/* Increment reference count on underlying VOL ID, and copy the VOL info */
 	new_info->under_vol_id = info->under_vol_id;
 	H5Iinc_ref (new_info->under_vol_id);
-	printf("%s:%d: under_vol_id = %llu\n", __func__, __LINE__, new_info->under_vol_id);
+
 	if (info->under_vol_info)
 		H5VLcopy_connector_info (new_info->under_vol_id, &(new_info->under_vol_info),
 								 info->under_vol_info);

@@ -46,7 +46,7 @@ int H5VL_async_file_create_handler (void *data) {
 		CHECK_ID (under_vol_id)
 		under_vol_info = NULL;
 	}
-printf("%s:%d: under_vol_id = %llu\n", __func__, __LINE__, under_vol_id);
+
 	/* Copy the FAPL */
 	under_fapl_id = H5Pcopy (argp->fapl_id);
 

@@ -67,6 +67,7 @@ typedef struct H5VL_async_t {
 	// int ref;
 	// int cnt;
 	// struct H5VL_async_t *parent;
+	hid_t error_stack;  //error stack id.
 } H5VL_async_t;
 
 extern hid_t H5VL_ASYNC_g;

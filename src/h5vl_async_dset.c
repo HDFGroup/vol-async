@@ -269,7 +269,7 @@ herr_t H5VL_async_dataset_write (void *dset,
 	H5VL_ASYNC_CB_VARS
 	H5VL_async_dataset_write_args *argp;
 	H5VL_async_t *target_obj = (H5VL_async_t *)dset;
-
+	H5VL_async_t *op         = H5VL_async_new_obj ();
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL dataset Get\n");
 #endif
@@ -288,7 +288,7 @@ herr_t H5VL_async_dataset_write (void *dset,
 		argp->file_space_id = H5Scopy (file_space_id);
 	argp->dxpl_id = H5Pcopy (dxpl_id);
 	argp->buf	  = buf;
-
+	argp->op      = op;
 	H5VL_ASYNC_CB_TASK_INIT
 
 	twerr =
@@ -311,6 +311,8 @@ err_out:;
 		}
 
 		free (reqp);
+		free (op);
+		op = NULL;
 	}
 	return err;
 } /* end H5VL_async_dataset_write() */
@@ -489,11 +491,11 @@ err_out:;
  *
  *-------------------------------------------------------------------------
  */
-herr_t H5VL_async_dataset_close (void *grp, hid_t dxpl_id, void **req) {
+herr_t H5VL_async_dataset_close (void *dset, hid_t dxpl_id, void **req) {
 	H5VL_ASYNC_CB_VARS
 	H5VL_async_dataset_close_args *argp;
-	H5VL_async_t *target_obj = (H5VL_async_t *)grp;
-
+	H5VL_async_t *target_obj = (H5VL_async_t *)dset;
+	H5VL_async_t * op = H5VL_async_new_obj ();
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL dataset Close\n");
 #endif
@@ -507,6 +509,7 @@ herr_t H5VL_async_dataset_close (void *grp, hid_t dxpl_id, void **req) {
 	CHECK_PTR (argp)
 	argp->target_obj = target_obj;
 	argp->dxpl_id	 = H5Pcopy (dxpl_id);
+	argp->op = op;
 	H5VL_ASYNC_CB_TASK_INIT
 
 	twerr =
@@ -523,6 +526,7 @@ err_out:;
 			if (argp->task != TW_HANDLE_NULL) { TW_Task_free (argp->task); }
 			H5Pclose (argp->dxpl_id);
 			free (argp);
+			free(op);
 		}
 	}
 
