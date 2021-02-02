@@ -24419,7 +24419,7 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
 
     async_instance_g->start_abt_push = true;
 
-    if (task->async_obj && get_n_running_task_in_queue_obj(task->async_obj) == 0 )
+    if (task->async_obj && get_n_running_task_in_queue_obj(task->async_obj) == 0 && task->async_obj->pool_ptr && async_instance_g->qhead.queue)
         push_task_to_abt_pool(&async_instance_g->qhead, *task->async_obj->pool_ptr);
 
     if (H5TSmutex_release(&mutex_count) < 0)
