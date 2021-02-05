@@ -23452,6 +23452,41 @@ H5VL_async_file_create(const char *name, unsigned flags, hid_t fcpl_id,
     /* Get copy of our VOL info from FAPL */
     H5Pget_vol_info(fapl_id, (void **)&info);
 
+/* Check for threadsafe initialization of MPI, if built with MPI compiler
+ * and the FAPL indicates using the MPI-IO VFD to access the file.
+ */
+#ifdef MPI_VERSION
+{
+    unsigned cap_flags = 0;
+
+    /* Query the capability flags for the underlying VOL connector */
+    if (H5VLintrospect_get_cap_flags(info->under_vol_info, info->under_vol_id, &cap_flags) < 0)
+        return NULL;
+
+    /* Querying for the VFD is only meaninful when using the native VOL connector */
+    if ((cap_flags & H5VL_CAP_FLAG_NATIVE_FILES) > 0) {
+        hid_t vfd_id;       /* VFD for file */
+
+        /* Retrieve the ID for the VFD */
+        if ((vfd_id = H5Pget_driver(fapl_id)) < 0)
+            return NULL;
+
+        /* Check for MPI-IO VFD */
+        if (H5FD_MPIO == vfd_id) {
+            int mpi_thread_lvl = -1;
+
+            /* Check for MPI thread level */
+            if (MPI_SUCCESS != MPI_Query_thread(&mpi_thread_lvl))
+                return NULL;
+
+            /* We require MPI_THREAD_MULTIPLE to operate correctly */
+            if (MPI_THREAD_MULTIPLE != mpi_thread_lvl)
+                return NULL;
+        } /* end if */
+    } /* end if */
+}
+#endif /* MPI_VERSION */
+
     /* Copy the FAPL */
     under_fapl_id = H5Pcopy(fapl_id);
 
@@ -23496,6 +23531,41 @@ H5VL_async_file_open(const char *name, unsigned flags, hid_t fapl_id,
 
     /* Get copy of our VOL info from FAPL */
     H5Pget_vol_info(fapl_id, (void **)&info);
+
+/* Check for threadsafe initialization of MPI, if built with MPI compiler
+ * and the FAPL indicates using the MPI-IO VFD to access the file.
+ */
+#ifdef MPI_VERSION
+{
+    unsigned cap_flags = 0;
+
+    /* Query the capability flags for the underlying VOL connector */
+    if (H5VLintrospect_get_cap_flags(info->under_vol_info, info->under_vol_id, &cap_flags) < 0)
+        return NULL;
+
+    /* Querying for the VFD is only meaninful when using the native VOL connector */
+    if ((cap_flags & H5VL_CAP_FLAG_NATIVE_FILES) > 0) {
+        hid_t vfd_id;       /* VFD for file */
+
+        /* Retrieve the ID for the VFD */
+        if ((vfd_id = H5Pget_driver(fapl_id)) < 0)
+            return NULL;
+
+        /* Check for MPI-IO VFD */
+        if (H5FD_MPIO == vfd_id) {
+            int mpi_thread_lvl = -1;
+
+            /* Check for MPI thread level */
+            if (MPI_SUCCESS != MPI_Query_thread(&mpi_thread_lvl))
+                return NULL;
+
+            /* We require MPI_THREAD_MULTIPLE to operate correctly */
+            if (MPI_THREAD_MULTIPLE != mpi_thread_lvl)
+                return NULL;
+        } /* end if */
+    } /* end if */
+}
+#endif /* MPI_VERSION */
 
     /* Copy the FAPL */
     under_fapl_id = H5Pcopy(fapl_id);

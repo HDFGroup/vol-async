@@ -33,8 +33,10 @@ int main(int argc, char *argv[])
     herr_t     status;
     hid_t      async_fapl;
     int proc_num, my_rank, ret=0;
+    int        mpi_thread_lvl_provided = -1;
 
-    MPI_Init(&argc, &argv);
+    MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &mpi_thread_lvl_provided);
+    assert(MPI_THREAD_MULTIPLE == mpi_thread_lvl_provided);
     MPI_Comm_size(MPI_COMM_WORLD, &proc_num);
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
 
