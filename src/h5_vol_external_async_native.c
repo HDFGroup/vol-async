@@ -844,6 +844,7 @@ static herr_t H5VL_async_object_optional(void *obj, H5VL_object_optional_t opt_t
 
 /* Container/connector introspection callbacks */
 static herr_t H5VL_async_introspect_get_conn_cls(void *obj, H5VL_get_conn_lvl_t lvl, const H5VL_class_t **conn_cls);
+static herr_t H5VL_async_introspect_get_cap_flags(const void *info, unsigned *cap_flags);
 static herr_t H5VL_async_introspect_opt_query(void *obj, H5VL_subclass_t cls, int opt_type, uint64_t *flags);
 
 /* Async request callbacks */
@@ -878,7 +879,7 @@ static const H5VL_class_t H5VL_async_g = {
     (H5VL_class_value_t)H5VL_ASYNC_VALUE,    /* value        */
     H5VL_ASYNC_NAME,                         /* name         */
     H5VL_ASYNC_VERSION,                      /* connector version */
-    0,                                       /* capability flags */
+    H5VL_CAP_FLAG_ASYNC,                     /* capability flags */
     H5VL_async_init,                         /* initialize   */
     H5VL_async_term,                         /* terminate    */
     {   /* info_cls */
@@ -957,6 +958,7 @@ static const H5VL_class_t H5VL_async_g = {
     },
     {   /* introspect_cls */
         H5VL_async_introspect_get_conn_cls,  /* get_conn_cls */
+        H5VL_async_introspect_get_cap_flags, /* get_cap_flags */
         H5VL_async_introspect_opt_query,     /* opt_query */
     },
     {   /* request_cls */
@@ -24333,6 +24335,37 @@ H5VL_async_introspect_get_conn_cls(void *obj, H5VL_get_conn_lvl_t lvl,
 
     return ret_value;
 } /* end H5VL_async_introspect_get_conn_cls() */
+
+
+/*-------------------------------------------------------------------------
+ * Function:    H5VL_async_introspect_get_cap_flags
+ *
+ * Purpose:     Query the capability flags for this connector and any
+ *              underlying connector(s).
+ *
+ * Return:      SUCCEED / FAIL
+ *
+ *-------------------------------------------------------------------------
+ */
+herr_t
+H5VL_async_introspect_get_cap_flags(const void *_info, unsigned *cap_flags)
+{
+    const H5VL_async_info_t *info = (const H5VL_async_info_t *)_info;
+    herr_t                          ret_value;
+
+#ifdef ENABLE_ASYNC_LOGGING
+    printf("------- ASYNC VOL INTROSPECT GetCapFlags\n");
+#endif
+
+    /* Invoke the query on the underlying VOL connector */
+    ret_value = H5VLintrospect_get_cap_flags(info->under_vol_info, info->under_vol_id, cap_flags);
+
+    /* Bitwise OR our capability flags in */
+    if (ret_value >= 0)
+        *cap_flags |= H5VL_async_g.cap_flags;
+
+    return ret_value;
+} /* end H5VL_async_introspect_get_cap_flags() */
 
 
 /*-------------------------------------------------------------------------
