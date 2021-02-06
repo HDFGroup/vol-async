@@ -24712,7 +24712,7 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
     start_time = clock();
 
     do {
-        if (NULL == task->abt_thread) {
+        /* if (NULL == task->abt_thread) { */
             if (task->is_done == 1 || task->magic != TASK_MAGIC) {
                 if(task->err_stack)
                     *status = H5VL_REQUEST_STATUS_FAIL;
@@ -24720,7 +24720,7 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
                     *status = H5VL_REQUEST_STATUS_SUCCEED;
                 goto done;
             }
-        }
+        /* } */
 
         if (timeout == H5ES_WAIT_FOREVER && task->eventual) {
             ABT_eventual_wait(task->eventual, NULL);
