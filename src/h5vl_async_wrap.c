@@ -48,10 +48,11 @@ void *H5VL_async_get_object (const void *obj) {
  *
  *---------------------------------------------------------------------------
  */
-herr_t H5VL_async_get_wrap_ctx (const void *obj, void **wrap_ctx) {
-	const H5VL_async_t *o = (const H5VL_async_t *)obj;
+herr_t H5VL_async_get_wrap_ctx (const void *obj_in, void **wrap_ctx) {
+	const H5VL_async_t *obj = (const H5VL_async_t *)obj_in;
 	H5VL_async_wrap_ctx_t *new_wrap_ctx;
-
+    hid_t under_vol_id = 0;
+    void *under_object = NULL;
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL WRAP CTX Get\n");
 #endif
@@ -59,11 +60,22 @@ herr_t H5VL_async_get_wrap_ctx (const void *obj, void **wrap_ctx) {
 	/* Allocate new VOL object wrapping context for the async connector */
 	new_wrap_ctx = (H5VL_async_wrap_ctx_t *)calloc (1, sizeof (H5VL_async_wrap_ctx_t));
 
+    if (obj->under_vol_id > 0) {
+        under_vol_id = obj->under_vol_id;
+    }
+    else if (obj->shared_file_obj && obj->shared_file_obj->under_vol_id > 0) {
+        under_vol_id = obj->shared_file_obj->under_vol_id;
+    }
+    else {
+        fprintf(stderr,"  [ASYNC VOL ERROR] with H5VL_async_get_wrap_ctx\n");
+        return -1;
+    }
+
 	/* Increment reference count on underlying VOL ID, and copy the VOL info */
-	new_wrap_ctx->under_vol_id = o->under_vol_id;
+	new_wrap_ctx->under_vol_id = obj->under_vol_id;
 	H5Iinc_ref (new_wrap_ctx->under_vol_id);
-	if(o->under_object)
-	    H5VLget_wrap_ctx (o->under_object, o->under_vol_id, &new_wrap_ctx->under_wrap_ctx);
+	if(obj->under_object)
+	    H5VLget_wrap_ctx (obj->under_object, obj->under_vol_id, &new_wrap_ctx->under_wrap_ctx);
 
 	/* Set wrap context to return */
 	*wrap_ctx = new_wrap_ctx;
@@ -92,11 +104,8 @@ void *H5VL_async_wrap_object (void *obj, H5I_type_t obj_type, void *_wrap_ctx) {
 
 	/* Wrap the object with the underlying VOL */
 	under = H5VLwrap_object (obj, obj_type, wrap_ctx->under_vol_id, wrap_ctx->under_wrap_ctx);
-	if (under){
-		new_obj = H5VL_async_new_obj ();
-		new_obj->under_object = under;
-		new_obj->under_vol_id = wrap_ctx->under_vol_id;
-	}
+	if (under)
+		new_obj = H5VL_async_new_obj (under, wrap_ctx->under_vol_id);
 	else
 		new_obj = NULL;
 

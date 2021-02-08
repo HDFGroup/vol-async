@@ -178,6 +178,8 @@ static unsigned int LOCK_COUNT_GLOBAL = 1;
 		CHECK_ERR_EX ("H5VL_asynci_h5ts_mutex_lock failed")                                      \
 		/* Apply HDF5 state copied in the VOL call so the handler is recognized as VOL functions \
 		 */                                                                                      \
+        err = H5VLstart_lib_state ();		                                                     \
+        CHECK_ERR_EX ("H5VLstart_lib_state failed")                                            \
 		err = H5VLrestore_lib_state (argp->stat);                                                \
 		CHECK_ERR_EX ("H5VLrestore_lib_state failed")                                            \
 		*stat_restored = true;                                                                   \
@@ -186,7 +188,7 @@ static unsigned int LOCK_COUNT_GLOBAL = 1;
 #define H5VL_ASYNC_HANDLER_END                                      \
 	{                                                               \
 		/* Restore HDF5 status */                                   \
-		if (stat_restored) { H5VLreset_lib_state (); }              \
+		if (stat_restored) { H5VLfinish_lib_state (); }              \
 		err = H5VLfree_lib_state (argp->stat);                      \
 		if (err) {                                                  \
 			printf ("Error at line %d in %sn", __LINE__, __FILE__); \

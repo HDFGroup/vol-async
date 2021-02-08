@@ -37,6 +37,12 @@
  *
  *-------------------------------------------------------------------------
  */
+H5VL_async_t* _shared_file_obj_new(hid_t fapl_id){
+    hid_t under_vol_id;
+    H5Pget_vol_id(fapl_id, &under_vol_id);
+    H5VL_async_t* obj = H5VL_async_new_obj (NULL, under_vol_id);
+    return obj;
+}
 void *H5VL_async_file_create (
 	const char *name, unsigned flags, hid_t fcpl_id, hid_t fapl_id, hid_t dxpl_id, void **req) {
 	H5VL_ASYNC_CB_VARS
@@ -49,7 +55,7 @@ void *H5VL_async_file_create (
 	printf ("------- ASYNC VOL FILE Create\n");
 #endif
 
-	op = H5VL_async_new_obj ();
+	op = _shared_file_obj_new (fapl_id);
 	CHECK_PTR (op)
 
 	argp = (H5VL_async_file_create_args *)malloc (sizeof (H5VL_async_file_create_args));
@@ -123,7 +129,7 @@ void *H5VL_async_file_open (
 	printf ("------- ASYNC VOL FILE Open\n");
 #endif
 
-	op = H5VL_async_new_obj ();
+    op = _shared_file_obj_new (fapl_id);
 	CHECK_PTR (op)
 
 	argp = (H5VL_async_file_open_args *)malloc (sizeof (H5VL_async_file_open_args));

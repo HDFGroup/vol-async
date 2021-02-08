@@ -55,7 +55,7 @@ void *H5VL_async_group_create (void *obj,
 	printf ("------- ASYNC VOL group Create\n");
 #endif
 
-	op = H5VL_async_new_obj ();
+	op = H5VL_async_new_obj (NULL, target_obj->under_vol_id);
 	CHECK_PTR (op)
 
 	name_len = strlen (name);
@@ -133,7 +133,7 @@ void *H5VL_async_group_open (void *obj,
 	printf ("------- ASYNC VOL group Create\n");
 #endif
 
-	op = H5VL_async_new_obj ();
+    op = H5VL_async_new_obj (NULL, target_obj->under_vol_id);
 	CHECK_PTR (op)
 
 	name_len = strlen (name);
@@ -349,7 +349,7 @@ herr_t H5VL_async_group_close (void *grp, hid_t dxpl_id, void **req) {
 	H5VL_ASYNC_CB_VARS
 	H5VL_async_group_close_args *argp;
 	H5VL_async_t *target_obj = (H5VL_async_t *)grp;
-    H5VL_async_t * op =	H5VL_async_new_obj ();
+    H5VL_async_t * op = H5VL_async_new_obj (NULL, target_obj->under_vol_id);
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL group Close\n");
 #endif

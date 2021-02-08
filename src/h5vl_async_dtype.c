@@ -49,14 +49,14 @@ void *H5VL_async_datatype_commit (void *obj,
 	H5VL_ASYNC_CB_VARS
 	H5VL_async_datatype_commit_args *argp = NULL;
 	size_t name_len;
-	H5VL_async_t *op		 = NULL;
-	H5VL_async_t *target_obj = (H5VL_async_t *)obj;
+    H5VL_async_t *target_obj = (H5VL_async_t *)obj;
+	H5VL_async_t * op = H5VL_async_new_obj (NULL, target_obj->under_vol_id);
+
 
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL datatype Commit\n");
 #endif
 
-	op = H5VL_async_new_obj ();
 	CHECK_PTR (op)
 
 	name_len = strlen (name);
@@ -127,14 +127,12 @@ void *H5VL_async_datatype_open (void *obj,
 	H5VL_ASYNC_CB_VARS
 	size_t name_len;
 	H5VL_async_datatype_open_args *argp = NULL;
-	H5VL_async_t *op					= NULL;
 	H5VL_async_t *target_obj			= (H5VL_async_t *)obj;
-
+    H5VL_async_t * op = H5VL_async_new_obj (NULL, target_obj->under_vol_id);
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL datatype Open\n");
 #endif
 
-	op = H5VL_async_new_obj ();
 	CHECK_PTR (op)
 
 	name_len = strlen (name);

@@ -56,11 +56,38 @@ int H5VL_async_file_create_handler (void *data) {
 	/* Open the file with the underlying VOL connector */
 	argp->op->under_vol_id = under_vol_id;
 	H5Iinc_ref (argp->op->under_vol_id);
-
-	argp->op->under_object = H5VLfile_create (argp->name, argp->flags, argp->fcpl_id, under_fapl_id,
+	void* obj = NULL;
+    H5E_BEGIN_TRY {
+	    obj = H5VLfile_create (argp->name, argp->flags, argp->fcpl_id, under_fapl_id,
 											  argp->dxpl_id, NULL);
-
+    } H5E_END_TRY
+    if (NULL == obj) {
+        if ((argp->op->error_stack = H5Eget_current_stack()) < 0)
+            fprintf(stderr,"  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+        goto err_out;
+    }
+    argp->op->under_object = obj;
 	CHECK_PTR (argp->op->under_object)
+
+    /* Check for 'post open' callback */
+    uint64_t supported = 0;
+    if(H5VLintrospect_opt_query(obj, under_vol_id, H5VL_SUBCLS_FILE, H5VL_NATIVE_FILE_POST_OPEN, &supported) < 0) {
+        fprintf(stderr," %s H5VLintrospect_opt_query failed\n", __func__);
+        goto err_out;
+    }
+    if(supported & H5VL_OPT_QUERY_SUPPORTED) {
+        /* Make the 'post open' callback */
+        /* Try executing operation, without default error stack handling */
+        herr_t status;
+        H5E_BEGIN_TRY {
+            status = H5VLfile_optional_vararg(obj, under_vol_id, H5VL_NATIVE_FILE_POST_OPEN, argp->dxpl_id, NULL);
+        } H5E_END_TRY
+        if ( status < 0 ) {
+            if ((argp->op->error_stack = H5Eget_current_stack()) < 0)
+                fprintf(stderr,"  %s H5Eget_current_stack failed\n", __func__);
+            goto err_out;
+        }
+    } /* end if */
 
 err_out:;
 	if (err) {

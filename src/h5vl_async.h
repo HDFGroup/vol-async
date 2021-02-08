@@ -56,6 +56,7 @@ typedef enum H5VL_async_stat_t {
 typedef struct H5VL_async_t {
 	hid_t under_vol_id; /* ID for underlying VOL connector */
 	void *under_object; /* Info object for underlying VOL connector */
+	struct H5VL_async_t* shared_file_obj;
 	volatile H5VL_async_stat_t stat;
 	TW_Task_handle_t prev_task;
 	// TW_Task_handle_t open_task;
@@ -79,7 +80,7 @@ extern int H5VL_async_dataset_wait_op_g;
 /********************* */
 
 /* Internal functions */
-H5VL_async_t *H5VL_async_new_obj ();
+H5VL_async_t *H5VL_async_new_obj (void *under_obj, hid_t under_vol_id);
 herr_t H5VL_async_free_obj (H5VL_async_t *obj);
 // herr_t H5VL_async_dec_ref (H5VL_async_t *obj);
 
@@ -94,8 +95,8 @@ herr_t H5VL_async_introspect_get_conn_cls (void *obj,
 herr_t H5VL_async_introspect_opt_query (void *obj,
 										H5VL_subclass_t cls,
 										int opt_type,
-										hbool_t *supported);
-
+										uint64_t *flags);
+static herr_t H5VL_async_introspect_get_cap_flags(const void *info, unsigned *cap_flags);
 /* Generic optional callback */
 herr_t H5VL_async_optional (void *obj, int op_type, hid_t dxpl_id, void **req, va_list arguments);
 void dup_loc_param(H5VL_loc_params_t *dest, H5VL_loc_params_t const *loc_params);

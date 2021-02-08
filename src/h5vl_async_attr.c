@@ -49,14 +49,13 @@ void *H5VL_async_attr_create (void *obj,
 	H5VL_ASYNC_CB_VARS
 	H5VL_async_attr_create_args *argp = NULL;
 	size_t name_len;
-	H5VL_async_t *op		 = NULL;
 	H5VL_async_t *target_obj = (H5VL_async_t *)obj;//parent obj
-
+    H5VL_async_t * op = H5VL_async_new_obj (NULL, target_obj->under_vol_id);
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL attr Create\n");
 #endif
 
-	op = H5VL_async_new_obj ();
+
 	CHECK_PTR (op)
 
 	name_len = strlen (name);
@@ -128,14 +127,12 @@ void *H5VL_async_attr_open (void *obj,
 	H5VL_ASYNC_CB_VARS
 	H5VL_async_attr_open_args *argp = NULL;
 	size_t name_len;
-	H5VL_async_t *op		 = NULL;
 	H5VL_async_t *target_obj = (H5VL_async_t *)obj;
-
+    H5VL_async_t * op = H5VL_async_new_obj (NULL, target_obj->under_vol_id);
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL attr Create\n");
 #endif
 
-	op = H5VL_async_new_obj ();
 	CHECK_PTR (op)
 
 	name_len = strlen (name);
