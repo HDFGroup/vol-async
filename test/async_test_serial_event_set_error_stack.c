@@ -251,13 +251,13 @@ int main(int argc, char *argv[])
     fflush(stdout);
 
     // attribute async API have not been fully implemented, skip the test for now
-    attr0 = H5Acreate(dset0_id, "attr_0", H5T_NATIVE_INT, attr_space, H5P_DEFAULT, H5P_DEFAULT);
+    attr0 = H5Acreate_async(dset0_id, "attr_0", H5T_NATIVE_INT, attr_space, H5P_DEFAULT, H5P_DEFAULT, es1_id);
     if (attr0 < 0) {
         fprintf(stderr, "First attribute create failed\n");
         ret = -1;
         goto done;
     }
-    attr1 = H5Acreate(dset0_id, "attr_1", H5T_NATIVE_INT, attr_space, H5P_DEFAULT, H5P_DEFAULT);
+    attr1 = H5Acreate_async(dset0_id, "attr_1", H5T_NATIVE_INT, attr_space, H5P_DEFAULT, H5P_DEFAULT, es1_id);
     if (attr1 < 0) {
         fprintf(stderr, "Second attribute create failed\n");
         ret = -1;
@@ -266,39 +266,39 @@ int main(int argc, char *argv[])
 
     attr_data0 = 123456;
     attr_data1 = -654321;
-    status = H5Awrite(attr0, H5T_NATIVE_INT, &attr_data0);
+    status = H5Awrite_async(attr0, H5T_NATIVE_INT, &attr_data0, es1_id);
     if (status < 0) {
         fprintf(stderr, "First attribute write failed\n");
         ret = -1;
         goto done;
     }
-    status = H5Awrite(attr1, H5T_NATIVE_INT, &attr_data1);
+    status = H5Awrite_async(attr1, H5T_NATIVE_INT, &attr_data1, es1_id);
     if (status < 0) {
         fprintf(stderr, "Second attribute write failed\n");
         ret = -1;
         goto done;
     }
 
-    status = H5Aread(attr0, H5T_NATIVE_INT, &attr_read_data0);
+    status = H5Aread_async(attr0, H5T_NATIVE_INT, &attr_read_data0, es1_id);
     if (status < 0) {
         fprintf(stderr, "First attribute read failed\n");
         ret = -1;
         goto done;
     }
-    status = H5Aread(attr1, H5T_NATIVE_INT, &attr_read_data1);
+    status = H5Aread_async(attr1, H5T_NATIVE_INT, &attr_read_data1, es1_id);
     if (status < 0) {
         fprintf(stderr, "Second attribute read failed\n");
         ret = -1;
         goto done;
     }
 
-    status = H5Aclose(attr0);
+    status = H5Aclose_async(attr0, es1_id);
     if (status < 0) {
         fprintf(stderr, "First attribute close failed\n");
         ret = -1;
         goto done;
     }
-    status = H5Aclose(attr1);
+    status = H5Aclose_async(attr1, es1_id);
     if (status < 0) {
         fprintf(stderr, "Second attribute close failed\n");
         ret = -1;

@@ -91,20 +91,20 @@ int main(int argc, char *argv[])
     if (print_dbg_msg) printf("H5Dcreate 1 done\n");
     fflush(stdout);
 
-    // attribute async API have not been fully implemented, skip the test for now
-    attr0 = H5Acreate(dset0_id, "attr_0", H5T_NATIVE_INT, attr_space, H5P_DEFAULT, H5P_DEFAULT);
-    attr1 = H5Acreate(dset1_id, "attr_1", H5T_NATIVE_INT, attr_space, H5P_DEFAULT, H5P_DEFAULT);
+    // attribute async test
+    attr0 = H5Acreate_async(dset0_id, "attr_0", H5T_NATIVE_INT, attr_space, H5P_DEFAULT, H5P_DEFAULT, es_id);
+    attr1 = H5Acreate_async(dset1_id, "attr_1", H5T_NATIVE_INT, attr_space, H5P_DEFAULT, H5P_DEFAULT, es_id);
 
     attr_data0 = 123456;
     attr_data1 = -654321;
-    H5Awrite(attr0, H5T_NATIVE_INT, &attr_data0);
-    H5Awrite(attr1, H5T_NATIVE_INT, &attr_data1);
+    H5Awrite_async(attr0, H5T_NATIVE_INT, &attr_data0, es_id);
+    H5Awrite_async(attr1, H5T_NATIVE_INT, &attr_data1, es_id);
 
-    H5Aread(attr0, H5T_NATIVE_INT, &attr_read_data0);
-    H5Aread(attr1, H5T_NATIVE_INT, &attr_read_data1);
+    H5Aread_async(attr0, H5T_NATIVE_INT, &attr_read_data0, es_id);
+    H5Aread_async(attr1, H5T_NATIVE_INT, &attr_read_data1, es_id);
 
-    H5Aclose(attr0);
-    H5Aclose(attr1);
+    H5Aclose_async(attr0, es_id);
+    H5Aclose_async(attr1, es_id);
 
     H5Sclose(attr_space);
 
