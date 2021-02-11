@@ -12112,9 +12112,9 @@ async_file_create_fn(void *foo)
     H5VL_async_info_t *info = NULL;
     async_task_t *task = (async_task_t*)foo;
     async_file_create_args_t *args = (async_file_create_args_t*)(task->args);
-    herr_t status;
+    /* herr_t status; */
     hid_t under_vol_id;
-    uint64_t supported;          /* Whether 'post open' operation is supported by VOL connector */
+    /* uint64_t supported;          /1* Whether 'post open' operation is supported by VOL connector *1/ */
 
 #ifdef ENABLE_TIMING
     struct timeval now_time;
@@ -12268,24 +12268,24 @@ async_file_create_fn(void *foo)
         goto done;
     }
 
-    /* Check for 'post open' callback */
-    supported = 0;
-    if(H5VLintrospect_opt_query(obj, under_vol_id, H5VL_SUBCLS_FILE, H5VL_NATIVE_FILE_POST_OPEN, &supported) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLintrospect_opt_query failed\n", __func__);
-        goto done;
-    }
-    if(supported & H5VL_OPT_QUERY_SUPPORTED) {
-        /* Make the 'post open' callback */
-        /* Try executing operation, without default error stack handling */
-        H5E_BEGIN_TRY {
-            status = H5VLfile_optional_vararg(obj, under_vol_id, H5VL_NATIVE_FILE_POST_OPEN, args->dxpl_id, NULL);
-        } H5E_END_TRY
-        if ( status < 0 ) {
-            if ((task->err_stack = H5Eget_current_stack()) < 0)
-                fprintf(stderr,"  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
-            goto done;
-        }
-    } /* end if */
+    /* /1* Check for 'post open' callback *1/ */
+    /* supported = 0; */
+    /* if(H5VLintrospect_opt_query(obj, under_vol_id, H5VL_SUBCLS_FILE, H5VL_NATIVE_FILE_POST_OPEN, &supported) < 0) { */
+    /*     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLintrospect_opt_query failed\n", __func__); */
+    /*     goto done; */
+    /* } */
+    /* if(supported & H5VL_OPT_QUERY_SUPPORTED) { */
+    /*     /1* Make the 'post open' callback *1/ */
+    /*     /1* Try executing operation, without default error stack handling *1/ */
+    /*     H5E_BEGIN_TRY { */
+    /*         status = H5VLfile_optional_vararg(obj, under_vol_id, H5VL_NATIVE_FILE_POST_OPEN, args->dxpl_id, NULL); */
+    /*     } H5E_END_TRY */
+    /*     if ( status < 0 ) { */
+    /*         if ((task->err_stack = H5Eget_current_stack()) < 0) */
+    /*             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__); */
+    /*         goto done; */
+    /*     } */
+    /* } /1* end if *1/ */
 
 #ifdef ENABLE_TIMING
     gettimeofday(&timer4, NULL);
@@ -12577,9 +12577,9 @@ async_file_open_fn(void *foo)
     H5VL_async_info_t *info = NULL;
     async_task_t *task = (async_task_t*)foo;
     async_file_open_args_t *args = (async_file_open_args_t*)(task->args);
-    herr_t status;
+    /* herr_t status; */
     hid_t under_vol_id;
-    uint64_t supported;          /* Whether 'post open' operation is supported by VOL connector */
+    /* uint64_t supported;          /1* Whether 'post open' operation is supported by VOL connector *1/ */
 
 #ifdef ENABLE_TIMING
     struct timeval now_time;
@@ -12733,29 +12733,29 @@ async_file_open_fn(void *foo)
         goto done;
     }
 
-    /* Check for 'post open' callback */
-    supported = 0;
-    /* Try executing operation, without default error stack handling */
-    H5E_BEGIN_TRY {
-        status = H5VLintrospect_opt_query(obj, under_vol_id, H5VL_SUBCLS_FILE, H5VL_NATIVE_FILE_POST_OPEN, &supported);
-    } H5E_END_TRY
-    if ( status < 0 ) {
-        if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(stderr,"  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
-        goto done;
-    }
-    if(supported & H5VL_OPT_QUERY_SUPPORTED) {
-        /* Make the 'post open' callback */
-        /* Try executing operation, without default error stack handling */
-        H5E_BEGIN_TRY {
-            status = H5VLfile_optional_vararg(obj, under_vol_id, H5VL_NATIVE_FILE_POST_OPEN, args->dxpl_id, NULL);
-        } H5E_END_TRY
-        if ( status < 0 ) {
-            if ((task->err_stack = H5Eget_current_stack()) < 0)
-                fprintf(stderr,"  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
-            goto done;
-        }
-    } /* end if */
+    /* /1* Check for 'post open' callback *1/ */
+    /* supported = 0; */
+    /* /1* Try executing operation, without default error stack handling *1/ */
+    /* H5E_BEGIN_TRY { */
+    /*     status = H5VLintrospect_opt_query(obj, under_vol_id, H5VL_SUBCLS_FILE, H5VL_NATIVE_FILE_POST_OPEN, &supported); */
+    /* } H5E_END_TRY */
+    /* if ( status < 0 ) { */
+    /*     if ((task->err_stack = H5Eget_current_stack()) < 0) */
+    /*         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__); */
+    /*     goto done; */
+    /* } */
+    /* if(supported & H5VL_OPT_QUERY_SUPPORTED) { */
+    /*     /1* Make the 'post open' callback *1/ */
+    /*     /1* Try executing operation, without default error stack handling *1/ */
+    /*     H5E_BEGIN_TRY { */
+    /*         status = H5VLfile_optional_vararg(obj, under_vol_id, H5VL_NATIVE_FILE_POST_OPEN, args->dxpl_id, NULL); */
+    /*     } H5E_END_TRY */
+    /*     if ( status < 0 ) { */
+    /*         if ((task->err_stack = H5Eget_current_stack()) < 0) */
+    /*             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__); */
+    /*         goto done; */
+    /*     } */
+    /* } /1* end if *1/ */
 
 #ifdef ENABLE_TIMING
     gettimeofday(&timer4, NULL);
@@ -24644,7 +24644,7 @@ H5VL_async_introspect_opt_query(void *obj, H5VL_subclass_t cls,
      */
     if(H5VL_NATIVE_FILE_POST_OPEN == opt_type) {
         if(flags)
-            *flags = 0;
+            *flags = 1;
         ret_value = 0;
     } /* end if */
     else

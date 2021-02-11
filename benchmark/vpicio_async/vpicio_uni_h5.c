@@ -45,6 +45,7 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include "h5_vol_external_async_native.h"
+#include "h5_async_lib.h"
 
 #define ENABLE_MPI 1
 
@@ -136,43 +137,43 @@ void init_particles ()
 }
 
 // Create HDF5 file and write data
-void create_and_write_synthetic_h5_data(int rank, hid_t loc, hid_t *dset_ids, hid_t filespace, hid_t memspace, hid_t plist_id)
+void create_and_write_synthetic_h5_data(int rank, hid_t loc, hid_t *dset_ids, hid_t filespace, hid_t memspace, hid_t plist_id, hid_t es_id)
 {
     /* sleep(1); */
     int i;
     // Note: printf statements are inserted basically
     // to check the progress. Other than that they can be removed
-    dset_ids[0] = H5Dcreate(loc, "x", H5T_NATIVE_FLOAT, filespace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    dset_ids[1] = H5Dcreate(loc, "y", H5T_NATIVE_FLOAT, filespace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    dset_ids[2] = H5Dcreate(loc, "z", H5T_NATIVE_FLOAT, filespace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    dset_ids[3] = H5Dcreate(loc, "id1", H5T_NATIVE_INT, filespace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    dset_ids[4] = H5Dcreate(loc, "id2", H5T_NATIVE_INT, filespace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    dset_ids[5] = H5Dcreate(loc, "px", H5T_NATIVE_FLOAT, filespace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    dset_ids[6] = H5Dcreate(loc, "py", H5T_NATIVE_FLOAT, filespace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    dset_ids[7] = H5Dcreate(loc, "pz", H5T_NATIVE_FLOAT, filespace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    dset_ids[0] = H5Dcreate_async(loc, "x", H5T_NATIVE_FLOAT, filespace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
+    dset_ids[1] = H5Dcreate_async(loc, "y", H5T_NATIVE_FLOAT, filespace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
+    dset_ids[2] = H5Dcreate_async(loc, "z", H5T_NATIVE_FLOAT, filespace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
+    dset_ids[3] = H5Dcreate_async(loc, "id1", H5T_NATIVE_INT, filespace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
+    dset_ids[4] = H5Dcreate_async(loc, "id2", H5T_NATIVE_INT, filespace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
+    dset_ids[5] = H5Dcreate_async(loc, "px", H5T_NATIVE_FLOAT, filespace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
+    dset_ids[6] = H5Dcreate_async(loc, "py", H5T_NATIVE_FLOAT, filespace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
+    dset_ids[7] = H5Dcreate_async(loc, "pz", H5T_NATIVE_FLOAT, filespace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
 
-    ierr = H5Dwrite(dset_ids[0], H5T_NATIVE_FLOAT, memspace, filespace, plist_id, x);
+    ierr = H5Dwrite_async(dset_ids[0], H5T_NATIVE_FLOAT, memspace, filespace, plist_id, x, es_id);
     /* if (rank == 0) printf ("Written variable 1 \n"); */
 
-    ierr = H5Dwrite(dset_ids[1], H5T_NATIVE_FLOAT, memspace, filespace, plist_id, y);
+    ierr = H5Dwrite_async(dset_ids[1], H5T_NATIVE_FLOAT, memspace, filespace, plist_id, y, es_id);
     /* if (rank == 0) printf ("Written variable 2 \n"); */
 
-    ierr = H5Dwrite(dset_ids[2], H5T_NATIVE_FLOAT, memspace, filespace, plist_id, z);
+    ierr = H5Dwrite_async(dset_ids[2], H5T_NATIVE_FLOAT, memspace, filespace, plist_id, z, es_id);
     /* if (rank == 0) printf ("Written variable 3 \n"); */
 
-    ierr = H5Dwrite(dset_ids[3], H5T_NATIVE_INT, memspace, filespace, plist_id, id1);
+    ierr = H5Dwrite_async(dset_ids[3], H5T_NATIVE_INT, memspace, filespace, plist_id, id1, es_id);
     /* if (rank == 0) printf ("Written variable 4 \n"); */
 
-    ierr = H5Dwrite(dset_ids[4], H5T_NATIVE_INT, memspace, filespace, plist_id, id2);
+    ierr = H5Dwrite_async(dset_ids[4], H5T_NATIVE_INT, memspace, filespace, plist_id, id2, es_id);
     /* if (rank == 0) printf ("Written variable 5 \n"); */
 
-    ierr = H5Dwrite(dset_ids[5], H5T_NATIVE_FLOAT, memspace, filespace, plist_id, px);
+    ierr = H5Dwrite_async(dset_ids[5], H5T_NATIVE_FLOAT, memspace, filespace, plist_id, px, es_id);
     /* if (rank == 0) printf ("Written variable 6 \n"); */
 
-    ierr = H5Dwrite(dset_ids[6], H5T_NATIVE_FLOAT, memspace, filespace, plist_id, py);
+    ierr = H5Dwrite_async(dset_ids[6], H5T_NATIVE_FLOAT, memspace, filespace, plist_id, py, es_id);
     /* if (rank == 0) printf ("Written variable 7 \n"); */
 
-    ierr = H5Dwrite(dset_ids[7], H5T_NATIVE_FLOAT, memspace, filespace, plist_id, pz);
+    ierr = H5Dwrite_async(dset_ids[7], H5T_NATIVE_FLOAT, memspace, filespace, plist_id, pz, es_id);
     /* if (rank == 0) printf ("Written variable 8 \n"); */
     if (rank == 0) printf ("  Finished written 8 variables \n");
 
@@ -198,7 +199,7 @@ int main (int argc, char* argv[])
     MPI_Info info  = MPI_INFO_NULL;
     #endif
 
-    hid_t file_id, filespace, memspace, *grp_ids, async_fapl, async_dxpl, **dset_ids;
+    hid_t file_id, filespace, memspace, *grp_ids, async_fapl, async_dxpl, **dset_ids, es_id;
     char grp_name[128];
 
     if (argc < 4) {
@@ -260,17 +261,17 @@ int main (int argc, char* argv[])
 
     async_fapl = H5Pcreate (H5P_FILE_ACCESS);
     async_dxpl = H5Pcreate (H5P_DATASET_XFER);
-    H5Pset_vol_async(async_fapl);
+    /* H5Pset_vol_async(async_fapl); */
     H5Pset_alignment(async_fapl, 1048576, 16777216);
-    H5Pset_dxpl_async_cp_limit(async_dxpl, 0);
-    H5Pset_dxpl_async(async_dxpl, true);
     H5Pset_coll_metadata_write(async_fapl, true);
     H5Pset_meta_block_size(async_fapl, 1048576);
     #ifdef ENABLE_MPI
     H5Pset_fapl_mpio(async_fapl, comm, info);
     #endif
 
-    file_id = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, async_fapl);
+    es_id = H5EScreate(); 
+
+    file_id = H5Fcreate_async(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, async_fapl, es_id);
 
     if (my_rank == 0)
         printf ("Opened HDF5 file... \n");
@@ -285,14 +286,11 @@ int main (int argc, char* argv[])
         dset_ids[i] = (hid_t*)calloc(8, sizeof(hid_t));
     grp_ids  = (hid_t*)calloc(nts, sizeof(hid_t));
 
-    /* #ifdef ENABLE_MPI */
-    /* MPI_Barrier(MPI_COMM_WORLD); */
-    /* #endif */
     timer_on (1);
 
     for (i = 0; i < nts; i++) {
         sprintf(grp_name, "Timestep_%d", i);
-        grp_ids[i] = H5Gcreate(file_id, grp_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+        grp_ids[i] = H5Gcreate_async(file_id, grp_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
 
         if (my_rank == 0)
             printf ("Writing %s ... \n", grp_name);
@@ -300,7 +298,7 @@ int main (int argc, char* argv[])
         timer_reset(2);
         timer_on(2);
         timer_on(3);
-        create_and_write_synthetic_h5_data(my_rank, grp_ids[i], dset_ids[i], filespace, memspace, async_dxpl);
+        create_and_write_synthetic_h5_data(my_rank, grp_ids[i], dset_ids[i], filespace, memspace, async_dxpl, es_id);
         timer_off(2);
         if (my_rank == 0)
             timer_msg (2, "create and write");
@@ -308,8 +306,8 @@ int main (int argc, char* argv[])
         fflush(stdout);
 
         for (j = 0; j < 8; j++) 
-            H5Dclose(dset_ids[i][j]);
-        H5Gclose(grp_ids[i]);
+            H5Dclose_async(dset_ids[i][j], es_id);
+        H5Gclose_async(grp_ids[i], es_id);
 
         H5VL_async_start();
 
@@ -342,12 +340,13 @@ int main (int argc, char* argv[])
     H5Sclose(filespace);
     H5Pclose(async_dxpl);
     H5Pclose(async_fapl);
-    /* if (my_rank == 0) printf ("Before closing HDF5 file \n"); */
-    /* H5Fwait(file_id); */
-    H5Fclose(file_id);
-    if (my_rank == 0) {printf ("Closed HDF5 file \n"); fflush(stdout);}
+    H5Fclose_async(file_id, es_id);
+    /* if (my_rank == 0) {printf ("Closed HDF5 file \n"); fflush(stdout);} */
 
-    H5VLasync_finalize();
+    size_t num_in_progress;
+    hbool_t op_failed;
+    H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
+    H5ESclose(es_id);
 
     #ifdef ENABLE_MPI
     MPI_Barrier(MPI_COMM_WORLD);

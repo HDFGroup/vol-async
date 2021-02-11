@@ -336,8 +336,6 @@ int main (int argc, char* argv[])
     H5Sclose(filespace);
     H5Pclose(dxpl);
     H5Pclose(fapl);
-    /* if (my_rank == 0) printf ("Before closing HDF5 file \n"); */
-    /* H5Fwait(file_id); */
     H5Fclose(file_id);
     if (my_rank == 0) {printf ("Closed HDF5 file \n"); fflush(stdout);}
 

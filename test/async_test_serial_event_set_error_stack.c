@@ -175,7 +175,7 @@ int main(int argc, char *argv[])
         ret = -1;
         goto done;
     }
-    if (2 != err_info.op_ins_count) {
+    if (3 != err_info.op_ins_count) {
         fprintf(stderr, "Event set didn't return op counter correctly?!?\n");
         ret = -1;
         goto done;

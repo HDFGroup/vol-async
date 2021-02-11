@@ -2,18 +2,18 @@
 # ABT_DIR = /global/homes/h/houhun/cori/argobots/install
 # ASYNC_DIR = /global/u1/h/houhun/hdf5vol/async/src
 
-HDF5_DIR  = /autofs/nccs-svm1_home1/houjun/summit/hdf5/async_threadsafe/hdf5
-ABT_DIR = /autofs/nccs-svm1_home1/houjun/summit/argobots/install
-ASYNC_DIR = /autofs/nccs-svm1_home1/houjun/summit/async/src
+HDF5_DIR = /global/u1/h/houhun/hpc-io/hdf5/async_optional_gnu/hdf5
+ABT_DIR = /global/u1/h/houhun/cori/argobots/install
+ASYNC_DIR = /global/homes/h/houhun/hdf5vol/vol-async/src 
 
-# CC = cc
+CC = cc
 # CC = gcc-9
-CC = mpicc
+# CC = mpicc
 
 DEBUG = -g -O0
 CFLAGS = $(DEBUG) -I$(ABT_DIR)/include -I$(ASYNC_DIR) -I$(HDF5_DIR)/include
 #-Wall
-LDFLAGS = $(DEBUG) -L$(ASYNC_DIR) -L$(ABT_DIR)/lib -L$(HDF5_DIR)/lib -labt -lhdf5 -lh5async -Wl,-rpath=$(ABT_DIR)/lib -Wl,-rpath=$(HDF5_DIR)/lib -Wl,-rpath=$(ASYNC_DIR)
+LDFLAGS = $(DEBUG) -L$(ASYNC_DIR) -L$(ABT_DIR)/lib -L$(HDF5_DIR)/lib -labt -lhdf5 -lh5async -lasynchdf5 -Wl,-rpath=$(ABT_DIR)/lib -Wl,-rpath=$(HDF5_DIR)/lib -Wl,-rpath=$(ASYNC_DIR)
 
 SRC = vpicio_uni_h5.c
 OBJ = $(SRC:.c=.o)

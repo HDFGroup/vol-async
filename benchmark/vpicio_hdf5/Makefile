@@ -1,10 +1,10 @@
 # HDF5_DIR = /global/homes/h/houhun/hdf5_tmp/hdf5/async_threadsafe/hdf5
 
-HDF5_DIR  = /ccs/home/houjun/summit/hdf5/develop_build/hdf5
+HDF5_DIR = /global/u1/h/houhun/hpc-io/hdf5/async_optional_gnu/hdf5
 
-# CC = cc
+CC = cc
 # CC = gcc-9
-CC = mpicc
+# CC = mpicc
 
 # DEBUG = -g -O0
 CFLAGS = $(DEBUG) -I$(HDF5_DIR)/include
@@ -15,7 +15,6 @@ SRC = vpicio_uni_h5.c
 OBJ = $(SRC:.c=.o)
 EXE = $(SRC:.c=.exe)
 DBG = $(SRC:.c=.exe.dSYM)
-LIB = libh5async.so
 
 # Add '.exe' as a targetable suffix
 .SUFFIXES: .exe
