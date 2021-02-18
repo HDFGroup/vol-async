@@ -2028,8 +2028,9 @@ herr_t H5VL_async_file_wait(H5VL_async_t *async_obj)
 void
 H5VL_async_start()
 {
-    if (NULL != async_instance_g->qhead.queue)
-        push_task_to_abt_pool(&async_instance_g->qhead, async_instance_g->pool);
+    async_instance_g->start_abt_push = true;
+    /* if (async_instance_g && NULL != async_instance_g->qhead.queue) */
+    /*     push_task_to_abt_pool(&async_instance_g->qhead, async_instance_g->pool); */
 }
 
 double get_elapsed_time(struct timeval *tstart, struct timeval *tend)
@@ -23703,7 +23704,7 @@ H5VL_async_file_open(const char *name, unsigned flags, hid_t fapl_id,
     H5VL_async_info_t *info;
     H5VL_async_t *file;
     hid_t under_fapl_id;
-    task_list_qtype qtype = ISOLATED;
+    task_list_qtype qtype = REGULAR;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL FILE Open\n");
@@ -23922,7 +23923,7 @@ H5VL_async_file_optional(void *file, H5VL_file_optional_t opt_type,
 {
     H5VL_async_t *o = (H5VL_async_t *)file;
     herr_t ret_value;
-    task_list_qtype qtype = ISOLATED;
+    task_list_qtype qtype = REGULAR;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL File Optional\n");
