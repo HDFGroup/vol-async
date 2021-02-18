@@ -191,7 +191,9 @@ int main (int argc, char* argv[])
     int my_rank = 0, num_procs = 1, nts, i, j, sleep_time = 0;
 
     #ifdef ENABLE_MPI
-    MPI_Init(&argc,&argv);
+    /* MPI_Init(&argc,&argv); */
+    int provided;
+    MPI_Init_thread(&argc,&argv,MPI_THREAD_MULTIPLE, &provided);
     MPI_Comm_rank (MPI_COMM_WORLD, &my_rank);
     MPI_Comm_size (MPI_COMM_WORLD, &num_procs);
 
