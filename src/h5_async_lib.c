@@ -10,7 +10,7 @@
 #include <string.h>
 
 /* Public HDF5 file */
-#include "hdf5.h"
+#include "hdf5dev.h"
 
 /* The connector's header */
 #include "h5_vol_external_async_native.h"

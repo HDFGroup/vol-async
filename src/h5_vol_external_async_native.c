@@ -33,7 +33,8 @@
 #include <time.h>
 
 /* Public HDF5 file */
-#include "hdf5.h"
+#include "hdf5dev.h"
+#include "H5VLconnector.h"
 
 /* This connector's header */
 #include "h5_vol_external_async_native.h"
