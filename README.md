@@ -34,7 +34,7 @@ Some configuration parameters used in the instructions:
 
         > cd $ABT_DIR
         > ./autogen.sh  (may skip this step if the configure file exists)
-        > CC=cc ./configure --prefix=ABT_DIR/build
+        > CC=cc ./configure --prefix=$ABT_DIR/build
         > make install
 
     2.3 Compile Asynchronous VOL connector
