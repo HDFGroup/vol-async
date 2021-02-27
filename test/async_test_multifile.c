@@ -27,6 +27,9 @@ int main(int argc, char *argv[])
     int        i, ret = 0;
     herr_t     status;
     hid_t      async_fapl;
+    hbool_t op_failed;
+    size_t num_in_progress;
+    hid_t es_id = H5EScreate();
     
     int ifile, nfile = 3, sleeptime = 1;
 
@@ -46,10 +49,20 @@ int main(int argc, char *argv[])
 
     async_fapl = H5Pcreate (H5P_FILE_ACCESS);
     async_dxpl = H5Pcreate (H5P_DATASET_XFER);
-    H5Pset_vol_async(async_fapl);
+    /* H5Pset_vol_async(async_fapl); */
 
     gettimeofday(&ts, 0);
     for (ifile = 0; ifile < nfile; ifile++) {
+
+        if (print_dbg_msg) printf("H5ESwait start\n");
+        status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
+        if (status < 0) {
+            fprintf(stderr, "Error with H5ESwait\n");
+            ret = -1;
+            goto done;
+        }
+        if (print_dbg_msg) printf("H5ESwait done\n");
+
 
         printf("Compute/sleep for %d seconds...\n", sleeptime);
         fflush(stdout);
@@ -58,7 +71,7 @@ int main(int argc, char *argv[])
         gettimeofday(&t0, 0);
 
         sprintf(file_name, "%s/test_%d.h5", fpath, ifile);
-        file_id = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, async_fapl);
+        file_id = H5Fcreate_async(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, async_fapl, es_id);
         if (file_id < 0) {
             fprintf(stderr, "Error with file create\n");
             ret = -1;
@@ -66,21 +79,21 @@ int main(int argc, char *argv[])
         }
         if (print_dbg_msg) { printf("Create file [%s]\n", file_name); fflush(stdout); }
 
-        grp_id = H5Gcreate(file_id, grp_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+        grp_id = H5Gcreate_async(file_id, grp_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
         if (grp_id < 0) {
             fprintf(stderr, "Error with group create\n");
             ret = -1;
             goto done;
         }
 
-        dset0_id  = H5Dcreate(grp_id,"dset0",H5T_NATIVE_INT,dspace_id,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT);
+        dset0_id  = H5Dcreate_async(grp_id,"dset0",H5T_NATIVE_INT,dspace_id,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT, es_id);
         if (dset0_id < 0) {
             fprintf(stderr, "Error with dset0 create\n");
             ret = -1;
             goto done;
         }
 
-        dset1_id  = H5Dcreate(grp_id,"dset1",H5T_NATIVE_INT,dspace_id,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT);
+        dset1_id  = H5Dcreate_async(grp_id,"dset1",H5T_NATIVE_INT,dspace_id,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT, es_id);
         if (dset1_id < 0) {
             fprintf(stderr, "Error with dset1 create\n");
             ret = -1;
@@ -89,22 +102,22 @@ int main(int argc, char *argv[])
 
         gettimeofday(&t2, 0);
 
-        attr0 = H5Acreate(dset0_id, "attr_0", H5T_NATIVE_INT, attr_space, H5P_DEFAULT, H5P_DEFAULT);
-        attr1 = H5Acreate(dset1_id, "attr_1", H5T_NATIVE_INT, attr_space, H5P_DEFAULT, H5P_DEFAULT);
+        attr0 = H5Acreate_async(dset0_id, "attr_0", H5T_NATIVE_INT, attr_space, H5P_DEFAULT, H5P_DEFAULT, es_id);
+        attr1 = H5Acreate_async(dset1_id, "attr_1", H5T_NATIVE_INT, attr_space, H5P_DEFAULT, H5P_DEFAULT, es_id);
 
         attr_data0 = 123456;
         attr_data1 = -654321;
-        H5Awrite(attr0, H5T_NATIVE_INT, &attr_data0);
-        H5Awrite(attr1, H5T_NATIVE_INT, &attr_data1);
-        H5Aclose(attr0);
-        H5Aclose(attr1);
+        H5Awrite_async(attr0, H5T_NATIVE_INT, &attr_data0, es_id);
+        H5Awrite_async(attr1, H5T_NATIVE_INT, &attr_data1, es_id);
+        H5Aclose_async(attr0, es_id);
+        H5Aclose_async(attr1, es_id);
 
         for(i = 0; i < DIMLEN*DIMLEN; ++i) 
             write_data[i] = ifile*DIMLEN*DIMLEN + i;
 
         gettimeofday(&t3, 0);
 
-        status = H5Dwrite(dset0_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, async_dxpl, write_data);
+        status = H5Dwrite_async(dset0_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, async_dxpl, write_data, es_id);
         if (status < 0) {
             fprintf(stderr, "Error with dset 0 write\n");
             ret = -1;
@@ -115,7 +128,7 @@ int main(int argc, char *argv[])
         /* for(i = 0; i < DIMLEN*DIMLEN; ++i) */ 
         /*     write_data[i] *= -1; */
 
-        status = H5Dwrite(dset1_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, async_dxpl, write_data);
+        status = H5Dwrite_async(dset1_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, async_dxpl, write_data, es_id);
         if (status < 0) {
             fprintf(stderr, "Error with dset 0 write\n");
             ret = -1;
@@ -125,10 +138,10 @@ int main(int argc, char *argv[])
 
         gettimeofday(&t1, 0);
 
-        H5Dclose(dset0_id);
-        H5Dclose(dset1_id);
-        H5Gclose(grp_id);
-        H5Fclose(file_id);
+        H5Dclose_async(dset0_id, es_id);
+        H5Dclose_async(dset1_id, es_id);
+        H5Gclose_async(grp_id, es_id);
+        H5Fclose_async(file_id, es_id);
 
 
         e1 = ((t1.tv_sec-t3.tv_sec)*1000000 + t1.tv_usec-t3.tv_usec)/1000000.0;
