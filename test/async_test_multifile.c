@@ -54,15 +54,16 @@ int main(int argc, char *argv[])
     gettimeofday(&ts, 0);
     for (ifile = 0; ifile < nfile; ifile++) {
 
-        if (print_dbg_msg) printf("H5ESwait start\n");
-        status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
-        if (status < 0) {
-            fprintf(stderr, "Error with H5ESwait\n");
-            ret = -1;
-            goto done;
+        if (ifile > 0) {
+            if (print_dbg_msg) printf("H5ESwait start\n");
+            status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
+            if (status < 0) {
+                fprintf(stderr, "Error with H5ESwait\n");
+                ret = -1;
+                goto done;
+            }
+            if (print_dbg_msg) printf("H5ESwait done\n");
         }
-        if (print_dbg_msg) printf("H5ESwait done\n");
-
 
         printf("Compute/sleep for %d seconds...\n", sleeptime);
         fflush(stdout);
@@ -141,6 +142,7 @@ int main(int argc, char *argv[])
         H5Dclose_async(dset0_id, es_id);
         H5Dclose_async(dset1_id, es_id);
         H5Gclose_async(grp_id, es_id);
+
         H5Fclose_async(file_id, es_id);
 
 
@@ -158,6 +160,16 @@ int main(int argc, char *argv[])
     H5Sclose(attr_space);
     H5Pclose(async_fapl);
     H5Pclose(async_dxpl);
+
+    if (print_dbg_msg) printf("H5ESwait start\n");
+    status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
+    if (status < 0) {
+        fprintf(stderr, "Error with H5ESwait\n");
+        ret = -1;
+        goto done;
+    }
+    if (print_dbg_msg) printf("H5ESwait done\n");
+    H5ESclose(es_id);
 
     gettimeofday(&t1, 0);
 
