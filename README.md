@@ -40,9 +40,10 @@ Some configuration parameters used in the instructions:
     2.3 Compile Asynchronous VOL connector
         > cd $VOL_DIR/src
         > Edit "Makefile"
+            > Copy a sample Makefile (Makefile.cori, Makefile.summit, Makefile.macos) accordingly, e.g. "cp Makefile.summit Makefile", Makefile.summit should work for most linux systems
             > Update H5_DIR and ABT_DIR to the previously installed locations
-            > Possibly update the compiler flag macros: DEBUG, CFLAGS, LIBS, ARFLAGS
-            > Uncomment the correct DYNLDFLAGS & DYNLIB macros
+            > (Optional) update the compiler flag macros: DEBUG, CFLAGS, LIBS, ARFLAGS
+            > (Optional) comment/uncomment the correct DYNLDFLAGS & DYNLIB macros
         > make
 
 3, Set Environment Variables
@@ -64,9 +65,10 @@ Some configuration parameters used in the instructions:
 
     > cd $VOL_DIR/test
     > Edit "Makefile":
+        > Copy a sample Makefile (Makefile.cori, Makefile.summit, Makefile.macos) accordingly, e.g. "cp Makefile.summit Makefile", Makefile.summit should work for most linux systems
         > Update H5_DIR, ABT_DIR and ASYNC_DIR to the correct locations
-        > Possibly update the compiler flag macros: DEBUG, CFLAGS, LIBS, ARFLAGS
-        > Uncomment the correct DYNLIB & LDFLAGS macro
+        > (Optional) update the compiler flag macros: DEBUG, CFLAGS, LIBS, ARFLAGS
+        > (Optional) comment/uncomment the correct DYNLIB & LDFLAGS macro
     > make
 
     Run both the serial and parallel tests

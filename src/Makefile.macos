@@ -1,0 +1,49 @@
+HDF5_DIR = 
+ABT_DIR = 
+
+CC = gcc
+#CC = gcc-9
+# CC = mpicc
+
+# These lines may need to be adjusted for your compiler environment:
+DEBUG = -g -O0 
+CFLAGS = $(DEBUG) -fPIC -I$(ABT_DIR)/include -I$(HDF5_DIR)/include -Wall
+LIBS = -L$(HDF5_DIR)/lib -L$(ABT_DIR)/lib -labt -lhdf5 -lz
+ARFLAGS = rs
+
+# Uncomment this line Linux builds:
+# DYNLDFLAGS = $(DEBUG) -shared -fPIC $(LIBS)
+# Uncomment this line MacOS builds:
+DYNLDFLAGS = $(DEBUG) -dynamiclib -current_version 1.0  -fPIC $(LIBS)
+
+DYNSRC = h5_vol_external_async_native.c
+DYNHDR = h5_vol_external_async_native.h
+DYNOBJ = $(DYNSRC:.c=.o)
+DYNPCH = $(DYNHDR:.h=.h.gch)
+# Uncomment this line Linux builds:
+# DYNLIB = libh5async.so
+# Uncomment this line MacOS builds:
+DYNLIB = libh5async.dylib
+
+STATSRC = h5_async_lib.c
+STATHDR = h5_async_lib.h
+STATOBJ = $(STATSRC:.c=.o)
+STATPCH = $(STATHDR:.h=.h.gch)
+STATLIB = libasynchdf5.a
+
+all: $(DYNLIB) $(STATLIB)
+
+$(DYNOBJ): $(DYNSRC) $(DYNHDR)
+
+$(DYNLIB): $(DYNOBJ)
+	$(CC) $(CFLAGS) $(DYNLDFLAGS) $^ -o $@
+
+$(STATOBJ): $(STATSRC) $(STATHDR)
+	$(CC) -c $(CFLAGS) $^
+
+$(STATLIB): $(STATOBJ)
+	$(AR) $(ARFLAGS) $@ $^
+
+.PHONY: clean
+clean:
+	rm -rf $(DYNLIB) $(DYNOBJ) $(DYNPCH) $(STATLIB) $(STATOBJ) $(STATPCH)
