@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
     hsize_t    ds_size[2] = {DIMLEN, DIMLEN};
     herr_t     status;
     hid_t      async_fapl;
-    int        sleeptime = 100;
+    /* int        sleeptime = 100; */
     
     /* H5VLasync_init(H5P_DEFAULT); */
     async_fapl = H5Pcreate (H5P_FILE_ACCESS);

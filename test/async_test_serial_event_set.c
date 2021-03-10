@@ -10,7 +10,7 @@ int print_dbg_msg = 1;
 
 int main(int argc, char *argv[])
 {
-    hid_t file_id, grp_id, dset1_id, dset0_id, dspace_id, mspace_id, async_dxpl, attr_space, attr0, attr1;
+    hid_t file_id, grp_id, dset1_id, dset0_id, dspace_id, async_dxpl, attr_space, attr0, attr1;
     const char *file_name = "async_test_serial.h5";
     const char *grp_name  = "Group";
     int        *data0_write, *data0_read, *data1_write, *data1_read, attr_data0, attr_data1, attr_read_data0=0, attr_read_data1=0;

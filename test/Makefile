@@ -13,7 +13,7 @@ CC = cc
 # CC = mpicc
 
 # These lines may need to be adjusted for your compiler environment:
-DEBUG = -g -O0 #-Wall
+DEBUG = -g -O0 -Wall
 CFLAGS = $(DEBUG) -I$(ABT_DIR)/include -I$(ASYNC_DIR) -I$(HDF5_DIR)/include
 
 # Uncomment this line Linux builds:

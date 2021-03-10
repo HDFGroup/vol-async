@@ -12,7 +12,7 @@ int print_dbg_msg = 1;
 
 int main(int argc, char *argv[])
 {
-    hid_t file_id, grp_id, dset1_id, dset0_id, dspace_id, mspace_id, async_dxpl, attr_space, attr0, attr1;
+    hid_t file_id, grp_id, dset1_id, dset0_id, dspace_id, async_dxpl, attr_space, attr0, attr1;
     struct timeval t0;
     struct timeval t1;
     struct timeval t2;
@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
 
     char file_name[128];
     char *grp_name  = "Group", *fpath;
-    int        *write_data, *data1_write, attr_data0, attr_data1, attr_read_data0=0, attr_read_data1=0;
+    int        *write_data, attr_data0, attr_data1;
     int        i;
     herr_t     status;
     hid_t      async_fapl;

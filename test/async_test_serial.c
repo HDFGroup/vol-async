@@ -21,7 +21,7 @@ link_iterate_cb(hid_t group_id, const char *link_name, const H5L_info2_t *info, 
 
 int main(int argc, char *argv[])
 {
-    hid_t file_id, grp_id, dset1_id, dset0_id, dspace_id, mspace_id, async_dxpl, attr_space, attr0, attr1;
+    hid_t file_id, grp_id, dset1_id, dset0_id, dspace_id, async_dxpl, attr_space, attr0, attr1;
     const char *file_name = "async_test_serial.h5";
     const char *grp_name  = "Group";
     int        *data0_write, *data0_read, *data1_write, *data1_read, attr_data0, attr_data1, attr_read_data0=0, attr_read_data1=0;
@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
     int nlink = 0;
     herr_t     status;
     hid_t      async_fapl;
-    int        sleeptime = 100;
+    /* int        sleeptime = 100; */
 
     async_fapl = H5Pcreate (H5P_FILE_ACCESS);
     async_dxpl = H5Pcreate (H5P_DATASET_XFER);

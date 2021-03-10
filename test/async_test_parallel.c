@@ -10,7 +10,7 @@
 
 int main(int argc, char *argv[])
 {
-    hid_t file_id, grp_id, dset1_id, dset0_id, dspace_id, fspace_id, mspace_id, dxpl_id;
+    hid_t file_id, grp_id, dset1_id, dset0_id, fspace_id, mspace_id, dxpl_id;
     const char *file_name = "async_test_parallel.h5";
     const char *grp_name  = "Group";
     int        *data0_write, *data0_read, *data1_write, *data1_read;
