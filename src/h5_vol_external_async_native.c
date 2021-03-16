@@ -1294,7 +1294,7 @@ free_file_async_resources(H5VL_async_t *file)
     DL_FOREACH_SAFE2(file->file_async_obj->file_task_list_head, task_iter, tmp, file_list_next) {
         DL_DELETE2(file->file_async_obj->file_task_list_head, task_iter, file_list_prev, file_list_next);
         // Defer the file close task free operation to later request free so H5ESwait works even after file is closed
-        if (task_iter->func != async_file_close_fn) {
+        if (task_iter->func != async_file_close_fn && task_iter->magic == TASK_MAGIC) {
             free_async_task(task_iter);
         }
     }
@@ -2182,10 +2182,10 @@ done:
     free(args->name);
     args->name = NULL;
     if(args->type_id > 0)    H5Tclose(args->type_id);
-    if(args->space_id > 0)    H5Sclose(args->space_id);
+    if(args->space_id > 0)   H5Sclose(args->space_id);
     if(args->acpl_id > 0)    H5Pclose(args->acpl_id);
     if(args->aapl_id > 0)    H5Pclose(args->aapl_id);
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -2267,10 +2267,8 @@ async_attr_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_lo
         args->acpl_id = H5Pcopy(acpl_id);
     if(aapl_id > 0)
         args->aapl_id = H5Pcopy(aapl_id);
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
 
     if (req) {
@@ -2291,7 +2289,10 @@ async_attr_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_lo
 
     // Retrieve current library state
     if ( H5VLretrieve_lib_state(&async_task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s H5VLretrieve_lib_state failed\n", __func__);
+        /* fprintf(stderr,"  [ASYNC VOL ERROR] %s H5VLretrieve_lib_state failed\n", __func__); */
+        H5VL_async_free_obj(async_obj);
+        free_async_task(async_task);
+        async_obj = NULL;
         goto done;
     }
 
@@ -2566,7 +2567,7 @@ done:
     free(args->name);
     args->name = NULL;
     if(args->aapl_id > 0)    H5Pclose(args->aapl_id);
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -2641,10 +2642,8 @@ async_attr_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
         args->name = strdup(name);
     if(aapl_id > 0)
         args->aapl_id = H5Pcopy(aapl_id);
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
 
     if (req) {
@@ -2930,7 +2929,7 @@ done:
     task->h5_state = NULL;
 
     if(args->mem_type_id > 0)    H5Tclose(args->mem_type_id);
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -2990,10 +2989,8 @@ async_attr_read(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type_
     if(mem_type_id > 0)
         args->mem_type_id = H5Tcopy(mem_type_id);
     args->buf              = buf;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
 #ifdef ENABLE_TIMING
     async_task->create_time = clock();
@@ -3277,7 +3274,7 @@ done:
     task->h5_state = NULL;
 
     if(args->mem_type_id > 0)    H5Tclose(args->mem_type_id);
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -3337,10 +3334,8 @@ async_attr_write(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type
     args->attr             = parent_obj->under_object;
     if(mem_type_id > 0)
         args->mem_type_id = H5Tcopy(mem_type_id);
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
 
 #ifdef ENABLE_TIMING
@@ -3643,7 +3638,7 @@ done:
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -3702,10 +3697,8 @@ async_attr_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
 #endif
     args->obj              = parent_obj->under_object;
     args->get_type         = get_type;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
     va_copy(args->arguments, arguments);
 
@@ -3995,7 +3988,7 @@ done:
     task->h5_state = NULL;
 
     free_loc_param((H5VL_loc_params_t*)args->loc_params);
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -4056,7 +4049,7 @@ async_attr_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
     args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
     args->specific_type    = specific_type;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
     args->req              = req;
     va_copy(args->arguments, arguments);
@@ -4344,7 +4337,7 @@ done:
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -4403,10 +4396,8 @@ async_attr_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
 #endif
     args->obj              = parent_obj->under_object;
     args->opt_type         = opt_type;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
     va_copy(args->arguments, arguments);
 
@@ -4690,7 +4681,7 @@ done:
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -4751,10 +4742,8 @@ async_attr_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *par
     async_task->create_time = clock();
 #endif
     args->attr             = parent_obj->under_object;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
 
     if (req) {
@@ -5056,7 +5045,7 @@ done:
     if(args->space_id > 0)    H5Sclose(args->space_id);
     if(args->dcpl_id > 0)    H5Pclose(args->dcpl_id);
     if(args->dapl_id > 0)    H5Pclose(args->dapl_id);
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)   H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -5125,8 +5114,12 @@ async_dataset_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL
     async_task->create_time = clock();
 #endif
     args->obj              = parent_obj->under_object;
-    args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
-    dup_loc_param(args->loc_params, loc_params);
+    if (sizeof(*loc_params) > 0) {
+        args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
+        dup_loc_param(args->loc_params, loc_params);
+    }
+    else
+        args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(H5VL_loc_params_t));
     if (NULL != name)
         args->name = strdup(name);
     if(lcpl_id > 0)
@@ -5139,10 +5132,8 @@ async_dataset_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL
         args->dcpl_id = H5Pcopy(dcpl_id);
     if(dapl_id > 0)
         args->dapl_id = H5Pcopy(dapl_id);
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
 
     if (req) {
@@ -5163,7 +5154,10 @@ async_dataset_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL
 
     // Retrieve current library state
     if ( H5VLretrieve_lib_state(&async_task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s H5VLretrieve_lib_state failed\n", __func__);
+        /* fprintf(stderr,"  [ASYNC VOL ERROR] %s H5VLretrieve_lib_state failed\n", __func__); */
+        H5VL_async_free_obj(async_obj);
+        free_async_task(async_task);
+        async_obj = NULL;
         goto done;
     }
 
@@ -5436,7 +5430,7 @@ done:
     free(args->name);
     args->name = NULL;
     if(args->dapl_id > 0)    H5Pclose(args->dapl_id);
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -5510,10 +5504,8 @@ async_dataset_open(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *p
         args->name = strdup(name);
     if(dapl_id > 0)
         args->dapl_id = H5Pcopy(dapl_id);
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
 
     if (req) {
@@ -6521,7 +6513,7 @@ done:
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -6580,10 +6572,8 @@ async_dataset_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
 #endif
     args->dset             = parent_obj->under_object;
     args->get_type         = get_type;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
     va_copy(args->arguments, arguments);
 
@@ -6870,7 +6860,7 @@ done:
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -6930,10 +6920,8 @@ async_dataset_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_
 #endif
     args->obj              = parent_obj->under_object;
     args->specific_type    = specific_type;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
     va_copy(args->arguments, arguments);
 
@@ -7220,7 +7208,7 @@ done:
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -7279,10 +7267,8 @@ async_dataset_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_
 #endif
     args->obj              = parent_obj->under_object;
     args->opt_type         = opt_type;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
     va_copy(args->arguments, arguments);
 
@@ -7566,7 +7552,7 @@ done:
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -7627,10 +7613,8 @@ async_dataset_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
     async_task->create_time = clock();
 #endif
     args->dset             = parent_obj->under_object;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
 
     if (req) {
@@ -7929,10 +7913,10 @@ done:
     free(args->name);
     args->name = NULL;
     if(args->type_id > 0)    H5Tclose(args->type_id);
-    if(args->lcpl_id != H5P_LINK_CREATE_DEFAULT)    H5Pclose(args->lcpl_id);
-    if(args->tcpl_id != H5P_DATATYPE_CREATE_DEFAULT)    H5Pclose(args->tcpl_id);
+    if(args->lcpl_id > 0)    H5Pclose(args->lcpl_id);
+    if(args->tcpl_id > 0)    H5Pclose(args->tcpl_id);
     if(args->tapl_id > 0)    H5Pclose(args->tapl_id);
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -8006,20 +7990,14 @@ async_datatype_commit(async_instance_t* aid, H5VL_async_t *parent_obj, const H5V
         args->name = strdup(name);
     if(type_id > 0)
         args->type_id = H5Tcopy(type_id);
-    if(lcpl_id != H5P_LINK_CREATE_DEFAULT)
+    if(lcpl_id > 0)
         args->lcpl_id = H5Pcopy(lcpl_id);
-    else
-        args->lcpl_id = H5P_LINK_CREATE_DEFAULT;
-    if(tcpl_id != H5P_DATATYPE_CREATE_DEFAULT)
+    if(tcpl_id > 0)
         args->tcpl_id = H5Pcopy(tcpl_id);
-    else
-        args->tcpl_id = H5P_DATATYPE_CREATE_DEFAULT;
     if(tapl_id > 0)
         args->tapl_id = H5Pcopy(tapl_id);
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
 
     if (req) {
@@ -8314,7 +8292,7 @@ done:
     free(args->name);
     args->name = NULL;
     if(args->tapl_id > 0)    H5Pclose(args->tapl_id);
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -8388,10 +8366,8 @@ async_datatype_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_
         args->name = strdup(name);
     if(tapl_id > 0)
         args->tapl_id = H5Pcopy(tapl_id);
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
 
     if (req) {
@@ -8680,7 +8656,7 @@ done:
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -8739,10 +8715,8 @@ async_datatype_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *p
 #endif
     args->dt               = parent_obj->under_object;
     args->get_type         = get_type;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
     va_copy(args->arguments, arguments);
 
@@ -9029,7 +9003,7 @@ done:
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -9088,10 +9062,8 @@ async_datatype_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async
 #endif
     args->obj              = parent_obj->under_object;
     args->specific_type    = specific_type;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
     va_copy(args->arguments, arguments);
 
@@ -9379,7 +9351,7 @@ done:
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -9439,10 +9411,8 @@ async_datatype_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async
 #endif
     args->obj              = parent_obj->under_object;
     args->opt_type         = opt_type;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
     va_copy(args->arguments, arguments);
 
@@ -9726,7 +9696,7 @@ done:
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -9784,10 +9754,8 @@ async_datatype_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
     async_task->create_time = clock();
 #endif
     args->dt               = parent_obj->under_object;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
 
     if (req) {
@@ -10097,7 +10065,7 @@ done:
     args->name = NULL;
     if(args->fcpl_id > 0)    H5Pclose(args->fcpl_id);
     if(args->fapl_id > 0)    H5Pclose(args->fapl_id);
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -10173,16 +10141,10 @@ async_file_create(async_instance_t* aid, const char *name, unsigned flags, hid_t
     args->flags            = flags;
     if(fcpl_id > 0)
         args->fcpl_id = H5Pcopy(fcpl_id);
-    else
-        args->fcpl_id = H5P_DEFAULT;
     if(fapl_id > 0)
         args->fapl_id = H5Pcopy(fapl_id);
-    else
-        args->fapl_id = H5P_DEFAULT;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
 
     args->req              = req;
 
@@ -10203,7 +10165,10 @@ async_file_create(async_instance_t* aid, const char *name, unsigned flags, hid_t
 
     // Retrieve current library state
     if ( H5VLretrieve_lib_state(&async_task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s H5VLretrieve_lib_state failed\n", __func__);
+        /* fprintf(stderr,"  [ASYNC VOL ERROR] %s H5VLretrieve_lib_state failed\n", __func__); */
+        H5VL_async_free_obj(async_obj);
+        free_async_task(async_task);
+        async_obj = NULL;
         goto done;
     }
 
@@ -10476,7 +10441,7 @@ done:
     free(args->name);
     args->name = NULL;
     if(args->fapl_id > 0)    H5Pclose(args->fapl_id);
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -10551,12 +10516,8 @@ async_file_open(task_list_qtype qtype, async_instance_t* aid, const char *name, 
     args->flags            = flags;
     if(fapl_id > 0)
         args->fapl_id = H5Pcopy(fapl_id);
-    else
-        args->fapl_id = H5P_DEFAULT;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
 
     if (req) {
@@ -10832,7 +10793,7 @@ done:
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -10892,10 +10853,8 @@ async_file_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
 #endif
     args->file             = parent_obj->under_object;
     args->get_type         = get_type;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
     va_copy(args->arguments, arguments);
 
@@ -11182,7 +11141,7 @@ done:
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -11242,10 +11201,8 @@ async_file_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
 #endif
     args->file             = parent_obj->under_object;
     args->specific_type    = specific_type;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
     va_copy(args->arguments, arguments);
 
@@ -11532,7 +11489,7 @@ done:
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -11592,10 +11549,8 @@ async_file_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
 #endif
     args->file             = parent_obj->under_object;
     args->opt_type         = opt_type;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
     va_copy(args->arguments, arguments);
 
@@ -11637,13 +11592,13 @@ async_file_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
         usleep(1000);
     }
 
-    if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -11889,7 +11844,7 @@ done:
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -11988,10 +11943,8 @@ async_file_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *par
     }
 
     args->file             = parent_obj->under_object;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
 
     // Retrieve current library state
@@ -12274,10 +12227,10 @@ done:
     free_loc_param((H5VL_loc_params_t*)args->loc_params);
     free(args->name);
     args->name = NULL;
-    if(args->lcpl_id != H5P_LINK_CREATE_DEFAULT)    H5Pclose(args->lcpl_id);
+    if(args->lcpl_id > 0)    H5Pclose(args->lcpl_id);
     if(args->gcpl_id > 0)    H5Pclose(args->gcpl_id);
     if(args->gapl_id > 0)    H5Pclose(args->gapl_id);
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -12349,18 +12302,14 @@ async_group_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_l
     dup_loc_param(args->loc_params, loc_params);
     if (NULL != name)
         args->name = strdup(name);
-    if(lcpl_id != H5P_LINK_CREATE_DEFAULT)
+    if(lcpl_id > 0)
         args->lcpl_id = H5Pcopy(lcpl_id);
-    else
-        args->lcpl_id = H5P_LINK_CREATE_DEFAULT;
     if(gcpl_id > 0)
         args->gcpl_id = H5Pcopy(gcpl_id);
     if(gapl_id > 0)
         args->gapl_id = H5Pcopy(gapl_id);
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
 
     if (req) {
@@ -12381,7 +12330,10 @@ async_group_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_l
 
     // Retrieve current library state
     if ( H5VLretrieve_lib_state(&async_task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] %s H5VLretrieve_lib_state failed\n", __func__);
+        /* fprintf(stderr,"  [ASYNC VOL ERROR] %s H5VLretrieve_lib_state failed\n", __func__); */
+        H5VL_async_free_obj(async_obj);
+        free_async_task(async_task);
+        async_obj = NULL;
         goto done;
     }
 
@@ -12654,7 +12606,7 @@ done:
     free(args->name);
     args->name = NULL;
     if(args->gapl_id > 0)    H5Pclose(args->gapl_id);
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -12728,10 +12680,8 @@ async_group_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc
         args->name = strdup(name);
     if(gapl_id > 0)
         args->gapl_id = H5Pcopy(gapl_id);
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
 
     if (req) {
@@ -13020,7 +12970,7 @@ done:
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -13079,10 +13029,8 @@ async_group_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pare
 #endif
     args->obj              = parent_obj->under_object;
     args->get_type         = get_type;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
     va_copy(args->arguments, arguments);
 
@@ -13371,7 +13319,7 @@ done:
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -13431,10 +13379,8 @@ async_group_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
 #endif
     args->obj              = parent_obj->under_object;
     args->specific_type    = specific_type;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
     va_copy(args->arguments, arguments);
 
@@ -13723,7 +13669,7 @@ done:
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -13783,10 +13729,8 @@ async_group_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
 #endif
     args->obj              = parent_obj->under_object;
     args->opt_type         = opt_type;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
     va_copy(args->arguments, arguments);
 
@@ -14074,7 +14018,7 @@ done:
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (task->async_obj->obj_mutex) {
         if (is_lock == 1) {
@@ -14135,10 +14079,8 @@ async_group_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
     async_task->create_time = clock();
 #endif
     args->grp              = parent_obj->under_object;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
 
     if (req) {
@@ -14444,9 +14386,9 @@ done:
     task->h5_state = NULL;
 
     free_loc_param((H5VL_loc_params_t*)args->loc_params);
-    if(args->lcpl_id != H5P_LINK_CREATE_DEFAULT)    H5Pclose(args->lcpl_id);
+    if(args->lcpl_id > 0)    H5Pclose(args->lcpl_id);
     if(args->lapl_id > 0)    H5Pclose(args->lapl_id);
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -14518,16 +14460,12 @@ async_link_create(task_list_qtype qtype, async_instance_t* aid, H5VL_link_create
     args->obj              = parent_obj->under_object;
     args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
-    if(lcpl_id != H5P_LINK_CREATE_DEFAULT)
+    if(lcpl_id > 0)
         args->lcpl_id = H5Pcopy(lcpl_id);
-    else
-        args->lcpl_id = H5P_LINK_CREATE_DEFAULT;
     if(lapl_id > 0)
         args->lapl_id = H5Pcopy(lapl_id);
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
     va_copy(args->arguments, arguments);
 
@@ -14818,9 +14756,9 @@ done:
 
     free_loc_param((H5VL_loc_params_t*)args->loc_params1);
     free_loc_param((H5VL_loc_params_t*)args->loc_params2);
-    if(args->lcpl_id != H5P_LINK_CREATE_DEFAULT)    H5Pclose(args->lcpl_id);
+    if(args->lcpl_id > 0)    H5Pclose(args->lcpl_id);
     if(args->lapl_id > 0)    H5Pclose(args->lapl_id);
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -14884,16 +14822,12 @@ async_link_copy(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
     args->dst_obj          = parent_obj2->under_object;
     args->loc_params2 = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params2));
     dup_loc_param(args->loc_params2, loc_params2);
-    if(lcpl_id != H5P_LINK_CREATE_DEFAULT)
+    if(lcpl_id > 0)
         args->lcpl_id = H5Pcopy(lcpl_id);
-    else
-        args->lcpl_id = H5P_LINK_CREATE_DEFAULT;
     if(lapl_id > 0)
         args->lapl_id = H5Pcopy(lapl_id);
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
 
     if (req) {
@@ -15180,9 +15114,9 @@ done:
 
     free_loc_param((H5VL_loc_params_t*)args->loc_params1);
     free_loc_param((H5VL_loc_params_t*)args->loc_params2);
-    if(args->lcpl_id != H5P_LINK_CREATE_DEFAULT)    H5Pclose(args->lcpl_id);
+    if(args->lcpl_id > 0)    H5Pclose(args->lcpl_id);
     if(args->lapl_id > 0)    H5Pclose(args->lapl_id);
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -15246,14 +15180,12 @@ async_link_move(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
     args->dst_obj          = parent_obj2->under_object;
     args->loc_params2 = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params2));
     dup_loc_param(args->loc_params2, loc_params2);
-    if(lcpl_id != H5P_LINK_CREATE_DEFAULT)
+    if(lcpl_id > 0)
         args->lcpl_id = H5Pcopy(lcpl_id);
     if(lapl_id > 0)
         args->lapl_id = H5Pcopy(lapl_id);
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
 
     if (req) {
@@ -15542,7 +15474,7 @@ done:
     task->h5_state = NULL;
 
     free_loc_param((H5VL_loc_params_t*)args->loc_params);
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -15604,10 +15536,8 @@ async_link_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
     args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
     args->get_type         = get_type;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
     va_copy(args->arguments, arguments);
 
@@ -15900,7 +15830,7 @@ done:
     task->h5_state = NULL;
 
     free_loc_param((H5VL_loc_params_t*)args->loc_params);
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -15962,10 +15892,8 @@ async_link_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
     args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
     args->specific_type    = specific_type;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
     va_copy(args->arguments, arguments);
 
@@ -16254,7 +16182,7 @@ done:
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -16314,10 +16242,8 @@ async_link_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
 #endif
     args->obj              = parent_obj->under_object;
     args->opt_type         = opt_type;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
     va_copy(args->arguments, arguments);
 
@@ -16608,7 +16534,7 @@ done:
     task->h5_state = NULL;
 
     free_loc_param((H5VL_loc_params_t*)args->loc_params);
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -16683,10 +16609,8 @@ async_object_open(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
     args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
     args->opened_type      = opened_type;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
 
     if (req) {
@@ -16981,8 +16905,8 @@ done:
     free(args->dst_name);
     args->dst_name = NULL;
     if(args->ocpypl_id > 0)    H5Pclose(args->ocpypl_id);
-    if(args->lcpl_id != H5P_LINK_CREATE_DEFAULT)    H5Pclose(args->lcpl_id);
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->lcpl_id > 0)    H5Pclose(args->lcpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -17052,14 +16976,10 @@ async_object_copy(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
         args->dst_name = strdup(dst_name);
     if(ocpypl_id > 0)
         args->ocpypl_id = H5Pcopy(ocpypl_id);
-    if(lcpl_id != H5P_LINK_CREATE_DEFAULT)
+    if(lcpl_id > 0)
         args->lcpl_id = H5Pcopy(lcpl_id);
-    else
-        args->lcpl_id = H5P_LINK_CREATE_DEFAULT;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
 
     if (req) {
@@ -17351,7 +17271,7 @@ done:
     task->h5_state = NULL;
 
     free_loc_param((H5VL_loc_params_t*)args->loc_params);
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -17413,10 +17333,8 @@ async_object_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *par
     args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
     args->get_type         = get_type;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
     va_copy(args->arguments, arguments);
 
@@ -17713,7 +17631,7 @@ done:
     task->h5_state = NULL;
 
     free_loc_param((H5VL_loc_params_t*)args->loc_params);
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -17775,10 +17693,8 @@ async_object_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t
     args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
     args->specific_type    = specific_type;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
     va_copy(args->arguments, arguments);
 
@@ -18067,7 +17983,7 @@ done:
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
-    if(args->dxpl_id != H5P_DATASET_XFER_DEFAULT)    H5Pclose(args->dxpl_id);
+    if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -18127,10 +18043,8 @@ async_object_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t
 #endif
     args->obj              = parent_obj->under_object;
     args->opt_type         = opt_type;
-    if(dxpl_id != H5P_DATASET_XFER_DEFAULT)
+    if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
-    else
-        args->dxpl_id = H5P_DATASET_XFER_DEFAULT;
     args->req              = req;
     va_copy(args->arguments, arguments);
 
@@ -19599,7 +19513,7 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_t specific_type,
 #endif
 
     /* Return error if file object not open / created */
-    if(!o->is_obj_valid) {
+    if(o && !o->is_obj_valid) {
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_file_specific, invalid object\n");
         return(-1);
     }
