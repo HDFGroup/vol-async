@@ -2402,7 +2402,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return NULL;
 } // End async_attr_create
 
@@ -2772,7 +2775,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return NULL;
 } // End async_attr_open
 
@@ -3117,7 +3123,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_attr_read
 
@@ -3478,7 +3487,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_attr_write
 
@@ -3825,7 +3837,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_attr_get
 
@@ -4177,7 +4192,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_attr_specific
 
@@ -4524,7 +4542,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_attr_optional
 
@@ -4876,7 +4897,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_attr_close
 
@@ -5265,7 +5289,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return NULL;
 } // End async_dataset_create
 
@@ -5636,7 +5663,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return NULL;
 } // End async_dataset_open
 
@@ -5992,7 +6022,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_dataset_read
 
@@ -6353,7 +6386,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_dataset_write
 
@@ -6700,7 +6736,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_dataset_get
 
@@ -7048,7 +7087,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_dataset_specific
 
@@ -7395,7 +7437,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_dataset_optional
 
@@ -7751,7 +7796,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_dataset_close
 
@@ -8126,7 +8174,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return NULL;
 } // End async_datatype_commit
 
@@ -8496,7 +8547,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return NULL;
 } // End async_datatype_open
 
@@ -8843,7 +8897,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_datatype_get
 
@@ -9190,7 +9247,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_datatype_specific
 
@@ -9539,7 +9599,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_datatype_optional
 
@@ -9888,7 +9951,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_datatype_close
 
@@ -10260,7 +10326,10 @@ error:
         if (ABT_mutex_unlock(async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL DBG] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return NULL;
 } // End async_file_create
 
@@ -10633,7 +10702,10 @@ error:
         if (ABT_mutex_unlock(async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL DBG] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return NULL;
 } // End async_file_open
 
@@ -10981,7 +11053,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_file_get
 
@@ -11329,7 +11404,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_file_specific
 
@@ -11674,7 +11752,10 @@ error:
         if (parent_obj && ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_file_optional
 
@@ -12063,7 +12144,10 @@ error:
         if (parent_obj->obj_mutex && ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_file_close
 
@@ -12231,6 +12315,8 @@ done:
     if(args->gcpl_id > 0)    H5Pclose(args->gcpl_id);
     if(args->gapl_id > 0)    H5Pclose(args->gapl_id);
     if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -12441,7 +12527,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return NULL;
 } // End async_group_create
 
@@ -12810,7 +12899,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return NULL;
 } // End async_group_open
 
@@ -13157,7 +13249,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_group_get
 
@@ -13507,7 +13602,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_group_specific
 
@@ -13857,7 +13955,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_group_optional
 
@@ -14223,7 +14324,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_group_close
 
@@ -14595,7 +14699,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_link_create
 
@@ -14953,7 +15060,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_link_copy
 
@@ -15311,7 +15421,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_link_move
 
@@ -15664,7 +15777,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_link_get
 
@@ -16020,7 +16136,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_link_specific
 
@@ -16370,7 +16489,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_link_optional
 
@@ -16739,7 +16861,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return NULL;
 } // End async_object_open
 
@@ -17105,7 +17230,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_object_copy
 
@@ -17466,7 +17594,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_object_get
 
@@ -17821,7 +17952,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_object_specific
 
@@ -18171,7 +18305,10 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (NULL != args) free(args);
+    if (NULL != async_task->args) {
+        free(args);
+        async_task->args = NULL;
+    }
     return -1;
 } // End async_object_optional
 
