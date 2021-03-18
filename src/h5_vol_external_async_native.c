@@ -55,7 +55,7 @@
 
 /* Whether to display log messge when callback is invoked */
 /* (Uncomment to enable) */
-#define ENABLE_LOG                  1
+/* #define ENABLE_LOG                  1 */
 /* #define ENABLE_DBG_MSG              1 */
 #define ENABLE_TIMING               1
 /* #define PRINT_ERROR_STACK           1 */
@@ -5156,6 +5156,8 @@ async_dataset_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL
         args->dcpl_id = H5Pcopy(dcpl_id);
     if(dapl_id > 0)
         args->dapl_id = H5Pcopy(dapl_id);
+    else
+        goto error;
     if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
     args->req              = req;
@@ -6169,8 +6171,12 @@ async_dataset_write_fn(void *foo)
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+#ifdef ENABLE_LOG
         fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s failed\n", __func__);
+#endif
+#ifdef PRINT_ERROR_STACK
         H5Eprint2(task->err_stack, stderr);
+#endif
         goto done;
     }
 
