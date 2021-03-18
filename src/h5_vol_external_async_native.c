@@ -55,7 +55,7 @@
 
 /* Whether to display log messge when callback is invoked */
 /* (Uncomment to enable) */
-/* #define ENABLE_LOG                  1 */
+#define ENABLE_LOG                  1
 /* #define ENABLE_DBG_MSG              1 */
 #define ENABLE_TIMING               1
 /* #define PRINT_ERROR_STACK           1 */
@@ -12394,6 +12394,8 @@ async_group_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_l
         args->gcpl_id = H5Pcopy(gcpl_id);
     if(gapl_id > 0)
         args->gapl_id = H5Pcopy(gapl_id);
+    else
+        goto error;
     if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
     args->req              = req;
@@ -12417,8 +12419,10 @@ async_group_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_l
     // Retrieve current library state
     if ( H5VLretrieve_lib_state(&async_task->h5_state) < 0) {
         /* fprintf(stderr,"  [ASYNC VOL ERROR] %s H5VLretrieve_lib_state failed\n", __func__); */
+        H5VLfree_lib_state(async_task->h5_state);
         H5VL_async_free_obj(async_obj);
         free_async_task(async_task);
+        async_task = NULL;
         async_obj = NULL;
         goto done;
     }
@@ -12531,6 +12535,9 @@ error:
         free(args);
         async_task->args = NULL;
     }
+    if (NULL != async_task->h5_state && H5VLfree_lib_state(async_task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    async_task->h5_state = NULL;
     return NULL;
 } // End async_group_create
 
@@ -14328,6 +14335,9 @@ error:
         free(args);
         async_task->args = NULL;
     }
+    if (NULL != async_task->h5_state && H5VLfree_lib_state(async_task->h5_state) < 0)
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+    async_task->h5_state = NULL;
     return -1;
 } // End async_group_close
 
