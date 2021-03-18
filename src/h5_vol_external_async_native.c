@@ -2254,6 +2254,10 @@ async_attr_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_lo
 #ifdef ENABLE_TIMING
     async_task->create_time = clock();
 #endif
+    if (loc_params->type == H5VL_OBJECT_BY_NAME && loc_params->loc_data.loc_by_name.lapl_id < 0)
+        goto error;
+    if (loc_params->type == H5VL_OBJECT_BY_IDX && loc_params->loc_data.loc_by_idx.lapl_id < 0)
+        goto error;
     args->obj              = parent_obj->under_object;
     args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
@@ -2638,6 +2642,10 @@ async_attr_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
 #ifdef ENABLE_TIMING
     async_task->create_time = clock();
 #endif
+    if (loc_params->type == H5VL_OBJECT_BY_NAME && loc_params->loc_data.loc_by_name.lapl_id < 0)
+        goto error;
+    if (loc_params->type == H5VL_OBJECT_BY_IDX && loc_params->loc_data.loc_by_idx.lapl_id < 0)
+        goto error;
     args->obj              = parent_obj->under_object;
     args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
@@ -4060,6 +4068,11 @@ async_attr_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
 #ifdef ENABLE_TIMING
     async_task->create_time = clock();
 #endif
+    if (loc_params->type == H5VL_OBJECT_BY_NAME && loc_params->loc_data.loc_by_name.lapl_id < 0)
+        goto error;
+    if (loc_params->type == H5VL_OBJECT_BY_IDX && loc_params->loc_data.loc_by_idx.lapl_id < 0)
+        goto error;
+
     args->obj              = parent_obj->under_object;
     args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
@@ -5137,6 +5150,10 @@ async_dataset_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL
 #ifdef ENABLE_TIMING
     async_task->create_time = clock();
 #endif
+    if (loc_params->type == H5VL_OBJECT_BY_NAME && loc_params->loc_data.loc_by_name.lapl_id < 0)
+        goto error;
+    if (loc_params->type == H5VL_OBJECT_BY_IDX && loc_params->loc_data.loc_by_idx.lapl_id < 0)
+        goto error;
     args->obj              = parent_obj->under_object;
     if (sizeof(*loc_params) > 0) {
         args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
@@ -5526,6 +5543,10 @@ async_dataset_open(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *p
 #ifdef ENABLE_TIMING
     async_task->create_time = clock();
 #endif
+    if (loc_params->type == H5VL_OBJECT_BY_NAME && loc_params->loc_data.loc_by_name.lapl_id < 0)
+        goto error;
+    if (loc_params->type == H5VL_OBJECT_BY_IDX && loc_params->loc_data.loc_by_idx.lapl_id < 0)
+        goto error;
     args->obj              = parent_obj->under_object;
     args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
@@ -8037,6 +8058,10 @@ async_datatype_commit(async_instance_t* aid, H5VL_async_t *parent_obj, const H5V
 #ifdef ENABLE_TIMING
     async_task->create_time = clock();
 #endif
+    if (loc_params->type == H5VL_OBJECT_BY_NAME && loc_params->loc_data.loc_by_name.lapl_id < 0)
+        goto error;
+    if (loc_params->type == H5VL_OBJECT_BY_IDX && loc_params->loc_data.loc_by_idx.lapl_id < 0)
+        goto error;
     args->obj              = parent_obj->under_object;
     args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
@@ -8050,6 +8075,8 @@ async_datatype_commit(async_instance_t* aid, H5VL_async_t *parent_obj, const H5V
         args->tcpl_id = H5Pcopy(tcpl_id);
     if(tapl_id > 0)
         args->tapl_id = H5Pcopy(tapl_id);
+    else
+        goto error;
     if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
     args->req              = req;
@@ -8416,6 +8443,10 @@ async_datatype_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_
 #ifdef ENABLE_TIMING
     async_task->create_time = clock();
 #endif
+    if (loc_params->type == H5VL_OBJECT_BY_NAME && loc_params->loc_data.loc_by_name.lapl_id < 0)
+        goto error;
+    if (loc_params->type == H5VL_OBJECT_BY_IDX && loc_params->loc_data.loc_by_idx.lapl_id < 0)
+        goto error;
     args->obj              = parent_obj->under_object;
     args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
@@ -12389,6 +12420,10 @@ async_group_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_l
 #ifdef ENABLE_TIMING
     async_task->create_time = clock();
 #endif
+    if (loc_params->type == H5VL_OBJECT_BY_NAME && loc_params->loc_data.loc_by_name.lapl_id < 0)
+        goto error;
+    if (loc_params->type == H5VL_OBJECT_BY_IDX && loc_params->loc_data.loc_by_idx.lapl_id < 0)
+        goto error;
     args->obj              = parent_obj->under_object;
     args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
@@ -12775,6 +12810,10 @@ async_group_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc
 #ifdef ENABLE_TIMING
     async_task->create_time = clock();
 #endif
+    if (loc_params->type == H5VL_OBJECT_BY_NAME && loc_params->loc_data.loc_by_name.lapl_id < 0)
+        goto error;
+    if (loc_params->type == H5VL_OBJECT_BY_IDX && loc_params->loc_data.loc_by_idx.lapl_id < 0)
+        goto error;
     args->obj              = parent_obj->under_object;
     args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
@@ -14576,14 +14615,22 @@ async_link_create(task_list_qtype qtype, async_instance_t* aid, H5VL_link_create
 #ifdef ENABLE_TIMING
     async_task->create_time = clock();
 #endif
+    if (loc_params->type == H5VL_OBJECT_BY_NAME && loc_params->loc_data.loc_by_name.lapl_id < 0)
+        goto error;
+    if (loc_params->type == H5VL_OBJECT_BY_IDX && loc_params->loc_data.loc_by_idx.lapl_id < 0)
+        goto error;
     args->create_type      = create_type;
     args->obj              = parent_obj->under_object;
     args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
     if(lcpl_id > 0)
         args->lcpl_id = H5Pcopy(lcpl_id);
+    else
+        goto error;
     if(lapl_id > 0)
         args->lapl_id = H5Pcopy(lapl_id);
+    else
+        goto error;
     if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
     args->req              = req;
@@ -14751,33 +14798,33 @@ async_link_copy_fn(void *foo)
     pool_ptr = task->async_obj->pool_ptr;
 
     /* Update the dependent parent object if it is NULL */
-    if (NULL == args->src_obj) {
-        if (NULL != task->parent_obj->under_object) {
-            args->src_obj = task->parent_obj->under_object;
-        }
-        else {
-            if (check_parent_task(task->parent_obj) != 0) {
-                task->err_stack = H5Ecreate_stack();
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
-                H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
-                    H5E_VOL, H5E_CANTCREATE, "Parent task failed");
+    /* if (NULL == args->src_obj) { */
+    /*     if (NULL != task->parent_obj->under_object) { */
+    /*         args->src_obj = task->parent_obj->under_object; */
+    /*     } */
+    /*     else { */
+    /*         if (check_parent_task(task->parent_obj) != 0) { */
+    /*             task->err_stack = H5Ecreate_stack(); */
+    /*             H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false); */
+    /*             H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g, */
+    /*                 H5E_VOL, H5E_CANTCREATE, "Parent task failed"); */
 
-#ifdef PRINT_ERROR_STACK
-                H5Eprint2(task->err_stack, stderr);
-#endif
+/* #ifdef PRINT_ERROR_STACK */
+    /*             H5Eprint2(task->err_stack, stderr); */
+/* #endif */
 
-                goto done;
-            }
-#ifdef ENABLE_DBG_MSG
-            fprintf(stderr,"  [ASYNC ABT ERROR] %s parent object is NULL, re-insert to pool\n", __func__);
-#endif
-            if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, task->func);
-            }
+    /*             goto done; */
+    /*         } */
+/* #ifdef ENABLE_DBG_MSG */
+    /*         fprintf(stderr,"  [ASYNC ABT ERROR] %s parent object is NULL, re-insert to pool\n", __func__); */
+/* #endif */
+    /*         if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, &task->abt_thread) != ABT_SUCCESS) { */
+    /*             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, task->func); */
+    /*         } */
 
-            goto done;
-        }
-    }
+    /*         goto done; */
+    /*     } */
+    /* } */
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
@@ -14908,7 +14955,7 @@ done:
 } // End async_link_copy_fn
 
 static herr_t
-async_link_copy(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params1, H5VL_async_t *parent_obj2, const H5VL_loc_params_t *loc_params2, hid_t lcpl_id, hid_t lapl_id, hid_t dxpl_id, void **req)
+async_link_copy(async_instance_t* aid, H5VL_async_t *parent_obj1, const H5VL_loc_params_t *loc_params1, H5VL_async_t *parent_obj2, const H5VL_loc_params_t *loc_params2, hid_t lcpl_id, hid_t lapl_id, hid_t dxpl_id, void **req)
 {
     async_task_t *async_task = NULL;
     async_link_copy_args_t *args = NULL;
@@ -14916,6 +14963,7 @@ async_link_copy(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
     bool is_blocking = false;
     hbool_t acquired = false;
     unsigned int mutex_count = 1;
+    H5VL_async_t *parent_obj = parent_obj1 ? parent_obj1 : parent_obj2;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -14939,10 +14987,21 @@ async_link_copy(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
 #ifdef ENABLE_TIMING
     async_task->create_time = clock();
 #endif
-    args->src_obj          = parent_obj->under_object;
+    if (loc_params1->type == H5VL_OBJECT_BY_NAME && loc_params1->loc_data.loc_by_name.lapl_id < 0)
+        goto error;
+    if (loc_params1->type == H5VL_OBJECT_BY_IDX && loc_params1->loc_data.loc_by_idx.lapl_id < 0)
+        goto error;
+    if (loc_params2->type == H5VL_OBJECT_BY_NAME && loc_params2->loc_data.loc_by_name.lapl_id < 0)
+        goto error;
+    if (loc_params2->type == H5VL_OBJECT_BY_IDX && loc_params2->loc_data.loc_by_idx.lapl_id < 0)
+        goto error;
+
+    if (parent_obj1)
+        args->src_obj          = parent_obj1->under_object;
     args->loc_params1 = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params1));
     dup_loc_param(args->loc_params1, loc_params1);
-    args->dst_obj          = parent_obj2->under_object;
+    if (parent_obj2)
+        args->dst_obj          = parent_obj2->under_object;
     args->loc_params2 = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params2));
     dup_loc_param(args->loc_params2, loc_params2);
     if(lcpl_id > 0)
@@ -15112,33 +15171,33 @@ async_link_move_fn(void *foo)
     pool_ptr = task->async_obj->pool_ptr;
 
     /* Update the dependent parent object if it is NULL */
-    if (NULL == args->src_obj) {
-        if (NULL != task->parent_obj->under_object) {
-            args->src_obj = task->parent_obj->under_object;
-        }
-        else {
-            if (check_parent_task(task->parent_obj) != 0) {
-                task->err_stack = H5Ecreate_stack();
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
-                H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
-                    H5E_VOL, H5E_CANTCREATE, "Parent task failed");
+    /* if (NULL == args->src_obj) { */
+    /*     if (NULL != task->parent_obj->under_object) { */
+    /*         args->src_obj = task->parent_obj->under_object; */
+    /*     } */
+    /*     else { */
+    /*         if (check_parent_task(task->parent_obj) != 0) { */
+    /*             task->err_stack = H5Ecreate_stack(); */
+    /*             H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false); */
+    /*             H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g, */
+    /*                 H5E_VOL, H5E_CANTCREATE, "Parent task failed"); */
 
-#ifdef PRINT_ERROR_STACK
-                H5Eprint2(task->err_stack, stderr);
-#endif
+/* #ifdef PRINT_ERROR_STACK */
+    /*             H5Eprint2(task->err_stack, stderr); */
+/* #endif */
 
-                goto done;
-            }
-#ifdef ENABLE_DBG_MSG
-            fprintf(stderr,"  [ASYNC ABT ERROR] %s parent object is NULL, re-insert to pool\n", __func__);
-#endif
-            if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, task->func);
-            }
+    /*             goto done; */
+    /*         } */
+/* #ifdef ENABLE_DBG_MSG */
+    /*         fprintf(stderr,"  [ASYNC ABT ERROR] %s parent object is NULL, re-insert to pool\n", __func__); */
+/* #endif */
+    /*         if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, &task->abt_thread) != ABT_SUCCESS) { */
+    /*             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, task->func); */
+    /*         } */
 
-            goto done;
-        }
-    }
+    /*         goto done; */
+    /*     } */
+    /* } */
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
@@ -15269,7 +15328,7 @@ done:
 } // End async_link_move_fn
 
 static herr_t
-async_link_move(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params1, H5VL_async_t *parent_obj2, const H5VL_loc_params_t *loc_params2, hid_t lcpl_id, hid_t lapl_id, hid_t dxpl_id, void **req)
+async_link_move(async_instance_t* aid, H5VL_async_t *parent_obj1, const H5VL_loc_params_t *loc_params1, H5VL_async_t *parent_obj2, const H5VL_loc_params_t *loc_params2, hid_t lcpl_id, hid_t lapl_id, hid_t dxpl_id, void **req)
 {
     async_task_t *async_task = NULL;
     async_link_move_args_t *args = NULL;
@@ -15277,6 +15336,7 @@ async_link_move(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
     bool is_blocking = false;
     hbool_t acquired = false;
     unsigned int mutex_count = 1;
+    H5VL_async_t *parent_obj = parent_obj1 ? parent_obj1 : parent_obj2;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -15300,10 +15360,21 @@ async_link_move(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
 #ifdef ENABLE_TIMING
     async_task->create_time = clock();
 #endif
-    args->src_obj          = parent_obj->under_object;
+    if (loc_params1->type == H5VL_OBJECT_BY_NAME && loc_params1->loc_data.loc_by_name.lapl_id < 0)
+        goto error;
+    if (loc_params1->type == H5VL_OBJECT_BY_IDX && loc_params1->loc_data.loc_by_idx.lapl_id < 0)
+        goto error;
+    if (loc_params2->type == H5VL_OBJECT_BY_NAME && loc_params2->loc_data.loc_by_name.lapl_id < 0)
+        goto error;
+    if (loc_params2->type == H5VL_OBJECT_BY_IDX && loc_params2->loc_data.loc_by_idx.lapl_id < 0)
+        goto error;
+
+    if (parent_obj1)
+        args->src_obj          = parent_obj1->under_object;
     args->loc_params1 = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params1));
     dup_loc_param(args->loc_params1, loc_params1);
-    args->dst_obj          = parent_obj2->under_object;
+    if (parent_obj2)
+        args->dst_obj          = parent_obj2->under_object;
     args->loc_params2 = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params2));
     dup_loc_param(args->loc_params2, loc_params2);
     if(lcpl_id > 0)
@@ -15661,6 +15732,10 @@ async_link_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
 #ifdef ENABLE_TIMING
     async_task->create_time = clock();
 #endif
+    if (loc_params->type == H5VL_OBJECT_BY_NAME && loc_params->loc_data.loc_by_name.lapl_id < 0)
+        goto error;
+    if (loc_params->type == H5VL_OBJECT_BY_IDX && loc_params->loc_data.loc_by_idx.lapl_id < 0)
+        goto error;
     args->obj              = parent_obj->under_object;
     args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
@@ -16020,6 +16095,10 @@ async_link_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
 #ifdef ENABLE_TIMING
     async_task->create_time = clock();
 #endif
+    if (loc_params->type == H5VL_OBJECT_BY_NAME && loc_params->loc_data.loc_by_name.lapl_id < 0)
+        goto error;
+    if (loc_params->type == H5VL_OBJECT_BY_IDX && loc_params->loc_data.loc_by_idx.lapl_id < 0)
+        goto error;
     args->obj              = parent_obj->under_object;
     args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
@@ -16743,6 +16822,10 @@ async_object_open(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
 #ifdef ENABLE_TIMING
     async_task->create_time = clock();
 #endif
+    if (loc_params->type == H5VL_OBJECT_BY_NAME && loc_params->loc_data.loc_by_name.lapl_id < 0)
+        goto error;
+    if (loc_params->type == H5VL_OBJECT_BY_IDX && loc_params->loc_data.loc_by_idx.lapl_id < 0)
+        goto error;
     args->obj              = parent_obj->under_object;
     args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
@@ -16913,33 +16996,33 @@ async_object_copy_fn(void *foo)
     pool_ptr = task->async_obj->pool_ptr;
 
     /* Update the dependent parent object if it is NULL */
-    if (NULL == args->src_obj) {
-        if (NULL != task->parent_obj->under_object) {
-            args->src_obj = task->parent_obj->under_object;
-        }
-        else {
-            if (check_parent_task(task->parent_obj) != 0) {
-                task->err_stack = H5Ecreate_stack();
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
-                H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g,
-                    H5E_VOL, H5E_CANTCREATE, "Parent task failed");
+    /* if (NULL == args->src_obj) { */
+    /*     if (NULL != task->parent_obj->under_object) { */
+    /*         args->src_obj = task->parent_obj->under_object; */
+    /*     } */
+    /*     else { */
+    /*         if (check_parent_task(task->parent_obj) != 0) { */
+    /*             task->err_stack = H5Ecreate_stack(); */
+    /*             H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false); */
+    /*             H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g, */
+    /*                 H5E_VOL, H5E_CANTCREATE, "Parent task failed"); */
 
-#ifdef PRINT_ERROR_STACK
-                H5Eprint2(task->err_stack, stderr);
-#endif
+/* #ifdef PRINT_ERROR_STACK */
+    /*             H5Eprint2(task->err_stack, stderr); */
+/* #endif */
 
-                goto done;
-            }
-#ifdef ENABLE_DBG_MSG
-            fprintf(stderr,"  [ASYNC ABT ERROR] %s parent object is NULL, re-insert to pool\n", __func__);
-#endif
-            if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, task->func);
-            }
+    /*             goto done; */
+    /*         } */
+/* #ifdef ENABLE_DBG_MSG */
+    /*         fprintf(stderr,"  [ASYNC ABT ERROR] %s parent object is NULL, re-insert to pool\n", __func__); */
+/* #endif */
+    /*         if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, &task->abt_thread) != ABT_SUCCESS) { */
+    /*             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, task->func); */
+    /*         } */
 
-            goto done;
-        }
-    }
+    /*         goto done; */
+    /*     } */
+    /* } */
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
@@ -17074,7 +17157,7 @@ done:
 } // End async_object_copy_fn
 
 static herr_t
-async_object_copy(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *src_loc_params, const char *src_name, H5VL_async_t *parent_obj2, const H5VL_loc_params_t *dst_loc_params, const char *dst_name, hid_t ocpypl_id, hid_t lcpl_id, hid_t dxpl_id, void **req)
+async_object_copy(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj1, const H5VL_loc_params_t *src_loc_params, const char *src_name, H5VL_async_t *parent_obj2, const H5VL_loc_params_t *dst_loc_params, const char *dst_name, hid_t ocpypl_id, hid_t lcpl_id, hid_t dxpl_id, void **req)
 {
     async_task_t *async_task = NULL;
     async_object_copy_args_t *args = NULL;
@@ -17082,6 +17165,7 @@ async_object_copy(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
     bool is_blocking = false;
     hbool_t acquired = false;
     unsigned int mutex_count = 1;
+    H5VL_async_t *parent_obj = parent_obj1 ? parent_obj1 : parent_obj2;
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -17105,12 +17189,14 @@ async_object_copy(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
 #ifdef ENABLE_TIMING
     async_task->create_time = clock();
 #endif
-    args->src_obj          = parent_obj->under_object;
+    if (parent_obj1)
+        args->src_obj          = parent_obj1->under_object;
     args->src_loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*src_loc_params));
     dup_loc_param(args->src_loc_params, src_loc_params);
     if (NULL != src_name)
         args->src_name = strdup(src_name);
-    args->dst_obj          = parent_obj2->under_object;
+    if (parent_obj2)
+        args->dst_obj          = parent_obj2->under_object;
     args->dst_loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*dst_loc_params));
     dup_loc_param(args->dst_loc_params, dst_loc_params);
     if (NULL != dst_name)
@@ -17473,6 +17559,10 @@ async_object_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *par
 #ifdef ENABLE_TIMING
     async_task->create_time = clock();
 #endif
+    if (loc_params->type == H5VL_OBJECT_BY_NAME && loc_params->loc_data.loc_by_name.lapl_id < 0)
+        goto error;
+    if (loc_params->type == H5VL_OBJECT_BY_IDX && loc_params->loc_data.loc_by_idx.lapl_id < 0)
+        goto error;
     args->obj              = parent_obj->under_object;
     args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
@@ -17836,6 +17926,10 @@ async_object_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t
 #ifdef ENABLE_TIMING
     async_task->create_time = clock();
 #endif
+    if (loc_params->type == H5VL_OBJECT_BY_NAME && loc_params->loc_data.loc_by_name.lapl_id < 0)
+        goto error;
+    if (loc_params->type == H5VL_OBJECT_BY_IDX && loc_params->loc_data.loc_by_idx.lapl_id < 0)
+        goto error;
     args->obj              = parent_obj->under_object;
     args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
@@ -20093,11 +20187,11 @@ H5VL_async_link_copy(void *src_obj, const H5VL_loc_params_t *loc_params1,
 #endif
 
     /* Return error if objects not open / created */
-    if(!o_src->is_obj_valid) {
+    if(o_src && !o_src->is_obj_valid) {
         fprintf(stderr,"  [ASYNC VOL ERROR] with %s, invalid o_src\n", __func__);
         return(-1);
     }
-    if(!o_dst->is_obj_valid){
+    if(o_dst && !o_dst->is_obj_valid){
         fprintf(stderr,"  [ASYNC VOL ERROR] with %s, invalid o_dst\n", __func__);
         return(-1);
     }
@@ -20145,11 +20239,11 @@ H5VL_async_link_move(void *src_obj, const H5VL_loc_params_t *loc_params1,
 #endif
 
     /* Return error if objects not open / created */
-    if(!o_src->is_obj_valid) {
+    if(o_src && !o_src->is_obj_valid) {
         fprintf(stderr,"  [ASYNC VOL ERROR] with %s, invalid o_src\n", __func__);
         return(-1);
     }
-    if(!o_dst->is_obj_valid){
+    if(o_dst && !o_dst->is_obj_valid){
         fprintf(stderr,"  [ASYNC VOL ERROR] with %s, invalid o_dst\n", __func__);
         return(-1);
     }
@@ -20188,12 +20282,6 @@ H5VL_async_link_get(void *obj, const H5VL_loc_params_t *loc_params,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL LINK Get\n");
 #endif
-
-    /* Return error if file object not open / created */
-    if(!o->is_obj_valid) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] with %s, invalid o_dst\n", __func__);
-        return(-1);
-    }
 
     ret_value = async_link_get(qtype, async_instance_g, o, loc_params, get_type, dxpl_id, req, arguments);
 
