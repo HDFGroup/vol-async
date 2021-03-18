@@ -19688,6 +19688,9 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_t specific_type,
         /* Get copy of our VOL info from FAPL */
         H5Pget_vol_info(fapl_id, (void **)&info);
 
+        if (NULL == info)
+            return -1;
+
         /* Copy the FAPL */
         under_fapl_id = H5Pcopy(fapl_id);
 
