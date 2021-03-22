@@ -1731,6 +1731,7 @@ herr_t H5VL_async_dataset_wait(H5VL_async_t *async_obj)
     /* ABT_thread_state thread_state; */
     hbool_t acquired = false;
     unsigned int mutex_count = 1;
+    hbool_t tmp = async_instance_g->start_abt_push;
 
     async_instance_g->start_abt_push = true;
 
@@ -1771,7 +1772,10 @@ herr_t H5VL_async_dataset_wait(H5VL_async_t *async_obj)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with H5TSmutex_acquire\n", __func__);
     }
 
-    async_instance_g->start_abt_push = false;
+#ifdef ENABLE_DBG_MSG
+    fprintf(stderr, "  [ASYNC VOL DBG] %s setting start_abt_push false!\n", __func__);
+#endif
+    async_instance_g->start_abt_push = tmp;
 
     return 0;
 }
@@ -1784,6 +1788,7 @@ herr_t H5VL_async_file_wait(H5VL_async_t *async_obj)
     /* ABT_thread_state thread_state; */
     hbool_t acquired = false;
     unsigned int mutex_count = 1;
+    hbool_t tmp = async_instance_g->start_abt_push;
 
     async_instance_g->start_abt_push = true;
 
@@ -1830,6 +1835,7 @@ herr_t H5VL_async_file_wait(H5VL_async_t *async_obj)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with H5TSmutex_acquire\n", __func__);
     }
 
+    async_instance_g->start_abt_push = tmp;
     return 0;
 }
 
@@ -7655,6 +7661,7 @@ done:
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
+    
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr);
 #ifdef ENABLE_TIMING
@@ -10085,10 +10092,8 @@ async_file_create_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
-
-    async_instance_g->start_abt_push = false;
+    /* async_instance_g->start_abt_push = false; */
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -10460,10 +10465,8 @@ async_file_open_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
-
-    async_instance_g->start_abt_push = false;
+    /* async_instance_g->start_abt_push = false; */
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -20633,6 +20636,7 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
     ABT_thread_state    state;
     hbool_t acquired = false;
     unsigned int mutex_count = 1;
+    hbool_t tmp = async_instance_g->start_abt_push;
 
     assert(obj);
     assert(status);
@@ -20712,8 +20716,8 @@ done:
         if (H5TSmutex_acquire(mutex_count, &acquired) < 0)
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with H5TSmutex_acquire\n", __func__);
     }
-
-    async_instance_g->start_abt_push = false;
+ 
+    async_instance_g->start_abt_push = tmp;
 
     return ret_value;
 } /* end H5VL_async_request_wait() */
