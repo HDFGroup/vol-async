@@ -1853,7 +1853,6 @@ herr_t H5VL_async_file_wait(H5VL_async_t *async_obj)
 
 /* #ifdef ENABLE_DBG_MSG */
 /*     fprintf(stderr,"  [ASYNC VOL DBG] %s: cancel argobots task and execute now \n", __func__); */
-/*     fflush(stderr); */
 /* #endif */
 /*     // Execute the task in current thread */
 /*     task->func(task); */
@@ -1904,7 +1903,6 @@ H5VL_async_start()
 /*     fprintf(stderr, "[E%d] CPU set (%d): {%s}\n", rank, cpuset_size, cpuset_str); */
 
 /*     free(cpuset_str); */
-/*     fflush(stderr); */
 /* } */
 
 /* static void async_set_affinity() */
@@ -2100,7 +2098,6 @@ async_attr_create_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -2142,7 +2139,6 @@ async_attr_create_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -2244,7 +2240,6 @@ async_attr_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_lo
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -2390,7 +2385,6 @@ async_attr_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_lo
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -2398,7 +2392,6 @@ async_attr_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_lo
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -2492,7 +2485,6 @@ async_attr_open_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -2534,7 +2526,6 @@ async_attr_open_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -2633,7 +2624,6 @@ async_attr_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -2769,7 +2759,6 @@ async_attr_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -2777,7 +2766,6 @@ async_attr_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -2869,7 +2857,6 @@ async_attr_read_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -3002,7 +2989,6 @@ async_attr_read(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type_
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -3258,7 +3244,6 @@ async_attr_write_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -3351,7 +3336,6 @@ async_attr_write(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -3481,7 +3465,6 @@ async_attr_write(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -3489,7 +3472,6 @@ async_attr_write(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -3581,7 +3563,6 @@ async_attr_get_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -3623,7 +3604,6 @@ async_attr_get_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -3715,7 +3695,6 @@ async_attr_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -3831,7 +3810,6 @@ async_attr_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -3839,7 +3817,6 @@ async_attr_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -3931,7 +3908,6 @@ async_attr_specific_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -3973,7 +3949,6 @@ async_attr_specific_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -4068,7 +4043,6 @@ async_attr_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -4191,7 +4165,6 @@ async_attr_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -4199,7 +4172,6 @@ async_attr_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -4291,7 +4263,6 @@ async_attr_optional_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -4333,7 +4304,6 @@ async_attr_optional_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -4425,7 +4395,6 @@ async_attr_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -4541,7 +4510,6 @@ async_attr_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -4549,7 +4517,6 @@ async_attr_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -4641,7 +4608,6 @@ async_attr_close_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -4683,7 +4649,6 @@ async_attr_close_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -4772,7 +4737,6 @@ async_attr_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *par
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -4896,7 +4860,6 @@ async_attr_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *par
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -4904,7 +4867,6 @@ async_attr_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *par
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -4996,7 +4958,6 @@ async_dataset_create_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -5038,7 +4999,6 @@ async_dataset_create_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -5141,7 +5101,6 @@ async_dataset_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -5294,7 +5253,6 @@ async_dataset_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -5302,7 +5260,6 @@ async_dataset_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -5394,7 +5351,6 @@ async_dataset_open_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -5436,7 +5392,6 @@ async_dataset_open_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -5534,7 +5489,6 @@ async_dataset_open(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *p
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -5672,7 +5626,6 @@ async_dataset_open(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *p
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -5680,7 +5633,6 @@ async_dataset_open(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *p
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -5772,7 +5724,6 @@ async_dataset_read_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -5814,7 +5765,6 @@ async_dataset_read_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -5909,7 +5859,6 @@ async_dataset_read(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_ty
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -6031,7 +5980,6 @@ async_dataset_read(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_ty
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -6039,7 +5987,6 @@ async_dataset_read(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_ty
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -6131,7 +6078,6 @@ async_dataset_write_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -6174,7 +6120,6 @@ async_dataset_write_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -6276,7 +6221,6 @@ async_dataset_write(async_instance_t* aid, H5VL_async_t *parent_obj,
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -6398,7 +6342,6 @@ async_dataset_write(async_instance_t* aid, H5VL_async_t *parent_obj,
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -6406,7 +6349,6 @@ async_dataset_write(async_instance_t* aid, H5VL_async_t *parent_obj,
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -6499,7 +6441,6 @@ async_dataset_get_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -6541,7 +6482,6 @@ async_dataset_get_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -6633,7 +6573,6 @@ async_dataset_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -6749,7 +6688,6 @@ async_dataset_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -6757,7 +6695,6 @@ async_dataset_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -6849,7 +6786,6 @@ async_dataset_specific_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -6891,7 +6827,6 @@ async_dataset_specific_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -6984,7 +6919,6 @@ async_dataset_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -7100,7 +7034,6 @@ async_dataset_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -7108,7 +7041,6 @@ async_dataset_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -7200,7 +7132,6 @@ async_dataset_optional_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -7242,7 +7173,6 @@ async_dataset_optional_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -7334,7 +7264,6 @@ async_dataset_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -7450,7 +7379,6 @@ async_dataset_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -7458,7 +7386,6 @@ async_dataset_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -7550,7 +7477,6 @@ async_dataset_close_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -7592,7 +7518,6 @@ async_dataset_close_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -7682,7 +7607,6 @@ async_dataset_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -7810,7 +7734,6 @@ async_dataset_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -7818,7 +7741,6 @@ async_dataset_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -7910,7 +7832,6 @@ async_datatype_commit_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -7952,7 +7873,6 @@ async_datatype_commit_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -8050,7 +7970,6 @@ async_datatype_commit(async_instance_t* aid, H5VL_async_t *parent_obj, const H5V
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -8194,7 +8113,6 @@ async_datatype_commit(async_instance_t* aid, H5VL_async_t *parent_obj, const H5V
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -8202,7 +8120,6 @@ async_datatype_commit(async_instance_t* aid, H5VL_async_t *parent_obj, const H5V
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -8294,7 +8211,6 @@ async_datatype_open_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -8336,7 +8252,6 @@ async_datatype_open_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -8435,7 +8350,6 @@ async_datatype_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -8571,7 +8485,6 @@ async_datatype_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -8579,7 +8492,6 @@ async_datatype_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -8671,7 +8583,6 @@ async_datatype_get_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -8713,7 +8624,6 @@ async_datatype_get_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -8805,7 +8715,6 @@ async_datatype_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *p
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -8921,7 +8830,6 @@ async_datatype_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *p
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -8929,7 +8837,6 @@ async_datatype_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *p
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -9021,7 +8928,6 @@ async_datatype_specific_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -9063,7 +8969,6 @@ async_datatype_specific_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -9155,7 +9060,6 @@ async_datatype_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -9271,7 +9175,6 @@ async_datatype_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -9279,7 +9182,6 @@ async_datatype_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -9371,7 +9273,6 @@ async_datatype_optional_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -9413,7 +9314,6 @@ async_datatype_optional_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -9507,7 +9407,6 @@ async_datatype_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -9623,7 +9522,6 @@ async_datatype_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -9631,7 +9529,6 @@ async_datatype_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -9723,7 +9620,6 @@ async_datatype_close_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -9765,7 +9661,6 @@ async_datatype_close_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -9854,7 +9749,6 @@ async_datatype_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -9975,7 +9869,6 @@ async_datatype_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -9983,7 +9876,6 @@ async_datatype_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -10050,7 +9942,6 @@ async_file_create_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -10227,7 +10118,6 @@ async_file_create(async_instance_t* aid, const char *name, unsigned flags, hid_t
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -10348,7 +10238,6 @@ async_file_create(async_instance_t* aid, const char *name, unsigned flags, hid_t
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -10356,7 +10245,6 @@ async_file_create(async_instance_t* aid, const char *name, unsigned flags, hid_t
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -10423,7 +10311,6 @@ async_file_open_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -10603,7 +10490,6 @@ async_file_open(task_list_qtype qtype, async_instance_t* aid, const char *name, 
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -10721,7 +10607,6 @@ async_file_open(task_list_qtype qtype, async_instance_t* aid, const char *name, 
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -10729,7 +10614,6 @@ async_file_open(task_list_qtype qtype, async_instance_t* aid, const char *name, 
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -10822,7 +10706,6 @@ async_file_get_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -10864,7 +10747,6 @@ async_file_get_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -10957,7 +10839,6 @@ async_file_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -11073,7 +10954,6 @@ async_file_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -11081,7 +10961,6 @@ async_file_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -11173,7 +11052,6 @@ async_file_specific_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -11215,7 +11093,6 @@ async_file_specific_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -11308,7 +11185,6 @@ async_file_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -11424,7 +11300,6 @@ async_file_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -11432,7 +11307,6 @@ async_file_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -11524,7 +11398,6 @@ async_file_optional_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -11566,7 +11439,6 @@ async_file_optional_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -11659,7 +11531,6 @@ async_file_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -11772,7 +11643,6 @@ async_file_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -11780,7 +11650,6 @@ async_file_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -11872,7 +11741,6 @@ async_file_close_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -11914,7 +11782,6 @@ async_file_close_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -12025,7 +11892,6 @@ async_file_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *par
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -12164,7 +12030,6 @@ wait:
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -12172,7 +12037,6 @@ wait:
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -12264,7 +12128,6 @@ async_group_create_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -12306,7 +12169,6 @@ async_group_create_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -12408,7 +12270,6 @@ async_group_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_l
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -12555,7 +12416,6 @@ async_group_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_l
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -12563,7 +12423,6 @@ async_group_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_l
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -12658,7 +12517,6 @@ async_group_open_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -12700,7 +12558,6 @@ async_group_open_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -12798,7 +12655,6 @@ async_group_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -12934,7 +12790,6 @@ async_group_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -12942,7 +12797,6 @@ async_group_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -13034,7 +12888,6 @@ async_group_get_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -13076,7 +12929,6 @@ async_group_get_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -13168,7 +13020,6 @@ async_group_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pare
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -13284,7 +13135,6 @@ async_group_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pare
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -13292,7 +13142,6 @@ async_group_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pare
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -13384,7 +13233,6 @@ async_group_specific_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -13426,7 +13274,6 @@ async_group_specific_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -13521,7 +13368,6 @@ async_group_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -13637,7 +13483,6 @@ async_group_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -13645,7 +13490,6 @@ async_group_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -13737,7 +13581,6 @@ async_group_optional_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -13779,7 +13622,6 @@ async_group_optional_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -13874,7 +13716,6 @@ async_group_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -13990,7 +13831,6 @@ async_group_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -13998,7 +13838,6 @@ async_group_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -14090,7 +13929,6 @@ async_group_close_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -14132,7 +13970,6 @@ async_group_close_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     // There may be cases, e.g. with link iteration, that enters group close without a valid async_obj mutex
@@ -14228,7 +14065,6 @@ async_group_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -14359,7 +14195,6 @@ async_group_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -14367,7 +14202,6 @@ async_group_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -14462,7 +14296,6 @@ async_link_create_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -14504,7 +14337,6 @@ async_link_create_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -14603,7 +14435,6 @@ async_link_create(task_list_qtype qtype, async_instance_t* aid, H5VL_link_create
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -14745,7 +14576,6 @@ async_link_create(task_list_qtype qtype, async_instance_t* aid, H5VL_link_create
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -14753,7 +14583,6 @@ async_link_create(task_list_qtype qtype, async_instance_t* aid, H5VL_link_create
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -14845,7 +14674,6 @@ async_link_copy_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -14887,7 +14715,6 @@ async_link_copy_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -14984,7 +14811,6 @@ async_link_copy(async_instance_t* aid, H5VL_async_t *parent_obj1, const H5VL_loc
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -15118,7 +14944,6 @@ async_link_copy(async_instance_t* aid, H5VL_async_t *parent_obj1, const H5VL_loc
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -15126,7 +14951,6 @@ async_link_copy(async_instance_t* aid, H5VL_async_t *parent_obj1, const H5VL_loc
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -15218,7 +15042,6 @@ async_link_move_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -15260,7 +15083,6 @@ async_link_move_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -15357,7 +15179,6 @@ async_link_move(async_instance_t* aid, H5VL_async_t *parent_obj1, const H5VL_loc
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -15491,7 +15312,6 @@ async_link_move(async_instance_t* aid, H5VL_async_t *parent_obj1, const H5VL_loc
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -15499,7 +15319,6 @@ async_link_move(async_instance_t* aid, H5VL_async_t *parent_obj1, const H5VL_loc
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -15591,7 +15410,6 @@ async_link_get_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -15633,7 +15451,6 @@ async_link_get_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -15729,7 +15546,6 @@ async_link_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -15851,7 +15667,6 @@ async_link_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -15859,7 +15674,6 @@ async_link_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -15951,7 +15765,6 @@ async_link_specific_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -15993,7 +15806,6 @@ async_link_specific_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(task->async_obj->magic == ASYNC_MAGIC);
@@ -16092,7 +15904,6 @@ async_link_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -16214,7 +16025,6 @@ async_link_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -16222,7 +16032,6 @@ async_link_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -16314,7 +16123,6 @@ async_link_optional_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -16356,7 +16164,6 @@ async_link_optional_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -16451,7 +16258,6 @@ async_link_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -16567,7 +16373,6 @@ async_link_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -16575,7 +16380,6 @@ async_link_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -16667,7 +16471,6 @@ async_object_open_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -16709,7 +16512,6 @@ async_object_open_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -16807,7 +16609,6 @@ async_object_open(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -16943,7 +16744,6 @@ async_object_open(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -16951,7 +16751,6 @@ async_object_open(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -17043,7 +16842,6 @@ async_object_copy_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -17085,7 +16883,6 @@ async_object_copy_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -17186,7 +16983,6 @@ async_object_copy(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -17315,7 +17111,6 @@ async_object_copy(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -17323,7 +17118,6 @@ async_object_copy(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -17415,7 +17209,6 @@ async_object_get_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -17457,7 +17250,6 @@ async_object_get_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -17556,7 +17348,6 @@ async_object_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *par
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -17683,7 +17474,6 @@ async_object_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *par
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -17691,7 +17481,6 @@ async_object_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *par
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -17783,7 +17572,6 @@ async_object_specific_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -17825,7 +17613,6 @@ async_object_specific_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -17923,7 +17710,6 @@ async_object_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -18045,7 +17831,6 @@ async_object_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -18053,7 +17838,6 @@ async_object_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
@@ -18145,7 +17929,6 @@ async_object_optional_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-    fflush(stderr);
 #endif
 
     while (acquired == false) {
@@ -18187,7 +17970,6 @@ async_object_optional_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-    fflush(stderr);
 #endif
 
     /* Aquire async obj mutex and set the obj */
@@ -18282,7 +18064,6 @@ async_object_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
-    fflush(stderr);
 #endif
 
     assert(aid);
@@ -18398,7 +18179,6 @@ async_object_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
-        fflush(stderr);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -18406,7 +18186,6 @@ async_object_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t
         }
 #ifdef ENABLE_DBG_MSG
         fprintf(stderr,"  [ASYNC VOL DBG] %s finished all previous tasks, proceed\n", __func__);
-        fflush(stderr);
 #endif
         while (acquired == false) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
