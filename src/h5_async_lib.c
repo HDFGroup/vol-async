@@ -55,6 +55,7 @@ static hid_t H5VL_async_g = H5I_INVALID_HID;
  */
 static int async_dataset_wait_op_g = -1;
 static int async_file_wait_op_g = -1;
+static int async_file_start_op_g = -1;
 
 static void
 async_reset(void *_ctx)
@@ -68,6 +69,7 @@ async_reset(void *_ctx)
     /* Reset the operation values */
     async_dataset_wait_op_g = -1;
     async_file_wait_op_g = -1;
+    async_file_start_op_g = -1;
 
     /* Reset the 'atclose' callback status */
     async_atclose_registered = false;
@@ -103,6 +105,15 @@ async_setup(void)
             return(-1);
         }
         assert(async_file_wait_op_g > 0);
+    }
+
+    /* Singleton check for file start operation */
+    if(-1 == async_file_start_op_g) {
+        if(H5VLfind_opt_operation(H5VL_SUBCLS_FILE, H5VL_ASYNC_DYN_FILE_START, &async_file_start_op_g) < 0) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] with H5VLfind_opt_operation\n");
+            return(-1);
+        }
+        assert(async_file_start_op_g > 0);
     }
 
     /* Singleton check for registering 'atclose' callback */
@@ -219,3 +230,33 @@ H5Dwait(hid_t dset_id, hid_t dxpl_id)
     return(0);
 } /* H5Dwait*/
 
+/*-------------------------------------------------------------------------
+ * Function:    H5Dwait
+ *
+ * Purpose:     Wait for all operations on a dataset to complete.
+ *
+ * Return:      SUCCEED/FAIL
+ *
+ *-------------------------------------------------------------------------
+ */
+
+herr_t
+H5Fstart(hid_t file_id, hid_t dxpl_id)
+{
+    /* Look up operation value, if it's not already available */
+    if(-1 == async_file_start_op_g) {
+        if (async_setup() < 0) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] H5Fstart: async_setup\n");
+            return(-1);
+        }
+        assert(async_file_start_op_g > 0);
+    }
+
+    /* Call the VOL file optional routine, requesting 'wait' occur */
+    if(H5VLfile_optional_op(file_id, async_file_start_op_g, dxpl_id, H5ES_NONE) < 0) {
+        fprintf(stderr, "  [ASYNC VOL ERROR] H5Fstart: VOL connector file start operation failed!\n");
+        return(-1);
+    }
+
+    return(0);
+}
