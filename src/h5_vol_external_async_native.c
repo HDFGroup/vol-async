@@ -1723,6 +1723,64 @@ static void free_loc_param(H5VL_loc_params_t *loc_params)
     }
 }
 
+herr_t H5VL_async_object_wait(H5VL_async_t *async_obj)
+{
+    /* herr_t ret_value; */
+    async_task_t *task_iter;
+    /* ABT_task_state state; */
+    /* ABT_thread_state thread_state; */
+    hbool_t acquired = false;
+    unsigned int mutex_count = 1;
+    hbool_t tmp = async_instance_g->start_abt_push;
+
+    async_instance_g->start_abt_push = true;
+
+    if (get_n_running_task_in_queue_obj(async_obj) == 0 )
+        push_task_to_abt_pool(&async_instance_g->qhead, *async_obj->pool_ptr);
+
+    if (H5TSmutex_release(&mutex_count) < 0)
+        fprintf(stderr, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__);
+
+    // Check for all tasks on this dset of a file
+
+    if (ABT_mutex_lock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+        fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
+        return -1;
+    }
+    DL_FOREACH2(async_obj->file_task_list_head, task_iter, file_list_next) {
+        /* if (ABT_mutex_lock(async_obj->obj_mutex) != ABT_SUCCESS) { */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_mutex_lock failed\n", __func__); */
+        /*     return -1; */
+        /* } */
+
+        if (task_iter->async_obj == async_obj) {
+            if (task_iter->is_done != 1) {
+                ABT_eventual_wait(task_iter->eventual, NULL);
+            }
+        }
+        /* if (ABT_mutex_unlock(async_obj->obj_mutex) != ABT_SUCCESS) */
+        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_mutex_lock failed\n", __func__); */
+
+    }
+
+    if (ABT_mutex_unlock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+        fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
+        return -1;
+    }
+    while (false == acquired) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0)
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with H5TSmutex_acquire\n", __func__);
+    }
+
+#ifdef ENABLE_DBG_MSG
+    fprintf(stderr, "  [ASYNC VOL DBG] %s setting start_abt_push false!\n", __func__);
+#endif
+    async_instance_g->start_abt_push = tmp;
+
+    return 0;
+}
+
+
 herr_t H5VL_async_dataset_wait(H5VL_async_t *async_obj)
 {
     /* herr_t ret_value; */
@@ -4048,6 +4106,9 @@ async_attr_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    if (qtype == BLOCKING)
+        is_blocking = true;
 
     if ((args = (async_attr_specific_args_t*)calloc(1, sizeof(async_attr_specific_args_t))) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -6579,6 +6640,9 @@ async_dataset_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
 
+    if (qtype == BLOCKING)
+        is_blocking = true;
+
     if ((args = (async_dataset_get_args_t*)calloc(1, sizeof(async_dataset_get_args_t))) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
@@ -6714,7 +6778,7 @@ async_dataset_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
 
 done:
     fflush(stdout);
-    return 1;
+    return 0;
 error:
     if (lock_parent) {
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
@@ -6924,6 +6988,9 @@ async_dataset_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    if (qtype == BLOCKING)
+        is_blocking = true;
 
     if ((args = (async_dataset_specific_args_t*)calloc(1, sizeof(async_dataset_specific_args_t))) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -13046,6 +13113,9 @@ async_group_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pare
     args->req              = req;
     va_copy(args->arguments, arguments);
 
+    if (qtype == BLOCKING)
+        is_blocking = true;
+
     if (req) {
         H5VL_async_t *new_req;
         if ((new_req = H5VL_async_new_obj(NULL, parent_obj->under_vol_id)) == NULL) {
@@ -17716,6 +17786,9 @@ async_object_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
 
+    if (qtype == BLOCKING)
+        is_blocking = true;
+
     if ((args = (async_object_specific_args_t*)calloc(1, sizeof(async_object_specific_args_t))) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
@@ -18846,6 +18919,8 @@ H5VL_async_attr_specific(void *obj, const H5VL_loc_params_t *loc_params,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL ATTRIBUTE Specific\n");
 #endif
+    if (H5VL_ATTR_EXISTS == specific_type)
+        qtype = BLOCKING;
 
     if ((ret_value = async_attr_specific(qtype, async_instance_g, o, loc_params, specific_type, dxpl_id, req, arguments)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_attr_specific\n");
@@ -19054,6 +19129,8 @@ H5VL_async_dataset_get(void *dset, H5VL_dataset_get_t get_type,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATASET Get\n");
 #endif
+    if (H5VL_DATASET_GET_SPACE == get_type)
+        qtype = BLOCKING;
 
     if ((ret_value = async_dataset_get(qtype, async_instance_g, o, get_type, dxpl_id, req, arguments)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_dataset_get\n");
@@ -19083,6 +19160,8 @@ H5VL_async_dataset_specific(void *obj, H5VL_dataset_specific_t specific_type,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL H5Dspecific\n");
 #endif
+    if (H5VL_DATASET_SET_EXTENT == specific_type)
+        qtype = BLOCKING;
 
     // Save copy of underlying VOL connector ID and prov helper, in case of
     // refresh destroying the current object
@@ -19397,8 +19476,10 @@ H5VL_async_file_create(const char *name, unsigned flags, hid_t fcpl_id,
                 return NULL;
 
             /* We require MPI_THREAD_MULTIPLE to operate correctly */
-            if (MPI_THREAD_MULTIPLE != mpi_thread_lvl)
+            if (MPI_THREAD_MULTIPLE != mpi_thread_lvl) {
+                fprintf(stderr, "[ASYNC VOL ERROR] MPI is not initialized with MPI_THREAD_MULTIPLE!\n");
                 return NULL;
+            }
         } /* end if */
     } /* end if */
 }
@@ -19792,6 +19873,8 @@ H5VL_async_group_get(void *obj, H5VL_group_get_t get_type, hid_t dxpl_id,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL GROUP Get\n");
 #endif
+    if (H5VL_GROUP_GET_INFO == get_type)
+        qtype = BLOCKING;
 
     if ((ret_value = async_group_get(qtype, async_instance_g, o, get_type, dxpl_id, req, arguments)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_group_get\n");
@@ -19917,7 +20000,7 @@ H5VL_async_link_create(H5VL_link_create_type_t create_type, void *obj,
 #endif
 
     /* Return error if object not open / created */
-    if(loc_params && loc_params->obj_type != H5I_BADID && o && !o->is_obj_valid){
+    if(req == NULL && loc_params && loc_params->obj_type != H5I_BADID && o && !o->is_obj_valid){
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_file_specific, invalid object\n");
         return(-1);
     }
@@ -19944,6 +20027,9 @@ H5VL_async_link_create(H5VL_link_create_type_t create_type, void *obj,
             /* Set the object for the link target */
             cur_obj = ((H5VL_async_t *)cur_obj)->under_object;
         } /* end if */
+
+        if (o && NULL == o->under_object)
+            H5VL_async_object_wait(o);
 
         /* Re-issue 'link create' call, using the unwrapped pieces */
         ret_value = H5VLlink_create_vararg(create_type, (o ? o->under_object : NULL), loc_params, under_vol_id, lcpl_id, lapl_id, dxpl_id, req, cur_obj, cur_params);
@@ -20253,6 +20339,8 @@ H5VL_async_object_specific(void *obj, const H5VL_loc_params_t *loc_params,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL OBJECT Specific\n");
 #endif
+    if (H5VL_OBJECT_REFRESH == specific_type)
+        qtype = BLOCKING;
 
     if ((ret_value = async_object_specific(qtype, async_instance_g, o, loc_params, specific_type, dxpl_id, req, arguments)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_object_specific\n");
@@ -20481,14 +20569,15 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
 
         usleep(100000);
         now_time = clock();
-        elapsed = (double)(now_time - start_time) / CLOCKS_PER_SEC * 1e9;
+        elapsed = (double)(now_time - start_time) / CLOCKS_PER_SEC;
 
         *status = H5VL_REQUEST_STATUS_IN_PROGRESS;
     } while (elapsed < trigger) ;
 
-    if (elapsed > timeout) {
-        printf("HDF5 async VOL: timedout during wait (elapsed=%.1fs, timeout=%.1fs)\n", elapsed, trigger);
-    }
+#ifdef ENABLE_DBG_MSG
+    if (elapsed > timeout)
+        fprintf(stderr, "  [ASYNC VOL] timedout during wait (elapsed=%es, timeout=%.1fs)\n", elapsed, trigger);
+#endif
 
 done:
     while (false == acquired) {
