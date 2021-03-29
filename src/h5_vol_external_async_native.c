@@ -1056,8 +1056,8 @@ async_instance_init(int backing_thread_count)
     aid->num_xstreams = backing_thread_count;
     aid->progress_scheds = progress_scheds;
     aid->nfopen       = 0;
-    aid->ex_delay     = true;
-    aid->ex_fclose    = true;
+    aid->ex_delay     = false;
+    aid->ex_fclose    = false;
     aid->ex_gclose    = false;
     aid->ex_dclose    = false;
     aid->start_abt_push = false;
@@ -1930,8 +1930,8 @@ H5VL_async_start()
 {
     assert(async_instance_g);
     async_instance_g->start_abt_push = true;
-    /* if (async_instance_g && NULL != async_instance_g->qhead.queue) */
-    /*     push_task_to_abt_pool(&async_instance_g->qhead, async_instance_g->pool); */
+    if (async_instance_g && NULL != async_instance_g->qhead.queue)
+        push_task_to_abt_pool(&async_instance_g->qhead, async_instance_g->pool);
     return 0;
 }
 
