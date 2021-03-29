@@ -2091,17 +2091,18 @@ H5VL_async_start()
 static int
 check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *acquired)
 {
+    int ret_value = 0;
     unsigned int attempt_count, new_attempt_count;
     int sleep_time = ASYNC_APP_CHECK_SLEEP_TIME;
 
     while (*acquired == false) {
         if (async_instance_g->ex_delay == false && H5TSmutex_get_attempt_count(&attempt_count) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_get_attempt_count failed\n", __func__);
-            goto done;
+            return -1;
         }
         if (H5TSmutex_acquire(*mutex_count, acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
-            goto done;
+            return -1;
         }
         if (false == *acquired) {
 #ifdef ENABLE_DBG_MSG
@@ -2118,7 +2119,7 @@ check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *
             if(sleep_time > 0) usleep(sleep_time);
             if (H5TSmutex_get_attempt_count(&new_attempt_count) < 0) {
                 fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_get_attempt_count failed\n", __func__);
-                goto done;
+                return -1;
             }
             if (new_attempt_count > attempt_count) {
                 if (H5TSmutex_release(mutex_count) < 0) {
@@ -2209,7 +2210,8 @@ async_attr_create_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -2560,7 +2562,8 @@ async_attr_open_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -2896,7 +2899,8 @@ async_attr_read_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -3206,7 +3210,8 @@ async_attr_write_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -3530,7 +3535,8 @@ async_attr_get_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -3839,7 +3845,8 @@ async_attr_specific_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -4161,7 +4168,8 @@ async_attr_optional_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -4470,7 +4478,8 @@ async_attr_close_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -4784,7 +4793,8 @@ async_dataset_create_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -5141,7 +5151,8 @@ async_dataset_open_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -5478,7 +5489,8 @@ async_dataset_read_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -5796,7 +5808,8 @@ async_dataset_write_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -6122,7 +6135,8 @@ async_dataset_get_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -6434,7 +6448,8 @@ async_dataset_specific_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -6747,7 +6762,8 @@ async_dataset_optional_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -7056,7 +7072,8 @@ async_dataset_close_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -7375,7 +7392,8 @@ async_datatype_commit_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -7718,7 +7736,8 @@ async_datatype_open_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -8054,7 +8073,8 @@ async_datatype_get_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -8363,7 +8383,8 @@ async_datatype_specific_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -8672,7 +8693,8 @@ async_datatype_optional_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -8983,7 +9005,8 @@ async_datatype_close_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -9269,7 +9292,8 @@ async_file_create_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -9602,7 +9626,8 @@ async_file_open_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -9961,7 +9986,8 @@ async_file_get_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -10271,7 +10297,8 @@ async_file_specific_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -10581,7 +10608,8 @@ async_file_optional_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -10888,7 +10916,8 @@ async_file_close_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -11239,7 +11268,8 @@ async_group_create_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -11592,7 +11622,8 @@ async_group_open_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -11927,7 +11958,8 @@ async_group_get_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -12239,7 +12271,8 @@ async_group_specific_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -12551,7 +12584,8 @@ async_group_optional_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -12863,7 +12897,8 @@ async_group_close_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -13194,7 +13229,8 @@ async_link_create_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -13536,7 +13572,8 @@ async_link_copy_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -13868,7 +13905,8 @@ async_link_move_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -14200,7 +14238,8 @@ async_link_get_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -14519,7 +14558,8 @@ async_link_specific_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -14841,7 +14881,8 @@ async_link_optional_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -15153,7 +15194,8 @@ async_object_open_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -15488,7 +15530,8 @@ async_object_copy_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -15819,7 +15862,8 @@ async_object_get_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -16146,7 +16190,8 @@ async_object_specific_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
@@ -16470,7 +16515,8 @@ async_object_optional_fn(void *foo)
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
 
-    check_app_acquire_mutex(task, &mutex_count, &acquired);
+    if (check_app_acquire_mutex(task, &mutex_count, &acquired) < 0)
+        goto done;
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
