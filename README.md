@@ -21,6 +21,11 @@ Some configuration parameters used in the instructions:
 
        > git clone https://github.com/hpc-io/hdf5.git
 
+    1.3 (Optional) Set the environment variables for the paths of the codes if the full path of VOL_DIR, ABT_DIR, and H5_DIR are not used in later setup
+       > export H5_DIR=/path/to/hdf5/dir
+       > export VOL_DIR=/path/to/async_vol/dir
+       > export ABT_DIR=/path/to/argobots/dir
+
 2, Installation
 
     2.1 Compile HDF5 ( need to switch to the "async_vol_register_optional" branch )
@@ -28,20 +33,20 @@ Some configuration parameters used in the instructions:
         > cd $H5_DIR && git checkout async_vol_register_optional
         > ./autogen.sh  (may skip this step if the configure file exists)
         > ./configure --prefix=$H5_DIR/install --enable-parallel --enable-threadsafe --enable-unsupported (may need to add CC=cc or CC=mpicc)
-        > make install
+        > make && make install
 
     2.2 Compile Argobots
 
         > cd $ABT_DIR
         > ./autogen.sh  (may skip this step if the configure file exists)
-        > CC=cc ./configure --prefix=$ABT_DIR/build
-        > make install
+        > CC=cc ./configure --prefix=$ABT_DIR/install
+        > make && make install
 
     2.3 Compile Asynchronous VOL connector
         > cd $VOL_DIR/src
         > Edit "Makefile"
-            > Copy a sample Makefile (Makefile.cori, Makefile.summit, Makefile.macos) accordingly, e.g. "cp Makefile.summit Makefile", Makefile.summit should work for most linux systems
-            > Update H5_DIR and ABT_DIR to the previously installed locations
+            > Copy a sample Makefile (Makefile.cori, Makefile.summit, Makefile.macos), e.g. "cp Makefile.summit Makefile", which should work for most linux systems
+            > Change the path of HDF5_DIR and ABT_DIR to $H5_DIR/install and $ABT_DIR/install (replace $H5_DIR and $ABT_DIR with their full path)
             > (Optional) update the compiler flag macros: DEBUG, CFLAGS, LIBS, ARFLAGS
             > (Optional) comment/uncomment the correct DYNLDFLAGS & DYNLIB macros
         > make
@@ -52,12 +57,12 @@ Some configuration parameters used in the instructions:
     asynchronous operation tests and your async application, e.g.:
 
     for Linux:
-        > export LD_LIBRARY_PATH=$VOL_DIR/src:$H5_DIR/lib:$LD_LIBRARY_PATH
+        > export LD_LIBRARY_PATH=$VOL_DIR/src:$H5_DIR/install/lib:$ABT_DIR/install/lib:$LD_LIBRARY_PATH
         > export HDF5_PLUGIN_PATH="$VOL_DIR"
         > export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
 
     and on MacOS:
-        > export DYLD_LIBRARY_PATH=$VOL_DIR/src:$H5_DIR/lib:$DYLD_LIBRARY_PATH
+        > export DYLD_LIBRARY_PATH=$VOL_DIR/src:$H5_DIR/install/lib:$ABT_DIR/install/lib:$DYLD_LIBRARY_PATH
         > export HDF5_PLUGIN_PATH="$VOL_DIR"
         > export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
 
@@ -65,8 +70,8 @@ Some configuration parameters used in the instructions:
 
     > cd $VOL_DIR/test
     > Edit "Makefile":
-        > Copy a sample Makefile (Makefile.cori, Makefile.summit, Makefile.macos) accordingly, e.g. "cp Makefile.summit Makefile", Makefile.summit should work for most linux systems
-        > Update H5_DIR, ABT_DIR and ASYNC_DIR to the correct locations
+        > Copy a sample Makefile (Makefile.cori, Makefile.summit, Makefile.macos), e.g. "cp Makefile.summit Makefile", Makefile.summit should work for most linux systems
+        > Update H5_DIR, ABT_DIR and ASYNC_DIR to the correct paths of their installation directory
         > (Optional) update the compiler flag macros: DEBUG, CFLAGS, LIBS, ARFLAGS
         > (Optional) comment/uncomment the correct DYNLIB & LDFLAGS macro
     > make
@@ -78,6 +83,8 @@ Some configuration parameters used in the instructions:
     Run the serial tests only
 
         > make check_serial
+
+    If any test fails, check async_vol_test.err in the $VOL_DIR/test directory for the error message. With certain file systems where file locking is not supported, an error of "file create failed" may occur and can be fixed with "export HDF5_USE_FILE_LOCKING=FALSE", which disables the HDF5 file locking.
 
 4, Using the Asynchronous I/O VOL connector with application code (Implicit mode with environmental variable)
 
