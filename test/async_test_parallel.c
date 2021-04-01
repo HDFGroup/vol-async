@@ -37,8 +37,8 @@ int main(int argc, char *argv[])
    
     async_fapl = H5Pcreate (H5P_FILE_ACCESS);
     
-    status = H5Pset_vol_async(async_fapl);
-    assert(status >= 0);
+    /* status = H5Pset_vol_async(async_fapl); */
+    /* assert(status >= 0); */
     status = H5Pset_fapl_mpio(async_fapl, MPI_COMM_WORLD, MPI_INFO_NULL);
     assert(status >= 0);
 

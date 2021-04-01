@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
    
     async_fapl = H5Pcreate (H5P_FILE_ACCESS);
     
-    H5Pset_vol_async(async_fapl);
+    /* H5Pset_vol_async(async_fapl); */
     H5Pset_fapl_mpio(async_fapl, MPI_COMM_WORLD, MPI_INFO_NULL);
 
     file_id = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, async_fapl);
