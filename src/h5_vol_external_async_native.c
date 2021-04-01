@@ -176,6 +176,7 @@ typedef struct async_instance_t {
     bool                ex_gclose;           /* Delay background thread execution until group close */
     bool                ex_dclose;           /* Delay background thread execution until dset close */
     bool                start_abt_push;      /* Start pushing tasks to Argobots pool */
+    int                 sleep_time;
 } async_instance_t;
 
 typedef struct async_attr_create_args_t {
@@ -981,6 +982,7 @@ async_instance_init(int backing_thread_count)
         hg_ret = -1;
         goto done;
     }
+    aid->sleep_time = ASYNC_APP_CHECK_SLEEP_TIME;
 
     abt_ret = ABT_mutex_create(&aid->qhead.head_mutex);
     if (ABT_SUCCESS != abt_ret) {
@@ -2091,9 +2093,7 @@ H5VL_async_start()
 static int
 check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *acquired)
 {
-    int ret_value = 0;
     unsigned int attempt_count, new_attempt_count;
-    int sleep_time = ASYNC_APP_CHECK_SLEEP_TIME;
 
     while (*acquired == false) {
         if (async_instance_g->ex_delay == false && H5TSmutex_get_attempt_count(&attempt_count) < 0) {
@@ -2108,7 +2108,8 @@ check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *
 #ifdef ENABLE_DBG_MSG
             fprintf(stderr,"  [ASYNC ABT DBG] %s lock NOT acquired, wait\n", __func__);
 #endif
-            if(sleep_time > 0) usleep(sleep_time);
+            if(async_instance_g->sleep_time > 0)
+                usleep(async_instance_g->sleep_time);
             continue;
         }
         // No need to check and wait when start_abt_push flag is turned on
@@ -2116,7 +2117,8 @@ check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *
             goto done;
 
         if(async_instance_g->ex_delay == false && task->async_obj->file_async_obj->attempt_check_cnt % ASYNC_ATTEMPT_CHECK_INTERVAL == 0) {
-            if(sleep_time > 0) usleep(sleep_time);
+            if(async_instance_g->sleep_time > 0)
+                usleep(async_instance_g->sleep_time);
             if (H5TSmutex_get_attempt_count(&new_attempt_count) < 0) {
                 fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_get_attempt_count failed\n", __func__);
                 return -1;
@@ -2138,6 +2140,21 @@ check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *
 
 done:
     return 0;
+}
+
+static void 
+check_app_wait()
+{
+    hbool_t has_wait = false;
+    if (H5TSmutex_get_wait_flag(&has_wait) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        return;
+    }
+    // If the application thread is waiting, double the current sleep time for next status check
+    if (has_wait)
+        async_instance_g->sleep_time *= 2;
+
+    return;
 }
 
 static int 
@@ -2292,6 +2309,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -2641,6 +2659,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -2970,6 +2989,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -3282,6 +3302,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -3608,6 +3629,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -3921,6 +3943,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -4241,6 +4264,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -4548,6 +4572,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -4876,6 +4901,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -5229,6 +5255,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -5563,6 +5590,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -5889,6 +5917,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -6208,6 +6237,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -6522,6 +6552,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -6835,6 +6866,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -7142,6 +7174,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -7470,6 +7503,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -7815,6 +7849,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -8146,6 +8181,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -8456,6 +8492,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -8768,6 +8805,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -9075,6 +9113,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -9407,6 +9446,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -9488,6 +9528,8 @@ async_file_create(async_instance_t* aid, const char *name, unsigned flags, hid_t
         is_blocking = true;
         async_instance_g->start_abt_push = true;
     }
+    // Reset sleep time for each new file
+    aid->sleep_time = ASYNC_APP_CHECK_SLEEP_TIME;
 
     // Retrieve current library state
     if ( H5VLretrieve_lib_state(&async_task->h5_state) < 0) {
@@ -9744,6 +9786,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -9822,6 +9865,8 @@ async_file_open(task_list_qtype qtype, async_instance_t* aid, const char *name, 
         is_blocking = true;
         async_instance_g->start_abt_push = true;
     }
+    // Reset sleep time for each new file
+    aid->sleep_time = ASYNC_APP_CHECK_SLEEP_TIME;
 
     // Retrieve current library state
     if ( H5VLretrieve_lib_state(&async_task->h5_state) < 0) {
@@ -10060,6 +10105,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -10371,6 +10417,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -10681,6 +10728,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -11010,6 +11058,7 @@ done:
         ABT_mutex_unlock(task->task_mutex);
     }
 
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -11350,6 +11399,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -11700,6 +11750,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -12031,6 +12082,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -12347,6 +12399,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -12660,6 +12713,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -12974,6 +13028,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -13308,6 +13363,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -13649,6 +13705,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -13982,6 +14039,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -14315,6 +14373,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -14638,6 +14697,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -14957,6 +15017,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -15272,6 +15333,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -15611,6 +15673,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -15942,6 +16005,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -16269,6 +16333,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -16591,6 +16656,7 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
+    check_app_wait();
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
