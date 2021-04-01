@@ -2145,6 +2145,7 @@ done:
 static void 
 check_app_wait()
 {
+#ifdef ENABLE_WAIT_FLAG
     hbool_t has_wait = false;
     if (H5TSmutex_get_wait_flag(&has_wait) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
@@ -2154,6 +2155,7 @@ check_app_wait()
     if (has_wait)
         async_instance_g->sleep_time *= 2;
 
+#endif
     return;
 }
 
