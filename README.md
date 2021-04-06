@@ -108,8 +108,8 @@ Some configuration parameters used in the instructions:
         > did = H5Dopen_async(gid, .., es_id);         // Asynchronous, starts when H5Gopen completes
         > status = H5Dwrite_async(did, .., es_id);     // Asynchronous, starts when H5Dopen completes, may run concurrently with other H5Dwrite in event set
         > status = H5Dread_async(did, .., es_id);      // Asynchronous, starts when H5Dwrite completes, may run concurrently with other H5Dread in event set
-        > H5ESwait(es_id);                             // Wait for operations in event set to complete, buffers used for H5Dwrite must only be changed after wait
-        > H5ESclose(es_id);                            // Close the event set
+        > H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed); // Wait for operations in event set to complete, buffers used for H5Dwrite must only be changed after wait
+        > H5ESclose(es_id);                            // Close the event set (must wait first)
 
     5.3 Error handling with event set
         > hbool_t es_err_status;
@@ -125,7 +125,11 @@ Some configuration parameters used in the instructions:
         > H5free_memory(err_info.app_file_name);
         > H5free_memory(err_info.app_func_name);
 
-    5.4 Run with async
+    5.4 Use MPI_THREAD_MULTIPLE
+        The asynchronous tasks may involve MPI collecive operations, and can execute them concurrently with your application's MPI operations, thus we require to initialize MPI with MPI_THREAD_MULTIPLE support. Change MPI_Init(argc, argv) in your application's code to the following:
+        > MPI_Init_thread(argc, argv, MPI_THREAD_MULTIPLE, &provided);
+
+    5.5 Run with async
         > [Set environment variables, from step 3 above]
         > Run your application
 
