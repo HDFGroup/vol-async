@@ -76,11 +76,13 @@ Some configuration parameters used in the instructions:
         > (Optional) comment/uncomment the correct DYNLIB & LDFLAGS macro
     > make
 
-    Run both the serial and parallel tests
+    (Optional) If the system is not using mpirun to launch MPI tasks, edit mpirun_cmd in pytest.py with the corresponding MPI launch command.
+    
+    Run both the serial and parallel tests (Requires Python3)
 
         > make check
 
-    Run the serial tests only
+    Run the serial tests only (Requires Python3)
 
         > make check_serial
 
