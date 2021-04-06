@@ -89,7 +89,7 @@ Some configuration parameters used in the instructions:
     If any test fails, check async_vol_test.err in the $VOL_DIR/test directory for the error message. 
     With certain file systems where file locking is not supported, an error of "file create failed" may occur and can be fixed with "export HDF5_USE_FILE_LOCKING=FALSE", which disables the HDF5 file locking.
 
-## 5. Using the Asynchronous I/O VOL connector with application code (Implicit mode with environmental variable)
+## 5. Using the Asynchronous I/O VOL connector with application code (Implicit mode)
 
     The implicit mode allows an application to enable asynchronous I/O through setting the following environemental variables and without any major code change. 
     By default, the HDF5 metadata operations are executed asynchronously, and the dataset operations are executed synchronously.
