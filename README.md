@@ -57,12 +57,12 @@ Some configuration parameters used in the instructions:
 
     for Linux:
         > export LD_LIBRARY_PATH=$VOL_DIR/src:$H5_DIR/install/lib:$ABT_DIR/install/lib:$LD_LIBRARY_PATH
-        > export HDF5_PLUGIN_PATH="$VOL_DIR"
+        > export HDF5_PLUGIN_PATH="$VOL_DIR/src"
         > export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
 
     and on MacOS:
         > export DYLD_LIBRARY_PATH=$VOL_DIR/src:$H5_DIR/install/lib:$ABT_DIR/install/lib:$DYLD_LIBRARY_PATH
-        > export HDF5_PLUGIN_PATH="$VOL_DIR"
+        > export HDF5_PLUGIN_PATH="$VOL_DIR/src"
         > export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
 
 ## 4. Test
