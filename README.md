@@ -88,22 +88,22 @@ Some configuration parameters used in the instructions:
 
     If any test fails, check async_vol_test.err in the $VOL_DIR/test directory for the error message. With certain file systems where file locking is not supported, an error of "file create failed" may occur and can be fixed with "export HDF5_USE_FILE_LOCKING=FALSE", which disables the HDF5 file locking.
 
-4, Using the Asynchronous I/O VOL connector with application code (Implicit mode with environmental variable)
+5, Using the Asynchronous I/O VOL connector with application code (Implicit mode with environmental variable)
 
     The implicit mode allows an application to enable asynchronous I/O VOL connector through setting the following environemental variables and without any application code modification. By default, the HDF5 metadata operations are executed asynchronously, and the dataset operations are executed synchronously unless a cache VOL connector is used.
 
         > [Set environment variables, from step 3 above]
         > Run your application
 
-5, Using the Asynchronous I/O VOL connector with application code (Explicit mode)
+6, Using the Asynchronous I/O VOL connector with application code (Explicit mode)
 
     Please refer to the Makefile and source code (async_test_serial_event_set*) under $VOL_DIR/test/ for example usage.
 
-    5.1 Include header file
+    6.1 Include header file
 
         > #include "h5_vol_external_async_native.h" 
 
-    5.2 Use event set and new async API to manage asynchronous I/O operations
+    6.2 Use event set and new async API to manage asynchronous I/O operations
         > es_id = H5EScreate();                        // Create event set for tracking async operations
         > fid = H5Fopen_async(.., es_id);              // Asynchronous, can start immediately
         > gid = H5Gopen_async(fid, .., es_id);         // Asynchronous, starts when H5Fopen completes
@@ -113,7 +113,7 @@ Some configuration parameters used in the instructions:
         > H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed); // Wait for operations in event set to complete, buffers used for H5Dwrite must only be changed after wait
         > H5ESclose(es_id);                            // Close the event set (must wait first)
 
-    5.3 Error handling with event set
+    6.3 Error handling with event set
         > hbool_t es_err_status;
         > status = H5ESget_err_status(es_id, &es_err_status);   // Check if event set has failed operations (es_err_status is set to true)
         > size_t es_err_count;
@@ -127,11 +127,11 @@ Some configuration parameters used in the instructions:
         > H5free_memory(err_info.app_file_name);
         > H5free_memory(err_info.app_func_name);
 
-    5.4 Use MPI_THREAD_MULTIPLE
+    6.4 Use MPI_THREAD_MULTIPLE
         The asynchronous tasks may involve MPI collecive operations, and can execute them concurrently with your application's MPI operations, thus we require to initialize MPI with MPI_THREAD_MULTIPLE support. Change MPI_Init(argc, argv) in your application's code to the following:
         > MPI_Init_thread(argc, argv, MPI_THREAD_MULTIPLE, &provided);
 
-    5.5 Run with async
+    6.5 Run with async
         > [Set environment variables, from step 3 above]
         > Run your application
 
