@@ -75,17 +75,17 @@ void *H5VL_async_attr_create (void *obj,
 	argp->name = (char *)argp->loc_params + sizeof (H5VL_loc_params_t);
 	strncpy (argp->name, name, name_len + 1);
 	H5VL_ASYNC_CB_TASK_INIT
-DEBUG_PRINT
+
 	twerr =
 		TW_Task_create (H5VL_async_attr_create_handler,
 		        argp, TW_TASK_DEP_ALL_COMPLETE, 0, &task);
 	CHK_TWERR
 	op->prev_task = task;
-DEBUG_PRINT
+
 	H5VL_ASYNC_CB_TASK_COMMIT
-DEBUG_PRINT
+
 	H5VL_ASYNC_CB_TASK_WAIT
-DEBUG_PRINT
+
 err_out:;
 	if (err) {
 		if (task != TW_HANDLE_NULL) { TW_Task_free (task); }
@@ -191,7 +191,7 @@ herr_t H5VL_async_attr_read (void *dset, hid_t mem_type_id, void *buf, hid_t dxp
 	H5VL_ASYNC_CB_VARS
 	H5VL_async_attr_read_args *argp;
 	H5VL_async_t *target_obj = (H5VL_async_t *)dset;
-
+    H5VL_async_t * op = H5VL_async_new_obj (NULL, target_obj->under_vol_id);
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL attr Get\n");
 #endif
@@ -240,7 +240,7 @@ herr_t H5VL_async_attr_write (
 	H5VL_ASYNC_CB_VARS
 	H5VL_async_attr_write_args *argp;
 	H5VL_async_t *target_obj = (H5VL_async_t *)attr;
-
+    H5VL_async_t * op = H5VL_async_new_obj (NULL, target_obj->under_vol_id);
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL attr Get\n");
 #endif
@@ -252,15 +252,15 @@ herr_t H5VL_async_attr_write (
 	argp->dxpl_id	  = H5Pcopy (dxpl_id);
 	argp->buf		  = buf;
 	H5VL_ASYNC_CB_TASK_INIT
-DEBUG_PRINT
+
 	twerr =
 		TW_Task_create (H5VL_async_attr_write_handler, argp, TW_TASK_DEP_ALL_COMPLETE, 0, &task);
 	CHK_TWERR
-DEBUG_PRINT
+
 	H5VL_ASYNC_CB_TASK_COMMIT
-DEBUG_PRINT
+
 	H5VL_ASYNC_CB_TASK_WAIT
-DEBUG_PRINT
+
 err_out:;
 	if (err) {
 		if (argp) {
@@ -290,7 +290,7 @@ herr_t H5VL_async_attr_get (
 	H5VL_ASYNC_CB_VARS
 	H5VL_async_attr_get_args *argp;
 	H5VL_async_t *target_obj = (H5VL_async_t *)obj;
-
+    H5VL_async_t * op = H5VL_async_new_obj (NULL, target_obj->under_vol_id);
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL attr Get\n");
 #endif
@@ -343,7 +343,7 @@ herr_t H5VL_async_attr_specific (void *obj,
 	H5VL_ASYNC_CB_VARS
 	H5VL_async_attr_specific_args *argp;
 	H5VL_async_t *target_obj = (H5VL_async_t *)obj;
-
+    H5VL_async_t * op = H5VL_async_new_obj (NULL, target_obj->under_vol_id);
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL attr Specific\n");
 #endif
@@ -398,7 +398,7 @@ herr_t H5VL_async_attr_optional (
 	H5VL_ASYNC_CB_VARS
 	H5VL_async_attr_optional_args *argp;
 	H5VL_async_t *target_obj = (H5VL_async_t *)obj;
-
+    H5VL_async_t * op = H5VL_async_new_obj (NULL, target_obj->under_vol_id);
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL attr Optional\n");
 #endif
@@ -451,15 +451,15 @@ herr_t H5VL_async_attr_close (void *grp, hid_t dxpl_id, void **req) {
 	H5VL_ASYNC_CB_VARS
 	H5VL_async_attr_close_args *argp;
 	H5VL_async_t *target_obj = (H5VL_async_t *)grp;
-
+    H5VL_async_t * op = H5VL_async_new_obj (NULL, target_obj->under_vol_id);
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL attr Close\n");
 #endif
 
 	/* Mark as closed so no operation can be performed */
-	H5VL_asynci_mutex_lock (target_obj->lock);
-	target_obj->stat == H5VL_async_stat_close;
-	H5VL_asynci_mutex_unlock (target_obj->lock);
+//	H5VL_asynci_mutex_lock (target_obj->lock);
+//	target_obj->stat == H5VL_async_stat_close;
+//	H5VL_asynci_mutex_unlock (target_obj->lock);
 
 	argp = (H5VL_async_attr_close_args *)malloc (sizeof (H5VL_async_attr_close_args));
 	CHECK_PTR (argp)

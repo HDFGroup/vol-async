@@ -58,17 +58,21 @@ int H5VL_async_file_create_handler (void *data) {
 	H5Iinc_ref (argp->op->under_vol_id);
 	void* obj = NULL;
     H5E_BEGIN_TRY {
+	    REQ_TIMER_START
+	    printf("%s: argp->op->under_vol_id %llu\n", __func__, argp->op->under_vol_id);
 	    obj = H5VLfile_create (argp->name, argp->flags, argp->fcpl_id, under_fapl_id,
-											  argp->dxpl_id, NULL);
+						argp->dxpl_id, NULL);
+	    REQ_TIMER_END
+
+	    argp->op->under_object = obj;
     } H5E_END_TRY
+
     if (NULL == obj) {
         if ((argp->op->error_stack = H5Eget_current_stack()) < 0)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
-        goto err_out;
     }
-    argp->op->under_object = obj;
-	CHECK_PTR (argp->op->under_object)
 
+    CHECK_PTR (argp->op->under_object)
     /* Check for 'post open' callback */
     uint64_t supported = 0;
     if(H5VLintrospect_opt_query(obj, under_vol_id, H5VL_SUBCLS_FILE, H5VL_NATIVE_FILE_POST_OPEN, &supported) < 0) {
@@ -81,6 +85,7 @@ int H5VL_async_file_create_handler (void *data) {
         herr_t status;
         H5E_BEGIN_TRY {
             status = H5VLfile_optional_vararg(obj, under_vol_id, H5VL_NATIVE_FILE_POST_OPEN, argp->dxpl_id, NULL);
+            err = status;
         } H5E_END_TRY
         if ( status < 0 ) {
             if ((argp->op->error_stack = H5Eget_current_stack()) < 0)
@@ -90,11 +95,15 @@ int H5VL_async_file_create_handler (void *data) {
     } /* end if */
 
 err_out:;
-	if (err) {
-		argp->op->stat = H5VL_async_stat_err;
-	} else {
-		argp->op->stat = H5VL_async_stat_ready;
-	}
+if (err) {
+    argp->op->stat = H5VL_async_stat_err;
+    if(argp->req)
+        ((H5VL_async_req_t*)(argp->req))->req_stat = REQ_FAIL;
+} else {
+    argp->op->stat = H5VL_async_stat_ready;
+    if(argp->req)
+        ((H5VL_async_req_t*)(argp->req))->req_stat = REQ_SUCCEED;
+}
 
 	H5VL_ASYNC_HANDLER_END
 
@@ -113,8 +122,13 @@ err_out:;
 	H5Pclose (argp->fapl_id);
 	H5Pclose (argp->fcpl_id);
 	free (argp->name);
-	H5VL_ASYNC_HANDLER_FREE
 
+	//H5VL_ASYNC_HANDLER_FREE
+    err = H5VL_asynci_handler_free (
+                (H5VL_asynci_debug_args *)argp);
+    CHECK_ERR
+    //*(argp->ret_arg) = err;
+     free(argp);
 	return 0;
 }
 
@@ -150,16 +164,23 @@ int H5VL_async_file_open_handler (void *data) {
 	/* Open the file with the underlying VOL connector */
 	argp->op->under_vol_id = under_vol_id;
 	H5Iinc_ref (argp->op->under_vol_id);
-	argp->op->under_object =
-		H5VLfile_open (argp->name, argp->flags, under_fapl_id, argp->dxpl_id, NULL);
+
+	REQ_TIMER_START
+	argp->op->under_object = H5VLfile_open (argp->name, argp->flags, under_fapl_id, argp->dxpl_id, NULL);
+	REQ_TIMER_END
+
 	CHECK_PTR (argp->op->under_object)
 
 err_out:;
-	if (err) {
-		argp->op->stat = H5VL_async_stat_err;
-	} else {
-		argp->op->stat = H5VL_async_stat_ready;
-	}
+    if (err) {
+        argp->op->stat = H5VL_async_stat_err;
+        if(argp->req)
+            ((H5VL_async_req_t*)(argp->req))->req_stat = REQ_FAIL;
+    } else {
+        argp->op->stat = H5VL_async_stat_ready;
+        if(argp->req)
+            ((H5VL_async_req_t*)(argp->req))->req_stat = REQ_SUCCEED;
+    }
 
 	H5VL_ASYNC_HANDLER_END
 
@@ -186,9 +207,10 @@ int H5VL_async_file_get_handler (void *data) {
 	H5VL_async_file_get_args *argp = (H5VL_async_file_get_args *)data;
 
 	H5VL_ASYNC_HANDLER_BEGIN
-
+	REQ_TIMER_START
 	err = H5VLfile_get (argp->target_obj->under_object, argp->target_obj->under_vol_id,
 						argp->get_type, argp->dxpl_id, NULL, argp->arguments);
+	REQ_TIMER_END
 	CHECK_ERR
 
 err_out:;
@@ -262,12 +284,12 @@ int H5VL_async_file_specific_handler (void *data) {
 		H5VL_async_info_t *info;
 		hid_t fapl_id, under_fapl_id;
 		const char *name;
-		htri_t *ret;
+		htri_t *local_ret;
 
 		/* Get the arguments for the 'is accessible' check */
 		fapl_id = va_arg (argp->arguments, hid_t);
 		name	= va_arg (argp->arguments, const char *);
-		ret		= va_arg (argp->arguments, htri_t *);
+		local_ret		= va_arg (argp->arguments, htri_t *);
 
 		/* Get copy of our VOL info from FAPL */
 		H5Pget_vol_info (fapl_id, (void **)&info);
@@ -283,7 +305,7 @@ int H5VL_async_file_specific_handler (void *data) {
 
 		/* Re-issue 'file specific' call */
 		err = H5VL_async_file_specific_reissue (NULL, info->under_vol_id, argp->specific_type,
-												argp->dxpl_id, NULL, under_fapl_id, name, ret);
+												argp->dxpl_id, NULL, under_fapl_id, name, local_ret);
 
 		/* Close underlying FAPL */
 		H5Pclose (under_fapl_id);
@@ -332,9 +354,10 @@ int H5VL_async_file_optional_handler (void *data) {
 	H5VL_async_file_optional_args *argp = (H5VL_async_file_optional_args *)data;
 
 	H5VL_ASYNC_HANDLER_BEGIN
-
+	REQ_TIMER_START
 	err = H5VLfile_optional (argp->target_obj->under_object, argp->target_obj->under_vol_id,
 							 argp->opt_type, argp->dxpl_id, NULL, argp->arguments);
+	REQ_TIMER_END
 	CHECK_ERR
 
 err_out:;
@@ -351,20 +374,48 @@ int H5VL_async_file_close_handler (void *data) {
 	H5VL_ASYNC_HANDLER_VARS
 	terr_t twerr					 = TW_SUCCESS;
 	H5VL_async_file_close_args *argp = (H5VL_async_file_close_args *)data;
-
+	printf("%s: argp->target_obj->under_vol_id = %llu\n", __func__, argp->target_obj->under_vol_id);
 	H5VL_ASYNC_HANDLER_BEGIN
-
-	err = H5VLfile_close (argp->target_obj->under_object, argp->target_obj->under_vol_id,
+DEBUG_PRINT
+    H5E_BEGIN_TRY {
+	    REQ_TIMER_START
+	    err = H5VLfile_close (argp->target_obj->under_object, argp->target_obj->under_vol_id,
 						  argp->dxpl_id, NULL);
+	    //argp->target_obj->under_object???
+	    REQ_TIMER_END
+DEBUG_PRINT
+    } H5E_END_TRY
+    if (err < 0) {
+        DEBUG_PRINT
+        if ((argp->op->error_stack = H5Eget_current_stack()) < 0)
+            fprintf(stderr,"  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+    }
 	CHECK_ERR
-
+DEBUG_PRINT
 err_out:;
+    if (err) {
+DEBUG_PRINT
+        argp->op->stat = H5VL_async_stat_err;
+        if(argp->req){
+DEBUG_PRINT
+            ((H5VL_async_req_t*)(argp->req))->req_stat = REQ_FAIL;
+            ((H5VL_async_req_t*)(argp->req))->error_stack = argp->op->error_stack;
+        }
+    } else {
+DEBUG_PRINT
+        argp->op->stat = H5VL_async_stat_ready;
+        if(argp->req)
+            ((H5VL_async_req_t*)(argp->req))->req_stat = REQ_SUCCEED;
+    }
+DEBUG_PRINT
 	H5VL_ASYNC_HANDLER_END
-
-	err = H5VL_async_free_obj (argp->target_obj);
+	printf("%s: obj = %p, closing lock = %p\n", __func__, argp->target_obj, argp->target_obj->lock); fflush(stdout); fflush(stderr);
+DEBUG_PRINT
+    err = H5VL_async_free_obj (argp->op);//argp->target_obj
 	CHECK_ERR2
+DEBUG_PRINT
 	H5Pclose (argp->dxpl_id);
 	H5VL_ASYNC_HANDLER_FREE
-
+DEBUG_PRINT
 	return 0;
 }

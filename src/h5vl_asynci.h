@@ -28,6 +28,10 @@ static unsigned int LOCK_COUNT_GLOBAL = 1;
 #define H5VL_ASYNC_FALL_THROUGH __attribute__ ((fallthrough));
 
 #ifdef ASYNCVOL_DEBUG
+#define DEBUG_PRINT printf("%s:%s:%d\n",        \
+            __FILE__, __func__, __LINE__);      \
+            fflush(stdout); fflush(stderr);
+
 #define DEBUG_ABORT                             \
 	{                                           \
 		char *env;                              \
@@ -35,160 +39,204 @@ static unsigned int LOCK_COUNT_GLOBAL = 1;
 		if (env) { abort (); }                  \
 	}
 
-#define PRINT_ERR_MSG(E, M) \
-	{ printf ("Error at line %d in %s: %s (%d)\n", __LINE__, __FILE__, M, E); }
+#define PRINT_ERR_MSG(E, M)                        \
+	{ printf ("Error at line %d in %s: %s (%d)\n", \
+            __LINE__, __FILE__, M, E); }
 #else
-#define DEBUG_ABORT \
+#define DEBUG_ABORT         \
 	{}
 #define PRINT_ERR_MSG(E, M) \
 	{}
 #endif
 
-#define CHECK_ERR_EX(M)                                                        \
-	{                                                                          \
-		{                                                                      \
-			if (err < 0) {                                                     \
-				printf ("Error at line %d in %s:%s\n", __LINE__, __FILE__, M); \
-				H5Eprint2 (H5E_DEFAULT, stdout);                               \
-				DEBUG_ABORT                                                    \
-				err = -1;                                                      \
-				goto err_out;                                                  \
-			}                                                                  \
-		}                                                                      \
+#define CHECK_ERR_EX(M)                                 \
+	{                                                   \
+		{                                               \
+			if (err < 0) {                              \
+				printf ("Error at line %d in %s:%s\n",  \
+                        __LINE__, __FILE__, M);         \
+				H5Eprint2 (H5E_DEFAULT, stdout);        \
+				DEBUG_ABORT                             \
+				err = -1;                               \
+				goto err_out;                           \
+			}                                           \
+		}                                               \
 	}
 #define CHECK_ERR CHECK_ERR_EX ("")
 
-#define CHECK_ERR2_EX(M)                                                       \
-	{                                                                          \
-		{                                                                      \
-			if (err < 0) {                                                     \
-				printf ("Error at line %d in %s:%s\n", __LINE__, __FILE__, M); \
-				H5Eprint2 (H5E_DEFAULT, stdout);                               \
-				DEBUG_ABORT                                                    \
-				err = -1;                                                      \
-			}                                                                  \
-		}                                                                      \
+#define CHECK_ERR2_EX(M)                                \
+	{                                                   \
+		{                                               \
+			if (err < 0) {                              \
+				printf ("Error at line %d in %s:%s\n",  \
+                        __LINE__, __FILE__, M);         \
+				H5Eprint2 (H5E_DEFAULT, stdout);        \
+				DEBUG_ABORT                             \
+				err = -1;                               \
+			}                                           \
+		}                                               \
 	}
 #define CHECK_ERR2 CHECK_ERR2_EX ("")
 
-#define CHECK_MPIERR                                                             \
-	{                                                                            \
-		if (mpierr != MPI_SUCCESS) {                                             \
-			int el = 256;                                                        \
-			char errstr[256];                                                    \
-			MPI_Error_string (mpierr, errstr, &el);                              \
-			printf ("Error at line %d in %s: %s\n", __LINE__, __FILE__, errstr); \
-			err = -1;                                                            \
-			DEBUG_ABORT                                                          \
-			goto err_out;                                                        \
-		}                                                                        \
+#define CHECK_MPIERR                                    \
+	{                                                   \
+		if (mpierr != MPI_SUCCESS) {                    \
+			int el = 256;                               \
+			char errstr[256];                           \
+			MPI_Error_string (mpierr, errstr, &el);     \
+			printf ("Error at line %d in %s: %s\n",     \
+                    __LINE__, __FILE__, errstr);        \
+			err = -1;                                   \
+			DEBUG_ABORT                                 \
+			goto err_out;                               \
+		}                                               \
 	}
 
-#define CHECK_ID(A)                                                                             \
-	{                                                                                           \
-		if (A < 0) {                                                                            \
-			printf ("Error at line %d in %s: %s is not valid hid\n", __LINE__, __FILE__, "#A"); \
-			H5Eprint2 (H5E_DEFAULT, stdout);                                                    \
-			DEBUG_ABORT                                                                         \
-			err = -1;                                                                           \
-			goto err_out;                                                                       \
-		}                                                                                       \
+#define CHECK_ID(A)                                                  \
+	{                                                                \
+		if (A < 0) {                                                 \
+			printf ("Error at line %d in %s: %s is not valid hid\n", \
+                    __LINE__, __FILE__, "#A");                       \
+			H5Eprint2 (H5E_DEFAULT, stdout);                         \
+			DEBUG_ABORT                                              \
+			err = -1;                                                \
+			goto err_out;                                            \
+		}                                                            \
 	}
 
-#define CHECK_PTR(A)                                                                   \
-	{                                                                                  \
-		if (A == NULL) {                                                               \
-			printf ("Error at line %d in %s: %s is NULL\n", __LINE__, __FILE__, "#A"); \
-			H5Eprint2 (H5E_DEFAULT, stdout);                                           \
-			DEBUG_ABORT                                                                \
-			err = -1;                                                                  \
-			goto err_out;                                                              \
-		}                                                                              \
+#define CHECK_PTR(A)                                        \
+	{                                                       \
+		if (A == NULL) {                                    \
+			printf ("Error at line %d in %s: %s is NULL\n", \
+                    __LINE__, __FILE__, "#A");              \
+			H5Eprint2 (H5E_DEFAULT, stdout);                \
+			DEBUG_ABORT                                     \
+			err = -1;                                       \
+			goto err_out;                                   \
+		}                                                   \
 	}
 
-#define RET_ERR(A)                                                      \
-	{                                                                   \
-		printf ("Error at line %d in %s: %s\n", __LINE__, __FILE__, A); \
-		DEBUG_ABORT                                                     \
-		err = -1;                                                       \
-		goto err_out;                                                   \
+#define RET_ERR(A)                                \
+	{                                             \
+		printf ("Error at line %d in %s: %s\n",   \
+                __LINE__, __FILE__, A);           \
+		DEBUG_ABORT                               \
+		err = -1;                                 \
+		goto err_out;                             \
 	}
 
-#define CHK_TWRET(R)                                            \
-	{                                                           \
-		if (R != TW_SUCCESS) {                                  \
-			char msg[256];                                      \
-			sprintf (msg, "TaskWorks: %s", TW_Get_err_msg (R)); \
-			PRINT_ERR_MSG (R, msg);                             \
-			DEBUG_ABORT;                                        \
-			err = -1;                                           \
-			goto err_out;                                       \
-		}                                                       \
+#define CHK_TWRET(R)                              \
+	{                                             \
+		if (R != TW_SUCCESS) {                    \
+			char msg[256];                        \
+			sprintf (msg, "TaskWorks: %s",        \
+                    TW_Get_err_msg (R));          \
+			PRINT_ERR_MSG (R, msg);               \
+			DEBUG_ABORT;                          \
+			err = -1;                             \
+			goto err_out;                         \
+		}                                         \
 	}
+
 #define CHK_TWERR CHK_TWRET (twerr)
 
 #define H5VL_ASYNC_LOCK_POLL_PEROID 1000
 
-#define H5VL_ASYNC_HANDLER_VARS \
-	herr_t err			  = 0;  \
+#define H5VL_ASYNC_HANDLER_VARS     \
+                         \
+	herr_t err			  = 0;      \
 	hbool_t stat_restored = false;
 
 #ifdef ASYNCVOL_DEBUG
-#define H5VL_ASYNC_HANDLER_BEGIN                                                          \
-	{                                                                                     \
-		err = H5VL_asynci_handler_begin ((H5VL_asynci_debug_args *)argp, &stat_restored); \
-		CHECK_ERR                                                                         \
+
+#define REQ_TIMER_START \
+    if((argp->req))     \
+        ((H5VL_async_req_t*)(argp->req))->op_exec_ts = get_time_usec_uint64();
+
+#define REQ_TIMER_END \
+        if((argp->req)) \
+            ((H5VL_async_req_t*)(argp->req))->op_exec_time = \
+            get_time_usec_uint64() - ((H5VL_async_req_t*)(argp->req))->op_exec_ts;
+
+
+#define H5VL_ASYNC_HANDLER_BEGIN                        \
+	{                                                   \
+		err = H5VL_asynci_handler_begin (               \
+                    (H5VL_asynci_debug_args *)argp,     \
+                    &stat_restored);                    \
+		CHECK_ERR                                       \
 	}
 
-#define H5VL_ASYNC_HANDLER_END                                                         \
-	{                                                                                  \
-		err = H5VL_asynci_handler_end ((H5VL_asynci_debug_args *)argp, stat_restored); \
-		CHECK_ERR                                                                      \
+#define H5VL_ASYNC_HANDLER_END                          \
+	{                                                   \
+		err = H5VL_asynci_handler_end (                 \
+                    (H5VL_asynci_debug_args *)argp,     \
+                    stat_restored);                     \
+		CHECK_ERR                                       \
 	}
 
-#define H5VL_ASYNC_HANDLER_FREE                                          \
-	{                                                                    \
-		err = H5VL_asynci_handler_free ((H5VL_asynci_debug_args *)argp); \
-		CHECK_ERR                                                        \
+#define H5VL_ASYNC_HANDLER_FREE                        \
+	{                                                  \
+		err = H5VL_asynci_handler_free (               \
+                    (H5VL_asynci_debug_args *)argp);   \
+		CHECK_ERR                                      \
+		 free(argp);                                   \
 	}
 
-#define H5VL_ASYNC_CB_TASK_INIT                                                                   \
-	{                                                                                             \
-		err =                                                                                     \
-			H5VL_asynci_cb_task_init (dxpl_id, req, &ret, (H5VL_asynci_debug_args *)argp, &reqp); \
-		CHECK_ERR                                                                                 \
+#define H5VL_ASYNC_CB_TASK_INIT                        \
+	{       \
+	       \
+    if (req) {                                         \
+        reqp = H5VL_async_new_req (NULL, target_obj->under_vol_id);\
+    } else {                                                 \
+        reqp = NULL;                                    \
+    }                                                        \
+		err =                                          \
+			H5VL_asynci_cb_task_init (                 \
+                    dxpl_id,               \
+                    (H5VL_asynci_debug_args *)argp,    \
+                    reqp);                            \
+		CHECK_ERR                                      \
 	}
 
-#define H5VL_ASYNC_CB_TASK_COMMIT                                                                  \
-	{                                                                                              \
-		err = H5VL_asynci_cb_task_commit ((H5VL_asynci_debug_args *)argp, reqp, target_obj, task); \
-		CHECK_ERR                                                                                  \
+#define H5VL_ASYNC_CB_TASK_COMMIT                      \
+	{                                           \
+        if(req){                                \
+            reqp->req_task = task;                  \
+            *req = (void*)reqp;     \
+        }                           \
+		err = H5VL_asynci_cb_task_commit (             \
+                (H5VL_asynci_debug_args *)argp,        \
+                reqp, target_obj, task);               \
+		CHECK_ERR                                      \
 	}
 
 #define H5VL_ASYNC_CB_TASK_WAIT                           \
 	{                                                     \
-		err = H5VL_asynci_cb_task_wait (req, task, &ret); \
+		err = H5VL_asynci_cb_task_wait (req, task); \
 		CHECK_ERR                                         \
 	}
-#else
-#define H5VL_ASYNC_HANDLER_BEGIN                                                                 \
-	{                                                                                            \
-		/* Acquire global lock */                                                                \
-		err = H5VL_asynci_h5ts_mutex_lock ();                                                    \
-		CHECK_ERR_EX ("H5VL_asynci_h5ts_mutex_lock failed")                                      \
-		/* Apply HDF5 state copied in the VOL call so the handler is recognized as VOL functions \
-		 */                                                                                      \
-        err = H5VLstart_lib_state ();		                                                     \
-        CHECK_ERR_EX ("H5VLstart_lib_state failed")                                            \
-		err = H5VLrestore_lib_state (argp->stat);                                                \
-		CHECK_ERR_EX ("H5VLrestore_lib_state failed")                                            \
-		*stat_restored = true;                                                                   \
+#else //end ifdef ASYNCVOL_DEBUG
+
+#define H5VL_ASYNC_HANDLER_BEGIN                              \
+	{                                                         \
+		/* Acquire global lock */                             \
+		err = H5VL_asynci_h5ts_mutex_lock ();                 \
+		CHECK_ERR_EX ("H5VL_asynci_h5ts_mutex_lock failed")   \
+		/* Apply HDF5 state copied in the VOL call so         \
+		 * the handler is recognized as VOL functions         \
+		 */                                                   \
+        err = H5VLstart_lib_state ();		                  \
+        CHECK_ERR_EX ("H5VLstart_lib_state failed")           \
+		err = H5VLrestore_lib_state (argp->stat);             \
+		CHECK_ERR_EX ("H5VLrestore_lib_state failed")         \
+		*stat_restored = true;                                \
 	}
 
 #define H5VL_ASYNC_HANDLER_END                                      \
 	{                                                               \
 		/* Restore HDF5 status */                                   \
-		if (stat_restored) { H5VLfinish_lib_state (); }              \
+		if (stat_restored) { H5VLfinish_lib_state (); }             \
 		err = H5VLfree_lib_state (argp->stat);                      \
 		if (err) {                                                  \
 			printf ("Error at line %d in %sn", __LINE__, __FILE__); \
@@ -211,66 +259,69 @@ static unsigned int LOCK_COUNT_GLOBAL = 1;
 #define H5VL_ASYNC_HANDLER_FREE                   \
 	{                                             \
 		/* Release global lock */                 \
-		err = H5TSmutex_release ();               \
+		err = H5TSmutex_release (&LOCK_COUNT_GLOBAL); \
 		CHECK_ERR_EX ("H5TSmutex_release failed") \
                                                   \
 		/* Record return val in request handle */ \
-		*argp->ret = err;                         \
+		*argp->ret_arg = err;                     \
                                                   \
 		/* Free arguments */                      \
 		free (argp);                              \
 	}
 
-#define H5VL_ASYNC_CB_TASK_INIT                                             \
-	{                                                                       \
-		/* Check if the operations is async */                              \
-		                                                   \
-		if (req) {                                                          \
-			reqp = (H5VL_async_req_t *)malloc (sizeof (H5VL_async_req_t)); \
-			CHECK_PTR (reqp)                                               \
-			/* argp->ret = &(reqp->ret); ??? */                                   \
-			*req = (void*)reqp;                                            \
-		} else {                                                            \
-			argp->ret = ret;                                                \
-			argp->req = NULL;                                               \
-		}                                                                   \
-                                                                            \
-		/* Retrieve current library state */                                \
-		err = H5VLretrieve_lib_state (&argp->stat);                         \
-		CHECK_ERR_EX ("H5VLretrieve_lib_state failed")                      \
+#define H5VL_ASYNC_CB_TASK_INIT                                  \
+	{   printf("non-debug H5VL_ASYNC_CB_TASK_INIT\n");           \
+		/* Check if the operations is async */                   \
+		                                                         \
+		if (req) {                                               \
+			reqp = H5VL_async_new_obj (NULL, op->under_vol_id);  \
+			CHECK_PTR (reqp)                                     \
+			/* argp->ret = &(reqp->ret); ??? */                  \
+		} else {                                                 \
+			/*argp->ret_arg = &ret;*/                                    \
+			argp->req = NULL;                                    \
+		}                                                        \
+                                                                 \
+		/* Retrieve current library state */                     \
+		err = H5VLretrieve_lib_state (&argp->stat);              \
+		CHECK_ERR_EX ("H5VLretrieve_lib_state failed")           \
 	}
 
-#define H5VL_ASYNC_CB_TASK_COMMIT                                                           \
-	{                                                                                       \
-		/* Copy task handle in args */                                                      \
-		argp->task = task;                                                                  \
-		if (reqp) { reqp->task = task; }                                                    \
-                                                                                            \
-		if (op) {                                                                           \
-			/* Acquire object lock */                                                       \
-			H5VL_asynci_mutex_lock (op->lock);                                              \
-			/* Check status */                                                              \
-			if ((op->stat == H5VL_async_stat_err) || (op->stat == H5VL_async_stat_close)) { \
-				H5VL_asynci_mutex_unlock (op->lock);                                        \
-				RET_ERR ("Parent object in wrong status");                                  \
-			}                                                                               \
-			/* Add dependency to prev task */                                               \
-			if (op->prev_task != TW_HANDLE_NULL) {                                          \
-				twerr = TW_Task_add_dep (task, op->prev_task);                              \
-				CHK_TWERR                                                                   \
-			}                                                                               \
-			/* Record current task */                                                       \
-			op->prev_task = task;                                                           \
-                                                                                            \
-			/* Commit task*/                                                                \
-			twerr = TW_Task_commit (task, H5VL_async_engine);                               \
-			CHK_TWERR                                                                       \
-			/* Release object lock */                                                       \
-			H5VL_asynci_mutex_unlock (op->lock);                                            \
-		} else {                                                                            \
-			twerr = TW_Task_commit (task, H5VL_async_engine);                               \
-			CHK_TWERR                                                                       \
-		}                                                                                   \
+#define H5VL_ASYNC_CB_TASK_COMMIT                                \
+	{                                                            \
+		/* Copy task handle in args */                           \
+		argp->task = task;                                       \
+		if (reqp) {                                              \
+		     reqp->req_task = task;                              \
+		     /*reqp->req_ret = argp->ret_arg;*/                  \
+		    *req = (void*)reqp;		                             \
+		}                                                        \
+		if (op) {                                                \
+			/* Acquire object lock */                            \
+			H5VL_asynci_mutex_lock (op->lock);                   \
+			/* Check status */                                   \
+			if ((op->stat == H5VL_async_stat_err)                \
+			        || (op->stat == H5VL_async_stat_close)) {    \
+				H5VL_asynci_mutex_unlock (op->lock);             \
+				RET_ERR ("Parent object in wrong status");       \
+			}                                                    \
+			/* Add dependency to prev task */                    \
+			if (op->prev_task != TW_HANDLE_NULL) {               \
+				twerr = TW_Task_add_dep (task, op->prev_task);   \
+				CHK_TWERR                                        \
+			}                                                    \
+			/* Record current task */                            \
+			op->prev_task = task;                                \
+                                                                 \
+			/* Commit task*/                                     \
+			twerr = TW_Task_commit (task, H5VL_async_engine);    \
+			CHK_TWERR                                            \
+			/* Release object lock */                            \
+			H5VL_asynci_mutex_unlock (op->lock);                 \
+		} else {                                                 \
+			twerr = TW_Task_commit (task, H5VL_async_engine);    \
+			CHK_TWERR                                            \
+		}                                                        \
 	}
 
 #define H5VL_ASYNC_CB_TASK_WAIT                                \
@@ -278,7 +329,7 @@ static unsigned int LOCK_COUNT_GLOBAL = 1;
 		/* Wait for task if the operation is sync */           \
 		if (!req) {                                            \
 			/* Release the lock so worker thread can acquire*/ \
-			H5TSmutex_release ();                              \
+			H5TSmutex_release (&LOCK_COUNT_GLOBAL);                              \
                                                                \
 			twerr = TW_Task_wait (task, TW_TIMEOUT_NEVER);     \
 			CHK_TWERR                                          \
@@ -286,25 +337,26 @@ static unsigned int LOCK_COUNT_GLOBAL = 1;
 			err = H5VL_asynci_h5ts_mutex_lock ();              \
 			CHECK_ERR                                          \
                                                                \
-			err = *ret;                                        \
+			/*err = ret;*/                                        \
 			CHECK_ERR_EX ("Async operation failed")            \
 		}                                                      \
 	}
 #endif
 
-#define H5VL_ASYNC_CB_VARS         \
-	herr_t err	 = 0;              \
-	terr_t twerr = TW_SUCCESS;     \
-	herr_t ret;                    \
-	H5VL_async_req_t *reqp = NULL; \
+#define H5VL_ASYNC_CB_VARS          \
+                         \
+	herr_t err	 = 0;               \
+	terr_t twerr = TW_SUCCESS;      \
+	/*herr_t ret = 0;*/                 \
+	H5VL_async_req_t *reqp = NULL;  \
 	TW_Task_handle_t task;
 
-#define H5VL_ASYNC_ARG_VARS   \
-	H5VL_async_t *target_obj; \
-	TW_Task_handle_t task;    \
-	void** req;             \
-	herr_t *ret;              \
-	void *stat;             \
+#define H5VL_ASYNC_ARG_VARS     \
+	H5VL_async_t *target_obj;   \
+	TW_Task_handle_t task;      \
+    void** req;                 \
+    /*herr_t *ret_arg;*/        \
+	void *stat;                 \
     H5VL_async_t *op;
 
 herr_t H5VL_asynci_h5ts_mutex_lock ();

@@ -27,6 +27,7 @@
 #include "h5vl_asynci_mutex.h"
 #include "h5vl_asynci_vector.h"
 
+
 /*-------------------------------------------------------------------------
  * Function:    H5VL_async_file_create
  *
@@ -37,12 +38,7 @@
  *
  *-------------------------------------------------------------------------
  */
-H5VL_async_t* _shared_file_obj_new(hid_t fapl_id){
-    hid_t under_vol_id;
-    H5Pget_vol_id(fapl_id, &under_vol_id);
-    H5VL_async_t* obj = H5VL_async_new_obj (NULL, under_vol_id);
-    return obj;
-}
+
 void *H5VL_async_file_create (
 	const char *name, unsigned flags, hid_t fcpl_id, hid_t fapl_id, hid_t dxpl_id, void **req) {
 	H5VL_ASYNC_CB_VARS
@@ -54,11 +50,48 @@ void *H5VL_async_file_create (
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL FILE Create\n");
 #endif
-
-	op = _shared_file_obj_new (fapl_id);
+DEBUG_PRINT
+    H5VL_async_info_t *info;
+    H5Pget_vol_info(fapl_id, (void **)&info);
+    target_obj = H5VL_async_new_obj (NULL, info->under_vol_id);
+	op = H5VL_async_new_obj (NULL, info->under_vol_id);
 	CHECK_PTR (op)
 
-	argp = (H5VL_async_file_create_args *)malloc (sizeof (H5VL_async_file_create_args));
+    printf("%s:%d: target_obj->vol_id = %lu, info->under_vol_id = %lu\n", __func__, __LINE__, target_obj->under_vol_id, info->under_vol_id);
+#ifdef MPI_VERSION
+{
+    unsigned cap_flags = 0;
+
+    /* Query the capability flags for the underlying VOL connector */
+    if (H5VLintrospect_get_cap_flags(info->under_vol_info, info->under_vol_id, &cap_flags) < 0)
+        return NULL;
+
+    /* Querying for the VFD is only meaninful when using the native VOL connector */
+    if ((cap_flags & H5VL_CAP_FLAG_NATIVE_FILES) > 0) {
+        hid_t vfd_id;       /* VFD for file */
+
+        /* Retrieve the ID for the VFD */
+        if ((vfd_id = H5Pget_driver(fapl_id)) < 0)
+            return NULL;
+
+        /* Check for MPI-IO VFD */
+        if (H5FD_MPIO == vfd_id) {
+            int mpi_thread_lvl = -1;
+
+            /* Check for MPI thread level */
+            if (MPI_SUCCESS != MPI_Query_thread(&mpi_thread_lvl))
+                return NULL;
+
+            /* We require MPI_THREAD_MULTIPLE to operate correctly */
+            printf("MPI_THREAD_MULTIPLE = %d, mpi_thread_lvl= %d\n", MPI_THREAD_MULTIPLE, mpi_thread_lvl);
+            if (MPI_THREAD_MULTIPLE != mpi_thread_lvl)
+                return NULL;
+        } /* end if */
+    } /* end if */
+}
+#endif /* MPI_VERSION */
+
+	argp = (H5VL_async_file_create_args *)calloc (1, sizeof (H5VL_async_file_create_args));
 	CHECK_PTR (argp)
 	argp->dxpl_id	 = H5Pcopy (dxpl_id);
 
@@ -71,19 +104,20 @@ void *H5VL_async_file_create (
 	name_len		 = strlen (name);
 	argp->name		 = (char *)malloc (name_len + 1);
 	strncpy (argp->name, name, name_len + 1);
-
+//    printf("%d: req = %p, *req = %p\n", __LINE__, req, *req);
 	H5VL_ASYNC_CB_TASK_INIT
 
 	twerr =
 		TW_Task_create (H5VL_async_file_create_handler, argp, TW_TASK_DEP_ALL_COMPLETE, 0, &task);
 	CHK_TWERR
-
+//	printf("%d: req = %p, *req = %p\n", __LINE__, req, *req);
 	op->prev_task = task;
 
 	H5VL_ASYNC_CB_TASK_COMMIT
 
 	H5VL_ASYNC_CB_TASK_WAIT
-
+    //printf("%d: req = %p, *req = %p, target_obj->vol_id = %lu\n", __LINE__, req, *req, target_obj->under_vol_id);
+	H5VL_async_free_obj(target_obj);
     target_obj = op;
 err_out:;
 
@@ -103,7 +137,6 @@ err_out:;
 		free (target_obj);
 		target_obj = NULL;
 	}
-
 	return (void *)target_obj;
 } /* end H5VL_async_file_create() */
 
@@ -124,12 +157,15 @@ void *H5VL_async_file_open (
 	H5VL_async_t *op				= NULL;
 	size_t name_len;
 	H5VL_async_t *target_obj = NULL;
-
+DEBUG_PRINT
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL FILE Open\n");
 #endif
 
-    op = _shared_file_obj_new (fapl_id);
+    H5VL_async_info_t *info;
+    H5Pget_vol_info(fapl_id, (void **)&info);
+    op = H5VL_async_new_obj (NULL, info->under_vol_id);
+
 	CHECK_PTR (op)
 
 	argp = (H5VL_async_file_open_args *)malloc (sizeof (H5VL_async_file_open_args));
@@ -336,29 +372,31 @@ herr_t H5VL_async_file_close (void *file, hid_t dxpl_id, void **req) {
 	H5VL_ASYNC_CB_VARS
 	H5VL_async_file_close_args *argp;
 	H5VL_async_t *target_obj = (H5VL_async_t *)file;
-
+	H5VL_async_t* op = H5VL_async_new_obj (target_obj->under_object, target_obj->under_vol_id);
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL FILE Close\n");
 #endif
 
 	/* Mark as closed so no operation can be performed */
-	H5VL_asynci_mutex_lock (target_obj->lock);
-	target_obj->stat == H5VL_async_stat_close;
-	H5VL_asynci_mutex_unlock (target_obj->lock);
-
+//	H5VL_asynci_mutex_lock (target_obj->lock);
+//	//target_obj->stat == H5VL_async_stat_close;
+//	H5VL_asynci_mutex_unlock (target_obj->lock);
+DEBUG_PRINT
 	argp = (H5VL_async_file_close_args *)malloc (sizeof (H5VL_async_file_close_args));
 	CHECK_PTR (argp)
 	argp->target_obj = target_obj;
 	argp->dxpl_id	 = H5Pcopy (dxpl_id);
+	argp->op = op;
 	H5VL_ASYNC_CB_TASK_INIT
-
+DEBUG_PRINT
 	twerr =
 		TW_Task_create (H5VL_async_file_close_handler, argp, TW_TASK_DEP_ALL_COMPLETE, 0, &task);
 	CHK_TWERR
-
+DEBUG_PRINT
 	H5VL_ASYNC_CB_TASK_COMMIT
+DEBUG_PRINT
 	H5VL_ASYNC_CB_TASK_WAIT
-
+DEBUG_PRINT
 err_out:;
 	if (err) {
 		if (argp) {

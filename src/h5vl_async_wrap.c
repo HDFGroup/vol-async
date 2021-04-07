@@ -17,7 +17,7 @@
 /* Async VOL headers */
 #include "h5vl_async.h"
 #include "h5vl_async_wrap.h"
-
+#include "h5vl_async_req.h"
 /*---------------------------------------------------------------------------
  * Function:    H5VL_async_get_object
  *
@@ -50,6 +50,10 @@ void *H5VL_async_get_object (const void *obj) {
  */
 herr_t H5VL_async_get_wrap_ctx (const void *obj_in, void **wrap_ctx) {
 	const H5VL_async_t *obj = (const H5VL_async_t *)obj_in;
+	H5VL_async_req_t* req = NULL;
+	if(obj->isReq)
+	    req = (H5VL_async_req_t*) obj_in;
+
 	H5VL_async_wrap_ctx_t *new_wrap_ctx;
     hid_t under_vol_id = 0;
     void *under_object = NULL;
@@ -59,23 +63,33 @@ herr_t H5VL_async_get_wrap_ctx (const void *obj_in, void **wrap_ctx) {
 
 	/* Allocate new VOL object wrapping context for the async connector */
 	new_wrap_ctx = (H5VL_async_wrap_ctx_t *)calloc (1, sizeof (H5VL_async_wrap_ctx_t));
-
-    if (obj->under_vol_id > 0) {
-        under_vol_id = obj->under_vol_id;
-    }
-    else if (obj->shared_file_obj && obj->shared_file_obj->under_vol_id > 0) {
-        under_vol_id = obj->shared_file_obj->under_vol_id;
-    }
-    else {
-        fprintf(stderr,"  [ASYNC VOL ERROR] with H5VL_async_get_wrap_ctx\n");
-        return -1;
-    }
+	if(obj->isReq){
+	    if (req->async_obj->under_vol_id > 0) {
+	        under_vol_id = req->async_obj->under_vol_id;
+	    } else if (req->async_obj->shared_file_obj && req->async_obj->shared_file_obj->under_vol_id > 0) {
+	        under_vol_id = req->async_obj->shared_file_obj->under_vol_id;
+	    } else {
+	        fprintf(stderr,"  [ASYNC VOL ERROR] with H5VL_async_get_wrap_ctx\n");
+	        return -1;
+	    }
+	} else {
+	    if (obj->under_vol_id > 0) {
+	        under_vol_id = obj->under_vol_id;
+	    } else if (obj->shared_file_obj && obj->shared_file_obj->under_vol_id > 0) {
+	        under_vol_id = obj->shared_file_obj->under_vol_id;
+	    } else {
+	        fprintf(stderr,"  [ASYNC VOL ERROR] with H5VL_async_get_wrap_ctx\n");
+	        return -1;
+	    }
+        under_object = obj->under_object;
+	}
 
 	/* Increment reference count on underlying VOL ID, and copy the VOL info */
-	new_wrap_ctx->under_vol_id = obj->under_vol_id;
+	new_wrap_ctx->under_vol_id = under_vol_id;
+//    printf("%s: vol_id = %lu\n", __func__, under_vol_id);
 	H5Iinc_ref (new_wrap_ctx->under_vol_id);
-	if(obj->under_object)
-	    H5VLget_wrap_ctx (obj->under_object, obj->under_vol_id, &new_wrap_ctx->under_wrap_ctx);
+	if(under_object)
+	    H5VLget_wrap_ctx (under_object, under_vol_id, &new_wrap_ctx->under_wrap_ctx);
 
 	/* Set wrap context to return */
 	*wrap_ctx = new_wrap_ctx;

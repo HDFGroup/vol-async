@@ -18,6 +18,17 @@
 #include "h5vl_async_req.h"
 #include "h5vl_asynci.h"
 
+H5VL_async_req_t* H5VL_async_new_req(void *under_obj, hid_t under_vol_id) {
+    printf("%s: vol_id = %lu\n", __func__, under_vol_id);
+    H5VL_async_req_t* new_req = (H5VL_async_req_t*)calloc(1, sizeof(H5VL_async_req_t));
+    new_req->async_obj = H5VL_async_new_obj (NULL, under_vol_id);
+    new_req->isReq = 1;
+    new_req->req_stat = REQ_IN_PROGRESS;
+    new_req->req_task = TW_HANDLE_NULL;
+    new_req->async_obj->stat = H5VL_async_stat_init;
+    return new_req;
+}
+
 /*-------------------------------------------------------------------------
  * Function:    H5VL_async_request_wait
  *
@@ -31,30 +42,33 @@
  *
  *-------------------------------------------------------------------------
  */
-herr_t H5VL_async_request_wait (void *obj, uint64_t timeout, H5ES_status_t *status) {
+herr_t H5VL_async_request_wait (void *obj, uint64_t timeout, H5VL_request_status_t *status) {
 	herr_t err			   = 0;
 	terr_t twerr		   = TW_SUCCESS;
 	H5VL_async_req_t *reqp = (H5VL_async_req_t *)obj;
-
+DEBUG_PRINT
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL REQUEST Wait\n");
 #endif
 
-	if (reqp->ret <= 0) {
-		twerr = TW_Task_wait (reqp->task, timeout * 1000);
+	if (reqp->req_stat == REQ_IN_PROGRESS) {
+		twerr = TW_Task_wait (reqp->req_task, timeout * 1000);
 		if (twerr == TW_ERR_TIMEOUT) {
-			if (status) { *status = H5ES_STATUS_IN_PROGRESS; }
+			if (status) {
+			    *status = H5VL_REQUEST_STATUS_IN_PROGRESS;
+			    goto err_out;
+			}
 		}
 		CHK_TWERR
 	}
 
 	if (status) {
-		if (reqp->ret < 0) {
-			*status = H5ES_STATUS_FAIL;
-		} else if (reqp->ret > 0) {
-			*status = H5ES_STATUS_CANCELED;
+		if (reqp->req_stat == REQ_FAIL) {
+			*status = H5VL_REQUEST_STATUS_FAIL;
+		} else if (reqp->req_stat == REQ_CANCELLED) {
+			*status = H5VL_REQUEST_STATUS_CANCELED;
 		} else {
-			*status = H5ES_STATUS_SUCCEED;
+			*status = H5VL_REQUEST_STATUS_SUCCEED;
 		}
 	}
 
@@ -109,10 +123,10 @@ herr_t H5VL_async_request_cancel (void *obj) {
 	printf ("------- ASYNC VOL REQUEST Cancel\n");
 #endif
 
-	twerr = TW_Task_retract (reqp->task);
+	twerr = TW_Task_retract (reqp->req_task);
 	CHK_TWERR
 
-	reqp->ret = 1;
+	reqp->req_stat = REQ_CANCELLED;
 
 err_out:;
 	return err;
@@ -133,11 +147,50 @@ herr_t H5VL_async_request_specific (void *obj,
 									va_list arguments) {
 	herr_t err			   = 0;
 	terr_t twerr		   = TW_SUCCESS;
-	H5VL_async_req_t *reqp = (H5VL_async_req_t *)obj;
+	H5VL_async_req_t *req = (H5VL_async_req_t *)obj;
 
 #ifdef ENABLE_ASYNC_LOGGING
 	printf ("------- ASYNC VOL REQUEST Specific\n");
 #endif
+//TODO:
+//	- get error stack: look at Tang's code
+//	- H5VL_REQUEST_GET_EXEC_TIME: return to ouput params.
+
+    if(H5VL_REQUEST_GET_ERR_STACK == specific_type) {
+        hid_t *err_stack_id_ptr;
+
+        TW_Task_handle_t task = req->req_task;
+
+        if (task == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object\n", __func__);
+            return -1;
+        }
+
+        /* Retrieve pointer to error stack ID */
+        err_stack_id_ptr = va_arg(arguments, hid_t *);
+        assert(err_stack_id_ptr);
+
+        /* Increment refcount on task's error stack, if it has one */
+        if(H5I_INVALID_HID != req->error_stack)
+            H5Iinc_ref(req->error_stack);
+
+        /* Return the task's error stack (including H5I_INVALID_HID) */
+        *err_stack_id_ptr = req->error_stack;
+
+
+    } /* end if */
+    else if(H5VL_REQUEST_GET_EXEC_TIME == specific_type) {
+        uint64_t* op_exec_ts;
+        uint64_t* op_exec_time;
+
+        op_exec_ts = va_arg(arguments, uint64_t*);
+        op_exec_time = va_arg(arguments, uint64_t*);
+
+        *op_exec_ts = req->op_exec_ts;
+        *op_exec_time = req->op_exec_time;
+    }
+    else
+        assert(0 && "Unknown 'specific' operation");
 
 err_out:;
 	return err;
@@ -188,7 +241,7 @@ herr_t H5VL_async_request_free (void *obj) {
 	printf ("------- ASYNC VOL REQUEST Wait\n");
 #endif
 
-	twerr = TW_Task_free (reqp->task);
+	twerr = TW_Task_free (reqp->req_task);
 	CHK_TWERR
 
 err_out:;

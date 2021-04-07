@@ -191,6 +191,7 @@ H5VL_async_t *H5VL_async_new_obj (void *under_obj, hid_t under_vol_id) {
 	H5VL_async_t *new_obj;
 
 	new_obj		  = (H5VL_async_t *)calloc (1, sizeof (H5VL_async_t));
+	new_obj->isReq = 0;
 	new_obj->under_object = under_obj;
 	new_obj->under_vol_id = under_vol_id;
 	new_obj->stat = H5VL_async_stat_init;
@@ -199,11 +200,11 @@ H5VL_async_t *H5VL_async_new_obj (void *under_obj, hid_t under_vol_id) {
 	// new_obj->tasks = H5VL_asynci_vector_create ();
 	// CHECK_PTR (new_obj->tasks)
 	new_obj->lock = H5VL_asynci_mutex_create ();
+    printf("%s: obj = %p, created lock = %p\n", __func__, new_obj, new_obj->lock);fflush(stdout); fflush(stderr);
 	CHECK_PTR (new_obj->lock)
 	// new_obj->prev_task	= TW_HANDLE_NULL;
 	// new_obj->close_task = TW_HANDLE_NULL;
 	new_obj->prev_task = TW_HANDLE_NULL;
-
 	// new_obj->ntask		 = 0;
 	// new_obj->ntask_alloc = H5VL_ASYNC_OBJ_NTASK_INIT;
 	// new_obj->tasks == (TW_Task_handle_t *)malloc (sizeof (TW_Task_handle_t));
@@ -231,7 +232,7 @@ err_out:;
  */
 herr_t H5VL_async_free_obj (H5VL_async_t *obj) {
 	hid_t err_id;
-
+	printf("%s: obj = %p, closing lock = %p\n", __func__, obj, obj->lock); fflush(stdout); fflush(stderr);
 	err_id = H5Eget_current_stack ();
 
 	H5Idec_ref (obj->under_vol_id);
@@ -531,4 +532,10 @@ void dup_loc_param(H5VL_loc_params_t *dest, H5VL_loc_params_t const *loc_params)
         memcpy((void*)(dest->loc_data.loc_by_token.token), loc_params->loc_data.loc_by_token.token, ref_size);
     }
 
+}
+
+uint64_t get_time_usec_uint64() {
+    struct timeval tp;
+    gettimeofday(&tp, NULL);
+    return (uint64_t)(1000000 * tp.tv_sec + tp.tv_usec);
 }

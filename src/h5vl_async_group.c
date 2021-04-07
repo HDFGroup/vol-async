@@ -355,9 +355,9 @@ herr_t H5VL_async_group_close (void *grp, hid_t dxpl_id, void **req) {
 #endif
 
 	/* Mark as closed so no operation can be performed */
-	H5VL_asynci_mutex_lock (target_obj->lock);
-	target_obj->stat == H5VL_async_stat_close;
-	H5VL_asynci_mutex_unlock (target_obj->lock);
+	// H5VL_asynci_mutex_lock (target_obj->lock);
+	// target_obj->stat == H5VL_async_stat_close;
+	// H5VL_asynci_mutex_unlock (target_obj->lock);
 
 	argp = (H5VL_async_group_close_args *)malloc (sizeof (H5VL_async_group_close_args));
 	CHECK_PTR (argp)
@@ -371,7 +371,9 @@ herr_t H5VL_async_group_close (void *grp, hid_t dxpl_id, void **req) {
 	CHK_TWERR
 
 	H5VL_ASYNC_CB_TASK_COMMIT
+
 	H5VL_ASYNC_CB_TASK_WAIT
+
 err_out:;
 	if (err) {
 		if (argp) {

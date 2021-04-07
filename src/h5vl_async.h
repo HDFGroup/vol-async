@@ -52,13 +52,23 @@ typedef enum H5VL_async_stat_t {
 	H5VL_async_stat_close	// Object marked for closing
 } H5VL_async_stat_t;
 
+typedef enum H5VL_async_req_stat_t {
+    REQ_IN_PROGRESS,
+    REQ_FAIL,
+    REQ_CANCELLED,
+    REQ_SUCCEED
+}H5VL_async_req_stat_t;
+
 /* The async VOL object */
 typedef struct H5VL_async_t {
+    int isReq;
 	hid_t under_vol_id; /* ID for underlying VOL connector */
 	void *under_object; /* Info object for underlying VOL connector */
 	struct H5VL_async_t* shared_file_obj;
 	volatile H5VL_async_stat_t stat;
 	TW_Task_handle_t prev_task;
+	//TW_Task_handle_t req_task; moved to H5VL_async_req_t
+	//H5VL_async_req_stat_t req_stat; moved to H5VL_async_req_t
 	// TW_Task_handle_t open_task;
 	// TW_Task_handle_t close_task;
 	// TW_Task_handle_t *tasks;
@@ -100,3 +110,4 @@ static herr_t H5VL_async_introspect_get_cap_flags(const void *info, unsigned *ca
 /* Generic optional callback */
 herr_t H5VL_async_optional (void *obj, int op_type, hid_t dxpl_id, void **req, va_list arguments);
 void dup_loc_param(H5VL_loc_params_t *dest, H5VL_loc_params_t const *loc_params);
+uint64_t get_time_usec_uint64();

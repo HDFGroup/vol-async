@@ -27,10 +27,10 @@ herr_t H5VL_asynci_handler_begin (H5VL_asynci_debug_args *argp, hbool_t *stat_re
 herr_t H5VL_asynci_handler_end (H5VL_asynci_debug_args *argp, hbool_t stat_restored);
 herr_t H5VL_asynci_handler_free (H5VL_asynci_debug_args *argp);
 herr_t H5VL_asynci_cb_task_init (
-	hid_t dxpl_id, void **req, herr_t *ret, H5VL_asynci_debug_args *argp, H5VL_async_req_t **reqp);
+	hid_t dxpl_id, H5VL_asynci_debug_args *argp, H5VL_async_req_t *reqp);
 herr_t H5VL_asynci_cb_task_commit (H5VL_asynci_debug_args *argp,
 								   H5VL_async_req_t *reqp,
 								   H5VL_async_t *op,
 								   TW_Task_handle_t task);
-herr_t H5VL_asynci_cb_task_wait (void **req, TW_Task_handle_t task, herr_t *ret);
+herr_t H5VL_asynci_cb_task_wait (void **req, TW_Task_handle_t task);
 #endif

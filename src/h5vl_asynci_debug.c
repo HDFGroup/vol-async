@@ -80,28 +80,22 @@ herr_t H5VL_asynci_handler_free (H5VL_asynci_debug_args *argp) {
 	CHECK_ERR_EX ("H5TSmutex_release failed")
 
 	/* Record return val in request handle */
-	*argp->ret = err;
+	//*(argp->ret_arg) = err;
 
 	/* Free arguments */
-	free (argp);
+//	    free (argp);
 
 err_out:;
 	return err;
 }
 
 herr_t H5VL_asynci_cb_task_init (
-	hid_t dxpl_id, void **req, herr_t *ret, H5VL_asynci_debug_args *argp, H5VL_async_req_t **reqp) {
+	hid_t dxpl_id, H5VL_asynci_debug_args *argp, H5VL_async_req_t *reqp) {
+
 	herr_t err = 0;
 
 	/* Check if the operations is async */
-	if (req) {
-		*reqp = (H5VL_async_req_t *)malloc (sizeof (H5VL_async_req_t));
-		CHECK_PTR (*reqp)
-		argp->ret = &((*reqp)->ret);
-	} else {
-		argp->ret = ret;
-	}
-
+    argp->req = reqp;
 	/* Retrieve current library state */
 	err = H5VLretrieve_lib_state (&argp->stat);
 	CHECK_ERR_EX ("H5VLretrieve_lib_state failed")
@@ -119,16 +113,16 @@ herr_t H5VL_asynci_cb_task_commit (H5VL_asynci_debug_args *argp,
 
 	/* Copy task handle in args */
 	argp->task = task;
-	if (reqp) { reqp->task = task; }
+	if (reqp) { reqp->req_task = task; }
 
 	if (op) {
 		/* Acquire object lock */
 		H5VL_asynci_mutex_lock (op->lock);
 		/* Check status */
-		if ((op->stat == H5VL_async_stat_err) || (op->stat == H5VL_async_stat_close)) {
-			H5VL_asynci_mutex_unlock (op->lock);
-			RET_ERR ("Parent object in wrong status");
-		}
+//		if ((op->stat == H5VL_async_stat_err) || (op->stat == H5VL_async_stat_close)) {
+//			H5VL_asynci_mutex_unlock (op->lock);
+//			RET_ERR ("Parent object in wrong status");
+//		}
 		/* Add dependency to prev task */
 		if (op->prev_task != TW_HANDLE_NULL) {
 			twerr = TW_Task_add_dep (task, op->prev_task);
@@ -152,12 +146,12 @@ err_out:;
 	return err;
 }
 
-herr_t H5VL_asynci_cb_task_wait (void **req, TW_Task_handle_t task, herr_t *ret) {
+herr_t H5VL_asynci_cb_task_wait (void **req, TW_Task_handle_t task) {
 	herr_t err = 0;
 	int twerr  = TW_SUCCESS;
-
+DEBUG_PRINT
 	/* Wait for task if the operation is sync */
-	if (!req) {
+	if (!req) {DEBUG_PRINT
 		/* Release the lock so worker thread can acquire*/
 		H5TSmutex_release (&LOCK_COUNT_GLOBAL);
 
@@ -170,7 +164,6 @@ herr_t H5VL_asynci_cb_task_wait (void **req, TW_Task_handle_t task, herr_t *ret)
 		// twerr = TW_Task_free (task);
 		// CHK_TWERR
 
-		err = *ret;
 		CHECK_ERR_EX ("Async operation failed")
 	}
 

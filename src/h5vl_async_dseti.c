@@ -34,9 +34,11 @@ int H5VL_async_dataset_create_handler (void *data) {
 	H5Iinc_ref (argp->op->under_vol_id);
     void* obj;
 	H5E_BEGIN_TRY {
+        REQ_TIMER_START
         obj = H5VLdataset_create (argp->target_obj->under_object, argp->loc_params,
                     argp->op->under_vol_id, argp->name, argp->lcpl_id, argp->type_id,
                     argp->space_id, argp->dcpl_id, argp->dapl_id, argp->dxpl_id, NULL);
+        REQ_TIMER_END
     } H5E_END_TRY
 
     if (NULL == obj) {
@@ -81,9 +83,11 @@ int H5VL_async_dataset_open_handler (void *data) {
 	/* Open the dataset with the underlying VOL connector */
 	argp->op->under_vol_id = argp->target_obj->under_vol_id;
 	H5Iinc_ref (argp->op->under_vol_id);
+	REQ_TIMER_START
 	argp->op->under_object =
 		H5VLdataset_open (argp->target_obj->under_object, argp->loc_params, argp->op->under_vol_id,
 						  argp->name, argp->dapl_id, argp->dxpl_id, NULL);
+	REQ_TIMER_END
 	CHECK_PTR (argp->op->under_object)
 
 err_out:;
@@ -118,10 +122,11 @@ int H5VL_async_dataset_read_handler (void *data) {
 	H5VL_async_dataset_read_args *argp = (H5VL_async_dataset_read_args *)data;
 
 	H5VL_ASYNC_HANDLER_BEGIN
-
+	REQ_TIMER_START
 	err = H5VLdataset_read (argp->target_obj->under_object, argp->target_obj->under_vol_id,
 							argp->mem_type_id, argp->mem_space_id, argp->file_space_id,
 							argp->dxpl_id, argp->buf, NULL);
+	REQ_TIMER_END
 	CHECK_ERR
 
 err_out:;
@@ -143,9 +148,11 @@ int H5VL_async_dataset_write_handler (void *data) {
 
 	H5VL_ASYNC_HANDLER_BEGIN
 	H5E_BEGIN_TRY {
-	err = H5VLdataset_write (argp->target_obj->under_object, argp->target_obj->under_vol_id,
+	    REQ_TIMER_START
+	    err = H5VLdataset_write (argp->target_obj->under_object, argp->target_obj->under_vol_id,
 							 argp->mem_type_id, argp->mem_space_id, argp->file_space_id,
 							 argp->dxpl_id, argp->buf, NULL);
+	    REQ_TIMER_END
     } H5E_END_TRY
 
     if (err < 0) {
@@ -174,9 +181,10 @@ int H5VL_async_dataset_get_handler (void *data) {
 	H5VL_async_dataset_get_args *argp = (H5VL_async_dataset_get_args *)data;
 
 	H5VL_ASYNC_HANDLER_BEGIN
-
+	REQ_TIMER_START
 	err = H5VLdataset_get (argp->target_obj->under_object, argp->target_obj->under_vol_id,
 						   argp->get_type, argp->dxpl_id, NULL, argp->arguments);
+	REQ_TIMER_END
 	CHECK_ERR
 
 err_out:;
@@ -195,9 +203,10 @@ int H5VL_async_dataset_specific_handler (void *data) {
 	H5VL_async_dataset_specific_args *argp = (H5VL_async_dataset_specific_args *)data;
 
 	H5VL_ASYNC_HANDLER_BEGIN
-
+	REQ_TIMER_START
 	err = H5VLdataset_specific (argp->target_obj->under_object, argp->target_obj->under_vol_id,
 								argp->specific_type, argp->dxpl_id, NULL, argp->arguments);
+	REQ_TIMER_END
 
 err_out:;
 	H5VL_ASYNC_HANDLER_END
@@ -214,9 +223,10 @@ int H5VL_async_dataset_optional_handler (void *data) {
 	H5VL_async_dataset_optional_args *argp = (H5VL_async_dataset_optional_args *)data;
 
 	H5VL_ASYNC_HANDLER_BEGIN
-
+	REQ_TIMER_START
 	err = H5VLdataset_optional (argp->target_obj->under_object, argp->target_obj->under_vol_id,
 								argp->opt_type, argp->dxpl_id, NULL, argp->arguments);
+	REQ_TIMER_END
 	CHECK_ERR
 
 err_out:;
@@ -235,8 +245,10 @@ int H5VL_async_dataset_close_handler (void *data) {
 
 	H5VL_ASYNC_HANDLER_BEGIN
 	H5E_BEGIN_TRY {
+	    REQ_TIMER_START
         err = H5VLdataset_close (argp->target_obj->under_object, argp->target_obj->under_vol_id,
                                  argp->dxpl_id, NULL);
+	    REQ_TIMER_END
 	} H5E_END_TRY
     if (err < 0) {
         if ((argp->op->error_stack = H5Eget_current_stack()) < 0)

@@ -346,10 +346,10 @@ herr_t H5VL_async_datatype_close (void *grp, hid_t dxpl_id, void **req) {
 	printf ("------- ASYNC VOL datatype Close\n");
 #endif
 
-	/* Mark as closed so no operation can be performed */
-	H5VL_asynci_mutex_lock (target_obj->lock);
-	target_obj->stat == H5VL_async_stat_close;
-	H5VL_asynci_mutex_unlock (target_obj->lock);
+	// /* Mark as closed so no operation can be performed */
+	// H5VL_asynci_mutex_lock (target_obj->lock);
+	// target_obj->stat == H5VL_async_stat_close;
+	// H5VL_asynci_mutex_unlock (target_obj->lock);
 
 	argp = (H5VL_async_datatype_close_args *)malloc (sizeof (H5VL_async_datatype_close_args));
 	CHECK_PTR (argp)
