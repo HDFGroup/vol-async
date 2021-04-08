@@ -176,7 +176,8 @@ typedef struct async_instance_t {
     bool                ex_gclose;           /* Delay background thread execution until group close */
     bool                ex_dclose;           /* Delay background thread execution until dset close */
     bool                start_abt_push;      /* Start pushing tasks to Argobots pool */
-    int                 sleep_time;
+    int                 sleep_time;          /* Sleep time between checking the global mutex attemp count */
+    uint64_t            delay_time;          /* Sleep time before background thread trying to acquire global mutex */
 } async_instance_t;
 
 typedef struct async_attr_create_args_t {
@@ -817,6 +818,9 @@ static const H5VL_class_t H5VL_async_g = {
 static int H5VL_async_file_wait_op_g = -1;
 static int H5VL_async_dataset_wait_op_g = -1;
 static int H5VL_async_file_start_op_g = -1;
+static int H5VL_async_dataset_start_op_g = -1;
+static int H5VL_async_file_delay_op_g = -1;
+static int H5VL_async_dataset_delay_op_g = -1;
 
 H5PL_type_t H5PLget_plugin_type(void) {
     return H5PL_TYPE_VOL;
@@ -1118,18 +1122,41 @@ H5VL_async_init(hid_t __attribute__((unused)) vipl_id)
         return(-1);
     }
     assert(-1 != H5VL_async_file_wait_op_g);
+
     assert(-1 == H5VL_async_dataset_wait_op_g);
     if(H5VLregister_opt_operation(H5VL_SUBCLS_DATASET, H5VL_ASYNC_DYN_DATASET_WAIT, &H5VL_async_dataset_wait_op_g) < 0) {
         fprintf(stderr,"  [ASYNC VOL ERROR] with H5VLregister_opt_operation\n");
         return(-1);
     }
     assert(-1 != H5VL_async_dataset_wait_op_g);
+
     assert(-1 == H5VL_async_file_start_op_g);
     if(H5VLregister_opt_operation(H5VL_SUBCLS_FILE, H5VL_ASYNC_DYN_FILE_START, &H5VL_async_file_start_op_g) < 0) {
         fprintf(stderr,"  [ASYNC VOL ERROR] with H5VLregister_opt_operation\n");
         return(-1);
     }
     assert(-1 != H5VL_async_file_start_op_g);
+
+    assert(-1 == H5VL_async_dataset_start_op_g);
+    if(H5VLregister_opt_operation(H5VL_SUBCLS_DATASET, H5VL_ASYNC_DYN_DATASET_START, &H5VL_async_dataset_start_op_g) < 0) {
+        fprintf(stderr,"  [ASYNC VOL ERROR] with H5VLregister_opt_operation\n");
+        return(-1);
+    }
+    assert(-1 != H5VL_async_dataset_start_op_g);
+
+    assert(-1 == H5VL_async_file_delay_op_g);
+    if(H5VLregister_opt_operation(H5VL_SUBCLS_FILE, H5VL_ASYNC_DYN_FILE_DELAY, &H5VL_async_file_delay_op_g) < 0) {
+        fprintf(stderr,"  [ASYNC VOL ERROR] with H5VLregister_opt_operation\n");
+        return(-1);
+    }
+    assert(-1 != H5VL_async_file_delay_op_g);
+
+    assert(-1 == H5VL_async_dataset_delay_op_g);
+    if(H5VLregister_opt_operation(H5VL_SUBCLS_DATASET, H5VL_ASYNC_DYN_DATASET_DELAY, &H5VL_async_dataset_delay_op_g) < 0) {
+        fprintf(stderr,"  [ASYNC VOL ERROR] with H5VLregister_opt_operation\n");
+        return(-1);
+    }
+    assert(-1 != H5VL_async_dataset_delay_op_g);
 
     /* Singleton register error class */
     if (H5I_INVALID_HID == async_error_class_g) {
@@ -1194,6 +1221,21 @@ H5VL_async_term(void)
         if(H5VLunregister_opt_operation(H5VL_SUBCLS_FILE, H5VL_ASYNC_DYN_FILE_START) < 0)
             return(-1);
         H5VL_async_file_start_op_g = (-1);
+    } /* end if */
+    if(-1 != H5VL_async_dataset_start_op_g) {
+        if(H5VLunregister_opt_operation(H5VL_SUBCLS_DATASET, H5VL_ASYNC_DYN_DATASET_START) < 0)
+            return(-1);
+        H5VL_async_dataset_start_op_g = (-1);
+    } /* end if */
+    if(-1 != H5VL_async_file_delay_op_g) {
+        if(H5VLunregister_opt_operation(H5VL_SUBCLS_FILE, H5VL_ASYNC_DYN_FILE_DELAY) < 0)
+            return(-1);
+        H5VL_async_file_delay_op_g = (-1);
+    } /* end if */
+    if(-1 != H5VL_async_dataset_delay_op_g) {
+        if(H5VLunregister_opt_operation(H5VL_SUBCLS_DATASET, H5VL_ASYNC_DYN_DATASET_DELAY) < 0)
+            return(-1);
+        H5VL_async_dataset_delay_op_g = (-1);
     } /* end if */
 
     /* Unregister error class */
@@ -1783,7 +1825,6 @@ herr_t H5VL_async_object_wait(H5VL_async_t *async_obj)
     return 0;
 }
 
-
 herr_t H5VL_async_dataset_wait(H5VL_async_t *async_obj)
 {
     /* herr_t ret_value; */
@@ -1935,6 +1976,16 @@ H5VL_async_start()
     async_instance_g->start_abt_push = true;
     if (async_instance_g && NULL != async_instance_g->qhead.queue)
         push_task_to_abt_pool(&async_instance_g->qhead, async_instance_g->pool);
+    return 0;
+}
+
+int 
+H5VL_async_set_delay_time(uint64_t time_us)
+{
+    async_instance_g->delay_time = time_us;
+#ifdef ENABLE_DBG_MSG
+    fprintf(stderr,"  [ASYNC ABT DBG] %s setting delay time to %lu us\n", __func__, time_us);
+#endif
     return 0;
 }
 
@@ -2094,6 +2145,13 @@ static int
 check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *acquired)
 {
     unsigned int attempt_count, new_attempt_count;
+
+    if (async_instance_g->delay_time > 0) {
+#ifdef ENABLE_DBG_MSG
+        fprintf(stderr,"  [ASYNC ABT DBG] %s delay for %lu us\n", __func__, async_instance_g->delay_time);
+#endif
+        usleep(async_instance_g->delay_time);
+    }
 
     while (*acquired == false) {
         if (async_instance_g->ex_delay == false && H5TSmutex_get_attempt_count(&attempt_count) < 0) {
@@ -17736,6 +17794,7 @@ H5VL_async_dataset_optional(void *obj, H5VL_dataset_optional_t opt_type,
     H5VL_async_t *o = (H5VL_async_t *)obj;
     herr_t ret_value;
     task_list_qtype qtype = ISOLATED;
+    uint64_t time_us = 0;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATASET Optional\n");
@@ -17744,6 +17803,12 @@ H5VL_async_dataset_optional(void *obj, H5VL_dataset_optional_t opt_type,
     // For H5Dwait
     if (H5VL_async_dataset_wait_op_g == opt_type)
         return (H5VL_async_dataset_wait(o));
+    else if(opt_type == H5VL_async_dataset_start_op_g)
+        return (H5VL_async_start());
+    else if(opt_type == H5VL_async_dataset_delay_op_g){
+        time_us = va_arg(arguments, uint64_t);
+        return (H5VL_async_set_delay_time(time_us));
+    }
 
     if ((ret_value = async_dataset_optional(qtype, async_instance_g, o, opt_type, dxpl_id, req, arguments)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_dataset_optional\n");
@@ -18289,6 +18354,7 @@ H5VL_async_file_optional(void *file, H5VL_file_optional_t opt_type,
     H5VL_async_t *o = (H5VL_async_t *)file;
     herr_t ret_value;
     task_list_qtype qtype = REGULAR;
+    uint64_t time_us;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL File Optional\n");
@@ -18299,6 +18365,10 @@ H5VL_async_file_optional(void *file, H5VL_file_optional_t opt_type,
         return (H5VL_async_file_wait(o));
     else if(opt_type == H5VL_async_file_start_op_g)
         return (H5VL_async_start());
+    else if(opt_type == H5VL_async_file_delay_op_g){
+        time_us = va_arg(arguments, uint64_t);
+        return (H5VL_async_set_delay_time(time_us));
+    }
 
     if ((ret_value = async_file_optional(qtype, async_instance_g, o, opt_type, dxpl_id, req, arguments)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_file_optional\n");

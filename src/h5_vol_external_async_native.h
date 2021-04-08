@@ -13,7 +13,10 @@
 /* Names for dynamically registered operations */
 #define H5VL_ASYNC_DYN_FILE_WAIT        "gov.lbl.async.file.wait"
 #define H5VL_ASYNC_DYN_DATASET_WAIT     "gov.lbl.async.dataset.wait"
-#define H5VL_ASYNC_DYN_FILE_START        "gov.lbl.async.file.start"
+#define H5VL_ASYNC_DYN_FILE_START       "gov.lbl.async.file.start"
+#define H5VL_ASYNC_DYN_DATASET_START    "gov.lbl.async.dataset.start"
+#define H5VL_ASYNC_DYN_FILE_DELAY       "gov.lbl.async.file.delay"
+#define H5VL_ASYNC_DYN_DATASET_DELAY    "gov.lbl.async.dataset.delay"
 
 #endif /* _h5_vol_external_async_native_H */
 
