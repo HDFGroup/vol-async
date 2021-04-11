@@ -19083,7 +19083,12 @@ H5VL_async_introspect_opt_query(void *obj, H5VL_subclass_t cls,
      */
     if(H5VL_NATIVE_FILE_POST_OPEN == opt_type) {
         if(flags)
-            *flags = 1;
+            *flags = H5VL_OPT_QUERY_SUPPORTED;
+        ret_value = 0;
+    } /* end if */
+    else if(H5VL_REQUEST_GET_EXEC_TIME == opt_type) {
+        if(flags)
+            *flags = H5VL_OPT_QUERY_SUPPORTED;
         ret_value = 0;
     } /* end if */
     else
@@ -19328,6 +19333,7 @@ H5VL_async_request_specific(void *obj, H5VL_request_specific_t specific_type,
         *op_exec_ts = (uint64_t)task->create_time;
         *op_exec_time = (uint64_t)(task->end_time - task->start_time)/CLOCKS_PER_SEC*1000000000LL;
 
+        ret_value = 0;
     }
     else
         assert(0 && "Unknown 'specific' operation");
@@ -19350,14 +19356,32 @@ static herr_t
 H5VL_async_request_optional(void *obj, H5VL_request_optional_t opt_type,
                             va_list arguments)
 {
-    H5VL_async_t *o = (H5VL_async_t *)obj;
-    herr_t ret_value;
+    herr_t ret_value = -1;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL REQUEST Optional\n");
 #endif
 
-    ret_value = H5VLrequest_optional(o->under_object, o->under_vol_id, opt_type, arguments);
+    if (H5VL_REQUEST_GET_EXEC_TIME == opt_type) {
+        H5VL_async_t *async_obj = (H5VL_async_t*)obj;
+        async_task_t *task = async_obj->my_task;
+        uint64_t *op_exec_ts, *op_exec_time;
+
+        if (task == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s with request object\n", __func__);
+            return -1;
+        }
+
+        op_exec_ts = va_arg(arguments, uint64_t *);
+        op_exec_time = va_arg(arguments, uint64_t *);
+
+        *op_exec_ts = (uint64_t)task->create_time;
+        *op_exec_time = (uint64_t)(task->end_time - task->start_time)/CLOCKS_PER_SEC*1000000000LL;
+
+        ret_value = 0;
+    }
+    else
+        assert(0 && "Unknown 'optional' operation");
 
     return ret_value;
 } /* end H5VL_async_request_optional() */
