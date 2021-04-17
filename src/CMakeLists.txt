@@ -9,9 +9,9 @@ set(HDF5_VOL_ASYNC_SRCS
 
 add_library(hdf5_vol_async MODULE ${HDF5_VOL_ASYNC_SRCS})
 target_include_directories(hdf5_vol_async 
-  SYSTEM PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
-target_link_libraries(hdf5_vol_async PUBLIC ${LINK_LIBS})
+target_link_libraries(hdf5_vol_async PRIVATE ${LINK_LIBS})
 install(
   FILES
     ${HDF5_VOL_ASYNC_HEADERS}
