@@ -1,4 +1,4 @@
-set(HDF5_VOL_DAOS_HEADERS
+set(HDF5_VOL_ASYNC_HEADERS
   ${CMAKE_CURRENT_SOURCE_DIR}/h5_async_lib.h
   ${CMAKE_CURRENT_SOURCE_DIR}/h5_vol_external_async_native.h
 )
@@ -7,7 +7,7 @@ set(HDF5_VOL_ASYNC_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/h5_vol_external_async_native.c
     ${CMAKE_CURRENT_SOURCE_DIR}/h5_async_lib.c)
 
-add_library(hdf5_vol_async MODULE ${HDF5_VOL_ASYNC_SRCS})
+add_library(hdf5_vol_async SHARED ${HDF5_VOL_ASYNC_SRCS})
 target_include_directories(hdf5_vol_async 
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
