@@ -522,6 +522,7 @@ typedef struct async_link_specific_args_t {
 
 typedef struct async_link_optional_args_t {
     void                     *obj;
+    H5VL_loc_params_t        *loc_params;
     H5VL_link_optional_t     opt_type;
     hid_t                    dxpl_id;
     void                     **req;
@@ -569,6 +570,7 @@ typedef struct async_object_specific_args_t {
 
 typedef struct async_object_optional_args_t {
     void                     *obj;
+    H5VL_loc_params_t        *loc_params;
     H5VL_object_optional_t   opt_type;
     hid_t                    dxpl_id;
     void                     **req;
@@ -661,14 +663,14 @@ static herr_t H5VL_async_link_copy(void *src_obj, const H5VL_loc_params_t *loc_p
 static herr_t H5VL_async_link_move(void *src_obj, const H5VL_loc_params_t *loc_params1, void *dst_obj, const H5VL_loc_params_t *loc_params2, hid_t lcpl_id, hid_t lapl_id, hid_t dxpl_id, void **req);
 static herr_t H5VL_async_link_get(void *obj, const H5VL_loc_params_t *loc_params, H5VL_link_get_t get_type, hid_t dxpl_id, void **req, va_list arguments);
 static herr_t H5VL_async_link_specific(void *obj, const H5VL_loc_params_t *loc_params, H5VL_link_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments);
-static herr_t H5VL_async_link_optional(void *obj, H5VL_link_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments);
+static herr_t H5VL_async_link_optional(void *obj, const H5VL_loc_params_t *loc_params, H5VL_link_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments);
 
 /* Object callbacks */
 static void *H5VL_async_object_open(void *obj, const H5VL_loc_params_t *loc_params, H5I_type_t *opened_type, hid_t dxpl_id, void **req);
 static herr_t H5VL_async_object_copy(void *src_obj, const H5VL_loc_params_t *src_loc_params, const char *src_name, void *dst_obj, const H5VL_loc_params_t *dst_loc_params, const char *dst_name, hid_t ocpypl_id, hid_t lcpl_id, hid_t dxpl_id, void **req);
 static herr_t H5VL_async_object_get(void *obj, const H5VL_loc_params_t *loc_params, H5VL_object_get_t get_type, hid_t dxpl_id, void **req, va_list arguments);
 static herr_t H5VL_async_object_specific(void *obj, const H5VL_loc_params_t *loc_params, H5VL_object_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments);
-static herr_t H5VL_async_object_optional(void *obj, H5VL_object_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments);
+static herr_t H5VL_async_object_optional(void *obj, const H5VL_loc_params_t *loc_params, H5VL_object_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments);
 
 /* Container/connector introspection callbacks */
 static herr_t H5VL_async_introspect_get_conn_cls(void *obj, H5VL_get_conn_lvl_t lvl, const H5VL_class_t **conn_cls);
@@ -15038,7 +15040,7 @@ async_link_optional_fn(void *foo)
 
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
-        status = H5VLlink_optional(args->obj, task->under_vol_id, args->opt_type, args->dxpl_id, args->req, args->arguments);
+        status = H5VLlink_optional(args->obj, args->loc_params, task->under_vol_id, args->opt_type, args->dxpl_id, args->req, args->arguments);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -15062,6 +15064,7 @@ done:
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
+    free_loc_param((H5VL_loc_params_t*)args->loc_params);
     if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
@@ -15090,7 +15093,7 @@ done:
 } // End async_link_optional_fn
 
 static herr_t
-async_link_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_link_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
+async_link_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, H5VL_link_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
     async_link_optional_args_t *args = NULL;
@@ -15120,7 +15123,13 @@ async_link_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
 #ifdef ENABLE_TIMING
     async_task->create_time = clock();
 #endif
+    if (loc_params->type == H5VL_OBJECT_BY_NAME && loc_params->loc_data.loc_by_name.lapl_id < 0)
+        goto error;
+    if (loc_params->type == H5VL_OBJECT_BY_IDX && loc_params->loc_data.loc_by_idx.lapl_id < 0)
+        goto error;
     args->obj              = parent_obj->under_object;
+    args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
+    dup_loc_param(args->loc_params, loc_params);
     args->opt_type         = opt_type;
     if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
@@ -16677,7 +16686,7 @@ async_object_optional_fn(void *foo)
 
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
-        status = H5VLobject_optional(args->obj, task->under_vol_id, args->opt_type, args->dxpl_id, args->req, args->arguments);
+        status = H5VLobject_optional(args->obj, args->loc_params, task->under_vol_id, args->opt_type, args->dxpl_id, args->req, args->arguments);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -16701,6 +16710,7 @@ done:
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
+    free_loc_param((H5VL_loc_params_t*)args->loc_params);
     if(args->dxpl_id > 0)    H5Pclose(args->dxpl_id);
 
     if (is_lock == 1) {
@@ -16729,7 +16739,7 @@ done:
 } // End async_object_optional_fn
 
 static herr_t
-async_object_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, H5VL_object_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
+async_object_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, H5VL_object_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     async_task_t *async_task = NULL;
     async_object_optional_args_t *args = NULL;
@@ -16759,7 +16769,13 @@ async_object_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t
 #ifdef ENABLE_TIMING
     async_task->create_time = clock();
 #endif
+    if (loc_params->type == H5VL_OBJECT_BY_NAME && loc_params->loc_data.loc_by_name.lapl_id < 0)
+        goto error;
+    if (loc_params->type == H5VL_OBJECT_BY_IDX && loc_params->loc_data.loc_by_idx.lapl_id < 0)
+        goto error;
     args->obj              = parent_obj->under_object;
+    args->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
+    dup_loc_param(args->loc_params, loc_params);
     args->opt_type         = opt_type;
     if(dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
@@ -18827,8 +18843,8 @@ H5VL_async_link_specific(void *obj, const H5VL_loc_params_t *loc_params,
  *-------------------------------------------------------------------------
  */
 static herr_t
-H5VL_async_link_optional(void *obj, H5VL_link_optional_t opt_type,
-                         hid_t dxpl_id, void **req, va_list arguments)
+H5VL_async_link_optional(void *obj, const H5VL_loc_params_t *loc_params,
+                         H5VL_link_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     H5VL_async_t *o = (H5VL_async_t *)obj;
     herr_t ret_value;
@@ -18838,7 +18854,7 @@ H5VL_async_link_optional(void *obj, H5VL_link_optional_t opt_type,
     printf("------- ASYNC VOL LINK Optional\n");
 #endif
 
-    ret_value = async_link_optional(qtype, async_instance_g, o, opt_type, dxpl_id, req, arguments);
+    ret_value = async_link_optional(qtype, async_instance_g, o, loc_params, opt_type, dxpl_id, req, arguments);
 
     return ret_value;
 } /* end H5VL_async_link_optional() */
@@ -18975,8 +18991,8 @@ H5VL_async_object_specific(void *obj, const H5VL_loc_params_t *loc_params,
  *-------------------------------------------------------------------------
  */
 static herr_t
-H5VL_async_object_optional(void *obj, H5VL_object_optional_t opt_type,
-                           hid_t dxpl_id, void **req, va_list arguments)
+H5VL_async_object_optional(void *obj, const H5VL_loc_params_t *loc_params,
+                           H5VL_object_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     H5VL_async_t *o = (H5VL_async_t *)obj;
     herr_t ret_value;
@@ -18986,7 +19002,7 @@ H5VL_async_object_optional(void *obj, H5VL_object_optional_t opt_type,
     printf("------- ASYNC VOL OBJECT Optional\n");
 #endif
 
-    if ((ret_value = async_object_optional(qtype, async_instance_g, o, opt_type, dxpl_id, req, arguments)) < 0 )
+    if ((ret_value = async_object_optional(qtype, async_instance_g, o, loc_params, opt_type, dxpl_id, req, arguments)) < 0 )
         fprintf(stderr,"  [ASYNC VOL ERROR] with async_object_optional\n");
 
     return ret_value;
