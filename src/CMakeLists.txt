@@ -8,10 +8,13 @@ set(HDF5_VOL_ASYNC_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/h5_async_lib.c)
 
 add_library(hdf5_vol_async SHARED ${HDF5_VOL_ASYNC_SRCS})
+
 target_include_directories(hdf5_vol_async 
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
 target_link_libraries(hdf5_vol_async PRIVATE ${LINK_LIBS})
+
 install(
   FILES
     ${HDF5_VOL_ASYNC_HEADERS}
@@ -30,6 +33,7 @@ install(
   ARCHIVE DESTINATION ${HDF5_VOL_ASYNC_INSTALL_LIB_DIR}
 #  RUNTIME DESTINATION ${HDF5_VOL_ASYNC_INSTALL_BIN_DIR}
 )
+
 # export(
 #     TARGETS
 #       ${HDF5_VOL_ASYNC_EXPORTED_LIBS}

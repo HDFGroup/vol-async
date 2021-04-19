@@ -18,8 +18,8 @@ endif()
 set(HDF5_VOL_ASYNC_PACKAGE "hdf5_vol_async")
 set(HDF5_VOL_ASYNC_PACKAGE_NAME "HDF5_VOL_ASYNC")
 set(HDF5_VOL_ASYNC_PACKAGE_DESCRIPTION "HDF5 VOL connector for ASYNC")
-set(HDF5_VOL_ASYNC_PACKAGE_URL "https://git.hdfgroup.org/projects/HDF5VOL/repos/daos-vol/")
-set(HDF5_VOL_ASYNC_PACKAGE_VENDOR "The HDF Group")
+set(HDF5_VOL_ASYNC_PACKAGE_URL "https://github.com/hpc-io/vol-async/")
+set(HDF5_VOL_ASYNC_PACKAGE_VENDOR "HPC IO")
 message(STATUS "Configuring ${HDF5_VOL_ASYNC_PACKAGE} ${PROJECT_VERSION}")
 
 #-----------------------------------------------------------------------------
