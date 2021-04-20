@@ -7,4 +7,5 @@ foreach(test ${tests})
 endforeach ()
 
 # Option2: Test all executables in one Python script.
-add_test(${CMAKE_CURRENT_SOURCE_DIR}/pytest.py -p)
+add_test(check_serial ${CMAKE_CURRENT_SOURCE_DIR}/pytest.py)
+add_test(check ${CMAKE_CURRENT_SOURCE_DIR}/pytest.py -p)
