@@ -1,5 +1,6 @@
 find_package(MPI)
 include_directories(SYSTEM ${MPI_INCLUDE_PATH})
+
 set(tests async_test_multifile
 	  async_test_multifile_env
 	  async_test_serial 
@@ -18,7 +19,11 @@ foreach(test ${tests})
   add_executable(${test}.exe ${CMAKE_CURRENT_SOURCE_DIR}/${test}.c)
   target_link_libraries(${test}.exe PRIVATE hdf5_vol_async hdf5 abt ${MPI_C_LIBRARIES})
   # Option 1: If you want to test individually, use the following.
-  add_test(${test} ${test}.exe -E env HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" )
+  add_test(${test} ${test}.exe)
+  set_tests_properties(
+    ${test}
+    PROPERTIES
+    ENVIRONMENT "HDF5_VOL_CONNECTOR=\"async under_vol=0;under_info={}\"")
 endforeach ()
 
 # Option2: Test all executables in one Python script.
