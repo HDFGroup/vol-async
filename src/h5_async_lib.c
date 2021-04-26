@@ -57,6 +57,8 @@ static int async_dataset_wait_op_g = -1;
 static int async_file_wait_op_g = -1;
 static int async_file_start_op_g = -1;
 static int async_dataset_start_op_g = -1;
+static int async_file_pause_op_g = -1;
+static int async_dataset_pause_op_g = -1;
 static int async_file_delay_op_g = -1;
 static int async_dataset_delay_op_g = -1;
 
@@ -74,6 +76,8 @@ async_reset(void *_ctx)
     async_file_wait_op_g = -1;
     async_dataset_start_op_g = -1;
     async_file_start_op_g = -1;
+    async_dataset_pause_op_g = -1;
+    async_file_pause_op_g = -1;
     async_dataset_delay_op_g = -1;
     async_file_delay_op_g = -1;
 
@@ -129,6 +133,24 @@ async_setup(void)
             return(-1);
         }
         assert(async_dataset_start_op_g > 0);
+    }
+
+    /* Singleton check for file pause operation */
+    if(-1 == async_file_pause_op_g) {
+        if(H5VLfind_opt_operation(H5VL_SUBCLS_FILE, H5VL_ASYNC_DYN_FILE_PAUSE, &async_file_pause_op_g) < 0) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] with H5VLfind_opt_operation\n");
+            return(-1);
+        }
+        assert(async_file_pause_op_g > 0);
+    }
+
+    /* Singleton check for dataset pause operation */
+    if(-1 == async_dataset_pause_op_g) {
+        if(H5VLfind_opt_operation(H5VL_SUBCLS_DATASET, H5VL_ASYNC_DYN_DATASET_PAUSE, &async_dataset_pause_op_g) < 0) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] with H5VLfind_opt_operation\n");
+            return(-1);
+        }
+        assert(async_dataset_pause_op_g > 0);
     }
 
     /* Singleton check for file delay operation */
@@ -272,7 +294,6 @@ H5Dwait(hid_t dset_id, hid_t dxpl_id)
  *
  *-------------------------------------------------------------------------
  */
-
 herr_t
 H5Fstart(hid_t file_id, hid_t dxpl_id)
 {
@@ -303,7 +324,6 @@ H5Fstart(hid_t file_id, hid_t dxpl_id)
  *
  *-------------------------------------------------------------------------
  */
-
 herr_t
 H5Dstart(hid_t dset_id, hid_t dxpl_id)
 {
@@ -326,6 +346,66 @@ H5Dstart(hid_t dset_id, hid_t dxpl_id)
 }
 
 /*-------------------------------------------------------------------------
+ * Function:    H5Dpause
+ *
+ * Purpose:     pause executing the asynchronous tasks immediately
+ *
+ * Return:      SUCCEED/FAIL
+ *
+ *-------------------------------------------------------------------------
+ */
+herr_t
+H5Fpause(hid_t file_id, hid_t dxpl_id)
+{
+    /* Look up operation value, if it's not already available */
+    if(-1 == async_file_pause_op_g) {
+        if (async_setup() < 0) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s: async_setup error!\n", __func__);
+            return(-1);
+        }
+        assert(async_file_pause_op_g > 0);
+    }
+
+    /* Call the VOL file optional routine, requesting 'wait' occur */
+    if(H5VLfile_optional_op(file_id, async_file_pause_op_g, dxpl_id, H5ES_NONE) < 0) {
+        fprintf(stderr, "  [ASYNC VOL ERROR] H5Fpause: VOL connector file pause operation failed!\n");
+        return(-1);
+    }
+
+    return(0);
+}
+
+/*-------------------------------------------------------------------------
+ * Function:    H5Dpause
+ *
+ * Purpose:     pause executing the asynchronous tasks immediately
+ *
+ * Return:      SUCCEED/FAIL
+ *
+ *-------------------------------------------------------------------------
+ */
+herr_t
+H5Dpause(hid_t dset_id, hid_t dxpl_id)
+{
+    /* Look up operation value, if it's not already available */
+    if(-1 == async_dataset_pause_op_g) {
+        if (async_setup() < 0) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s: async_setup error!\n", __func__);
+            return(-1);
+        }
+        assert(async_dataset_pause_op_g > 0);
+    }
+
+    /* Call the VOL dset optional routine, requesting 'wait' occur */
+    if(H5VLdataset_optional_op(dset_id, async_dataset_pause_op_g, dxpl_id, H5ES_NONE) < 0) {
+        fprintf(stderr, "  [ASYNC VOL ERROR] H5Dpause: VOL connector dset pause operation failed!\n");
+        return(-1);
+    }
+
+    return(0);
+}
+
+/*-------------------------------------------------------------------------
  * Function:    H5Fset_delay_time
  *
  * Purpose:     Set the delay execution time for background thread
@@ -334,7 +414,6 @@ H5Dstart(hid_t dset_id, hid_t dxpl_id)
  *
  *-------------------------------------------------------------------------
  */
-
 herr_t
 H5Fset_delay_time(hid_t file_id, hid_t dxpl_id, uint64_t time_us)
 {
@@ -365,7 +444,6 @@ H5Fset_delay_time(hid_t file_id, hid_t dxpl_id, uint64_t time_us)
  *
  *-------------------------------------------------------------------------
  */
-
 herr_t
 H5Dset_delay_time(hid_t dset_id, hid_t dxpl_id, uint64_t time_us)
 {

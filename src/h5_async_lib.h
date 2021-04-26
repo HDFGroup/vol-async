@@ -24,8 +24,11 @@ extern herr_t H5Fwait(hid_t file_id, hid_t dxpl_id);
 extern herr_t H5Dwait(hid_t dset_id, hid_t dxpl_id);
 extern herr_t H5Fstart(hid_t file_id, hid_t dxpl_id);
 extern herr_t H5Dstart(hid_t dset_id, hid_t dxpl_id);
+extern herr_t H5Fpause(hid_t file_id, hid_t dxpl_id);
+extern herr_t H5Dpause(hid_t dset_id, hid_t dxpl_id);
 extern herr_t H5Fset_delay_time(hid_t file_id, hid_t dxpl_id, uint64_t time_us);
 extern herr_t H5Dset_delay_time(hid_t dset_id, hid_t dxpl_id, uint64_t time_us);
+extern herr_t H5VL_async_set_request_dep(void *request, void *dep_request);
 
 #ifdef __cplusplus
 }

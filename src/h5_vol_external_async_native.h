@@ -15,6 +15,8 @@
 #define H5VL_ASYNC_DYN_DATASET_WAIT     "gov.lbl.async.dataset.wait"
 #define H5VL_ASYNC_DYN_FILE_START       "gov.lbl.async.file.start"
 #define H5VL_ASYNC_DYN_DATASET_START    "gov.lbl.async.dataset.start"
+#define H5VL_ASYNC_DYN_FILE_PAUSE       "gov.lbl.async.file.pause"
+#define H5VL_ASYNC_DYN_DATASET_PAUSE    "gov.lbl.async.dataset.pause"
 #define H5VL_ASYNC_DYN_FILE_DELAY       "gov.lbl.async.file.delay"
 #define H5VL_ASYNC_DYN_DATASET_DELAY    "gov.lbl.async.dataset.delay"
 
