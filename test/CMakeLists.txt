@@ -1,6 +1,11 @@
 if(DEFINED ENV{HDF5_PLUGIN_PATH})
   message("HDF5_PLUGIN_PATH is " $ENV{HDF5_PLUGIN_PATH})
 endif()
+
+if(DEFINED ENV{HDF5_PLUGIN_PATH})
+   message("HDF5_VOL_CONNECTOR is " $ENV{HDF5_VOL_CONNECTOR})
+endif()
+
 find_package(MPI)
 include_directories(SYSTEM ${MPI_INCLUDE_PATH})
 
@@ -16,9 +21,7 @@ set(test  async_test_multifile
 	  async_test_parallel4
 	  async_test_parallel5
 	  async_test_parallel)
-
-
-message($ENV{HDF5_VOL_CONNECTOR})
+          
 
 foreach(test ${tests})
   add_executable(${test}.exe ${CMAKE_CURRENT_SOURCE_DIR}/${test}.c)
