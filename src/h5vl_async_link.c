@@ -376,7 +376,7 @@ err_out:;
  *-------------------------------------------------------------------------
  */
 herr_t H5VL_async_link_optional (
-	void *obj, H5VL_link_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments) {
+	void *obj, const H5VL_loc_params_t *loc_params, H5VL_link_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments) {
 	H5VL_ASYNC_CB_VARS
 	H5VL_async_link_optional_args *argp;
 	H5VL_async_t *target_obj = (H5VL_async_t *)obj;
@@ -390,6 +390,11 @@ herr_t H5VL_async_link_optional (
 	argp->target_obj = target_obj;
 	argp->dxpl_id	 = H5Pcopy (dxpl_id);
 	argp->opt_type	 = opt_type;
+
+	argp->loc_params = (H5VL_loc_params_t*)calloc(1, sizeof(*loc_params));
+    dup_loc_param(argp->loc_params, loc_params);
+
+
 	va_copy (argp->arguments, arguments);
 	H5VL_ASYNC_CB_TASK_INIT
 

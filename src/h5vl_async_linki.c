@@ -288,7 +288,7 @@ int H5VL_async_link_optional_handler (void *data) {
 
 	H5VL_ASYNC_HANDLER_BEGIN
 
-	err = H5VLlink_optional (argp->target_obj->under_object, argp->target_obj->under_vol_id,
+	err = H5VLlink_optional (argp->target_obj->under_object, argp->loc_params, argp->target_obj->under_vol_id,
 							 argp->opt_type, argp->dxpl_id, NULL, argp->arguments);
 	CHECK_ERR
 

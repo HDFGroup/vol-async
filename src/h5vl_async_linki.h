@@ -67,6 +67,7 @@ typedef struct H5VL_async_link_specific_args {
 
 typedef struct H5VL_async_link_optional_args {
 	H5VL_ASYNC_ARG_VARS
+	H5VL_loc_params_t *loc_params;
 	H5VL_link_optional_t opt_type;
 	hid_t dxpl_id;
 	va_list arguments;

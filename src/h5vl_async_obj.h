@@ -42,4 +42,4 @@ herr_t H5VL_async_object_specific (void *obj,
 								   void **req,
 								   va_list arguments);
 herr_t H5VL_async_object_optional (
-	void *obj, H5VL_object_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments);
+	void *obj,  const H5VL_loc_params_t *loc_params, H5VL_object_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments);

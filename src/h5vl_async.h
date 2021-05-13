@@ -17,6 +17,8 @@
 #endif
 
 #include <H5VLpublic.h>
+#include <H5VLconnector.h>
+#include <hdf5dev.h>
 #include <taskworks.h>
 
 #include "h5vl_asynci_vector.h"
