@@ -37,7 +37,11 @@ works, and perform publicly and display publicly, and to permit others to do so.
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
+
+#ifdef ENABLE_WRITE_MEMCPY
+/* For collecting system memory info */
 #include <sys/sysinfo.h>
+#endif
 
 /* Public HDF5 file */
 #include "hdf5.h"
@@ -52,7 +56,7 @@ works, and perform publicly and display publicly, and to permit others to do so.
 /* Universal linked lists header */
 #include "utlist.h"
 
-#include "node_local_util.h"
+/* #include "node_local_util.h" */
 
 /**********/
 /* Macros */
