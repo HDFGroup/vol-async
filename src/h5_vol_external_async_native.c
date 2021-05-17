@@ -69,7 +69,7 @@
 #define ALLOC_INITIAL_SIZE 2
 
 /* Default interval between checking for HDF5 global lock */
-#define ASYNC_ATTEMPT_CHECK_INTERVAL 1
+#define ASYNC_ATTEMPT_CHECK_INTERVAL 8
 #define ASYNC_APP_CHECK_SLEEP_TIME 200
 #define ASYNC_APP_CHECK_SLEEP_TIME_MAX 100000
 
@@ -2290,28 +2290,28 @@ done:
 static void 
 check_app_wait(int attempt_count)
 {
-    unsigned int new_attempt_count;
+    /* unsigned int new_attempt_count; */
 
-    if (H5TSmutex_get_attempt_count(&new_attempt_count) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_get_attempt_count failed\n", __func__);
-        return;
-    }
+    /* if (H5TSmutex_get_attempt_count(&new_attempt_count) < 0) { */
+    /*     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_get_attempt_count failed\n", __func__); */
+    /*     return; */
+    /* } */
 
-    // If the application thread is waiting, double the current sleep time for next status check
-    if (attempt_count > 0 && new_attempt_count > attempt_count) {
-        if (async_instance_g->sleep_time < ASYNC_APP_CHECK_SLEEP_TIME_MAX) {
-            async_instance_g->sleep_time *= 2;
-#ifdef ENABLE_DBG_MSG
-            fprintf(stderr,"  [ASYNC ABT DBG] %s counter %d/%d, increase wait time to %d \n", __func__, attempt_count, new_attempt_count,  async_instance_g->sleep_time);
-#endif
-        }
-    }
-    else if (new_attempt_count == attempt_count) {
-        async_instance_g->sleep_time = ASYNC_APP_CHECK_SLEEP_TIME;
-#ifdef ENABLE_DBG_MSG
-        fprintf(stderr,"  [ASYNC ABT DBG] %s counter %d/%d, reset wait time to %d \n", __func__, attempt_count, new_attempt_count,  async_instance_g->sleep_time);
-#endif
-    }
+    /* // If the application thread is waiting, double the current sleep time for next status check */
+    /* if (attempt_count > 0 && new_attempt_count > attempt_count) { */
+    /*     if (async_instance_g->sleep_time < ASYNC_APP_CHECK_SLEEP_TIME_MAX) { */
+    /*         async_instance_g->sleep_time *= 2; */
+/* #ifdef ENABLE_DBG_MSG */
+    /*         fprintf(stderr,"  [ASYNC ABT DBG] %s counter %d/%d, increase wait time to %d \n", __func__, attempt_count, new_attempt_count,  async_instance_g->sleep_time); */
+/* #endif */
+    /*     } */
+    /* } */
+    /* else if (new_attempt_count == attempt_count) { */
+    /*     async_instance_g->sleep_time = ASYNC_APP_CHECK_SLEEP_TIME; */
+/* #ifdef ENABLE_DBG_MSG */
+    /*     fprintf(stderr,"  [ASYNC ABT DBG] %s counter %d/%d, reset wait time to %d \n", __func__, attempt_count, new_attempt_count,  async_instance_g->sleep_time); */
+/* #endif */
+    /* } */
     return;
 }
 
