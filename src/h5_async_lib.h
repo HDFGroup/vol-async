@@ -20,6 +20,10 @@ extern "C" {
 
 /* API routines for this package */
 extern herr_t H5Pset_vol_async(hid_t fapl_id);
+extern herr_t H5Pset_dxpl_disable_async_implicit(hid_t dxpl, hbool_t is_disable);
+extern herr_t H5Pget_dxpl_disable_async_implicit(hid_t dxpl, hbool_t *is_disable);
+extern herr_t H5Pset_dxpl_pause(hid_t dxpl, hbool_t is_pause);
+extern herr_t H5Pget_dxpl_pause(hid_t dxpl, hbool_t *is_pause);
 extern herr_t H5Fwait(hid_t file_id, hid_t dxpl_id);
 extern herr_t H5Dwait(hid_t dset_id, hid_t dxpl_id);
 extern herr_t H5Fstart(hid_t file_id, hid_t dxpl_id);
@@ -28,7 +32,8 @@ extern herr_t H5Fpause(hid_t file_id, hid_t dxpl_id);
 extern herr_t H5Dpause(hid_t dset_id, hid_t dxpl_id);
 extern herr_t H5Fset_delay_time(hid_t file_id, hid_t dxpl_id, uint64_t time_us);
 extern herr_t H5Dset_delay_time(hid_t dset_id, hid_t dxpl_id, uint64_t time_us);
-extern herr_t H5VL_async_set_request_dep(void *request, void *dep_request);
+extern herr_t H5async_set_request_dep(void *request, void *parent_request);
+extern herr_t H5async_start(void *request);
 
 #ifdef __cplusplus
 }

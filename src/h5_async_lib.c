@@ -61,6 +61,8 @@ static int async_file_pause_op_g = -1;
 static int async_dataset_pause_op_g = -1;
 static int async_file_delay_op_g = -1;
 static int async_dataset_delay_op_g = -1;
+static int async_request_start_op_g = -1;
+static int async_request_dep_op_g = -1;
 
 static void
 async_reset(void *_ctx)
@@ -80,6 +82,8 @@ async_reset(void *_ctx)
     async_file_pause_op_g = -1;
     async_dataset_delay_op_g = -1;
     async_file_delay_op_g = -1;
+    async_request_start_op_g = -1;
+    async_request_dep_op_g = -1;
 
     /* Reset the 'atclose' callback status */
     async_atclose_registered = false;
@@ -169,6 +173,24 @@ async_setup(void)
             return(-1);
         }
         assert(async_dataset_delay_op_g > 0);
+    }
+
+    /* Singleton check for request start operation */
+    if(-1 == async_request_start_op_g) {
+        if(H5VLfind_opt_operation(H5VL_SUBCLS_REQUEST, H5VL_ASYNC_DYN_REQUEST_START, &async_request_start_op_g) < 0) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] with H5VLfind_opt_operation\n");
+            return(-1);
+        }
+        assert(async_request_start_op_g > 0);
+    }
+
+    /* Singleton check for file pause operation */
+    if(-1 == async_request_dep_op_g) {
+        if(H5VLfind_opt_operation(H5VL_SUBCLS_REQUEST, H5VL_ASYNC_DYN_REQUEST_START, &async_request_dep_op_g) < 0) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] with H5VLfind_opt_operation\n");
+            return(-1);
+        }
+        assert(async_request_dep_op_g > 0);
     }
 
     /* Singleton check for registering 'atclose' callback */
@@ -465,3 +487,195 @@ H5Dset_delay_time(hid_t dset_id, hid_t dxpl_id, uint64_t time_us)
     return(0);
 }
 
+/*-------------------------------------------------------------------------
+ * Function:    H5Pset_dxpl_disable_async_implicit
+ *
+ * Purpose:     Set to disable async implicit mode with dxpl
+ *
+ * Return:      SUCCEED/FAIL
+ *
+ *-------------------------------------------------------------------------
+ */
+herr_t 
+H5Pset_dxpl_disable_async_implicit(hid_t dxpl, hbool_t is_disable)
+{
+    herr_t status;
+    status = H5Pinsert2(dxpl, H5VL_ASYNC_DISABLE_IMPLICIT_NAME, sizeof(hbool_t), false, NULL, NULL, NULL, NULL, NULL, NULL);
+    if (status < 0) {
+        fprintf(stderr, "  [ASYNC VOL ERROR] %s: H5Pinsert2 failed!\n", __func__);
+        return(-1);
+    }
+
+    status = H5Pset(dxpl, H5VL_ASYNC_DISABLE_IMPLICIT_NAME, &is_disable);
+    if (status < 0) {
+        fprintf(stderr, "  [ASYNC VOL ERROR] %s: H5Pset failed!\n", __func__);
+        return(-1);
+    }
+
+    return status;
+}
+
+/*-------------------------------------------------------------------------
+ * Function:    H5Pget_dxpl_disable_async_implicit
+ *
+ * Purpose:     Get the async implicit mode from dxpl
+ *
+ * Return:      SUCCEED/NOTEXIST/FAIL
+ *
+ *-------------------------------------------------------------------------
+ */
+herr_t 
+H5Pget_dxpl_disable_async_implicit(hid_t dxpl, hbool_t *is_disable)
+{
+    herr_t status;
+    assert(is_disable);
+
+    *is_disable = false;
+
+    status = H5Pexist(dxpl, H5VL_ASYNC_DISABLE_IMPLICIT_NAME);
+    if (status < 0) {
+        fprintf(stderr,"  [ASYNC VOL ERROR] %s H5Pexist failed!\n", __func__);
+        return -1;
+    }
+    else if (status > 0) {
+        status = H5Pget(dxpl, H5VL_ASYNC_DISABLE_IMPLICIT_NAME, is_disable);
+        if (status < 0) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s: H5Pget failed!\n", __func__);
+            return(-1);
+        }
+    }
+    else
+        return 0;
+
+    return status;
+}
+
+/*-------------------------------------------------------------------------
+ * Function:    H5Pset_dxpl_pause
+ *
+ * Purpose:     Set to pause async operations with dxpl
+ *
+ * Return:      SUCCEED/FAIL
+ *
+ *-------------------------------------------------------------------------
+ */
+herr_t 
+H5Pset_dxpl_pause(hid_t dxpl, hbool_t is_pause)
+{
+    herr_t status;
+    status = H5Pinsert2(dxpl, H5VL_ASYNC_PAUSE_NAME, sizeof(hbool_t), false, NULL, NULL, NULL, NULL, NULL, NULL);
+    if (status < 0) {
+        fprintf(stderr, "  [ASYNC VOL ERROR] %s: H5Pinsert2 failed!\n", __func__);
+        return(-1);
+    }
+
+    status = H5Pset(dxpl, H5VL_ASYNC_PAUSE_NAME, &is_pause);
+    if (status < 0) {
+        fprintf(stderr, "  [ASYNC VOL ERROR] %s: H5Pset failed!\n", __func__);
+        return(-1);
+    }
+
+    return status;
+}
+
+/*-------------------------------------------------------------------------
+ * Function:    H5Pget_dxpl_pause
+ *
+ * Purpose:     Get the async implicit mode from dxpl
+ *
+ * Return:      SUCCEED/NOTEXIST/FAIL
+ *
+ *-------------------------------------------------------------------------
+ */
+herr_t 
+H5Pget_dxpl_pause(hid_t dxpl, hbool_t *is_pause)
+{
+    herr_t status;
+    assert(is_pause);
+
+    *is_pause = false;
+
+    status = H5Pexist(dxpl, H5VL_ASYNC_PAUSE_NAME);
+    if (status < 0) {
+        fprintf(stderr,"  [ASYNC VOL ERROR] %s H5Pexist failed!\n", __func__);
+        return -1;
+    }
+    else if (status > 0) {
+        status = H5Pget(dxpl, H5VL_ASYNC_PAUSE_NAME, is_pause);
+        if (status < 0) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s: H5Pget failed!\n", __func__);
+            return(-1);
+        }
+    }
+    else
+        return 0;
+
+    return status;
+}
+
+/*-------------------------------------------------------------------------
+ * Function:    H5async_start
+ *
+ * Purpose:     Start (un-pause) async operations with request
+ *
+ * Return:      SUCCEED/FAIL
+ *
+ *-------------------------------------------------------------------------
+ */
+herr_t 
+H5async_start(void *request)
+{
+    herr_t status;
+    assert(request);
+
+    /* Look up operation value, if it's not already available */
+    if(-1 == async_request_start_op_g) {
+        if (async_setup() < 0) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s: async_setup error!\n", __func__);
+            return(-1);
+        }
+        assert(async_request_start_op_g > 0);
+    }
+
+    /* Call the VOL file optional routine, requesting 'wait' occur */
+    if((status = H5VLrequest_optional_vararg(request, H5VL_async_g, async_request_start_op_g)) < 0) {
+        fprintf(stderr, "  [ASYNC VOL ERROR] H5Fpause: VOL connector file pause operation failed!\n");
+        return(-1);
+    }
+
+    return status;
+}
+
+/*-------------------------------------------------------------------------
+ * Function:    H5async_set_request_dep
+ *
+ * Purpose:     Set the request's dependent parent request
+ *
+ * Return:      SUCCEED/FAIL
+ *
+ *-------------------------------------------------------------------------
+ */
+herr_t 
+H5async_set_request_dep(void *request, void *parent_request)
+{
+    herr_t status;
+    assert(request);
+    assert(parent_request);
+
+    /* Look up operation value, if it's not already available */
+    if(-1 == async_request_dep_op_g) {
+        if (async_setup() < 0) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s: async_setup error!\n", __func__);
+            return(-1);
+        }
+        assert(async_request_dep_op_g > 0);
+    }
+
+    /* Call the VOL file optional routine, requesting 'wait' occur */
+    if((status = H5VLrequest_optional_vararg(request, H5VL_async_g, async_request_dep_op_g, parent_request)) < 0) {
+        fprintf(stderr, "  [ASYNC VOL ERROR] H5Fpause: VOL connector file pause operation failed!\n");
+        return(-1);
+    }
+
+    return status;
+}

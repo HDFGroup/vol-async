@@ -178,6 +178,7 @@ typedef struct async_instance_t {
     bool                ex_dclose;           /* Delay background thread execution until dset close */
     bool                start_abt_push;      /* Start pushing tasks to Argobots pool */
     bool                pause;               /* Pause background thread execution */
+    bool                disable_implicit;    /* Disable implicit async execution*/
     int                 sleep_time;          /* Sleep time between checking the global mutex attemp count */
     uint64_t            delay_time;          /* Sleep time before background thread trying to acquire global mutex */
 } async_instance_t;
@@ -827,6 +828,8 @@ static int H5VL_async_file_pause_op_g = -1;
 static int H5VL_async_dataset_pause_op_g = -1;
 static int H5VL_async_file_delay_op_g = -1;
 static int H5VL_async_dataset_delay_op_g = -1;
+static int H5VL_async_request_start_op_g = -1;
+static int H5VL_async_request_depend_op_g = -1;
 
 H5PL_type_t H5PLget_plugin_type(void) {
     return H5PL_TYPE_VOL;
@@ -1073,8 +1076,9 @@ async_instance_init(int backing_thread_count)
     aid->ex_fclose    = false;
     aid->ex_gclose    = false;
     aid->ex_dclose    = false;
-    aid->start_abt_push = false;
     aid->pause        = false;
+    aid->start_abt_push   = false;
+    aid->disable_implicit = false;
 
     // Check for delaying operations to file / group / dataset close operations
     env_var = getenv("HDF5_ASYNC_EXE_FCLOSE");
@@ -1109,6 +1113,68 @@ done:
     return hg_ret;
 } // End async_instance_init
 
+herr_t
+H5VL_async_dxpl_set_disable_implicit(hid_t dxpl)
+{
+    herr_t status;
+    hbool_t is_disable = false;
+
+    assert(async_instance_g);
+
+    if (dxpl > 0) {
+        status = H5Pexist(dxpl, H5VL_ASYNC_DISABLE_IMPLICIT_NAME);
+        if (status < 0) {
+            fprintf(stderr,"  [ASYNC VOL ERROR] %s H5Pexist failed!\n", __func__);
+            return -1;
+        }
+        else if (status > 0) {
+            status = H5Pget(dxpl, H5VL_ASYNC_DISABLE_IMPLICIT_NAME, &is_disable);
+            if (status < 0) {
+                fprintf(stderr,"  [ASYNC VOL ERROR] %s H5Pget failed!\n", __func__);
+                return -1;
+            }
+
+            async_instance_g->disable_implicit = is_disable;
+#ifdef ENABLE_DBG_MSG
+            fprintf(stderr, "  [ASYNC VOL DBG] set implicit mode to %d\n", is_disable);
+#endif
+        }
+    }
+
+    return status;
+}
+
+herr_t
+H5VL_async_dxpl_set_pause(hid_t dxpl)
+{
+    herr_t status;
+    hbool_t is_pause = false;
+
+    assert(async_instance_g);
+
+    if (dxpl > 0) {
+        status = H5Pexist(dxpl, H5VL_ASYNC_PAUSE_NAME);
+        if (status < 0) {
+            fprintf(stderr,"  [ASYNC VOL ERROR] %s H5Pexist failed!\n", __func__);
+            return -1;
+        }
+        else if (status > 0) {
+            status = H5Pget(dxpl, H5VL_ASYNC_PAUSE_NAME, &is_pause);
+            if (status < 0) {
+                fprintf(stderr,"  [ASYNC VOL ERROR] %s H5Pget failed!\n", __func__);
+                return -1;
+            }
+
+            async_instance_g->pause = is_pause;
+#ifdef ENABLE_DBG_MSG
+            fprintf(stderr, "  [ASYNC VOL DBG] set pause async execution to %d\n", is_pause);
+#endif
+        }
+    }
+
+    return status;
+}
+
 static herr_t
 H5VL_async_init(hid_t __attribute__((unused)) vipl_id)
 {
@@ -1120,64 +1186,78 @@ H5VL_async_init(hid_t __attribute__((unused)) vipl_id)
             fprintf(stderr,"  [ASYNC VOL ERROR] with async_instance_init\n");
             return -1;
         }
-    }
 
-    /* Register operation values for new API routines to use for operations */
-    assert(-1 == H5VL_async_file_wait_op_g);
-    if(H5VLregister_opt_operation(H5VL_SUBCLS_FILE, H5VL_ASYNC_DYN_FILE_WAIT, &H5VL_async_file_wait_op_g) < 0) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] with H5VLregister_opt_operation\n");
-        return(-1);
-    }
-    assert(-1 != H5VL_async_file_wait_op_g);
+        /* Register operation values for new API routines to use for operations */
+        assert(-1 == H5VL_async_file_wait_op_g);
+        if(H5VLregister_opt_operation(H5VL_SUBCLS_FILE, H5VL_ASYNC_DYN_FILE_WAIT, &H5VL_async_file_wait_op_g) < 0) {
+            fprintf(stderr,"  [ASYNC VOL ERROR] with H5VLregister_opt_operation H5VL_async_file_wait_op_g\n");
+            return(-1);
+        }
+        assert(-1 != H5VL_async_file_wait_op_g);
 
-    assert(-1 == H5VL_async_dataset_wait_op_g);
-    if(H5VLregister_opt_operation(H5VL_SUBCLS_DATASET, H5VL_ASYNC_DYN_DATASET_WAIT, &H5VL_async_dataset_wait_op_g) < 0) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] with H5VLregister_opt_operation\n");
-        return(-1);
-    }
-    assert(-1 != H5VL_async_dataset_wait_op_g);
+        assert(-1 == H5VL_async_dataset_wait_op_g);
+        if(H5VLregister_opt_operation(H5VL_SUBCLS_DATASET, H5VL_ASYNC_DYN_DATASET_WAIT, &H5VL_async_dataset_wait_op_g) < 0) {
+            fprintf(stderr,"  [ASYNC VOL ERROR] with H5VLregister_opt_operation H5VL_async_dataset_wait_op_g\n");
+            return(-1);
+        }
+        assert(-1 != H5VL_async_dataset_wait_op_g);
 
-    assert(-1 == H5VL_async_file_start_op_g);
-    if(H5VLregister_opt_operation(H5VL_SUBCLS_FILE, H5VL_ASYNC_DYN_FILE_START, &H5VL_async_file_start_op_g) < 0) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] with H5VLregister_opt_operation\n");
-        return(-1);
-    }
-    assert(-1 != H5VL_async_file_start_op_g);
+        assert(-1 == H5VL_async_file_start_op_g);
+        if(H5VLregister_opt_operation(H5VL_SUBCLS_FILE, H5VL_ASYNC_DYN_FILE_START, &H5VL_async_file_start_op_g) < 0) {
+            fprintf(stderr,"  [ASYNC VOL ERROR] with H5VLregister_opt_operation H5VL_async_file_start_op_g\n");
+            return(-1);
+        }
+        assert(-1 != H5VL_async_file_start_op_g);
 
-    assert(-1 == H5VL_async_dataset_start_op_g);
-    if(H5VLregister_opt_operation(H5VL_SUBCLS_DATASET, H5VL_ASYNC_DYN_DATASET_START, &H5VL_async_dataset_start_op_g) < 0) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] with H5VLregister_opt_operation\n");
-        return(-1);
-    }
-    assert(-1 != H5VL_async_dataset_start_op_g);
+        assert(-1 == H5VL_async_dataset_start_op_g);
+        if(H5VLregister_opt_operation(H5VL_SUBCLS_DATASET, H5VL_ASYNC_DYN_DATASET_START, &H5VL_async_dataset_start_op_g) < 0) {
+            fprintf(stderr,"  [ASYNC VOL ERROR] with H5VLregister_opt_operation H5VL_async_dataset_start_op_g\n");
+            return(-1);
+        }
+        assert(-1 != H5VL_async_dataset_start_op_g);
 
-    assert(-1 == H5VL_async_file_pause_op_g);
-    if(H5VLregister_opt_operation(H5VL_SUBCLS_FILE, H5VL_ASYNC_DYN_FILE_PAUSE, &H5VL_async_file_pause_op_g) < 0) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] with H5VLregister_opt_operation\n");
-        return(-1);
-    }
-    assert(-1 != H5VL_async_file_pause_op_g);
+        assert(-1 == H5VL_async_file_pause_op_g);
+        if(H5VLregister_opt_operation(H5VL_SUBCLS_FILE, H5VL_ASYNC_DYN_FILE_PAUSE, &H5VL_async_file_pause_op_g) < 0) {
+            fprintf(stderr,"  [ASYNC VOL ERROR] with H5VLregister_opt_operation H5VL_async_file_pause_op_g\n");
+            return(-1);
+        }
+        assert(-1 != H5VL_async_file_pause_op_g);
 
-    assert(-1 == H5VL_async_dataset_pause_op_g);
-    if(H5VLregister_opt_operation(H5VL_SUBCLS_DATASET, H5VL_ASYNC_DYN_DATASET_PAUSE, &H5VL_async_dataset_pause_op_g) < 0) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] with H5VLregister_opt_operation\n");
-        return(-1);
-    }
-    assert(-1 != H5VL_async_dataset_pause_op_g);
+        assert(-1 == H5VL_async_dataset_pause_op_g);
+        if(H5VLregister_opt_operation(H5VL_SUBCLS_DATASET, H5VL_ASYNC_DYN_DATASET_PAUSE, &H5VL_async_dataset_pause_op_g) < 0) {
+            fprintf(stderr,"  [ASYNC VOL ERROR] with H5VLregister_opt_operation H5VL_async_dataset_pause_op_g\n");
+            return(-1);
+        }
+        assert(-1 != H5VL_async_dataset_pause_op_g);
 
-    assert(-1 == H5VL_async_file_delay_op_g);
-    if(H5VLregister_opt_operation(H5VL_SUBCLS_FILE, H5VL_ASYNC_DYN_FILE_DELAY, &H5VL_async_file_delay_op_g) < 0) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] with H5VLregister_opt_operation\n");
-        return(-1);
-    }
-    assert(-1 != H5VL_async_file_delay_op_g);
+        assert(-1 == H5VL_async_file_delay_op_g);
+        if(H5VLregister_opt_operation(H5VL_SUBCLS_FILE, H5VL_ASYNC_DYN_FILE_DELAY, &H5VL_async_file_delay_op_g) < 0) {
+            fprintf(stderr,"  [ASYNC VOL ERROR] with H5VLregister_opt_operation H5VL_async_file_delay_op_g\n");
+            return(-1);
+        }
+        assert(-1 != H5VL_async_file_delay_op_g);
 
-    assert(-1 == H5VL_async_dataset_delay_op_g);
-    if(H5VLregister_opt_operation(H5VL_SUBCLS_DATASET, H5VL_ASYNC_DYN_DATASET_DELAY, &H5VL_async_dataset_delay_op_g) < 0) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] with H5VLregister_opt_operation\n");
-        return(-1);
+        assert(-1 == H5VL_async_dataset_delay_op_g);
+        if(H5VLregister_opt_operation(H5VL_SUBCLS_DATASET, H5VL_ASYNC_DYN_DATASET_DELAY, &H5VL_async_dataset_delay_op_g) < 0) {
+            fprintf(stderr,"  [ASYNC VOL ERROR] with H5VLregister_opt_operation H5VL_async_dataset_delay_op_g\n");
+            return(-1);
+        }
+        assert(-1 != H5VL_async_dataset_delay_op_g);
+
+        assert(-1 == H5VL_async_request_start_op_g);
+        if(H5VLregister_opt_operation(H5VL_SUBCLS_REQUEST, H5VL_ASYNC_DYN_REQUEST_START, &H5VL_async_request_start_op_g) < 0) {
+            fprintf(stderr,"  [ASYNC VOL ERROR] with H5VLregister_opt_operation H5VL_async_request_start_op_g\n");
+            return(-1);
+        }
+        assert(-1 != H5VL_async_request_start_op_g);
+
+        assert(-1 == H5VL_async_request_depend_op_g);
+        if(H5VLregister_opt_operation(H5VL_SUBCLS_REQUEST, H5VL_ASYNC_DYN_REQUEST_DEP, &H5VL_async_request_depend_op_g) < 0) {
+            fprintf(stderr,"  [ASYNC VOL ERROR] with H5VLregister_opt_operation H5VL_async_request_depend_op_g\n");
+            return(-1);
+        }
+        assert(-1 != H5VL_async_request_depend_op_g);
     }
-    assert(-1 != H5VL_async_dataset_delay_op_g);
 
     /* Singleton register error class */
     if (H5I_INVALID_HID == async_error_class_g) {
@@ -1267,6 +1347,16 @@ H5VL_async_term(void)
         if(H5VLunregister_opt_operation(H5VL_SUBCLS_DATASET, H5VL_ASYNC_DYN_DATASET_DELAY) < 0)
             return(-1);
         H5VL_async_dataset_delay_op_g = (-1);
+    } /* end if */
+    if(-1 != H5VL_async_request_start_op_g) {
+        if(H5VLunregister_opt_operation(H5VL_SUBCLS_REQUEST, H5VL_ASYNC_DYN_REQUEST_START) < 0)
+            return(-1);
+        H5VL_async_request_start_op_g = (-1);
+    } /* end if */
+    if(-1 != H5VL_async_request_depend_op_g) {
+        if(H5VLunregister_opt_operation(H5VL_SUBCLS_REQUEST, H5VL_ASYNC_DYN_REQUEST_DEP) < 0)
+            return(-1);
+        H5VL_async_request_depend_op_g = (-1);
     } /* end if */
 
     /* Unregister error class */
@@ -1407,10 +1497,10 @@ free_file_async_resources(H5VL_async_t *file)
 }
 
 static herr_t
-add_to_dep_task(async_task_t *task, async_task_t *dep_task)
+add_to_dep_task(async_task_t *task, async_task_t *parent_task)
 {
     assert(task);
-    assert(dep_task);
+    assert(parent_task);
 
     if (task->n_dep_alloc == 0 || task->dep_tasks == NULL) {
         // Initial alloc
@@ -1432,7 +1522,7 @@ add_to_dep_task(async_task_t *task, async_task_t *dep_task)
         task->n_dep_alloc *= 2;
     }
 
-    task->dep_tasks[task->n_dep] = dep_task;
+    task->dep_tasks[task->n_dep] = parent_task;
     task->n_dep++;
 
     return 1;
@@ -1517,17 +1607,13 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool)
         fprintf(stderr,"  [ASYNC VOL DBG] push task [%p] to Argobots pool\n", task_elt->func);
 #endif
 
-	if (task_elt->is_done == 0) {
-	    if (ABT_thread_create(pool, task_elt->func, task_elt, ABT_THREAD_ATTR_NULL, &task_elt->abt_thread) != ABT_SUCCESS) {
-		fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_thread_create failed for %p\n", __func__, task_elt->func);
-		break;
-	    }
-	    /* if (ABT_task_create(pool, task_elt->func, task_elt, &task_elt->abt_task) != ABT_SUCCESS) { */
-	    /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_task_create failed for %p\n", __func__, task_elt->func); */
-	    /*     break; */
-	    /* } */
-	    task_elt->in_abt_pool = 1;
-	}
+        if (task_elt->is_done == 0) {
+            if (ABT_thread_create(pool, task_elt->func, task_elt, ABT_THREAD_ATTR_NULL, &task_elt->abt_thread) != ABT_SUCCESS) {
+                fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_thread_create failed for %p\n", __func__, task_elt->func);
+                break;
+            }
+            task_elt->in_abt_pool = 1;
+        }
 
         DL_DELETE(qhead->queue->task_list, task_elt);
         task_elt->prev = NULL;
@@ -1801,30 +1887,30 @@ static void free_loc_param(H5VL_loc_params_t *loc_params)
     }
 }
 
-herr_t H5VL_async_set_request_dep(void *request, void *dep_request)
+herr_t H5VL_async_set_request_dep(void *request, void *parent_request)
 {
     herr_t ret_val;
-    H5VL_async_t *req, *dep_req;
-    async_task_t *task, *dep_task;
+    H5VL_async_t *req, *parent_req;
+    async_task_t *task, *parent_task;
 
     assert(request);
-    assert(dep_request);
+    assert(parent_request);
 
     req = (H5VL_async_t*)request;
-    dep_req = (H5VL_async_t*)dep_request;
+    parent_req = (H5VL_async_t*)parent_request;
 
     assert(req->my_task);
-    assert(dep_req->my_task);
+    assert(parent_req->my_task);
 
     task = req->my_task;
-    dep_task = dep_req->my_task;
+    parent_task = parent_req->my_task;
 
     assert(req->magic == TASK_MAGIC);
-    assert(dep_req->magic == TASK_MAGIC);
+    assert(parent_req->magic == TASK_MAGIC);
 
     /* ABT_mutex_lock(task->task_mutex); */
 
-    ret_val = add_to_dep_task(task, dep_task);
+    ret_val = add_to_dep_task(task, parent_task);
     if (ret_val < 0) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s calloc failed\n", __func__);
         return -1;
@@ -2013,8 +2099,10 @@ execute_parent_task_recursive(async_task_t *task)
 {
     if (task == NULL || task->is_done == 1)
         return;
+
     if (task->parent_obj != NULL)
         execute_parent_task_recursive(task->parent_obj->create_task);
+
     // Cancel the task already in the pool
     if (task->in_abt_pool == 1) {
 #ifdef ENABLE_DBG_MSG
@@ -2023,8 +2111,10 @@ execute_parent_task_recursive(async_task_t *task)
         ABT_thread_cancel(task->abt_thread);
         ABT_thread_free(&task->abt_thread);
     }
+
     // Execute the task in current thread
     task->func(task);
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC VOL DBG] %s: finished executing task \n", __func__);
 #endif
@@ -17422,12 +17512,29 @@ H5VL_async_attr_create(void *obj, const H5VL_loc_params_t *loc_params,
 {
     H5VL_async_t *attr;
     H5VL_async_t *o = (H5VL_async_t *)obj;
+    void *under;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL ATTRIBUTE Create\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    attr = async_attr_create(async_instance_g, o, loc_params, name, type_id, space_id, acpl_id, aapl_id, dxpl_id, req);
+    if (async_instance_g->disable_implicit) {
+        under = H5VLattr_create(o->under_object, loc_params, o->under_vol_id, name, type_id, space_id, acpl_id,
+                                aapl_id, dxpl_id, req);
+        if (under) {
+            attr = H5VL_async_new_obj(under, o->under_vol_id);
+
+            /* Check for async request */
+            if (req && *req)
+                *req = H5VL_async_new_obj(*req, o->under_vol_id);
+        } /* end if */
+        else
+            attr = NULL;
+    }
+    else
+        attr = async_attr_create(async_instance_g, o, loc_params, name, type_id, space_id, acpl_id, aapl_id, dxpl_id, req);
 
     return (void*)attr;
 } /* end H5VL_async_attr_create() */
@@ -17449,12 +17556,28 @@ H5VL_async_attr_open(void *obj, const H5VL_loc_params_t *loc_params,
 {
     H5VL_async_t *attr;
     H5VL_async_t *o = (H5VL_async_t *)obj;
+    void *under;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL ATTRIBUTE Open\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    attr = async_attr_open(async_instance_g, o, loc_params, name, aapl_id, dxpl_id, req);
+    if (async_instance_g->disable_implicit) {
+        under = H5VLattr_open(o->under_object, loc_params, o->under_vol_id, name, aapl_id, dxpl_id, req);
+        if (under) {
+            attr = H5VL_async_new_obj(under, o->under_vol_id);
+
+            /* Check for async request */
+            if (req && *req)
+                *req = H5VL_async_new_obj(*req, o->under_vol_id);
+        } /* end if */
+        else
+            attr = NULL;
+    }
+    else
+        attr = async_attr_open(async_instance_g, o, loc_params, name, aapl_id, dxpl_id, req);
 
     return (void *)attr;
 } /* end H5VL_async_attr_open() */
@@ -17480,9 +17603,20 @@ H5VL_async_attr_read(void *attr, hid_t mem_type_id, void *buf,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL ATTRIBUTE Read\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if ((ret_value = async_attr_read(async_instance_g, o, mem_type_id, buf, dxpl_id, req)) < 0 ) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] with async_attr_read\n");
+    if (async_instance_g->disable_implicit) {
+        ret_value = H5VLattr_read(o->under_object, o->under_vol_id, mem_type_id, buf, dxpl_id, req);
+
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, o->under_vol_id);
+    }
+    else {
+        if ((ret_value = async_attr_read(async_instance_g, o, mem_type_id, buf, dxpl_id, req)) < 0 ) {
+            fprintf(stderr,"  [ASYNC VOL ERROR] with async_attr_read\n");
+        }
     }
 
     return ret_value;
@@ -17509,9 +17643,20 @@ H5VL_async_attr_write(void *attr, hid_t mem_type_id, const void *buf,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL ATTRIBUTE Write\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if ((ret_value = async_attr_write(async_instance_g, o, mem_type_id, buf, dxpl_id, req)) < 0 ) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] with async_attr_write\n");
+    if (async_instance_g->disable_implicit) {
+        ret_value = H5VLattr_write(o->under_object, o->under_vol_id, mem_type_id, buf, dxpl_id, req);
+
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, o->under_vol_id);
+    }
+    else {
+        if ((ret_value = async_attr_write(async_instance_g, o, mem_type_id, buf, dxpl_id, req)) < 0 ) {
+            fprintf(stderr,"  [ASYNC VOL ERROR] with async_attr_write\n");
+        }
     }
 
     return ret_value;
@@ -17539,9 +17684,20 @@ H5VL_async_attr_get(void *obj, H5VL_attr_get_t get_type, hid_t dxpl_id,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL ATTRIBUTE Get\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if ((ret_value = async_attr_get(qtype, async_instance_g, o, get_type, dxpl_id, req, arguments)) < 0 )
-        fprintf(stderr,"  [ASYNC VOL ERROR] with async_attr_get\n");
+    if (async_instance_g->disable_implicit) {
+        ret_value = H5VLattr_get(o->under_object, o->under_vol_id, get_type, dxpl_id, req, arguments);
+
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, o->under_vol_id);
+    }
+    else {
+        if ((ret_value = async_attr_get(qtype, async_instance_g, o, get_type, dxpl_id, req, arguments)) < 0 )
+            fprintf(stderr,"  [ASYNC VOL ERROR] with async_attr_get\n");
+    }
 
     return ret_value;
 } /* end H5VL_async_attr_get() */
@@ -17568,11 +17724,24 @@ H5VL_async_attr_specific(void *obj, const H5VL_loc_params_t *loc_params,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL ATTRIBUTE Specific\n");
 #endif
-    if (H5VL_ATTR_EXISTS == specific_type)
-        qtype = BLOCKING;
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if ((ret_value = async_attr_specific(qtype, async_instance_g, o, loc_params, specific_type, dxpl_id, req, arguments)) < 0 )
-        fprintf(stderr,"  [ASYNC VOL ERROR] with async_attr_specific\n");
+    if (async_instance_g->disable_implicit) {
+        ret_value = H5VLattr_specific(o->under_object, loc_params, o->under_vol_id, specific_type, dxpl_id, req,
+                                      arguments);
+
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, o->under_vol_id);
+    }
+    else {
+        if (H5VL_ATTR_EXISTS == specific_type)
+            qtype = BLOCKING;
+
+        if ((ret_value = async_attr_specific(qtype, async_instance_g, o, loc_params, specific_type, dxpl_id, req, arguments)) < 0 )
+            fprintf(stderr,"  [ASYNC VOL ERROR] with async_attr_specific\n");
+    }
 
     return ret_value;
 } /* end H5VL_async_attr_specific() */
@@ -17599,9 +17768,20 @@ H5VL_async_attr_optional(void *obj, H5VL_attr_optional_t opt_type,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL ATTRIBUTE Optional\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if ((ret_value = async_attr_optional(qtype, async_instance_g, o, opt_type, dxpl_id, req, arguments)) < 0 )
-        fprintf(stderr,"  [ASYNC VOL ERROR] with async_attr_optional\n");
+    if (async_instance_g->disable_implicit) {
+        ret_value = H5VLattr_optional(o->under_object, o->under_vol_id, opt_type, dxpl_id, req, arguments);
+
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, o->under_vol_id);
+    }
+    else {
+        if ((ret_value = async_attr_optional(qtype, async_instance_g, o, opt_type, dxpl_id, req, arguments)) < 0 )
+            fprintf(stderr,"  [ASYNC VOL ERROR] with async_attr_optional\n");
+    }
 
     return ret_value;
 } /* end H5VL_async_attr_optional() */
@@ -17628,16 +17808,31 @@ H5VL_async_attr_close(void *attr, hid_t dxpl_id, void **req)
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL ATTRIBUTE Close\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if ((ret_value = H5is_library_terminating(&is_term)) < 0 )
-        fprintf(stderr,"  [ASYNC VOL ERROR] with H5is_library_terminating\n");
+    if (async_instance_g->disable_implicit) {
+        ret_value = H5VLattr_close(o->under_object, o->under_vol_id, dxpl_id, req);
 
-    /* If the library is shutting down, execute the close synchronously */
-    if (is_term) 
-        qtype = BLOCKING;
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, o->under_vol_id);
 
-    if ((ret_value = async_attr_close(qtype, async_instance_g, o, dxpl_id, req)) < 0 )
-        fprintf(stderr,"  [ASYNC VOL ERROR] with async_attr_close\n");
+        /* Release our wrapper, if underlying attribute was closed */
+        if (ret_value >= 0)
+            H5VL_async_free_obj(o);
+    }
+    else {
+        if ((ret_value = H5is_library_terminating(&is_term)) < 0 )
+            fprintf(stderr,"  [ASYNC VOL ERROR] with H5is_library_terminating\n");
+
+        /* If the library is shutting down, execute the close synchronously */
+        if (is_term) 
+            qtype = BLOCKING;
+
+        if ((ret_value = async_attr_close(qtype, async_instance_g, o, dxpl_id, req)) < 0 )
+            fprintf(stderr,"  [ASYNC VOL ERROR] with async_attr_close\n");
+    }
 
     return ret_value;
 } /* end H5VL_async_attr_close() */
@@ -17660,12 +17855,30 @@ H5VL_async_dataset_create(void *obj, const H5VL_loc_params_t *loc_params,
 {
     H5VL_async_t *dset;
     H5VL_async_t *o = (H5VL_async_t *)obj;
+    void *under;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATASET Create\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    dset = async_dataset_create(async_instance_g, o, loc_params, name, lcpl_id, type_id, space_id, dcpl_id,  dapl_id, dxpl_id, req);
+    if (async_instance_g->disable_implicit) {
+        under = H5VLdataset_create(o->under_object, loc_params, o->under_vol_id, name, lcpl_id, type_id, space_id,
+                                   dcpl_id, dapl_id, dxpl_id, req);
+        if (under) {
+            dset = H5VL_async_new_obj(under, o->under_vol_id);
+
+            /* Check for async request */
+            if (req && *req)
+                *req = H5VL_async_new_obj(*req, o->under_vol_id);
+        } /* end if */
+        else
+            dset = NULL;
+    }
+    else {
+        dset = async_dataset_create(async_instance_g, o, loc_params, name, lcpl_id, type_id, space_id, dcpl_id,  dapl_id, dxpl_id, req);
+    }
 
     return (void *)dset;
 } /* end H5VL_async_dataset_create() */
@@ -17688,12 +17901,29 @@ H5VL_async_dataset_open(void *obj, const H5VL_loc_params_t *loc_params,
     H5VL_async_t *dset;
     H5VL_async_t *o = (H5VL_async_t *)obj;
     task_list_qtype qtype = ISOLATED;
+    void *under;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATASET Open\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    dset = async_dataset_open(qtype, async_instance_g, o, loc_params, name, dapl_id, dxpl_id, req);
+    if (async_instance_g->disable_implicit) {
+        under = H5VLdataset_open(o->under_object, loc_params, o->under_vol_id, name, dapl_id, dxpl_id, req);
+        if (under) {
+            dset = H5VL_async_new_obj(under, o->under_vol_id);
+
+            /* Check for async request */
+            if (req && *req)
+                *req = H5VL_async_new_obj(*req, o->under_vol_id);
+        } /* end if */
+        else
+            dset = NULL;
+    }
+    else {
+        dset = async_dataset_open(qtype, async_instance_g, o, loc_params, name, dapl_id, dxpl_id, req);
+    }
 
     return (void *)dset;
 } /* end H5VL_async_dataset_open() */
@@ -17720,8 +17950,18 @@ H5VL_async_dataset_read(void *dset, hid_t mem_type_id, hid_t mem_space_id,
     printf("------- ASYNC VOL DATASET Read\n");
 #endif
 
-    if ((ret_value = async_dataset_read(async_instance_g, o, mem_type_id, mem_space_id, file_space_id, plist_id, buf, req)) < 0 ) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] with async_dataset_read\n");
+    if (async_instance_g->disable_implicit) {
+        ret_value = H5VLdataset_read(o->under_object, o->under_vol_id, mem_type_id, mem_space_id, file_space_id,
+                                     plist_id, buf, req);
+
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, o->under_vol_id);
+    }
+    else {
+        if ((ret_value = async_dataset_read(async_instance_g, o, mem_type_id, mem_space_id, file_space_id, plist_id, buf, req)) < 0 ) {
+            fprintf(stderr,"  [ASYNC VOL ERROR] with async_dataset_read\n");
+        }
     }
 
     return ret_value;
@@ -17749,8 +17989,18 @@ H5VL_async_dataset_write(void *dset, hid_t mem_type_id, hid_t mem_space_id,
     printf("------- ASYNC VOL DATASET Write\n");
 #endif
 
-    if ((ret_value = async_dataset_write(async_instance_g, o, mem_type_id, mem_space_id, file_space_id, plist_id, buf, req)) < 0 ) {
-        fprintf(stderr,"  [ASYNC VOL ERROR] with async_dataset_write\n");
+    if (async_instance_g->disable_implicit) {
+        ret_value = H5VLdataset_write(o->under_object, o->under_vol_id, mem_type_id, mem_space_id, file_space_id,
+                                      plist_id, buf, req);
+
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, o->under_vol_id);
+    }
+    else {
+        if ((ret_value = async_dataset_write(async_instance_g, o, mem_type_id, mem_space_id, file_space_id, plist_id, buf, req)) < 0 ) {
+            fprintf(stderr,"  [ASYNC VOL ERROR] with async_dataset_write\n");
+        }
     }
 
     return ret_value;
@@ -17778,11 +18028,23 @@ H5VL_async_dataset_get(void *dset, H5VL_dataset_get_t get_type,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATASET Get\n");
 #endif
-    if (H5VL_DATASET_GET_SPACE == get_type)
-        qtype = BLOCKING;
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if ((ret_value = async_dataset_get(qtype, async_instance_g, o, get_type, dxpl_id, req, arguments)) < 0 )
-        fprintf(stderr,"  [ASYNC VOL ERROR] with async_dataset_get\n");
+    if (async_instance_g->disable_implicit) {
+        ret_value = H5VLdataset_get(o->under_object, o->under_vol_id, get_type, dxpl_id, req, arguments);
+
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, o->under_vol_id);
+    }
+    else {
+        if (H5VL_DATASET_GET_SPACE == get_type)
+            qtype = BLOCKING;
+
+        if ((ret_value = async_dataset_get(qtype, async_instance_g, o, get_type, dxpl_id, req, arguments)) < 0 )
+            fprintf(stderr,"  [ASYNC VOL ERROR] with async_dataset_get\n");
+    }
 
     return ret_value;
 } /* end H5VL_async_dataset_get() */
@@ -17803,21 +18065,34 @@ H5VL_async_dataset_specific(void *obj, H5VL_dataset_specific_t specific_type,
                             hid_t dxpl_id, void **req, va_list arguments)
 {
     H5VL_async_t *o = (H5VL_async_t *)obj;
+    hid_t under_vol_id;
     herr_t ret_value;
     task_list_qtype qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL H5Dspecific\n");
 #endif
-    if (H5VL_DATASET_SET_EXTENT == specific_type)
-        qtype = BLOCKING;
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    // Save copy of underlying VOL connector ID and prov helper, in case of
-    // refresh destroying the current object
-    /* under_vol_id = o->under_vol_id; */
+    if (async_instance_g->disable_implicit) {
+        // Save copy of underlying VOL connector ID and prov helper, in case of
+        // refresh destroying the current object
+        under_vol_id = o->under_vol_id;
 
-    if ((ret_value = async_dataset_specific(qtype, async_instance_g, o, specific_type, dxpl_id, req, arguments)) < 0 )
-        fprintf(stderr,"  [ASYNC VOL ERROR] with async_dataset_specific\n");
+        ret_value = H5VLdataset_specific(o->under_object, o->under_vol_id, specific_type, dxpl_id, req, arguments);
+
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, under_vol_id);
+    }
+    else {
+        if (H5VL_DATASET_SET_EXTENT == specific_type)
+            qtype = BLOCKING;
+
+        if ((ret_value = async_dataset_specific(qtype, async_instance_g, o, specific_type, dxpl_id, req, arguments)) < 0 )
+            fprintf(stderr,"  [ASYNC VOL ERROR] with async_dataset_specific\n");
+    }
 
     return ret_value;
 } /* end H5VL_async_dataset_specific() */
@@ -17845,21 +18120,32 @@ H5VL_async_dataset_optional(void *obj, H5VL_dataset_optional_t opt_type,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATASET Optional\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    // For H5Dwait
-    if (H5VL_async_dataset_wait_op_g == opt_type)
-        return (H5VL_async_dataset_wait(o));
-    else if(opt_type == H5VL_async_dataset_start_op_g)
-        return (H5VL_async_start());
-    else if(opt_type == H5VL_async_dataset_pause_op_g)
-        return (H5VL_async_pause());
-    else if(opt_type == H5VL_async_dataset_delay_op_g){
-        time_us = va_arg(arguments, uint64_t);
-        return (H5VL_async_set_delay_time(time_us));
+    if (async_instance_g->disable_implicit) {
+        ret_value = H5VLdataset_optional(o->under_object, o->under_vol_id, opt_type, dxpl_id, req, arguments);
+
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, o->under_vol_id);
     }
+    else {
+        // For H5Dwait
+        if (H5VL_async_dataset_wait_op_g == opt_type)
+            return (H5VL_async_dataset_wait(o));
+        else if(opt_type == H5VL_async_dataset_start_op_g)
+            return (H5VL_async_start());
+        else if(opt_type == H5VL_async_dataset_pause_op_g)
+            return (H5VL_async_pause());
+        else if(opt_type == H5VL_async_dataset_delay_op_g){
+            time_us = va_arg(arguments, uint64_t);
+            return (H5VL_async_set_delay_time(time_us));
+        }
 
-    if ((ret_value = async_dataset_optional(qtype, async_instance_g, o, opt_type, dxpl_id, req, arguments)) < 0 )
-        fprintf(stderr,"  [ASYNC VOL ERROR] with async_dataset_optional\n");
+        if ((ret_value = async_dataset_optional(qtype, async_instance_g, o, opt_type, dxpl_id, req, arguments)) < 0 )
+            fprintf(stderr,"  [ASYNC VOL ERROR] with async_dataset_optional\n");
+    }
 
     return ret_value;
 } /* end H5VL_async_dataset_optional() */
@@ -17886,16 +18172,31 @@ H5VL_async_dataset_close(void *dset, hid_t dxpl_id, void **req)
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATASET Close\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if ((ret_value = H5is_library_terminating(&is_term)) < 0 )
-        fprintf(stderr,"  [ASYNC VOL ERROR] with H5is_library_terminating\n");
+    if (async_instance_g->disable_implicit) {
+        ret_value = H5VLdataset_close(o->under_object, o->under_vol_id, dxpl_id, req);
 
-    /* If the library is shutting down, execute the close synchronously */
-    if (is_term)
-        qtype = BLOCKING;
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, o->under_vol_id);
 
-    if ((ret_value = async_dataset_close(qtype, async_instance_g, o, dxpl_id, req)) < 0 )
-        fprintf(stderr,"  [ASYNC VOL ERROR] with async_dataset_close\n");
+        /* Release our wrapper, if underlying dataset was closed */
+        if (ret_value >= 0)
+            H5VL_async_free_obj(o);
+    }
+    else {
+        if ((ret_value = H5is_library_terminating(&is_term)) < 0 )
+            fprintf(stderr,"  [ASYNC VOL ERROR] with H5is_library_terminating\n");
+
+        /* If the library is shutting down, execute the close synchronously */
+        if (is_term)
+            qtype = BLOCKING;
+
+        if ((ret_value = async_dataset_close(qtype, async_instance_g, o, dxpl_id, req)) < 0 )
+            fprintf(stderr,"  [ASYNC VOL ERROR] with async_dataset_close\n");
+    }
 
     return ret_value;
 } /* end H5VL_async_dataset_close() */
@@ -17918,12 +18219,30 @@ H5VL_async_datatype_commit(void *obj, const H5VL_loc_params_t *loc_params,
 {
     H5VL_async_t *dt;
     H5VL_async_t *o = (H5VL_async_t *)obj;
+    void *under;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATATYPE Commit\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    dt = async_datatype_commit(async_instance_g, o, loc_params, name, type_id, lcpl_id, tcpl_id, tapl_id, dxpl_id, req);
+    if (async_instance_g->disable_implicit) {
+        under = H5VLdatatype_commit(o->under_object, loc_params, o->under_vol_id, name, type_id, lcpl_id, tcpl_id,
+                                    tapl_id, dxpl_id, req);
+        if (under) {
+            dt = H5VL_async_new_obj(under, o->under_vol_id);
+
+            /* Check for async request */
+            if (req && *req)
+                *req = H5VL_async_new_obj(*req, o->under_vol_id);
+        } /* end if */
+        else
+            dt = NULL;
+    }
+    else {
+        dt = async_datatype_commit(async_instance_g, o, loc_params, name, type_id, lcpl_id, tcpl_id, tapl_id, dxpl_id, req);
+    }
 
     return (void *)dt;
 } /* end H5VL_async_datatype_commit() */
@@ -17945,12 +18264,29 @@ H5VL_async_datatype_open(void *obj, const H5VL_loc_params_t *loc_params,
 {
     H5VL_async_t *dt;
     H5VL_async_t *o = (H5VL_async_t *)obj;
+    void *under;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATATYPE Open\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    dt = async_datatype_open(async_instance_g, o, loc_params, name, tapl_id, dxpl_id, req);
+    if (async_instance_g->disable_implicit) {
+        under = H5VLdatatype_open(o->under_object, loc_params, o->under_vol_id, name, tapl_id, dxpl_id, req);
+        if (under) {
+            dt = H5VL_async_new_obj(under, o->under_vol_id);
+
+            /* Check for async request */
+            if (req && *req)
+                *req = H5VL_async_new_obj(*req, o->under_vol_id);
+        } /* end if */
+        else
+            dt = NULL;
+    }
+    else {
+        dt = async_datatype_open(async_instance_g, o, loc_params, name, tapl_id, dxpl_id, req);
+    }
 
     return (void *)dt;
 } /* end H5VL_async_datatype_open() */
@@ -17977,9 +18313,20 @@ H5VL_async_datatype_get(void *dt, H5VL_datatype_get_t get_type,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATATYPE Get\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if ((ret_value = async_datatype_get(qtype, async_instance_g, o, get_type, dxpl_id, req, arguments)) < 0 )
-        fprintf(stderr,"  [ASYNC VOL ERROR] with async_datatype_get\n");
+    if (async_instance_g->disable_implicit) {
+        ret_value = H5VLdatatype_get(o->under_object, o->under_vol_id, get_type, dxpl_id, req, arguments);
+
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, o->under_vol_id);
+    }
+    else {
+        if ((ret_value = async_datatype_get(qtype, async_instance_g, o, get_type, dxpl_id, req, arguments)) < 0 )
+            fprintf(stderr,"  [ASYNC VOL ERROR] with async_datatype_get\n");
+    }
 
     return ret_value;
 } /* end H5VL_async_datatype_get() */
@@ -18002,13 +18349,30 @@ H5VL_async_datatype_specific(void *obj, H5VL_datatype_specific_t specific_type,
     H5VL_async_t *o = (H5VL_async_t *)obj;
     herr_t ret_value;
     task_list_qtype qtype = ISOLATED;
+    hid_t under_vol_id;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATATYPE Specific\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if ((ret_value = async_datatype_specific(qtype, async_instance_g, o, specific_type, dxpl_id, req, arguments)) < 0 )
-        fprintf(stderr,"  [ASYNC VOL ERROR] with async_datatype_specific\n");
+    if (async_instance_g->disable_implicit) {
+        // Save copy of underlying VOL connector ID and prov helper, in case of
+        // refresh destroying the current object
+        under_vol_id = o->under_vol_id;
+
+        ret_value =
+            H5VLdatatype_specific(o->under_object, o->under_vol_id, specific_type, dxpl_id, req, arguments);
+
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, under_vol_id);
+    }
+    else {
+        if ((ret_value = async_datatype_specific(qtype, async_instance_g, o, specific_type, dxpl_id, req, arguments)) < 0 )
+            fprintf(stderr,"  [ASYNC VOL ERROR] with async_datatype_specific\n");
+    }
 
     return ret_value;
 } /* end H5VL_async_datatype_specific() */
@@ -18035,9 +18399,20 @@ H5VL_async_datatype_optional(void *obj, H5VL_datatype_optional_t opt_type,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATATYPE Optional\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if ((ret_value = async_datatype_optional(qtype, async_instance_g, o, opt_type, dxpl_id, req, arguments)) < 0 )
-        fprintf(stderr,"  [ASYNC VOL ERROR] with async_datatype_optional\n");
+    if (async_instance_g->disable_implicit) {
+        ret_value = H5VLdatatype_optional(o->under_object, o->under_vol_id, opt_type, dxpl_id, req, arguments);
+
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, o->under_vol_id);
+    }
+    else {
+        if ((ret_value = async_datatype_optional(qtype, async_instance_g, o, opt_type, dxpl_id, req, arguments)) < 0 )
+            fprintf(stderr,"  [ASYNC VOL ERROR] with async_datatype_optional\n");
+    }
 
     return ret_value;
 } /* end H5VL_async_datatype_optional() */
@@ -18064,18 +18439,33 @@ H5VL_async_datatype_close(void *dt, hid_t dxpl_id, void **req)
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATATYPE Close\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    /* assert(o->under_object); */
+    if (async_instance_g->disable_implicit) {
+        assert(o->under_object);
 
-    if ((ret_value = H5is_library_terminating(&is_term)) < 0 )
-        fprintf(stderr,"  [ASYNC VOL ERROR] with H5is_library_terminating\n");
+        ret_value = H5VLdatatype_close(o->under_object, o->under_vol_id, dxpl_id, req);
 
-    /* If the library is shutting down, execute the close synchronously */
-    if (is_term)
-        qtype = BLOCKING;
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, o->under_vol_id);
 
-    if ((ret_value = async_datatype_close(qtype, async_instance_g, o, dxpl_id, req)) < 0 )
-        fprintf(stderr,"  [ASYNC VOL ERROR] with async_datatype_close\n");
+        /* Release our wrapper, if underlying datatype was closed */
+        if (ret_value >= 0)
+            H5VL_async_free_obj(o);
+    }
+    else {
+        if ((ret_value = H5is_library_terminating(&is_term)) < 0 )
+            fprintf(stderr,"  [ASYNC VOL ERROR] with H5is_library_terminating\n");
+
+        /* If the library is shutting down, execute the close synchronously */
+        if (is_term)
+            qtype = BLOCKING;
+
+        if ((ret_value = async_datatype_close(qtype, async_instance_g, o, dxpl_id, req)) < 0 )
+            fprintf(stderr,"  [ASYNC VOL ERROR] with async_datatype_close\n");
+    }
 
     return ret_value;
 } /* end H5VL_async_datatype_close() */
@@ -18098,10 +18488,13 @@ H5VL_async_file_create(const char *name, unsigned flags, hid_t fcpl_id,
     H5VL_async_info_t *info;
     H5VL_async_t *file;
     hid_t under_fapl_id;
+    void *under;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL FILE Create\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
     /* Get copy of our VOL info from FAPL */
     H5Pget_vol_info(fapl_id, (void **)&info);
@@ -18149,8 +18542,22 @@ H5VL_async_file_create(const char *name, unsigned flags, hid_t fcpl_id,
     /* Set the VOL ID and info for the underlying FAPL */
     H5Pset_vol(under_fapl_id, info->under_vol_id, info->under_vol_info);
 
-    /* Open the file with the underlying VOL connector */
-    file = async_file_create(async_instance_g, name, flags, fcpl_id, under_fapl_id, dxpl_id, req);
+    if (async_instance_g->disable_implicit) {
+        /* Open the file with the underlying VOL connector */
+        under = H5VLfile_create(name, flags, fcpl_id, under_fapl_id, dxpl_id, req);
+        if (under) {
+            file = H5VL_async_new_obj(under, info->under_vol_id);
+
+            /* Check for async request */
+            if (req && *req)
+                *req = H5VL_async_new_obj(*req, info->under_vol_id);
+        } /* end if */
+        else
+            file = NULL;
+    }
+    else {
+        file = async_file_create(async_instance_g, name, flags, fcpl_id, under_fapl_id, dxpl_id, req);
+    }
 
     /* Close underlying FAPL */
     H5Pclose(under_fapl_id);
@@ -18180,10 +18587,13 @@ H5VL_async_file_open(const char *name, unsigned flags, hid_t fapl_id,
     H5VL_async_t *file;
     hid_t under_fapl_id;
     task_list_qtype qtype = REGULAR;
+    void *under;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL FILE Open\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
     /* Get copy of our VOL info from FAPL */
     H5Pget_vol_info(fapl_id, (void **)&info);
@@ -18229,8 +18639,23 @@ H5VL_async_file_open(const char *name, unsigned flags, hid_t fapl_id,
     /* Set the VOL ID and info for the underlying FAPL */
     H5Pset_vol(under_fapl_id, info->under_vol_id, info->under_vol_info);
 
-    /* Open the file with the underlying VOL connector */
-    file = async_file_open(qtype, async_instance_g, name, flags, under_fapl_id, dxpl_id, req);
+    if (async_instance_g->disable_implicit) {
+        /* Open the file with the underlying VOL connector */
+        under = H5VLfile_open(name, flags, under_fapl_id, dxpl_id, req);
+        if (under) {
+            file = H5VL_async_new_obj(under, info->under_vol_id);
+
+            /* Check for async request */
+            if (req && *req)
+                *req = H5VL_async_new_obj(*req, info->under_vol_id);
+        } /* end if */
+        else
+            file = NULL;
+    }
+    else{
+        /* Open the file with the underlying VOL connector */
+        file = async_file_open(qtype, async_instance_g, name, flags, under_fapl_id, dxpl_id, req);
+    }
 
     /* Close underlying FAPL */
     H5Pclose(under_fapl_id);
@@ -18263,9 +18688,20 @@ H5VL_async_file_get(void *file, H5VL_file_get_t get_type, hid_t dxpl_id,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL FILE Get\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if ((ret_value = async_file_get(qtype, async_instance_g, o, get_type, dxpl_id, req, arguments)) < 0 )
-        fprintf(stderr,"  [ASYNC VOL ERROR] with async_file_get\n");
+    if (async_instance_g->disable_implicit) {
+        ret_value = H5VLfile_get(o->under_object, o->under_vol_id, get_type, dxpl_id, req, arguments);
+
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, o->under_vol_id);
+    }
+    else {
+        if ((ret_value = async_file_get(qtype, async_instance_g, o, get_type, dxpl_id, req, arguments)) < 0 )
+            fprintf(stderr,"  [ASYNC VOL ERROR] with async_file_get\n");
+    }
 
     return ret_value;
 } /* end H5VL_async_file_get() */
@@ -18293,6 +18729,8 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_t specific_type,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL FILE Specific\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
     /* Return error if file object not open / created */
     if(o && !o->is_obj_valid) {
@@ -18364,8 +18802,13 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_t specific_type,
         /* Keep the correct underlying VOL ID for possible async request token */
         under_vol_id = o->under_vol_id;
 
-        if ((ret_value = async_file_specific(qtype, async_instance_g, o, specific_type, dxpl_id, req, arguments)) < 0 )
-            fprintf(stderr,"  [ASYNC VOL ERROR] with async_file_specific\n");
+        if (async_instance_g->disable_implicit) {
+            ret_value = H5VLfile_specific(o->under_object, o->under_vol_id, specific_type, dxpl_id, req, arguments);
+        }
+        else {
+            if ((ret_value = async_file_specific(qtype, async_instance_g, o, specific_type, dxpl_id, req, arguments)) < 0 )
+                fprintf(stderr,"  [ASYNC VOL ERROR] with async_file_specific\n");
+        }
 
         /* Wrap file struct pointer, if we reopened one */
         if(specific_type == H5VL_FILE_REOPEN) {
@@ -18407,21 +18850,32 @@ H5VL_async_file_optional(void *file, H5VL_file_optional_t opt_type,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL File Optional\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    // For H5Fwait
-    if(opt_type == H5VL_async_file_wait_op_g)
-        return (H5VL_async_file_wait(o));
-    else if(opt_type == H5VL_async_file_start_op_g)
-        return (H5VL_async_start());
-    else if(opt_type == H5VL_async_file_pause_op_g)
-        return (H5VL_async_pause());
-    else if(opt_type == H5VL_async_file_delay_op_g){
-        time_us = va_arg(arguments, uint64_t);
-        return (H5VL_async_set_delay_time(time_us));
+    if (async_instance_g->disable_implicit) {
+        ret_value = H5VLfile_optional(o->under_object, o->under_vol_id, opt_type, dxpl_id, req, arguments);
+
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, o->under_vol_id);
     }
+    else {
+        // For H5Fwait
+        if(opt_type == H5VL_async_file_wait_op_g)
+            return (H5VL_async_file_wait(o));
+        else if(opt_type == H5VL_async_file_start_op_g)
+            return (H5VL_async_start());
+        else if(opt_type == H5VL_async_file_pause_op_g)
+            return (H5VL_async_pause());
+        else if(opt_type == H5VL_async_file_delay_op_g){
+            time_us = va_arg(arguments, uint64_t);
+            return (H5VL_async_set_delay_time(time_us));
+        }
 
-    if ((ret_value = async_file_optional(qtype, async_instance_g, o, opt_type, dxpl_id, req, arguments)) < 0 )
-        fprintf(stderr,"  [ASYNC VOL ERROR] with async_file_optional\n");
+        if ((ret_value = async_file_optional(qtype, async_instance_g, o, opt_type, dxpl_id, req, arguments)) < 0 )
+            fprintf(stderr,"  [ASYNC VOL ERROR] with async_file_optional\n");
+    }
 
     return ret_value;
 } /* end H5VL_async_file_optional() */
@@ -18448,15 +18902,31 @@ H5VL_async_file_close(void *file, hid_t dxpl_id, void **req)
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL FILE Close\n");
 #endif
-    if ((ret_value = H5is_library_terminating(&is_term)) < 0 )
-        fprintf(stderr,"  [ASYNC VOL ERROR] with H5is_library_terminating\n");
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    /* If the library is shutting down, execute the close synchronously */
-    if (is_term)
-        qtype = BLOCKING;
+    if (async_instance_g->disable_implicit) {
+        ret_value = H5VLfile_close(o->under_object, o->under_vol_id, dxpl_id, req);
 
-    if ((ret_value = async_file_close(qtype, async_instance_g, o, dxpl_id, req)) < 0 )
-        fprintf(stderr,"  [ASYNC VOL ERROR] with async_file_close\n");
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, o->under_vol_id);
+
+        /* Release our wrapper, if underlying file was closed */
+        if (ret_value >= 0)
+            H5VL_async_free_obj(o);
+    }
+    else {
+        if ((ret_value = H5is_library_terminating(&is_term)) < 0 )
+            fprintf(stderr,"  [ASYNC VOL ERROR] with H5is_library_terminating\n");
+
+        /* If the library is shutting down, execute the close synchronously */
+        if (is_term)
+            qtype = BLOCKING;
+
+        if ((ret_value = async_file_close(qtype, async_instance_g, o, dxpl_id, req)) < 0 )
+            fprintf(stderr,"  [ASYNC VOL ERROR] with async_file_close\n");
+    }
 
     return ret_value;
 } /* end H5VL_async_file_close() */
@@ -18479,12 +18949,30 @@ H5VL_async_group_create(void *obj, const H5VL_loc_params_t *loc_params,
 {
     H5VL_async_t *group;
     H5VL_async_t *o = (H5VL_async_t *)obj;
+    void *under;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL GROUP Create\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    group = async_group_create(async_instance_g, o, loc_params, name, lcpl_id, gcpl_id,  gapl_id, dxpl_id, req);
+    if (async_instance_g->disable_implicit) {
+        under = H5VLgroup_create(o->under_object, loc_params, o->under_vol_id, name, lcpl_id, gcpl_id, gapl_id,
+                                 dxpl_id, req);
+        if (under) {
+            group = H5VL_async_new_obj(under, o->under_vol_id);
+
+            /* Check for async request */
+            if (req && *req)
+                *req = H5VL_async_new_obj(*req, o->under_vol_id);
+        } /* end if */
+        else
+            group = NULL;
+    }
+    else {
+        group = async_group_create(async_instance_g, o, loc_params, name, lcpl_id, gcpl_id,  gapl_id, dxpl_id, req);
+    }
 
     return (void *)group;
 } /* end H5VL_async_group_create() */
@@ -18506,12 +18994,29 @@ H5VL_async_group_open(void *obj, const H5VL_loc_params_t *loc_params,
 {
     H5VL_async_t *group;
     H5VL_async_t *o = (H5VL_async_t *)obj;
+    void *under;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL GROUP Open\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    group = async_group_open(async_instance_g, o, loc_params, name, gapl_id, dxpl_id, req);
+    if (async_instance_g->disable_implicit) {
+        under = H5VLgroup_open(o->under_object, loc_params, o->under_vol_id, name, gapl_id, dxpl_id, req);
+        if (under) {
+            group = H5VL_async_new_obj(under, o->under_vol_id);
+
+            /* Check for async request */
+            if (req && *req)
+                *req = H5VL_async_new_obj(*req, o->under_vol_id);
+        } /* end if */
+        else
+            group = NULL;
+    }
+    else {
+        group = async_group_open(async_instance_g, o, loc_params, name, gapl_id, dxpl_id, req);
+    }
 
     return (void *)group;
 } /* end H5VL_async_group_open() */
@@ -18538,11 +19043,23 @@ H5VL_async_group_get(void *obj, H5VL_group_get_t get_type, hid_t dxpl_id,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL GROUP Get\n");
 #endif
-    if (H5VL_GROUP_GET_INFO == get_type)
-        qtype = BLOCKING;
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if ((ret_value = async_group_get(qtype, async_instance_g, o, get_type, dxpl_id, req, arguments)) < 0 )
-        fprintf(stderr,"  [ASYNC VOL ERROR] with async_group_get\n");
+    if (async_instance_g->disable_implicit) {
+        ret_value = H5VLgroup_get(o->under_object, o->under_vol_id, get_type, dxpl_id, req, arguments);
+
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, o->under_vol_id);
+    }
+    else {
+        if (H5VL_GROUP_GET_INFO == get_type)
+            qtype = BLOCKING;
+
+        if ((ret_value = async_group_get(qtype, async_instance_g, o, get_type, dxpl_id, req, arguments)) < 0 )
+            fprintf(stderr,"  [ASYNC VOL ERROR] with async_group_get\n");
+    }
 
     return ret_value;
 } /* end H5VL_async_group_get() */
@@ -18565,13 +19082,29 @@ H5VL_async_group_specific(void *obj, H5VL_group_specific_t specific_type,
     H5VL_async_t *o = (H5VL_async_t *)obj;
     herr_t ret_value;
     task_list_qtype qtype = ISOLATED;
+    hid_t under_vol_id;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL GROUP Specific\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if ((ret_value = async_group_specific(qtype, async_instance_g, o, specific_type, dxpl_id, req, arguments)) < 0 )
-        fprintf(stderr,"  [ASYNC VOL ERROR] with async_group_specific\n");
+    if (async_instance_g->disable_implicit) {
+        // Save copy of underlying VOL connector ID and prov helper, in case of
+        // refresh destroying the current object
+        under_vol_id = o->under_vol_id;
+
+        ret_value = H5VLgroup_specific(o->under_object, o->under_vol_id, specific_type, dxpl_id, req, arguments);
+
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, under_vol_id);
+    }
+    else {
+        if ((ret_value = async_group_specific(qtype, async_instance_g, o, specific_type, dxpl_id, req, arguments)) < 0 )
+            fprintf(stderr,"  [ASYNC VOL ERROR] with async_group_specific\n");
+    }
 
     return ret_value;
 } /* end H5VL_async_group_specific() */
@@ -18598,9 +19131,20 @@ H5VL_async_group_optional(void *obj, H5VL_group_optional_t opt_type,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL GROUP Optional\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if ((ret_value = async_group_optional(qtype, async_instance_g, o, opt_type, dxpl_id, req, arguments)) < 0 )
-        fprintf(stderr,"  [ASYNC VOL ERROR] with async_group_optional\n");
+    if (async_instance_g->disable_implicit) {
+        ret_value = H5VLgroup_optional(o->under_object, o->under_vol_id, opt_type, dxpl_id, req, arguments);
+
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, o->under_vol_id);
+    }
+    else {
+        if ((ret_value = async_group_optional(qtype, async_instance_g, o, opt_type, dxpl_id, req, arguments)) < 0 )
+            fprintf(stderr,"  [ASYNC VOL ERROR] with async_group_optional\n");
+    }
 
     return ret_value;
 } /* end H5VL_async_group_optional() */
@@ -18627,15 +19171,31 @@ H5VL_async_group_close(void *grp, hid_t dxpl_id, void **req)
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL H5Gclose\n");
 #endif
-    if ((ret_value = H5is_library_terminating(&is_term)) < 0 )
-        fprintf(stderr,"  [ASYNC VOL ERROR] with H5is_library_terminating\n");
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    /* If the library is shutting down, execute the close synchronously */
-    if (is_term)
-        qtype = BLOCKING;
+    if (async_instance_g->disable_implicit) {
+        ret_value = H5VLgroup_close(o->under_object, o->under_vol_id, dxpl_id, req);
 
-    if ((ret_value = async_group_close(qtype, async_instance_g, o, dxpl_id, req)) < 0 )
-        fprintf(stderr,"  [ASYNC VOL ERROR] with async_group_close\n");
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, o->under_vol_id);
+
+        /* Release our wrapper, if underlying file was closed */
+        if (ret_value >= 0)
+            H5VL_async_free_obj(o);
+    }
+    else {
+        if ((ret_value = H5is_library_terminating(&is_term)) < 0 )
+            fprintf(stderr,"  [ASYNC VOL ERROR] with H5is_library_terminating\n");
+
+        /* If the library is shutting down, execute the close synchronously */
+        if (is_term)
+            qtype = BLOCKING;
+
+        if ((ret_value = async_group_close(qtype, async_instance_g, o, dxpl_id, req)) < 0 )
+            fprintf(stderr,"  [ASYNC VOL ERROR] with async_group_close\n");
+    }
 
     return ret_value;
 } /* end H5VL_async_group_close() */
@@ -18663,6 +19223,8 @@ H5VL_async_link_create(H5VL_link_create_type_t create_type, void *obj,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL LINK Create\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
     /* Return error if object not open / created */
     if(req == NULL && loc_params && loc_params->obj_type != H5I_BADID && o && !o->is_obj_valid){
@@ -18693,14 +19255,21 @@ H5VL_async_link_create(H5VL_link_create_type_t create_type, void *obj,
             cur_obj = ((H5VL_async_t *)cur_obj)->under_object;
         } /* end if */
 
-        if (o && NULL == o->under_object)
-            H5VL_async_object_wait(o);
+        if (!async_instance_g->disable_implicit) {
+            if (o && NULL == o->under_object)
+                H5VL_async_object_wait(o);
+        }
 
         /* Re-issue 'link create' call, using the unwrapped pieces */
         ret_value = H5VLlink_create_vararg(create_type, (o ? o->under_object : NULL), loc_params, under_vol_id, lcpl_id, lapl_id, dxpl_id, req, cur_obj, cur_params);
     } /* end if */
-    else
-        ret_value = async_link_create(qtype, async_instance_g, create_type, o, loc_params, lcpl_id, lapl_id, dxpl_id, req, arguments);
+    else {
+        if (async_instance_g->disable_implicit)
+            ret_value = H5VLlink_create(create_type, (o ? o->under_object : NULL), loc_params, under_vol_id,
+                                        lcpl_id, lapl_id, dxpl_id, req, arguments);
+        else
+            ret_value = async_link_create(qtype, async_instance_g, create_type, o, loc_params, lcpl_id, lapl_id, dxpl_id, req, arguments);
+    }
 
     return ret_value;
 } /* end H5VL_async_link_create() */
@@ -18734,6 +19303,8 @@ H5VL_async_link_copy(void *src_obj, const H5VL_loc_params_t *loc_params1,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL LINK Copy\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
     /* Return error if objects not open / created */
     if(o_src && !o_src->is_obj_valid) {
@@ -18752,7 +19323,18 @@ H5VL_async_link_copy(void *src_obj, const H5VL_loc_params_t *loc_params1,
         under_vol_id = o_dst->under_vol_id;
     assert(under_vol_id > 0);
 
-    ret_value = async_link_copy(async_instance_g, o_src, loc_params1, o_dst, loc_params2, lcpl_id, lapl_id, dxpl_id, req);
+    if (async_instance_g->disable_implicit) {
+        ret_value =
+            H5VLlink_copy((o_src ? o_src->under_object : NULL), loc_params1, (o_dst ? o_dst->under_object : NULL),
+                          loc_params2, under_vol_id, lcpl_id, lapl_id, dxpl_id, req);
+
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, under_vol_id);
+    }
+    else {
+        ret_value = async_link_copy(async_instance_g, o_src, loc_params1, o_dst, loc_params2, lcpl_id, lapl_id, dxpl_id, req);
+    }
 
     return ret_value;
 } /* end H5VL_async_link_copy() */
@@ -18786,6 +19368,8 @@ H5VL_async_link_move(void *src_obj, const H5VL_loc_params_t *loc_params1,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL LINK Move\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
     /* Return error if objects not open / created */
     if(o_src && !o_src->is_obj_valid) {
@@ -18804,7 +19388,18 @@ H5VL_async_link_move(void *src_obj, const H5VL_loc_params_t *loc_params1,
         under_vol_id = o_dst->under_vol_id;
     assert(under_vol_id > 0);
 
-    ret_value = async_link_move(async_instance_g, o_src, loc_params1, o_dst, loc_params2, lcpl_id, lapl_id, dxpl_id, req);
+    if (async_instance_g->disable_implicit) {
+        ret_value =
+            H5VLlink_move((o_src ? o_src->under_object : NULL), loc_params1, (o_dst ? o_dst->under_object : NULL),
+                          loc_params2, under_vol_id, lcpl_id, lapl_id, dxpl_id, req);
+
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, under_vol_id);
+    }
+    else {
+        ret_value = async_link_move(async_instance_g, o_src, loc_params1, o_dst, loc_params2, lcpl_id, lapl_id, dxpl_id, req);
+    }
 
     return ret_value;
 } /* end H5VL_async_link_move() */
@@ -18831,8 +19426,19 @@ H5VL_async_link_get(void *obj, const H5VL_loc_params_t *loc_params,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL LINK Get\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    ret_value = async_link_get(qtype, async_instance_g, o, loc_params, get_type, dxpl_id, req, arguments);
+    if (async_instance_g->disable_implicit) {
+        ret_value = H5VLlink_get(o->under_object, loc_params, o->under_vol_id, get_type, dxpl_id, req, arguments);
+
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, o->under_vol_id);
+    }
+    else {
+        ret_value = async_link_get(qtype, async_instance_g, o, loc_params, get_type, dxpl_id, req, arguments);
+    }
 
     return ret_value;
 } /* end H5VL_async_link_get() */
@@ -18859,8 +19465,20 @@ H5VL_async_link_specific(void *obj, const H5VL_loc_params_t *loc_params,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL LINK Specific\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    ret_value = async_link_specific(qtype, async_instance_g, o, loc_params, specific_type, dxpl_id, req, arguments);
+    if (async_instance_g->disable_implicit) {
+        ret_value = H5VLlink_specific(o->under_object, loc_params, o->under_vol_id, specific_type, dxpl_id, req,
+                                      arguments);
+
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, o->under_vol_id);
+    }
+    else {
+        ret_value = async_link_specific(qtype, async_instance_g, o, loc_params, specific_type, dxpl_id, req, arguments);
+    }
 
     return ret_value;
 } /* end H5VL_async_link_specific() */
@@ -18887,8 +19505,20 @@ H5VL_async_link_optional(void *obj, const H5VL_loc_params_t *loc_params,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL LINK Optional\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    ret_value = async_link_optional(qtype, async_instance_g, o, loc_params, opt_type, dxpl_id, req, arguments);
+    if (async_instance_g->disable_implicit) {
+        ret_value =
+            H5VLlink_optional(o->under_object, loc_params, o->under_vol_id, opt_type, dxpl_id, req, arguments);
+
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, o->under_vol_id);
+    }
+    else {
+        ret_value = async_link_optional(qtype, async_instance_g, o, loc_params, opt_type, dxpl_id, req, arguments);
+    }
 
     return ret_value;
 } /* end H5VL_async_link_optional() */
@@ -18911,12 +19541,29 @@ H5VL_async_object_open(void *obj, const H5VL_loc_params_t *loc_params,
     H5VL_async_t *new_obj;
     H5VL_async_t *o = (H5VL_async_t *)obj;
     task_list_qtype qtype = BLOCKING;
+    void *under;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL OBJECT Open\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    new_obj = async_object_open(qtype, async_instance_g, o, loc_params, opened_type, dxpl_id, req);
+    if (async_instance_g->disable_implicit) {
+        under = H5VLobject_open(o->under_object, loc_params, o->under_vol_id, opened_type, dxpl_id, req);
+        if (under) {
+            new_obj = H5VL_async_new_obj(under, o->under_vol_id);
+
+            /* Check for async request */
+            if (req && *req)
+                *req = H5VL_async_new_obj(*req, o->under_vol_id);
+        } /* end if */
+        else
+            new_obj = NULL;
+    }
+    else{
+        new_obj = async_object_open(qtype, async_instance_g, o, loc_params, opened_type, dxpl_id, req);
+    }
 
     return (void *)new_obj;
 } /* end H5VL_async_object_open() */
@@ -18946,9 +19593,22 @@ H5VL_async_object_copy(void *src_obj, const H5VL_loc_params_t *src_loc_params,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL OBJECT Copy\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if ((ret_value = async_object_copy(qtype, async_instance_g, o_src, src_loc_params, src_name, o_dst, dst_loc_params, dst_name, ocpypl_id, lcpl_id, dxpl_id, req)) < 0 )
-        fprintf(stderr,"  [ASYNC VOL ERROR] with async_object_copy\n");
+    if (async_instance_g->disable_implicit) {
+        ret_value =
+            H5VLobject_copy(o_src->under_object, src_loc_params, src_name, o_dst->under_object, dst_loc_params,
+                            dst_name, o_src->under_vol_id, ocpypl_id, lcpl_id, dxpl_id, req);
+
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, o_src->under_vol_id);
+    }
+    else {
+        if ((ret_value = async_object_copy(qtype, async_instance_g, o_src, src_loc_params, src_name, o_dst, dst_loc_params, dst_name, ocpypl_id, lcpl_id, dxpl_id, req)) < 0 )
+            fprintf(stderr,"  [ASYNC VOL ERROR] with async_object_copy\n");
+    }
 
     return ret_value;
 } /* end H5VL_async_object_copy() */
@@ -18974,9 +19634,21 @@ H5VL_async_object_get(void *obj, const H5VL_loc_params_t *loc_params, H5VL_objec
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL OBJECT Get\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if ((ret_value = async_object_get(qtype, async_instance_g, o, loc_params, get_type, dxpl_id, req, arguments)) < 0 )
-        fprintf(stderr,"  [ASYNC VOL ERROR] with async_object_get\n");
+    if (async_instance_g->disable_implicit) {
+        ret_value =
+            H5VLobject_get(o->under_object, loc_params, o->under_vol_id, get_type, dxpl_id, req, arguments);
+
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, o->under_vol_id);
+    }
+    else {
+        if ((ret_value = async_object_get(qtype, async_instance_g, o, loc_params, get_type, dxpl_id, req, arguments)) < 0 )
+            fprintf(stderr,"  [ASYNC VOL ERROR] with async_object_get\n");
+    }
 
     return ret_value;
 } /* end H5VL_async_object_get() */
@@ -19000,15 +19672,31 @@ H5VL_async_object_specific(void *obj, const H5VL_loc_params_t *loc_params,
     H5VL_async_t *o = (H5VL_async_t *)obj;
     herr_t ret_value;
     task_list_qtype qtype = ISOLATED;
+    hid_t under_vol_id;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL OBJECT Specific\n");
 #endif
-    if (H5VL_OBJECT_REFRESH == specific_type)
-        qtype = BLOCKING;
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if ((ret_value = async_object_specific(qtype, async_instance_g, o, loc_params, specific_type, dxpl_id, req, arguments)) < 0 )
-        fprintf(stderr,"  [ASYNC VOL ERROR] with async_object_specific\n");
+    if (async_instance_g->disable_implicit) {
+        under_vol_id = o->under_vol_id;
+
+        ret_value = H5VLobject_specific(o->under_object, loc_params, o->under_vol_id, specific_type, dxpl_id, req,
+                                        arguments);
+
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, under_vol_id);
+    }
+    else {
+        if (H5VL_OBJECT_REFRESH == specific_type)
+            qtype = BLOCKING;
+
+        if ((ret_value = async_object_specific(qtype, async_instance_g, o, loc_params, specific_type, dxpl_id, req, arguments)) < 0 )
+            fprintf(stderr,"  [ASYNC VOL ERROR] with async_object_specific\n");
+    }
 
     return ret_value;
 } /* end H5VL_async_object_specific() */
@@ -19035,9 +19723,21 @@ H5VL_async_object_optional(void *obj, const H5VL_loc_params_t *loc_params,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL OBJECT Optional\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if ((ret_value = async_object_optional(qtype, async_instance_g, o, loc_params, opt_type, dxpl_id, req, arguments)) < 0 )
-        fprintf(stderr,"  [ASYNC VOL ERROR] with async_object_optional\n");
+    if (async_instance_g->disable_implicit) {
+        ret_value =
+            H5VLobject_optional(o->under_object, loc_params, o->under_vol_id, opt_type, dxpl_id, req, arguments);
+
+        /* Check for async request */
+        if (req && *req)
+            *req = H5VL_async_new_obj(*req, o->under_vol_id);
+    }
+    else {
+        if ((ret_value = async_object_optional(qtype, async_instance_g, o, loc_params, opt_type, dxpl_id, req, arguments)) < 0 )
+            fprintf(stderr,"  [ASYNC VOL ERROR] with async_object_optional\n");
+    }
 
     return ret_value;
 } /* end H5VL_async_object_optional() */
@@ -19430,6 +20130,17 @@ H5VL_async_request_optional(void *obj, H5VL_request_optional_t opt_type,
 
         ret_value = 0;
     }
+    else if(opt_type == H5VL_async_request_depend_op_g) {
+        void *parent_request = va_arg(arguments, void *);
+        if (parent_request == NULL) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s NULL parent request object\n", __func__);
+            return -1;
+        }
+
+        ret_value = H5VL_async_set_request_dep(obj, parent_request);
+    }
+    else if(opt_type == H5VL_async_request_start_op_g)
+        return (H5VL_async_start());
     else
         assert(0 && "Unknown 'optional' operation");
 
@@ -19696,6 +20407,8 @@ H5VL_async_optional(void *obj, int op_type, hid_t dxpl_id, void **req,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL generic Optional\n");
 #endif
+    H5VL_async_dxpl_set_disable_implicit(dxpl_id);
+    H5VL_async_dxpl_set_pause(dxpl_id);
 
     ret_value = H5VLoptional(o->under_object, o->under_vol_id, op_type,
                              dxpl_id, req, arguments);
