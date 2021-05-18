@@ -69,9 +69,9 @@
 #define ALLOC_INITIAL_SIZE 2
 
 /* Default interval between checking for HDF5 global lock */
-#define ASYNC_ATTEMPT_CHECK_INTERVAL 8
-#define ASYNC_APP_CHECK_SLEEP_TIME 200
-#define ASYNC_APP_CHECK_SLEEP_TIME_MAX 100000
+#define ASYNC_ATTEMPT_CHECK_INTERVAL 4
+#define ASYNC_APP_CHECK_SLEEP_TIME 600
+#define ASYNC_APP_CHECK_SLEEP_TIME_MAX 5000
 
 /* Magic #'s for memory structures */
 #define ASYNC_MAGIC 10242048
@@ -1517,15 +1517,17 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool)
         fprintf(stderr,"  [ASYNC VOL DBG] push task [%p] to Argobots pool\n", task_elt->func);
 #endif
 
-        if (ABT_thread_create(pool, task_elt->func, task_elt, ABT_THREAD_ATTR_NULL, &task_elt->abt_thread) != ABT_SUCCESS) {
-            fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_thread_create failed for %p\n", __func__, task_elt->func);
-            break;
-        }
-        /* if (ABT_task_create(pool, task_elt->func, task_elt, &task_elt->abt_task) != ABT_SUCCESS) { */
-        /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_task_create failed for %p\n", __func__, task_elt->func); */
-        /*     break; */
-        /* } */
-        task_elt->in_abt_pool = 1;
+	if (task_elt->is_done == 0) {
+	    if (ABT_thread_create(pool, task_elt->func, task_elt, ABT_THREAD_ATTR_NULL, &task_elt->abt_thread) != ABT_SUCCESS) {
+		fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_thread_create failed for %p\n", __func__, task_elt->func);
+		break;
+	    }
+	    /* if (ABT_task_create(pool, task_elt->func, task_elt, &task_elt->abt_task) != ABT_SUCCESS) { */
+	    /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_task_create failed for %p\n", __func__, task_elt->func); */
+	    /*     break; */
+	    /* } */
+	    task_elt->in_abt_pool = 1;
+	}
 
         DL_DELETE(qhead->queue->task_list, task_elt);
         task_elt->prev = NULL;
@@ -2006,33 +2008,27 @@ herr_t H5VL_async_file_wait(H5VL_async_t *async_obj)
     return 0;
 }
 
-/* static void */
-/* execute_parent_task_recursive(async_task_t *task) */
-/* { */
-/*     if (task == NULL ) */
-/*         return; */
-
-/*     if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS) */
-/*          fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_mutex_unlock failed\n", __func__); */
-
-/*     if (task->parent_obj != NULL) */
-/*         execute_parent_task_recursive(task->parent_obj->create_task); */
-
-/* #ifdef ENABLE_DBG_MSG */
-/*     fprintf(stderr,"  [ASYNC VOL DBG] %s: cancel argobots task and execute now \n", __func__); */
-/* #endif */
-/*     // Execute the task in current thread */
-/*     task->func(task); */
-
-/*     // Cancel the task already in the pool */
-/*     /1* ABT_pool_remove(*task->async_obj->pool_ptr, task); *1/ */
-/*     /1* ABT_thread_cancel(task); *1/ */
-/*     ABT_task_cancel(task); */
-
-/* #ifdef ENABLE_DBG_MSG */
-/*     fprintf(stderr,"  [ASYNC VOL DBG] %s: finished executing task \n", __func__); */
-/* #endif */
-/* } */
+static void
+execute_parent_task_recursive(async_task_t *task)
+{
+    if (task == NULL || task->is_done == 1)
+        return;
+    if (task->parent_obj != NULL)
+        execute_parent_task_recursive(task->parent_obj->create_task);
+    // Cancel the task already in the pool
+    if (task->in_abt_pool == 1) {
+#ifdef ENABLE_DBG_MSG
+        fprintf(stderr,"  [ASYNC VOL DBG] %s: cancel argobots task and execute now \n", __func__);
+#endif
+        ABT_thread_cancel(task->abt_thread);
+        ABT_thread_free(&task->abt_thread);
+    }
+    // Execute the task in current thread
+    task->func(task);
+#ifdef ENABLE_DBG_MSG
+    fprintf(stderr,"  [ASYNC VOL DBG] %s: finished executing task \n", __func__);
+#endif
+}
 
 herr_t
 H5VL_async_start()
@@ -2237,11 +2233,42 @@ check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *
         }
     }
 
-    while (*acquired == false) {
-        if (async_instance_g->ex_delay == false && H5TSmutex_get_attempt_count(&attempt_count) < 0) {
-            fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_get_attempt_count failed\n", __func__);
-            return -1;
+    if (H5TSmutex_get_attempt_count(&attempt_count) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_get_attempt_count failed\n", __func__);
+        return -1;
+    }
+
+    if (!async_instance_g->start_abt_push && async_instance_g->ex_delay == false) {
+        while(1) {
+            if(task->async_obj->file_async_obj->attempt_check_cnt % ASYNC_ATTEMPT_CHECK_INTERVAL == 0) {
+                if(async_instance_g->sleep_time > 0)
+                    usleep(async_instance_g->sleep_time);
+
+                if (H5TSmutex_get_attempt_count(&new_attempt_count) < 0) {
+                    fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_get_attempt_count failed\n", __func__);
+                    return -1;
+                }
+
+                if (new_attempt_count <= attempt_count) {
+                    async_instance_g->sleep_time = 0;
+
+#ifdef ENABLE_DBG_MSG
+        fprintf(stderr,"  [ASYNC ABT DBG] %s counter %d/%d, reset wait time to %d \n", __func__, attempt_count, new_attempt_count,  async_instance_g->sleep_time);
+#endif
+                    break;
+                }
+
+                attempt_count = new_attempt_count;
+                task->async_obj->file_async_obj->attempt_check_cnt++;
+                task->async_obj->file_async_obj->attempt_check_cnt %= ASYNC_ATTEMPT_CHECK_INTERVAL;
+            }
+            else
+                break;
         }
+    }
+
+    wait_count = 0;
+    while (*acquired == false) {
         if (H5TSmutex_acquire(*mutex_count, acquired) < 0) {
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             return -1;
@@ -2250,68 +2277,49 @@ check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *
 #ifdef ENABLE_DBG_MSG
             fprintf(stderr,"  [ASYNC ABT DBG] %s lock NOT acquired, wait\n", __func__);
 #endif
-            if(async_instance_g->sleep_time > 0)
-                usleep(async_instance_g->sleep_time);
-            continue;
         }
-        // No need to check and wait when start_abt_push flag is turned on
-        if (async_instance_g->start_abt_push)
-            goto done;
+        if (wait_count > 0) {
+            usleep(1000);
+            wait_count++;
+            if (wait_count == 10000) {
+                fprintf(stderr, "  [ASYNC ABT INFO] %s unable to acquire HDF5 mutex for 10 seconds, deadlock?\n", __func__);
+                wait_count = 0;
+            }
+        }
 
-        if(async_instance_g->ex_delay == false && task->async_obj->file_async_obj->attempt_check_cnt % ASYNC_ATTEMPT_CHECK_INTERVAL == 0) {
-            if(async_instance_g->sleep_time > 0)
-                usleep(async_instance_g->sleep_time);
-            if (H5TSmutex_get_attempt_count(&new_attempt_count) < 0) {
-                fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_get_attempt_count failed\n", __func__);
-                return -1;
-            }
-            if (new_attempt_count > attempt_count) {
-                if (H5TSmutex_release(mutex_count) < 0) {
-                    fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
-                }
-                *acquired = false;
-            }
-            else {
-                break;
-            }
-            attempt_count = new_attempt_count;
-            task->async_obj->file_async_obj->attempt_check_cnt++;
-            task->async_obj->file_async_obj->attempt_check_cnt %= ASYNC_ATTEMPT_CHECK_INTERVAL;
-        }
     }
 
-done:
-    if (attempt_count < new_attempt_count)
-        return new_attempt_count;
-    else
-        return attempt_count;
+    return (new_attempt_count > attempt_count ? new_attempt_count : attempt_count);
 }
 
 static void 
 check_app_wait(int attempt_count)
 {
-    /* unsigned int new_attempt_count; */
+    unsigned int new_attempt_count, op_count = 2;
 
-    /* if (H5TSmutex_get_attempt_count(&new_attempt_count) < 0) { */
-    /*     fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_get_attempt_count failed\n", __func__); */
-    /*     return; */
-    /* } */
+    if (H5TSmutex_get_attempt_count(&new_attempt_count) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_get_attempt_count failed\n", __func__);
+        return;
+    }
 
-    /* // If the application thread is waiting, double the current sleep time for next status check */
-    /* if (attempt_count > 0 && new_attempt_count > attempt_count) { */
-    /*     if (async_instance_g->sleep_time < ASYNC_APP_CHECK_SLEEP_TIME_MAX) { */
-    /*         async_instance_g->sleep_time *= 2; */
-/* #ifdef ENABLE_DBG_MSG */
-    /*         fprintf(stderr,"  [ASYNC ABT DBG] %s counter %d/%d, increase wait time to %d \n", __func__, attempt_count, new_attempt_count,  async_instance_g->sleep_time); */
-/* #endif */
-    /*     } */
-    /* } */
-    /* else if (new_attempt_count == attempt_count) { */
-    /*     async_instance_g->sleep_time = ASYNC_APP_CHECK_SLEEP_TIME; */
-/* #ifdef ENABLE_DBG_MSG */
-    /*     fprintf(stderr,"  [ASYNC ABT DBG] %s counter %d/%d, reset wait time to %d \n", __func__, attempt_count, new_attempt_count,  async_instance_g->sleep_time); */
-/* #endif */
-    /* } */
+    // If the application thread is waiting, double the current sleep time for next status check
+    if (attempt_count > 0 && new_attempt_count > attempt_count+op_count) {
+        if (async_instance_g->sleep_time < ASYNC_APP_CHECK_SLEEP_TIME_MAX) {
+            if (async_instance_g->sleep_time == 0)
+                async_instance_g->sleep_time = ASYNC_APP_CHECK_SLEEP_TIME;
+            else
+                async_instance_g->sleep_time *= 2;
+#ifdef ENABLE_DBG_MSG
+            fprintf(stderr,"  [ASYNC ABT DBG] %s counter %d/%d, increase wait time to %d \n", __func__, attempt_count, new_attempt_count,  async_instance_g->sleep_time);
+#endif
+        }
+    }
+    else if (new_attempt_count <= attempt_count+op_count && async_instance_g->sleep_time > ASYNC_APP_CHECK_SLEEP_TIME) {
+        async_instance_g->sleep_time = 0;
+#ifdef ENABLE_DBG_MSG
+        fprintf(stderr,"  [ASYNC ABT DBG] %s counter %d/%d, reset wait time to %d \n", __func__, attempt_count, new_attempt_count,  async_instance_g->sleep_time);
+#endif
+    }
     return;
 }
 
@@ -2381,13 +2389,23 @@ async_attr_create_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -2407,27 +2425,17 @@ async_attr_create_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         obj = H5VLattr_create(args->obj, args->loc_params, task->under_vol_id, args->name, args->type_id, args->space_id, args->acpl_id, args->aapl_id, args->dxpl_id, args->req);
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if (NULL == obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
+
 
     task->async_obj->under_object = obj;
     task->async_obj->is_obj_valid = 1;
@@ -2467,7 +2475,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -2734,13 +2741,23 @@ async_attr_open_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -2760,21 +2777,11 @@ async_attr_open_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         obj = H5VLattr_open(args->obj, args->loc_params, task->under_vol_id, args->name, args->aapl_id, args->dxpl_id, args->req);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if (NULL == obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -2817,7 +2824,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -3072,13 +3078,23 @@ async_attr_read_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -3098,21 +3114,11 @@ async_attr_read_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLattr_read(args->attr, task->under_vol_id, args->mem_type_id, args->buf, args->dxpl_id, args->req);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -3147,7 +3153,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -3384,13 +3389,23 @@ async_attr_write_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -3410,21 +3425,11 @@ async_attr_write_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLattr_write(args->attr, task->under_vol_id, args->mem_type_id, args->buf, args->dxpl_id, args->req);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -3460,7 +3465,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -3710,13 +3714,23 @@ async_attr_get_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -3736,21 +3750,11 @@ async_attr_get_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLattr_get(args->obj, task->under_vol_id, args->get_type, args->dxpl_id, args->req, args->arguments);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -3787,7 +3791,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -4021,13 +4024,23 @@ async_attr_specific_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -4049,21 +4062,11 @@ async_attr_specific_fn(void *foo)
         }
     }
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLattr_specific(args->obj, args->loc_params, task->under_vol_id, args->specific_type, args->dxpl_id, args->req, args->arguments);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -4101,7 +4104,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -4345,13 +4347,23 @@ async_attr_optional_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -4371,21 +4383,11 @@ async_attr_optional_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLattr_optional(args->obj, task->under_vol_id, args->opt_type, args->dxpl_id, args->req, args->arguments);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -4422,7 +4424,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -4656,13 +4657,23 @@ async_attr_close_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -4682,21 +4693,11 @@ async_attr_close_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLattr_close(args->attr, task->under_vol_id, args->dxpl_id, args->req);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -4730,7 +4731,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -4972,13 +4972,23 @@ async_dataset_create_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -4998,21 +5008,11 @@ async_dataset_create_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         obj = H5VLdataset_create(args->obj, args->loc_params, task->under_vol_id, args->name, args->lcpl_id, args->type_id, args->space_id, args->dcpl_id, args->dapl_id, args->dxpl_id, args->req);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if (NULL == obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -5059,7 +5059,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -5331,13 +5330,23 @@ async_dataset_open_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -5357,21 +5366,11 @@ async_dataset_open_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         obj = H5VLdataset_open(args->obj, args->loc_params, task->under_vol_id, args->name, args->dapl_id, args->dxpl_id, args->req);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if (NULL == obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -5413,7 +5412,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -5670,13 +5668,23 @@ async_dataset_read_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -5696,21 +5704,11 @@ async_dataset_read_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLdataset_read(args->dset, task->under_vol_id, args->mem_type_id, args->mem_space_id, args->file_space_id, args->plist_id, args->buf, args->req);
+
+        check_app_wait(attempt_count+3);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -5748,7 +5746,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -5990,13 +5987,23 @@ async_dataset_write_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -6016,22 +6023,12 @@ async_dataset_write_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLdataset_write(args->dset, task->under_vol_id, args->mem_type_id, args->mem_space_id,
                            args->file_space_id, args->plist_id, args->buf, args->req);
+
+        check_app_wait(attempt_count+3);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -6067,7 +6064,6 @@ done:
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
@@ -6075,7 +6071,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -6318,13 +6313,23 @@ async_dataset_get_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -6344,21 +6349,11 @@ async_dataset_get_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLdataset_get(args->dset, task->under_vol_id, args->get_type, args->dxpl_id, args->req, args->arguments);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -6395,7 +6390,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -6632,13 +6626,23 @@ async_dataset_specific_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -6658,21 +6662,11 @@ async_dataset_specific_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLdataset_specific(args->obj, task->under_vol_id, args->specific_type, args->dxpl_id, args->req, args->arguments);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -6710,7 +6704,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -6947,13 +6940,23 @@ async_dataset_optional_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -6973,21 +6976,11 @@ async_dataset_optional_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLdataset_optional(args->obj, task->under_vol_id, args->opt_type, args->dxpl_id, args->req, args->arguments);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -7024,7 +7017,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -7258,13 +7250,23 @@ async_dataset_close_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -7284,21 +7286,11 @@ async_dataset_close_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLdataset_close(args->dset, task->under_vol_id, args->dxpl_id, args->req);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -7332,7 +7324,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -7579,13 +7570,23 @@ async_datatype_commit_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -7605,21 +7606,11 @@ async_datatype_commit_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         under_obj = H5VLdatatype_commit(args->obj, args->loc_params, task->under_vol_id, args->name, args->type_id, args->lcpl_id, args->tcpl_id, args->tapl_id, args->dxpl_id, args->req);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if (NULL ==  under_obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -7661,7 +7652,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -7924,13 +7914,23 @@ async_datatype_open_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -7950,21 +7950,11 @@ async_datatype_open_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         obj = H5VLdatatype_open(args->obj, args->loc_params, task->under_vol_id, args->name, args->tapl_id, args->dxpl_id, args->req);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( NULL == obj ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -8007,7 +7997,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -8262,13 +8251,23 @@ async_datatype_get_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -8288,21 +8287,11 @@ async_datatype_get_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLdatatype_get(args->dt, task->under_vol_id, args->get_type, args->dxpl_id, args->req, args->arguments);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -8339,7 +8328,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -8573,13 +8561,23 @@ async_datatype_specific_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -8599,21 +8597,11 @@ async_datatype_specific_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLdatatype_specific(args->obj, task->under_vol_id, args->specific_type, args->dxpl_id, args->req, args->arguments);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -8650,7 +8638,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -8884,13 +8871,23 @@ async_datatype_optional_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -8910,21 +8907,11 @@ async_datatype_optional_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLdatatype_optional(args->obj, task->under_vol_id, args->opt_type, args->dxpl_id, args->req, args->arguments);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -8963,7 +8950,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -9197,13 +9183,23 @@ async_datatype_close_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -9223,21 +9219,11 @@ async_datatype_close_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLdatatype_close(args->dt, task->under_vol_id, args->dxpl_id, args->req);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -9271,7 +9257,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -9485,13 +9470,23 @@ async_file_create_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -9512,18 +9507,6 @@ async_file_create_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
     /* Get the underlying VOL ID */
     H5Pget_vol_id(args->fapl_id, &under_vol_id);
     assert(under_vol_id);
@@ -9531,6 +9514,8 @@ async_file_create_fn(void *foo)
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         obj = H5VLfile_create(args->name, args->flags, args->fcpl_id, args->fapl_id, args->dxpl_id, args->req);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if (NULL == obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -9596,7 +9581,6 @@ done:
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
@@ -9604,7 +9588,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -9822,13 +9805,23 @@ async_file_open_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -9849,18 +9842,6 @@ async_file_open_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
     /* Get the underlying VOL ID */
     H5Pget_vol_id(args->fapl_id, &under_vol_id);
     assert(under_vol_id);
@@ -9868,6 +9849,8 @@ async_file_open_fn(void *foo)
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         obj = H5VLfile_open(args->name, args->flags, args->fapl_id, args->dxpl_id, args->req);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if (NULL == obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -9944,7 +9927,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -10185,13 +10167,23 @@ async_file_get_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -10211,21 +10203,11 @@ async_file_get_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLfile_get(args->file, task->under_vol_id, args->get_type, args->dxpl_id, args->req, args->arguments);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -10263,7 +10245,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -10497,13 +10478,23 @@ async_file_specific_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -10523,21 +10514,11 @@ async_file_specific_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLfile_specific(args->file, task->under_vol_id, args->specific_type, args->dxpl_id, args->req, args->arguments);
+        
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -10575,7 +10556,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -10809,13 +10789,23 @@ async_file_optional_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -10835,21 +10825,11 @@ async_file_optional_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLfile_optional(args->file, task->under_vol_id, args->opt_type, args->dxpl_id, args->req, args->arguments);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -10886,7 +10866,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -11118,13 +11097,23 @@ async_file_close_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -11144,22 +11133,11 @@ async_file_close_fn(void *foo)
         usleep(1000);
     }
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLfile_close(args->file, task->under_vol_id, args->dxpl_id, args->req);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -11216,7 +11194,6 @@ done:
         ABT_mutex_unlock(task->task_mutex);
     }
 
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -11471,13 +11448,23 @@ async_group_create_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -11497,21 +11484,11 @@ async_group_create_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         obj = H5VLgroup_create(args->obj, args->loc_params, task->under_vol_id, args->name, args->lcpl_id, args->gcpl_id, args->gapl_id, args->dxpl_id, args->req);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if (NULL == obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -11557,7 +11534,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -11826,13 +11802,23 @@ async_group_open_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -11852,21 +11838,11 @@ async_group_open_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         obj = H5VLgroup_open(args->obj, args->loc_params, task->under_vol_id, args->name, args->gapl_id, args->dxpl_id, args->req);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if (NULL == obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -11908,7 +11884,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -12163,13 +12138,23 @@ async_group_get_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -12189,21 +12174,11 @@ async_group_get_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLgroup_get(args->obj, task->under_vol_id, args->get_type, args->dxpl_id, args->req, args->arguments);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -12240,7 +12215,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -12477,13 +12451,23 @@ async_group_specific_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -12503,22 +12487,11 @@ async_group_specific_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLgroup_specific(args->obj, task->under_vol_id, args->specific_type, args->dxpl_id, args->req, args->arguments);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -12557,7 +12530,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -12791,13 +12763,23 @@ async_group_optional_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -12817,29 +12799,17 @@ async_group_optional_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLgroup_optional(args->obj, task->under_vol_id, args->opt_type, args->dxpl_id, args->req, args->arguments);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
-
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
@@ -12871,7 +12841,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -13105,13 +13074,23 @@ async_group_close_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -13133,22 +13112,11 @@ async_group_close_fn(void *foo)
         is_lock = 1;
     }
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLgroup_close(args->grp, task->under_vol_id, args->dxpl_id, args->req);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -13186,7 +13154,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -13438,13 +13405,23 @@ async_link_create_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -13464,29 +13441,17 @@ async_link_create_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLlink_create(args->create_type, args->obj, args->loc_params, task->under_vol_id, args->lcpl_id, args->lapl_id, args->dxpl_id, args->req, args->arguments);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
-
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
@@ -13513,7 +13478,6 @@ done:
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
@@ -13521,7 +13485,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -13782,13 +13745,23 @@ async_link_copy_fn(void *foo)
     /*     } */
     /* } */
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -13808,22 +13781,11 @@ async_link_copy_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLlink_copy(args->src_obj, args->loc_params1, args->dst_obj, args->loc_params2, task->under_vol_id, args->lcpl_id, args->lapl_id, args->dxpl_id, args->req);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -13863,7 +13825,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -14116,13 +14077,23 @@ async_link_move_fn(void *foo)
     /*     } */
     /* } */
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -14142,22 +14113,11 @@ async_link_move_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLlink_move(args->src_obj, args->loc_params1, args->dst_obj, args->loc_params2, task->under_vol_id, args->lcpl_id, args->lapl_id, args->dxpl_id, args->req);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -14197,7 +14157,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -14450,13 +14409,23 @@ async_link_get_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -14476,22 +14445,11 @@ async_link_get_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLlink_get(args->obj, args->loc_params, task->under_vol_id, args->get_type, args->dxpl_id, args->req, args->arguments);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -14523,7 +14481,6 @@ done:
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
@@ -14531,7 +14488,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -14771,13 +14727,23 @@ async_link_specific_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -14800,22 +14766,11 @@ async_link_specific_fn(void *foo)
         }
     }
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLlink_specific(args->obj, args->loc_params, task->under_vol_id, args->specific_type, args->dxpl_id, args->req, args->arguments);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -14847,7 +14802,6 @@ done:
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
@@ -14855,7 +14809,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -15095,13 +15048,23 @@ async_link_optional_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -15121,22 +15084,11 @@ async_link_optional_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLlink_optional(args->obj, args->loc_params, task->under_vol_id, args->opt_type, args->dxpl_id, args->req, args->arguments);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -15176,7 +15128,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -15416,13 +15367,23 @@ async_object_open_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -15442,29 +15403,17 @@ async_object_open_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         obj = H5VLobject_open(args->obj, args->loc_params, task->under_vol_id, args->opened_type, args->dxpl_id, args->req);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if (NULL == obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
-
 
     task->async_obj->under_object = obj;
     task->async_obj->is_obj_valid = 1;
@@ -15490,7 +15439,6 @@ done:
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
@@ -15498,7 +15446,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -15753,13 +15700,23 @@ async_object_copy_fn(void *foo)
     /*     } */
     /* } */
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -15779,22 +15736,11 @@ async_object_copy_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLobject_copy(args->src_obj, args->src_loc_params, args->src_name, args->dst_obj, args->dst_loc_params, args->dst_name, task->under_vol_id, args->ocpypl_id, args->lcpl_id, args->dxpl_id, args->req);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -15838,7 +15784,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -16086,13 +16031,23 @@ async_object_get_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -16115,22 +16070,11 @@ async_object_get_fn(void *foo)
         usleep(1000);
     }
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLobject_get(args->obj, args->loc_params, task->under_vol_id, args->get_type, args->dxpl_id, args->req, args->arguments);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -16162,7 +16106,6 @@ done:
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
@@ -16170,7 +16113,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -16415,13 +16357,23 @@ async_object_specific_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -16443,29 +16395,17 @@ async_object_specific_fn(void *foo)
         }
     }
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLobject_specific(args->obj, args->loc_params, task->under_vol_id, args->specific_type, args->dxpl_id, args->req, args->arguments);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
-
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
@@ -16490,7 +16430,6 @@ done:
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
@@ -16498,7 +16437,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -16741,13 +16679,23 @@ async_object_optional_fn(void *foo)
         }
     }
 
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
+
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
 #endif
-
     if ((attempt_count=check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-
+	goto done;
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
@@ -16767,29 +16715,17 @@ async_object_optional_fn(void *foo)
     }
     is_lock = 1;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         status = H5VLobject_optional(args->obj, args->loc_params, task->under_vol_id, args->opt_type, args->dxpl_id, args->req, args->arguments);
+
+        check_app_wait(attempt_count);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
-
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
@@ -16814,7 +16750,6 @@ done:
             fprintf(stderr,"  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
-
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
     task->is_done = 1;
@@ -16822,7 +16757,6 @@ done:
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr,"  [ASYNC ABT DBG] %s releasing global lock\n", __func__);
 #endif
-    check_app_wait(attempt_count);
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
