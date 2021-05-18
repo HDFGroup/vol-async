@@ -71,7 +71,7 @@
 /* Default interval between checking for HDF5 global lock */
 #define ASYNC_ATTEMPT_CHECK_INTERVAL 4
 #define ASYNC_APP_CHECK_SLEEP_TIME 600
-#define ASYNC_APP_CHECK_SLEEP_TIME_MAX 5000
+#define ASYNC_APP_CHECK_SLEEP_TIME_MAX 4000
 
 /* Magic #'s for memory structures */
 #define ASYNC_MAGIC 10242048
@@ -2293,9 +2293,9 @@ check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *
 }
 
 static void 
-check_app_wait(int attempt_count)
+check_app_wait(int attempt_count, const char* func_name)
 {
-    unsigned int new_attempt_count, op_count = 2;
+    unsigned int new_attempt_count, op_count = 1;
 
     if (H5TSmutex_get_attempt_count(&new_attempt_count) < 0) {
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5TSmutex_get_attempt_count failed\n", __func__);
@@ -2310,14 +2310,14 @@ check_app_wait(int attempt_count)
             else
                 async_instance_g->sleep_time *= 2;
 #ifdef ENABLE_DBG_MSG
-            fprintf(stderr,"  [ASYNC ABT DBG] %s counter %d/%d, increase wait time to %d \n", __func__, attempt_count, new_attempt_count,  async_instance_g->sleep_time);
+            fprintf(stderr,"  [ASYNC ABT DBG] %s counter %d/%d, increase wait time to %d \n", func_name, attempt_count, new_attempt_count,  async_instance_g->sleep_time);
 #endif
         }
     }
     else if (new_attempt_count <= attempt_count+op_count && async_instance_g->sleep_time > ASYNC_APP_CHECK_SLEEP_TIME) {
         async_instance_g->sleep_time = 0;
 #ifdef ENABLE_DBG_MSG
-        fprintf(stderr,"  [ASYNC ABT DBG] %s counter %d/%d, reset wait time to %d \n", __func__, attempt_count, new_attempt_count,  async_instance_g->sleep_time);
+        fprintf(stderr,"  [ASYNC ABT DBG] %s counter %d/%d, reset wait time to %d \n", func_name, attempt_count, new_attempt_count,  async_instance_g->sleep_time);
 #endif
     }
     return;
@@ -2428,7 +2428,7 @@ async_attr_create_fn(void *foo)
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY {
         obj = H5VLattr_create(args->obj, args->loc_params, task->under_vol_id, args->name, args->type_id, args->space_id, args->acpl_id, args->aapl_id, args->dxpl_id, args->req);
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if (NULL == obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -2781,7 +2781,7 @@ async_attr_open_fn(void *foo)
     H5E_BEGIN_TRY {
         obj = H5VLattr_open(args->obj, args->loc_params, task->under_vol_id, args->name, args->aapl_id, args->dxpl_id, args->req);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if (NULL == obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -3118,7 +3118,7 @@ async_attr_read_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLattr_read(args->attr, task->under_vol_id, args->mem_type_id, args->buf, args->dxpl_id, args->req);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -3429,7 +3429,7 @@ async_attr_write_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLattr_write(args->attr, task->under_vol_id, args->mem_type_id, args->buf, args->dxpl_id, args->req);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -3754,7 +3754,7 @@ async_attr_get_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLattr_get(args->obj, task->under_vol_id, args->get_type, args->dxpl_id, args->req, args->arguments);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -4066,7 +4066,7 @@ async_attr_specific_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLattr_specific(args->obj, args->loc_params, task->under_vol_id, args->specific_type, args->dxpl_id, args->req, args->arguments);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -4387,7 +4387,7 @@ async_attr_optional_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLattr_optional(args->obj, task->under_vol_id, args->opt_type, args->dxpl_id, args->req, args->arguments);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -4697,7 +4697,7 @@ async_attr_close_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLattr_close(args->attr, task->under_vol_id, args->dxpl_id, args->req);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -5012,7 +5012,7 @@ async_dataset_create_fn(void *foo)
     H5E_BEGIN_TRY {
         obj = H5VLdataset_create(args->obj, args->loc_params, task->under_vol_id, args->name, args->lcpl_id, args->type_id, args->space_id, args->dcpl_id, args->dapl_id, args->dxpl_id, args->req);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count+3, __func__);
     } H5E_END_TRY
     if (NULL == obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -5370,7 +5370,7 @@ async_dataset_open_fn(void *foo)
     H5E_BEGIN_TRY {
         obj = H5VLdataset_open(args->obj, args->loc_params, task->under_vol_id, args->name, args->dapl_id, args->dxpl_id, args->req);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count+3, __func__);
     } H5E_END_TRY
     if (NULL == obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -5708,7 +5708,7 @@ async_dataset_read_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLdataset_read(args->dset, task->under_vol_id, args->mem_type_id, args->mem_space_id, args->file_space_id, args->plist_id, args->buf, args->req);
 
-        check_app_wait(attempt_count+3);
+        check_app_wait(attempt_count+4, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -6028,7 +6028,7 @@ async_dataset_write_fn(void *foo)
         status = H5VLdataset_write(args->dset, task->under_vol_id, args->mem_type_id, args->mem_space_id,
                            args->file_space_id, args->plist_id, args->buf, args->req);
 
-        check_app_wait(attempt_count+3);
+        check_app_wait(attempt_count+4, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -6353,7 +6353,7 @@ async_dataset_get_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLdataset_get(args->dset, task->under_vol_id, args->get_type, args->dxpl_id, args->req, args->arguments);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -6666,7 +6666,7 @@ async_dataset_specific_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLdataset_specific(args->obj, task->under_vol_id, args->specific_type, args->dxpl_id, args->req, args->arguments);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -6980,7 +6980,7 @@ async_dataset_optional_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLdataset_optional(args->obj, task->under_vol_id, args->opt_type, args->dxpl_id, args->req, args->arguments);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -7290,7 +7290,7 @@ async_dataset_close_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLdataset_close(args->dset, task->under_vol_id, args->dxpl_id, args->req);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count+3, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -7610,7 +7610,7 @@ async_datatype_commit_fn(void *foo)
     H5E_BEGIN_TRY {
         under_obj = H5VLdatatype_commit(args->obj, args->loc_params, task->under_vol_id, args->name, args->type_id, args->lcpl_id, args->tcpl_id, args->tapl_id, args->dxpl_id, args->req);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if (NULL ==  under_obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -7954,7 +7954,7 @@ async_datatype_open_fn(void *foo)
     H5E_BEGIN_TRY {
         obj = H5VLdatatype_open(args->obj, args->loc_params, task->under_vol_id, args->name, args->tapl_id, args->dxpl_id, args->req);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if ( NULL == obj ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -8291,7 +8291,7 @@ async_datatype_get_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLdatatype_get(args->dt, task->under_vol_id, args->get_type, args->dxpl_id, args->req, args->arguments);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -8601,7 +8601,7 @@ async_datatype_specific_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLdatatype_specific(args->obj, task->under_vol_id, args->specific_type, args->dxpl_id, args->req, args->arguments);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -8911,7 +8911,7 @@ async_datatype_optional_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLdatatype_optional(args->obj, task->under_vol_id, args->opt_type, args->dxpl_id, args->req, args->arguments);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -9223,7 +9223,7 @@ async_datatype_close_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLdatatype_close(args->dt, task->under_vol_id, args->dxpl_id, args->req);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -9515,7 +9515,7 @@ async_file_create_fn(void *foo)
     H5E_BEGIN_TRY {
         obj = H5VLfile_create(args->name, args->flags, args->fcpl_id, args->fapl_id, args->dxpl_id, args->req);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count+6, __func__);
     } H5E_END_TRY
     if (NULL == obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -9850,7 +9850,7 @@ async_file_open_fn(void *foo)
     H5E_BEGIN_TRY {
         obj = H5VLfile_open(args->name, args->flags, args->fapl_id, args->dxpl_id, args->req);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if (NULL == obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -10207,7 +10207,7 @@ async_file_get_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLfile_get(args->file, task->under_vol_id, args->get_type, args->dxpl_id, args->req, args->arguments);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -10518,7 +10518,7 @@ async_file_specific_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLfile_specific(args->file, task->under_vol_id, args->specific_type, args->dxpl_id, args->req, args->arguments);
         
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -10829,7 +10829,7 @@ async_file_optional_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLfile_optional(args->file, task->under_vol_id, args->opt_type, args->dxpl_id, args->req, args->arguments);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count+4, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -11137,7 +11137,7 @@ async_file_close_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLfile_close(args->file, task->under_vol_id, args->dxpl_id, args->req);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -11488,7 +11488,7 @@ async_group_create_fn(void *foo)
     H5E_BEGIN_TRY {
         obj = H5VLgroup_create(args->obj, args->loc_params, task->under_vol_id, args->name, args->lcpl_id, args->gcpl_id, args->gapl_id, args->dxpl_id, args->req);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count+3, __func__);
     } H5E_END_TRY
     if (NULL == obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -11842,7 +11842,7 @@ async_group_open_fn(void *foo)
     H5E_BEGIN_TRY {
         obj = H5VLgroup_open(args->obj, args->loc_params, task->under_vol_id, args->name, args->gapl_id, args->dxpl_id, args->req);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count+3, __func__);
     } H5E_END_TRY
     if (NULL == obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -12178,7 +12178,7 @@ async_group_get_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLgroup_get(args->obj, task->under_vol_id, args->get_type, args->dxpl_id, args->req, args->arguments);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -12491,7 +12491,7 @@ async_group_specific_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLgroup_specific(args->obj, task->under_vol_id, args->specific_type, args->dxpl_id, args->req, args->arguments);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -12803,7 +12803,7 @@ async_group_optional_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLgroup_optional(args->obj, task->under_vol_id, args->opt_type, args->dxpl_id, args->req, args->arguments);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -13116,7 +13116,7 @@ async_group_close_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLgroup_close(args->grp, task->under_vol_id, args->dxpl_id, args->req);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count+3, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -13445,7 +13445,7 @@ async_link_create_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLlink_create(args->create_type, args->obj, args->loc_params, task->under_vol_id, args->lcpl_id, args->lapl_id, args->dxpl_id, args->req, args->arguments);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -13785,7 +13785,7 @@ async_link_copy_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLlink_copy(args->src_obj, args->loc_params1, args->dst_obj, args->loc_params2, task->under_vol_id, args->lcpl_id, args->lapl_id, args->dxpl_id, args->req);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -14117,7 +14117,7 @@ async_link_move_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLlink_move(args->src_obj, args->loc_params1, args->dst_obj, args->loc_params2, task->under_vol_id, args->lcpl_id, args->lapl_id, args->dxpl_id, args->req);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -14449,7 +14449,7 @@ async_link_get_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLlink_get(args->obj, args->loc_params, task->under_vol_id, args->get_type, args->dxpl_id, args->req, args->arguments);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -14770,7 +14770,7 @@ async_link_specific_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLlink_specific(args->obj, args->loc_params, task->under_vol_id, args->specific_type, args->dxpl_id, args->req, args->arguments);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -15088,7 +15088,7 @@ async_link_optional_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLlink_optional(args->obj, args->loc_params, task->under_vol_id, args->opt_type, args->dxpl_id, args->req, args->arguments);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -15407,7 +15407,7 @@ async_object_open_fn(void *foo)
     H5E_BEGIN_TRY {
         obj = H5VLobject_open(args->obj, args->loc_params, task->under_vol_id, args->opened_type, args->dxpl_id, args->req);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if (NULL == obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -15740,7 +15740,7 @@ async_object_copy_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLobject_copy(args->src_obj, args->src_loc_params, args->src_name, args->dst_obj, args->dst_loc_params, args->dst_name, task->under_vol_id, args->ocpypl_id, args->lcpl_id, args->dxpl_id, args->req);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -16074,7 +16074,7 @@ async_object_get_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLobject_get(args->obj, args->loc_params, task->under_vol_id, args->get_type, args->dxpl_id, args->req, args->arguments);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -16399,7 +16399,7 @@ async_object_specific_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLobject_specific(args->obj, args->loc_params, task->under_vol_id, args->specific_type, args->dxpl_id, args->req, args->arguments);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
@@ -16719,7 +16719,7 @@ async_object_optional_fn(void *foo)
     H5E_BEGIN_TRY {
         status = H5VLobject_optional(args->obj, args->loc_params, task->under_vol_id, args->opt_type, args->dxpl_id, args->req, args->arguments);
 
-        check_app_wait(attempt_count);
+        check_app_wait(attempt_count, __func__);
     } H5E_END_TRY
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
