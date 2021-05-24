@@ -12,8 +12,8 @@
 /* Public HDF5 file */
 #include "hdf5dev.h"
 
-/* The connector's header */
-#include "h5_vol_external_async_native.h"
+/* The connector's private header */
+#include "h5_vol_external_async_private.h"
 
 /* Header for async "extension" routines */
 #include "h5_async_lib.h"
@@ -186,7 +186,7 @@ async_setup(void)
 
     /* Singleton check for file pause operation */
     if(-1 == async_request_dep_op_g) {
-        if(H5VLfind_opt_operation(H5VL_SUBCLS_REQUEST, H5VL_ASYNC_DYN_REQUEST_START, &async_request_dep_op_g) < 0) {
+        if(H5VLfind_opt_operation(H5VL_SUBCLS_REQUEST, H5VL_ASYNC_DYN_REQUEST_DEP, &async_request_dep_op_g) < 0) {
             fprintf(stderr, "  [ASYNC VOL ERROR] with H5VLfind_opt_operation\n");
             return(-1);
         }
@@ -259,6 +259,8 @@ done:
 herr_t
 H5Fwait(hid_t file_id, hid_t dxpl_id)
 {
+    H5VL_optional_args_t vol_cb_args;        /* Arguments to VOL callback */
+
     /* Look up operation value, if it's not already available */
     if(-1 == async_file_wait_op_g) {
         if (async_setup() < 0) {
@@ -268,8 +270,12 @@ H5Fwait(hid_t file_id, hid_t dxpl_id)
         assert(async_file_wait_op_g > 0);
     }
 
+    /* Set up VOL callback arguments */
+    vol_cb_args.op_type           = async_file_wait_op_g;
+    vol_cb_args.args = NULL;
+
     /* Call the VOL file optional routine, requesting 'wait' occur */
-    if(H5VLfile_optional_op(file_id, async_file_wait_op_g, dxpl_id, H5ES_NONE) < 0) {
+    if(H5VLfile_optional_op(file_id, &vol_cb_args, dxpl_id, H5ES_NONE) < 0) {
         fprintf(stderr, "  [ASYNC VOL ERROR] H5Fwait: VOL connector file wait operation\n");
         return(-1);
     }
@@ -289,6 +295,8 @@ H5Fwait(hid_t file_id, hid_t dxpl_id)
 herr_t
 H5Dwait(hid_t dset_id, hid_t dxpl_id)
 {
+    H5VL_optional_args_t vol_cb_args;        /* Arguments to VOL callback */
+
     /* Look up operation value, if it's not already available */
     if(-1 == async_dataset_wait_op_g) {
         if (async_setup() < 0) {
@@ -298,8 +306,12 @@ H5Dwait(hid_t dset_id, hid_t dxpl_id)
         assert(async_dataset_wait_op_g > 0);
     }
 
+    /* Set up VOL callback arguments */
+    vol_cb_args.op_type           = async_dataset_wait_op_g;
+    vol_cb_args.args = NULL;
+
     /* Call the VOL dataset optional routine, requesting 'wait' occur */
-    if(H5VLdataset_optional_op(dset_id, async_dataset_wait_op_g, dxpl_id, H5ES_NONE) < 0) {
+    if(H5VLdataset_optional_op(dset_id, &vol_cb_args, dxpl_id, H5ES_NONE) < 0) {
         fprintf(stderr, "  [ASYNC VOL ERROR] H5Dwait: VOL connector dataset wait operation\n");
         return(-1);
     }
@@ -319,6 +331,8 @@ H5Dwait(hid_t dset_id, hid_t dxpl_id)
 herr_t
 H5Fstart(hid_t file_id, hid_t dxpl_id)
 {
+    H5VL_optional_args_t vol_cb_args;        /* Arguments to VOL callback */
+
     /* Look up operation value, if it's not already available */
     if(-1 == async_file_start_op_g) {
         if (async_setup() < 0) {
@@ -328,8 +342,12 @@ H5Fstart(hid_t file_id, hid_t dxpl_id)
         assert(async_file_start_op_g > 0);
     }
 
+    /* Set up VOL callback arguments */
+    vol_cb_args.op_type           = async_file_start_op_g;
+    vol_cb_args.args = NULL;
+
     /* Call the VOL file optional routine, requesting 'wait' occur */
-    if(H5VLfile_optional_op(file_id, async_file_start_op_g, dxpl_id, H5ES_NONE) < 0) {
+    if(H5VLfile_optional_op(file_id, &vol_cb_args, dxpl_id, H5ES_NONE) < 0) {
         fprintf(stderr, "  [ASYNC VOL ERROR] H5Fstart: VOL connector file start operation failed!\n");
         return(-1);
     }
@@ -349,6 +367,8 @@ H5Fstart(hid_t file_id, hid_t dxpl_id)
 herr_t
 H5Dstart(hid_t dset_id, hid_t dxpl_id)
 {
+    H5VL_optional_args_t vol_cb_args;        /* Arguments to VOL callback */
+
     /* Look up operation value, if it's not already available */
     if(-1 == async_dataset_start_op_g) {
         if (async_setup() < 0) {
@@ -358,8 +378,12 @@ H5Dstart(hid_t dset_id, hid_t dxpl_id)
         assert(async_dataset_start_op_g > 0);
     }
 
+    /* Set up VOL callback arguments */
+    vol_cb_args.op_type           = async_dataset_start_op_g;
+    vol_cb_args.args = NULL;
+
     /* Call the VOL dset optional routine, requesting 'wait' occur */
-    if(H5VLdataset_optional_op(dset_id, async_dataset_start_op_g, dxpl_id, H5ES_NONE) < 0) {
+    if(H5VLdataset_optional_op(dset_id, &vol_cb_args, dxpl_id, H5ES_NONE) < 0) {
         fprintf(stderr, "  [ASYNC VOL ERROR] H5Dstart: VOL connector dset start operation failed!\n");
         return(-1);
     }
@@ -379,6 +403,8 @@ H5Dstart(hid_t dset_id, hid_t dxpl_id)
 herr_t
 H5Fpause(hid_t file_id, hid_t dxpl_id)
 {
+    H5VL_optional_args_t vol_cb_args;        /* Arguments to VOL callback */
+
     /* Look up operation value, if it's not already available */
     if(-1 == async_file_pause_op_g) {
         if (async_setup() < 0) {
@@ -388,8 +414,12 @@ H5Fpause(hid_t file_id, hid_t dxpl_id)
         assert(async_file_pause_op_g > 0);
     }
 
+    /* Set up VOL callback arguments */
+    vol_cb_args.op_type           = async_file_pause_op_g;
+    vol_cb_args.args = NULL;
+
     /* Call the VOL file optional routine, requesting 'wait' occur */
-    if(H5VLfile_optional_op(file_id, async_file_pause_op_g, dxpl_id, H5ES_NONE) < 0) {
+    if(H5VLfile_optional_op(file_id, &vol_cb_args, dxpl_id, H5ES_NONE) < 0) {
         fprintf(stderr, "  [ASYNC VOL ERROR] H5Fpause: VOL connector file pause operation failed!\n");
         return(-1);
     }
@@ -409,6 +439,8 @@ H5Fpause(hid_t file_id, hid_t dxpl_id)
 herr_t
 H5Dpause(hid_t dset_id, hid_t dxpl_id)
 {
+    H5VL_optional_args_t vol_cb_args;        /* Arguments to VOL callback */
+
     /* Look up operation value, if it's not already available */
     if(-1 == async_dataset_pause_op_g) {
         if (async_setup() < 0) {
@@ -418,8 +450,12 @@ H5Dpause(hid_t dset_id, hid_t dxpl_id)
         assert(async_dataset_pause_op_g > 0);
     }
 
+    /* Set up VOL callback arguments */
+    vol_cb_args.op_type           = async_dataset_pause_op_g;
+    vol_cb_args.args = NULL;
+
     /* Call the VOL dset optional routine, requesting 'wait' occur */
-    if(H5VLdataset_optional_op(dset_id, async_dataset_pause_op_g, dxpl_id, H5ES_NONE) < 0) {
+    if(H5VLdataset_optional_op(dset_id, &vol_cb_args, dxpl_id, H5ES_NONE) < 0) {
         fprintf(stderr, "  [ASYNC VOL ERROR] H5Dpause: VOL connector dset pause operation failed!\n");
         return(-1);
     }
@@ -439,6 +475,10 @@ H5Dpause(hid_t dset_id, hid_t dxpl_id)
 herr_t
 H5Fset_delay_time(hid_t file_id, hid_t dxpl_id, uint64_t time_us)
 {
+    H5VL_optional_args_t vol_cb_args;        /* Arguments to VOL callback */
+    H5VL_async_delay_args_t delay_args; /* Arguments for optional operation */
+
+    /* Look up operation value, if it's not already available */
     /* Look up operation value, if it's not already available */
     if(-1 == async_file_delay_op_g) {
         if (async_setup() < 0) {
@@ -448,8 +488,13 @@ H5Fset_delay_time(hid_t file_id, hid_t dxpl_id, uint64_t time_us)
         assert(async_file_delay_op_g > 0);
     }
 
+    /* Set up VOL callback arguments */
+    delay_args.delay_time = time_us;
+    vol_cb_args.op_type           = async_file_delay_op_g;
+    vol_cb_args.args = &delay_args;
+
     /* Call the VOL dset optional routine, requesting 'wait' occur */
-    if(H5VLfile_optional_op(file_id, async_file_delay_op_g, dxpl_id, H5ES_NONE, time_us) < 0) {
+    if(H5VLfile_optional_op(file_id, &vol_cb_args, dxpl_id, H5ES_NONE) < 0) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s: VOL connector set file delay operation failed!\n", __func__);
         return(-1);
     }
@@ -469,6 +514,9 @@ H5Fset_delay_time(hid_t file_id, hid_t dxpl_id, uint64_t time_us)
 herr_t
 H5Dset_delay_time(hid_t dset_id, hid_t dxpl_id, uint64_t time_us)
 {
+    H5VL_optional_args_t vol_cb_args;        /* Arguments to VOL callback */
+    H5VL_async_delay_args_t delay_args; /* Arguments for optional operation */
+
     /* Look up operation value, if it's not already available */
     if(-1 == async_dataset_delay_op_g) {
         if (async_setup() < 0) {
@@ -478,8 +526,13 @@ H5Dset_delay_time(hid_t dset_id, hid_t dxpl_id, uint64_t time_us)
         assert(async_dataset_delay_op_g > 0);
     }
 
+    /* Set up VOL callback arguments */
+    delay_args.delay_time = time_us;
+    vol_cb_args.op_type           = async_dataset_delay_op_g;
+    vol_cb_args.args = &delay_args;
+
     /* Call the VOL dset optional routine, requesting 'wait' occur */
-    if(H5VLdataset_optional_op(dset_id, async_dataset_delay_op_g, dxpl_id, H5ES_NONE, time_us) < 0) {
+    if(H5VLdataset_optional_op(dset_id, &vol_cb_args, dxpl_id, H5ES_NONE) < 0) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s: VOL connector set dset delay operation failed!\n", __func__);
         return(-1);
     }
@@ -625,7 +678,9 @@ H5Pget_dxpl_pause(hid_t dxpl, hbool_t *is_pause)
 herr_t 
 H5async_start(void *request)
 {
+    H5VL_optional_args_t vol_cb_args;        /* Arguments to VOL callback */
     herr_t status;
+
     assert(request);
 
     /* Look up operation value, if it's not already available */
@@ -637,9 +692,13 @@ H5async_start(void *request)
         assert(async_request_start_op_g > 0);
     }
 
+    /* Set up VOL callback arguments */
+    vol_cb_args.op_type           = async_request_start_op_g;
+    vol_cb_args.args = NULL;
+
     /* Call the VOL file optional routine, requesting 'wait' occur */
-    if((status = H5VLrequest_optional_vararg(request, H5VL_async_g, async_request_start_op_g)) < 0) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] H5Fpause: VOL connector file pause operation failed!\n");
+    if((status = H5VLrequest_optional_op(request, H5VL_async_g, &vol_cb_args)) < 0) {
+        fprintf(stderr, "  [ASYNC VOL ERROR] H5async_start: VOL connector request start operation failed!\n");
         return(-1);
     }
 
@@ -655,10 +714,13 @@ H5async_start(void *request)
  *
  *-------------------------------------------------------------------------
  */
-herr_t 
+herr_t
 H5async_set_request_dep(void *request, void *parent_request)
 {
+    H5VL_optional_args_t vol_cb_args;        /* Arguments to VOL callback */
+    H5VL_async_req_dep_args_t dep_args; /* Arguments for optional operation */
     herr_t status;
+
     assert(request);
     assert(parent_request);
 
@@ -671,9 +733,14 @@ H5async_set_request_dep(void *request, void *parent_request)
         assert(async_request_dep_op_g > 0);
     }
 
+    /* Set up VOL callback arguments */
+    dep_args.parent_req = parent_request;
+    vol_cb_args.op_type           = async_request_dep_op_g;
+    vol_cb_args.args = &dep_args;
+
     /* Call the VOL file optional routine, requesting 'wait' occur */
-    if((status = H5VLrequest_optional_vararg(request, H5VL_async_g, async_request_dep_op_g, parent_request)) < 0) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] H5Fpause: VOL connector file pause operation failed!\n");
+    if((status = H5VLrequest_optional_op(request, H5VL_async_g, &vol_cb_args)) < 0) {
+        fprintf(stderr, "  [ASYNC VOL ERROR] H5async_set_request_dep: VOL connector request depend operation failed!\n");
         return(-1);
     }
 
