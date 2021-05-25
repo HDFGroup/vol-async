@@ -13,7 +13,7 @@ target_include_directories(hdf5_vol_async
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-target_link_libraries(hdf5_vol_async PRIVATE ${LINK_LIBS})
+target_link_libraries(hdf5_vol_async PRIVATE  abt ${LINK_LIBS})
 
 install(
   FILES
