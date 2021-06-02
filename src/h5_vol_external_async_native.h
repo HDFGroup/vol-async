@@ -10,7 +10,7 @@
 
 /* Characteristics of the async VOL connector */
 #define H5VL_ASYNC_NAME        "async"
-#define H5VL_ASYNC_VALUE       707           /* VOL connector ID */
+#define H5VL_ASYNC_VALUE       512           /* VOL connector ID */
 
 /* Pass-through VOL connector info (for H5Pset_vol_info) */
 typedef struct H5VL_async_info_t {
