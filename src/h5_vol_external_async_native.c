@@ -1937,7 +1937,7 @@ static void free_loc_param(H5VL_loc_params_t *loc_params)
 }
 
 static int
-dup_attr_get_args(H5VL_attr_get_args_t *dst_args, const H5VL_attr_get_args_t *src_args,
+dup_attr_get_args(H5VL_attr_get_args_t *dst_args, H5VL_attr_get_args_t *src_args,
                     async_task_t *task)
 {
     hid_t *future_id_ptr = NULL;           /* Pointer to ID for future ID */
@@ -1967,21 +1967,21 @@ dup_attr_get_args(H5VL_attr_get_args_t *dst_args, const H5VL_attr_get_args_t *sr
             /* Set up for creating future ID */
             need_future_id = true;
             future_id_type = H5I_GENPROP_LST;
-            future_id_ptr = &dst_args->args.get_acpl.acpl_id;
+            future_id_ptr = &src_args->args.get_acpl.acpl_id; /* Note: src_args */
             break;
 
         case H5VL_ATTR_GET_TYPE:
             /* Set up for creating future ID */
             need_future_id = true;
             future_id_type = H5I_DATATYPE;
-            future_id_ptr = &dst_args->args.get_type.type_id;
+            future_id_ptr = &src_args->args.get_type.type_id; /* Note: src_args */
             break;
 
         case H5VL_ATTR_GET_SPACE:
             /* Set up for creating future ID */
             need_future_id = true;
             future_id_type = H5I_DATASPACE;
-            future_id_ptr = &dst_args->args.get_space.space_id;
+            future_id_ptr = &src_args->args.get_space.space_id; /* Note: src_args */
             break;
 
         case H5VL_ATTR_GET_STORAGE_SIZE:
@@ -2196,7 +2196,7 @@ free_native_attr_optional_args(async_attr_optional_args_t *args)
 }
 
 static int
-dup_dataset_get_args(H5VL_dataset_get_args_t *dst_args, const H5VL_dataset_get_args_t *src_args,
+dup_dataset_get_args(H5VL_dataset_get_args_t *dst_args, H5VL_dataset_get_args_t *src_args,
                     async_task_t *task)
 {
     hid_t *future_id_ptr = NULL;           /* Pointer to ID for future ID */
@@ -2216,28 +2216,28 @@ dup_dataset_get_args(H5VL_dataset_get_args_t *dst_args, const H5VL_dataset_get_a
             /* Set up for creating future ID */
             need_future_id = true;
             future_id_type = H5I_GENPROP_LST;
-            future_id_ptr = &dst_args->args.get_dapl.dapl_id;
+            future_id_ptr = &src_args->args.get_dapl.dapl_id; /* Note: src_args */
             break;
 
         case H5VL_DATASET_GET_DCPL:
             /* Set up for creating future ID */
             need_future_id = true;
             future_id_type = H5I_GENPROP_LST;
-            future_id_ptr = &dst_args->args.get_dcpl.dcpl_id;
+            future_id_ptr = &src_args->args.get_dcpl.dcpl_id; /* Note: src_args */
             break;
 
         case H5VL_DATASET_GET_SPACE:
             /* Set up for creating future ID */
             need_future_id = true;
             future_id_type = H5I_DATASPACE;
-            future_id_ptr = &dst_args->args.get_space.space_id;
+            future_id_ptr = &src_args->args.get_space.space_id; /* Note: src_args */
             break;
 
         case H5VL_DATASET_GET_TYPE:
             /* Set up for creating future ID */
             need_future_id = true;
             future_id_type = H5I_DATATYPE;
-            future_id_ptr = &dst_args->args.get_type.type_id;
+            future_id_ptr = &src_args->args.get_type.type_id; /* Note: src_args */
             break;
 
         case H5VL_DATASET_GET_SPACE_STATUS:
@@ -2469,7 +2469,7 @@ free_native_dataset_optional_args(async_dataset_optional_args_t *args)
 }
 
 static int
-dup_datatype_get_args(H5VL_datatype_get_args_t *dst_args, const H5VL_datatype_get_args_t *src_args,
+dup_datatype_get_args(H5VL_datatype_get_args_t *dst_args, H5VL_datatype_get_args_t *src_args,
                     async_task_t *task)
 {
     hid_t *future_id_ptr = NULL;           /* Pointer to ID for future ID */
@@ -2489,7 +2489,7 @@ dup_datatype_get_args(H5VL_datatype_get_args_t *dst_args, const H5VL_datatype_ge
             /* Set up for creating future ID */
             need_future_id = true;
             future_id_type = H5I_GENPROP_LST;
-            future_id_ptr = &dst_args->args.get_tcpl.tcpl_id;
+            future_id_ptr = &src_args->args.get_tcpl.tcpl_id; /* Note: src_args */
             break;
 
         case H5VL_DATATYPE_GET_BINARY_SIZE:

@@ -22,11 +22,15 @@ link_iterate_cb(hid_t group_id, const char *link_name, const H5L_info2_t *info, 
 int main(int argc, char *argv[])
 {
     hid_t file_id, grp_id, dset1_id, dset0_id, dspace_id, async_dxpl, attr_space, attr0, attr1;
+    hid_t dspace2_id;
     const char *file_name = "async_test_serial.h5";
     const char *grp_name  = "Group";
-    int        *data0_write, *data0_read, *data1_write, *data1_read, attr_data0, attr_data1, attr_read_data0=0, attr_read_data1=0;
+    int        *data0_write = NULL, *data0_read = NULL, *data1_write = NULL, *data1_read = NULL;
+    int        attr_data0, attr_data1, attr_read_data0=0, attr_read_data1=0;
     int        i, ret = 0;
     hsize_t    ds_size[2] = {DIMLEN, DIMLEN};
+    hsize_t    ds2_size[2] = {0, 0};
+    int        sdims;
     hsize_t idx = 0;
     int nlink = 0;
     herr_t     status;
@@ -86,6 +90,30 @@ int main(int argc, char *argv[])
     if (print_dbg_msg) printf("H5Dcreate 0 done\n");
     fflush(stdout);
     /* usleep(sleeptime); */
+
+    if (print_dbg_msg) printf("H5Dget_space 0 start\n");
+    fflush(stdout);
+    dspace2_id  = H5Dget_space(dset0_id);
+    if (dspace2_id < 0) {
+        fprintf(stderr, "Error with getting dspace2\n");
+        ret = -1;
+        goto done;
+    }
+    if (print_dbg_msg) printf("H5Dget_space 0 done\n");
+    fflush(stdout);
+    /* usleep(sleeptime); */
+
+    sdims = H5Sget_simple_extent_dims(dspace2_id, ds2_size, NULL);
+    if (sdims < 0 || sdims != 2) {
+        fprintf(stderr, "Error with getting dspace2 dims\n");
+        ret = -1;
+        goto done;
+    }
+    if (ds2_size[0] != ds_size[0] || ds2_size[1] != ds_size[1]) {
+        fprintf(stderr, "dspace2 dims wrong\n");
+        ret = -1;
+        goto done;
+    }
 
     if (print_dbg_msg) printf("H5Dcreate 1 start\n");
     fflush(stdout);
