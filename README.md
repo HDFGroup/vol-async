@@ -15,11 +15,11 @@ Some configuration parameters used in the instructions:
     1.1 Download the Asynchronous I/O VOL connector code (this repository) with Argobots git submodule 
 
        > git clone --recursive https://github.com/hpc-io/vol-async.git
-       > Argobots can also be downloaded separately from https://github.com/pmodels/argobots
+       > # Latest Argobots can also be downloaded separately from https://github.com/pmodels/argobots
 
-    1.2 Download the HDF5 code (hpc-io HDF5 async_vol_register_optional branch has the latest async-related features, they will be merged to the main HDF5 repo later)
+    1.2 Download the HDF5 source code
 
-       > git clone https://github.com/hpc-io/hdf5.git
+       > git clone https://github.com/HDFGroup/hdf5.git
 
     1.3 (Optional) Set the environment variables for the paths of the codes if the full path of VOL_DIR, ABT_DIR, and H5_DIR are not used in later setup
        > export H5_DIR=/path/to/hdf5/dir
@@ -28,18 +28,18 @@ Some configuration parameters used in the instructions:
 
 ## 2. Installation
 
-    2.1 Compile HDF5 ( need to switch to the "async_vol_register_optional" branch )
+    2.1 Compile HDF5
 
-        > cd $H5_DIR && git checkout async_vol_register_optional
+        > cd $H5_DIR
         > ./autogen.sh  (may skip this step if the configure file exists)
-        > ./configure --prefix=$H5_DIR/install --enable-parallel --enable-threadsafe --enable-unsupported (may need to add CC=cc or CC=mpicc)
+        > ./configure --prefix=$H5_DIR/install --enable-parallel --enable-threadsafe --enable-unsupported #(may need to add CC=cc or CC=mpicc)
         > make && make install
 
     2.2 Compile Argobots
 
         > cd $ABT_DIR
         > ./autogen.sh  (may skip this step if the configure file exists)
-        > CC=cc ./configure --prefix=$ABT_DIR/install
+        > ./configure --prefix=$ABT_DIR/install #(may need to add CC=cc or CC=mpicc)
         > make && make install
 
     2.3 Compile Asynchronous VOL connector
@@ -74,9 +74,9 @@ Some configuration parameters used in the instructions:
         > (Optional) update the compiler flag macros: DEBUG, CFLAGS, LIBS, ARFLAGS
         > (Optional) comment/uncomment the correct DYNLIB & LDFLAGS macro
     > make
-
-    (Optional) If the system is not using mpirun to launch MPI tasks, edit mpirun_cmd in pytest.py with the corresponding MPI launch command.
+    
     Running the automated tests requires Python3.
+    (Optional) If the system is not using mpirun to launch MPI tasks, edit mpirun_cmd in pytest.py with the corresponding MPI launch command.
     
     Run both the serial and parallel tests
 
