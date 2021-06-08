@@ -16,8 +16,8 @@ DYNLDFLAGS = $(DEBUG) -shared -fPIC $(LIBS)
 # Uncomment this line MacOS builds:
 # DYNLDFLAGS = $(DEBUG) -dynamiclib -current_version 1.0  -fPIC $(LIBS)
 
-DYNSRC = h5_vol_external_async_native.c
-DYNHDR = h5_vol_external_async_native.h
+DYNSRC = h5_async_vol.c
+DYNHDR = h5_async_vol.h
 DYNOBJ = $(DYNSRC:.c=.o)
 DYNPCH = $(DYNHDR:.h=.h.gch)
 # Uncomment this line Linux builds:

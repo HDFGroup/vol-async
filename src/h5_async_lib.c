@@ -13,7 +13,7 @@
 #include "hdf5dev.h"
 
 /* The connector's private header */
-#include "h5_vol_external_async_private.h"
+#include "h5_async_vol_private.h"
 
 /* Header for async "extension" routines */
 #include "h5_async_lib.h"

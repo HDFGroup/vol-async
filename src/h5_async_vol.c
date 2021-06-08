@@ -37,7 +37,7 @@
 #include "H5VLconnector.h"
 
 /* This connector's private header */
-#include "h5_vol_external_async_private.h"
+#include "h5_async_vol_private.h"
 
 /* Argobots header */
 #include "abt.h"

@@ -2,11 +2,11 @@
  * Purpose:	The private header file for the async VOL connector.
  */
 
-#ifndef _h5_vol_external_async_private_H
-#define _h5_vol_external_async_private_H
+#ifndef _h5_async_vol_private_H
+#define _h5_async_vol_private_H
 
 /* Public headers needed by this file */
-#include "h5_vol_external_async_native.h" /* Public header for connector */
+#include "h5_async_vol.h" /* Public header for connector */
 
 /* Private characteristics of the pass-through VOL connector */
 #define H5VL_ASYNC_VERSION     0
@@ -48,5 +48,5 @@ extern "C" {
 }
 #endif
 
-#endif /* _h5_vol_external_async_private_H */
+#endif /* _h5_async_vol_private_H */
 
