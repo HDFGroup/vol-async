@@ -34,18 +34,18 @@ int main(int argc, char *argv[])
     hsize_t idx = 0;
     int nlink = 0;
     herr_t     status;
-    hid_t      async_fapl;
+    hid_t      async_fcpl, async_fapl, async_gcpl, get_fcpl, get_gcpl;
     /* int        sleeptime = 100; */
 
+    async_fcpl = H5Pcreate (H5P_FILE_CREATE);
     async_fapl = H5Pcreate (H5P_FILE_ACCESS);
+    async_gcpl = H5Pcreate (H5P_GROUP_CREATE);
     async_dxpl = H5Pcreate (H5P_DATASET_XFER);
-
-    H5Pset_vol_async(async_fapl);
 
     if (print_dbg_msg) printf("H5Fcreate start\n");
     fflush(stdout);
 
-    file_id = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, async_fapl);
+    file_id = H5Fcreate(file_name, H5F_ACC_TRUNC, async_fcpl, async_fapl);
     if (file_id < 0) {
         fprintf(stderr, "Error with file create\n");
         ret = -1;
@@ -54,16 +54,49 @@ int main(int argc, char *argv[])
     if (print_dbg_msg) printf("H5Fcreate done\n");
     fflush(stdout);
 
+    if (print_dbg_msg) printf("H5Fget_access_plist start\n");
+    fflush(stdout);
+    get_fcpl = H5Fget_create_plist(file_id);
+    if (get_fcpl < 0) {
+        fprintf(stderr, "Error with getting fcpl\n");
+        ret = -1;
+        goto done;
+    }
+    if (H5Pequal(async_fcpl, get_fcpl) <= 0) {
+        fprintf(stderr, "Error with fcpl, not equal to previously used fcpl\n");
+        ret = -1;
+        goto done;
+    }
+    
+    if (print_dbg_msg) printf("H5Fget_access_plist done\n");
+    fflush(stdout);
 
     if (print_dbg_msg) printf("H5Gcreate start\n");
     fflush(stdout);
-    grp_id = H5Gcreate(file_id, grp_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    grp_id = H5Gcreate(file_id, grp_name, H5P_DEFAULT, async_gcpl, H5P_DEFAULT);
     if (grp_id < 0) {
         fprintf(stderr, "Error with group create\n");
         ret = -1;
         goto done;
     }
     if (print_dbg_msg) printf("H5Gcreate done\n");
+    fflush(stdout);
+
+    if (print_dbg_msg) printf("H5Gget_create_plist start\n");
+    fflush(stdout);
+    get_gcpl = H5Gget_create_plist(grp_id);
+    if (get_gcpl < 0) {
+        fprintf(stderr, "Error with getting gcpl\n");
+        ret = -1;
+        goto done;
+    }
+    if (H5Pequal(async_gcpl, get_gcpl) <= 0) {
+        fprintf(stderr, "Error with gcpl, not equal to previously used gcpl\n");
+        ret = -1;
+        goto done;
+    }
+ 
+    if (print_dbg_msg) printf("H5Gget_create_plist done\n");
     fflush(stdout);
 
     data0_write = malloc (sizeof(int)*DIMLEN*DIMLEN);
@@ -345,7 +378,9 @@ int main(int argc, char *argv[])
 
     /* H5Fwait(file_id); */
 
+    H5Pclose(async_fcpl);
     H5Pclose(async_fapl);
+    H5Pclose(async_gcpl);
     H5Pclose(async_dxpl);
     H5Sclose(dspace_id);
     H5Dclose(dset0_id);
