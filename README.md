@@ -103,7 +103,7 @@ Some configuration parameters used in the instructions:
 
     6.1 Include header file
 
-        > #include "h5_vol_external_async_native.h" 
+        > #include "h5_async_vol.h" 
 
     6.2 Use event set and new async API to manage asynchronous I/O operations
         > es_id = H5EScreate();                        // Create event set for tracking async operations
