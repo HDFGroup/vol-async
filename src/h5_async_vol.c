@@ -33,7 +33,7 @@
 #include <time.h>
 
 /* Public HDF5 file */
-#include "hdf5dev.h"
+#include "hdf5.h"
 #include "H5VLconnector.h"
 
 /* This connector's private header */
