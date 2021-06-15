@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
         }
         if (print_dbg_msg) { printf("Create file [%s]\n", file_name); fflush(stdout); }
 
-        H5Fset_delay_time(file_id, H5P_DEFAULT, 200);
+        /* H5Fset_delay_time(file_id, H5P_DEFAULT, 200); */
 
         grp_id = H5Gcreate_async(file_id, grp_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
         if (grp_id < 0) {
@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
             goto done;
         }
 
-        H5Dset_delay_time(dset1_id, H5P_DEFAULT, 500);
+        /* H5Dset_delay_time(dset1_id, H5P_DEFAULT, 500); */
 
         gettimeofday(&t2, 0);
 
