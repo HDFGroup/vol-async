@@ -1,13 +1,14 @@
-HDF5_DIR = /global/u1/h/houhun/hpc-io/hdf5/async_optional_gnu/hdf5
-ABT_DIR = /global/u1/h/houhun/cori/argobots/install
+HDF5_DIR = /gpfs/alpine/csc300/world-shared/gnu_build/hdf5/develop_build/hdf5
+ABT_DIR = /gpfs/alpine/csc300/world-shared/gnu_build/argobots/install
 
-CC = cc
+#CC = cc
 #CC = gcc-9
-# CC = mpicc
+CC = mpicc
 
 # These lines may need to be adjusted for your compiler environment:
-DEBUG = -g -O0 
-CFLAGS = $(DEBUG) -fPIC -I$(ABT_DIR)/include -I$(HDF5_DIR)/include -Wall
+DEBUG = -g -O0
+#-DENABLE_ASYNC_LOGGING
+CFLAGS = $(DEBUG) -fPIC -I$(ABT_DIR)/include -I$(HDF5_DIR)/include -Wall -DENABLE_WRITE_MEMCPY
 LIBS = -L$(HDF5_DIR)/lib -L$(ABT_DIR)/lib -labt -lhdf5 -lz
 ARFLAGS = rs
 

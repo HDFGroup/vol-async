@@ -154,6 +154,9 @@ typedef struct H5VL_async_t {
     ABT_mutex           obj_mutex;
     ABT_pool            *pool_ptr;
     hbool_t             is_col_meta;
+#ifdef ENABLE_WRITE_MEMCPY
+    hsize_t             data_size;
+#endif
 } H5VL_async_t;
 
 typedef struct async_task_list_t {
@@ -299,6 +302,9 @@ typedef struct async_dataset_write_args_t {
     hid_t                    plist_id;
     void                     *buf;
     void                     **req;
+#ifdef ENABLE_WRITE_MEMCPY
+    bool                     free_buf;
+#endif
 } async_dataset_write_args_t;
 
 typedef struct async_dataset_get_args_t {
@@ -4217,6 +4223,12 @@ async_attr_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_lo
     async_obj->file_async_obj      = parent_obj->file_async_obj;
     async_obj->is_col_meta = parent_obj->is_col_meta;
     async_obj->pool_ptr = &aid->pool;
+
+#ifdef ENABLE_WRITE_MEMCPY
+    async_obj->data_size = H5Sget_select_npoints(space_id);
+    async_obj->data_size *= H5Tget_size(type_id);
+#endif
+
     /* create a new task and insert into its file task list */
     if ((async_task = create_async_task()) == NULL) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -5165,7 +5177,11 @@ done:
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr);
-    /* free(args->buf); */
+
+#ifdef ENABLE_WRITE_MEMCPY
+    free(args->buf);
+#endif
+
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
@@ -5181,7 +5197,6 @@ async_attr_write(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type
     bool is_blocking = false;
     hbool_t acquired = false;
     unsigned int mutex_count = 1;
-    /* hsize_t attr_size; */
 
 #ifdef ENABLE_LOG
     fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
@@ -5227,19 +5242,19 @@ async_attr_write(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type
         async_instance_g->start_abt_push = true;
     }
 
-    /* attr_size = H5Tget_size(mem_type_id); */
-    /* attr_size = H5Aget_storage_size((hid_t)args->attr); */
-    /* if (attr_size <= 0) { */
-    /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s H5Aget_storage_size failed!\n", __func__); */
-    /*     goto done; */
-    /* } */
-
-    /* if (NULL == (args->buf = malloc(attr_size))) { */
-    /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s malloc failed!\n", __func__); */
-    /*     goto done; */
-    /* } */
-    /* memcpy(args->buf, buf, attr_size); */
+#ifdef ENABLE_WRITE_MEMCPY
+    if (parent_obj->data_size == 0) {
+        /* fprintf(stderr, "  [ASYNC VOL ERROR] %s unknown attr size\n", __func__); */
+        parent_obj->data_size = 4096;
+    }
+    if (NULL == (args->buf = malloc(parent_obj->data_size))) {
+        fprintf(stderr,"  [ASYNC VOL ERROR] %s malloc failed!\n", __func__);
+        goto done;
+    }
+    memcpy(args->buf, buf, parent_obj->data_size);
+#else
     args->buf = (void*)buf;
+#endif
 
     // Retrieve current library state
     if ( H5VLretrieve_lib_state(&async_task->h5_state) < 0) {
@@ -6859,6 +6874,14 @@ async_dataset_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL
     async_obj->create_task = async_task;
     async_obj->under_vol_id = async_task->under_vol_id;
 
+#ifdef ENABLE_WRITE_MEMCPY
+    async_obj->data_size = H5Sget_select_npoints(space_id) * H5Tget_size(type_id);
+    if (async_obj->data_size == 0) {
+        fprintf(stderr,"  [ASYNC VOL ERROR] %s with getting dataset size\n", __func__);
+        goto error;
+    }
+#endif
+
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
@@ -7757,11 +7780,47 @@ done:
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue )
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr);
+
+#ifdef ENABLE_WRITE_MEMCPY
+    if (args->free_buf && args->buf)
+        free(args->buf);
+#endif
+
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
     return;
 } // End async_dataset_write_fn
+
+#ifdef ENABLE_WRITE_MEMCPY
+int 
+is_contig_memspace(hid_t memspace)
+{
+    hsize_t nblocks;
+    int ndim;
+    H5S_sel_type type;
+
+    if (memspace == H5S_SEL_ALL || memspace == H5S_SEL_NONE) {
+        return 1;
+    }
+
+    type = H5Sget_select_type(memspace);
+    if (type == H5S_SEL_POINTS) {
+        return 0;
+    }
+    else if (type == H5S_SEL_HYPERSLABS) {
+        ndim = H5Sget_simple_extent_ndims(memspace);
+        if (ndim != 1)
+            return 0;
+
+        nblocks = H5Sget_select_hyper_nblocks(memspace);
+        if (nblocks == 1)
+            return 1;
+        return 0;
+    }
+    return 0;
+}
+#endif
 
 static herr_t
 async_dataset_write(async_instance_t* aid, H5VL_async_t *parent_obj,
@@ -7807,6 +7866,46 @@ async_dataset_write(async_instance_t* aid, H5VL_async_t *parent_obj,
         args->plist_id = H5Pcopy(plist_id);
     args->buf              = (void*)buf;
     args->req              = req;
+
+#ifdef ENABLE_WRITE_MEMCPY
+    hsize_t buf_size = 0;
+    if (parent_obj->data_size > 0 && args->file_space_id == H5S_ALL ) {
+        buf_size = parent_obj->data_size;
+    }
+    else {
+        buf_size = H5Tget_size(mem_type_id) * H5Sget_select_npoints(mem_space_id);
+        if (buf_size == 0) {
+            fprintf(stderr,"  [ASYNC VOL ERROR] %s with getting dataset size\n", __func__);
+            goto error;
+        }
+    }
+
+    /* fprintf(stderr, "buf size = %llu\n", buf_size); */
+
+    if (buf_size > 0) {
+        if (NULL == (args->buf = malloc(buf_size))) {
+            fprintf(stderr,"  [ASYNC VOL ERROR] %s malloc failed!\n", __func__);
+            goto done;
+        }
+
+        // If is contiguous space, no need to go through gather process as it can be costly
+        if (1 != is_contig_memspace(mem_space_id)) {
+            /* fprintf(stderr,"  [ASYNC VOL LOG] %s will gather!\n", __func__); */
+            H5Dgather(mem_space_id, buf, mem_type_id, buf_size, args->buf, NULL, NULL);
+            hsize_t elem_size =  H5Tget_size(mem_type_id);
+            if (elem_size == 0) 
+                elem_size = 1;
+            hsize_t n_elem = (hsize_t)(buf_size/elem_size);
+            if (args->mem_space_id > 0) 
+                H5Sclose(args->mem_space_id);
+            args->mem_space_id = H5Screate_simple(1, &n_elem, NULL);
+        }
+        else {
+            memcpy(args->buf, buf, buf_size);
+        }
+        args->free_buf = true;
+    }
+#endif
 
     if (req) {
         H5VL_async_t *new_req;

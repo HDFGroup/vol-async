@@ -8,7 +8,7 @@ CC = mpicc
 # These lines may need to be adjusted for your compiler environment:
 DEBUG = -g -O0
 #-DENABLE_ASYNC_LOGGING
-CFLAGS = $(DEBUG) -fPIC -I$(ABT_DIR)/include -I$(HDF5_DIR)/include -Wall
+CFLAGS = $(DEBUG) -fPIC -I$(ABT_DIR)/include -I$(HDF5_DIR)/include -Wall -DENABLE_WRITE_MEMCPY
 LIBS = -L$(HDF5_DIR)/lib -L$(ABT_DIR)/lib -labt -lhdf5 -lz
 ARFLAGS = rs
 
