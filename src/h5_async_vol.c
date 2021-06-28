@@ -3539,8 +3539,8 @@ herr_t H5VL_async_set_request_dep(void *request, void *parent_request)
     task = req->my_task;
     parent_task = parent_req->my_task;
 
-    assert(req->magic == TASK_MAGIC);
-    assert(parent_req->magic == TASK_MAGIC);
+    assert(task->magic == TASK_MAGIC);
+    assert(parent_task->magic == TASK_MAGIC);
 
     /* ABT_mutex_lock(task->task_mutex); */
 
