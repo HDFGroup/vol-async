@@ -1616,7 +1616,7 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool)
                 task_elt->in_abt_pool = 1;
             }
 
-            DL_DELETE(qhead->queue->task_list, task_elt);
+            DL_DELETE(task_list_elt->task_list, task_elt);
             task_elt->prev = NULL;
             task_elt->next = NULL;
             break;
