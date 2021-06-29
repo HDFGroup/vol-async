@@ -53,7 +53,7 @@
 
 /* Whether to display log messge when callback is invoked */
 /* (Uncomment to enable) */
-/* #define ENABLE_LOG                  1 */
+#define ENABLE_LOG                  1
 /* #define ENABLE_DBG_MSG              1 */
 #define ENABLE_TIMING               1
 /* #define PRINT_ERROR_STACK           1 */
@@ -1555,7 +1555,7 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool)
     task_list = qhead->queue->task_list;
     DL_FOREACH_SAFE(task_list, task_elt, task_tmp) {
         is_dep_done = 1;
-        if (qhead->queue->type  == DEPENDENT) {
+        /* if (qhead->queue->type  == DEPENDENT) { */
             // Check if depenent tasks are finished
             for (i = 0; i < task_elt->n_dep; i++) {
 
@@ -1576,6 +1576,13 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool)
                 /*     break; */
                 /* } */
 
+                if ( task_elt->dep_tasks[i]->is_done != 1) {
+                    is_dep_done = 0;
+#ifdef ENABLE_DBG_MSG
+                    fprintf(stderr,"  [ASYNC VOL DBG] dependent task [%p] not finished\n", task_elt->dep_tasks[i]->func);
+#endif
+                    break;
+                }
                 if (NULL != task_elt->dep_tasks[i]->abt_thread) {
                     /* ABT_thread_self(&my_thread); */
                     /* if (task_elt->dep_tasks[i]->abt_thread == my_thread) { */
@@ -1585,20 +1592,16 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool)
                         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_thread_get_state\n", __func__);
                         return -1;
                     }
-                    /* if (ABT_task_get_state(task_elt->dep_tasks[i]->abt_task, &task_state) != ABT_SUCCESS) { */
-                    /*     fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_task_get_state\n", __func__); */
-                    /*     return -1; */
-                    /* } */
                     if (thread_state != ABT_THREAD_STATE_TERMINATED && thread_state != ABT_THREAD_STATE_RUNNING && thread_state != ABT_THREAD_STATE_READY) {
                         is_dep_done = 0;
 #ifdef ENABLE_DBG_MSG
-                        fprintf(stderr,"  [ASYNC VOL DBG] dependent task [%p] not finished\n", task_elt->dep_tasks[i]->func);
+                        fprintf(stderr,"  [ASYNC VOL DBG] dependent task [%p] not finished in ABT pool\n", task_elt->dep_tasks[i]->func);
 #endif
                         break;
                     }
                 }
             }
-        }
+        /* } */
 
         if (is_dep_done == 0)
             continue;
@@ -4327,7 +4330,7 @@ async_attr_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_lo
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -4665,7 +4668,7 @@ async_attr_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -4975,7 +4978,7 @@ async_attr_read(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type_
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -5299,7 +5302,7 @@ async_attr_write(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -5608,7 +5611,7 @@ async_attr_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -5927,7 +5930,7 @@ async_attr_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -6233,7 +6236,7 @@ async_attr_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -6540,7 +6543,7 @@ async_attr_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *par
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -6904,7 +6907,7 @@ async_dataset_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -7241,7 +7244,7 @@ async_dataset_open(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *p
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -7560,7 +7563,7 @@ async_dataset_read(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_ty
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -7884,7 +7887,7 @@ async_dataset_write(async_instance_t* aid, H5VL_async_t *parent_obj,
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -8196,7 +8199,7 @@ async_dataset_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -8506,7 +8509,7 @@ async_dataset_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -8812,7 +8815,7 @@ async_dataset_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -9122,7 +9125,7 @@ async_dataset_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -9474,7 +9477,7 @@ async_datatype_commit(async_instance_t* aid, H5VL_async_t *parent_obj, const H5V
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -9810,7 +9813,7 @@ async_datatype_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -10119,7 +10122,7 @@ async_datatype_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *p
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -10425,7 +10428,7 @@ async_datatype_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -10732,7 +10735,7 @@ async_datatype_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -11036,7 +11039,7 @@ async_datatype_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -12023,7 +12026,7 @@ async_file_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -12330,7 +12333,7 @@ async_file_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -13334,7 +13337,7 @@ async_group_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_l
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -13672,7 +13675,7 @@ async_group_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -13984,7 +13987,7 @@ async_group_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pare
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -14292,7 +14295,7 @@ async_group_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -14599,7 +14602,7 @@ async_group_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -14917,7 +14920,7 @@ async_group_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
         add_task_to_queue(&aid->qhead, async_task, REGULAR);
         is_blocking = true;
     }
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -15268,7 +15271,7 @@ async_link_create(task_list_qtype qtype, async_instance_t* aid, H5VL_link_create
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -15599,7 +15602,7 @@ async_link_copy(async_instance_t* aid, H5VL_async_t *parent_obj1, const H5VL_loc
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -15930,7 +15933,7 @@ async_link_move(async_instance_t* aid, H5VL_async_t *parent_obj1, const H5VL_loc
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -16244,7 +16247,7 @@ async_link_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -16561,7 +16564,7 @@ async_link_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -16876,7 +16879,7 @@ async_link_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -17208,7 +17211,7 @@ async_object_open(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -17538,7 +17541,7 @@ async_object_copy(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -17860,7 +17863,7 @@ async_object_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *par
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -18178,7 +18181,7 @@ async_object_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
@@ -18491,7 +18494,7 @@ async_object_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t
         goto error;
     }
     lock_parent = false;
-    if (aid->ex_delay == false) {
+    if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
     }
