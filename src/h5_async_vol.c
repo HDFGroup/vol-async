@@ -1532,11 +1532,9 @@ static herr_t
 push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool)
 {
     int               i, is_dep_done = 1;
-    /* ABT_task_state    task_state; */
     ABT_thread_state  thread_state;
-    /* ABT_thread        my_thread; */
-    async_task_t      *task_elt, *task_tmp, *task_list;
-    /* async_task_list_t *tmp; */
+    async_task_t      *task_elt, *task_tmp;
+    async_task_list_t *task_list_tmp, *task_list_elt;
 
     assert(qhead);
 
@@ -1552,77 +1550,78 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool)
     if (NULL == qhead->queue)
         goto done;
 
-    task_list = qhead->queue->task_list;
-    DL_FOREACH_SAFE(task_list, task_elt, task_tmp) {
-        is_dep_done = 1;
-        /* if (qhead->queue->type  == DEPENDENT) { */
-            // Check if depenent tasks are finished
-            for (i = 0; i < task_elt->n_dep; i++) {
+    DL_FOREACH_SAFE(qhead->queue, task_list_elt, task_list_tmp) {
+        DL_FOREACH_SAFE(task_list_elt->task_list, task_elt, task_tmp) {
+            is_dep_done = 1;
+            /* if (qhead->queue->type  == DEPENDENT) { */
+                // Check if depenent tasks are finished
+                for (i = 0; i < task_elt->n_dep; i++) {
 
-                /* // If dependent parent failed, do not push to Argobots pool */
-                /* if (task_elt->dep_tasks[i]->err_stack != 0) { */
-                /*     task_elt->err_stack = H5Ecreate_stack(); */
-                /*     H5Eappend_stack(task_elt->err_stack, task_elt->dep_tasks[i]->err_stack, false); */
-                /*     H5Epush(task_elt->err_stack, __FILE__, __func__, __LINE__, async_error_class_g, */
-                /*         H5E_VOL, H5E_CANTCREATE, "Parent task failed"); */
+                    /* // If dependent parent failed, do not push to Argobots pool */
+                    /* if (task_elt->dep_tasks[i]->err_stack != 0) { */
+                    /*     task_elt->err_stack = H5Ecreate_stack(); */
+                    /*     H5Eappend_stack(task_elt->err_stack, task_elt->dep_tasks[i]->err_stack, false); */
+                    /*     H5Epush(task_elt->err_stack, __FILE__, __func__, __LINE__, async_error_class_g, */
+                    /*         H5E_VOL, H5E_CANTCREATE, "Parent task failed"); */
 
-/* #ifdef PRINT_ERROR_STACK */
-                /*     H5Eprint2(task_elt->err_stack, stderr); */
-/* #endif */
-                /*     DL_DELETE(qhead->queue->task_list, task_elt); */
-                /*     task_elt->prev = NULL; */
-                /*     task_elt->next = NULL; */
-                /*     is_dep_done = 0; */
-                /*     break; */
-                /* } */
-
-                if ( task_elt->dep_tasks[i]->is_done != 1) {
-                    is_dep_done = 0;
-#ifdef ENABLE_DBG_MSG
-                    fprintf(stderr,"  [ASYNC VOL DBG] dependent task [%p] not finished\n", task_elt->dep_tasks[i]->func);
-#endif
-                    break;
-                }
-                if (NULL != task_elt->dep_tasks[i]->abt_thread) {
-                    /* ABT_thread_self(&my_thread); */
-                    /* if (task_elt->dep_tasks[i]->abt_thread == my_thread) { */
-                    /*     continue; */
+    /* #ifdef PRINT_ERROR_STACK */
+                    /*     H5Eprint2(task_elt->err_stack, stderr); */
+    /* #endif */
+                    /*     DL_DELETE(qhead->queue->task_list, task_elt); */
+                    /*     task_elt->prev = NULL; */
+                    /*     task_elt->next = NULL; */
+                    /*     is_dep_done = 0; */
+                    /*     break; */
                     /* } */
-                    if (ABT_thread_get_state(task_elt->dep_tasks[i]->abt_thread, &thread_state) != ABT_SUCCESS) {
-                        fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_thread_get_state\n", __func__);
-                        return -1;
-                    }
-                    if (thread_state != ABT_THREAD_STATE_TERMINATED && thread_state != ABT_THREAD_STATE_RUNNING && thread_state != ABT_THREAD_STATE_READY) {
+
+                    if ( task_elt->dep_tasks[i]->is_done != 1) {
                         is_dep_done = 0;
 #ifdef ENABLE_DBG_MSG
-                        fprintf(stderr,"  [ASYNC VOL DBG] dependent task [%p] not finished in ABT pool\n", task_elt->dep_tasks[i]->func);
+                        fprintf(stderr,"  [ASYNC VOL DBG] dependent task [%p] not finished\n", task_elt->dep_tasks[i]->func);
 #endif
                         break;
                     }
+                    if (NULL != task_elt->dep_tasks[i]->abt_thread) {
+                        /* ABT_thread_self(&my_thread); */
+                        /* if (task_elt->dep_tasks[i]->abt_thread == my_thread) { */
+                        /*     continue; */
+                        /* } */
+                        if (ABT_thread_get_state(task_elt->dep_tasks[i]->abt_thread, &thread_state) != ABT_SUCCESS) {
+                            fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_thread_get_state\n", __func__);
+                            return -1;
+                        }
+                        if (thread_state != ABT_THREAD_STATE_TERMINATED && thread_state != ABT_THREAD_STATE_RUNNING && thread_state != ABT_THREAD_STATE_READY) {
+                            is_dep_done = 0;
+#ifdef ENABLE_DBG_MSG
+                            fprintf(stderr,"  [ASYNC VOL DBG] dependent task [%p] not finished in ABT pool\n", task_elt->dep_tasks[i]->func);
+#endif
+                            break;
+                        }
+                    }
                 }
-            }
-        /* } */
+            /* } */
 
-        if (is_dep_done == 0)
-            continue;
+            if (is_dep_done == 0)
+                continue;
 
 #ifdef ENABLE_DBG_MSG
-        fprintf(stderr,"  [ASYNC VOL DBG] push task [%p] to Argobots pool\n", task_elt->func);
+            fprintf(stderr,"  [ASYNC VOL DBG] push task [%p] to Argobots pool\n", task_elt->func);
 #endif
 
-        if (task_elt->is_done == 0) {
-            if (ABT_thread_create(pool, task_elt->func, task_elt, ABT_THREAD_ATTR_NULL, &task_elt->abt_thread) != ABT_SUCCESS) {
-                fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_thread_create failed for %p\n", __func__, task_elt->func);
-                break;
+            if (task_elt->is_done == 0) {
+                if (ABT_thread_create(pool, task_elt->func, task_elt, ABT_THREAD_ATTR_NULL, &task_elt->abt_thread) != ABT_SUCCESS) {
+                    fprintf(stderr,"  [ASYNC VOL ERROR] %s ABT_thread_create failed for %p\n", __func__, task_elt->func);
+                    break;
+                }
+                task_elt->in_abt_pool = 1;
             }
-            task_elt->in_abt_pool = 1;
-        }
 
-        DL_DELETE(qhead->queue->task_list, task_elt);
-        task_elt->prev = NULL;
-        task_elt->next = NULL;
-        break;
-    }
+            DL_DELETE(qhead->queue->task_list, task_elt);
+            task_elt->prev = NULL;
+            task_elt->next = NULL;
+            break;
+        } // End  DL_FOREACH_SAFE(task_list_elt, task_elt,  task_tmp)
+    } // End DL_FOREACH_SAFE(qhead->queue, task_list_elt, task_list_tmp)
 
     // Remove head if all its tasks have been pushed to Argobots pool
     if (qhead->queue->task_list == NULL) {
