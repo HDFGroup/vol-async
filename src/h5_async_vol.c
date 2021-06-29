@@ -53,7 +53,7 @@
 
 /* Whether to display log messge when callback is invoked */
 /* (Uncomment to enable) */
-#define ENABLE_LOG                  1
+/* #define ENABLE_LOG                  1 */
 /* #define ENABLE_DBG_MSG              1 */
 #define ENABLE_TIMING               1
 /* #define PRINT_ERROR_STACK           1 */
