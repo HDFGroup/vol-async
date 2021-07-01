@@ -25,28 +25,33 @@ jobs:
           
       - name: Installation
         run: |
+          mydir="$PWD"
+          export HDF5_DIR=$mydir/hdf5/install
+          export ABT_DIR=$mydir/vol-async/argobots/install
+          export VOL_DIR=$mydir/vol-async
+          mkdir $HDF5_DIR
           # Compile HDF5
           cd hdf5
           export HDF5_LIBTOOL=/usr/bin/libtoolize
           ./autogen.sh
-          ./configure --prefix=hdf5/install --enable-parallel --enable-threadsafe --enable-unsupported
+          ./configure --prefix=$HDF5_DIR --enable-parallel --enable-threadsafe --enable-unsupported
           make && make install
           
           # Compile Argobots
+          mkdir $ABT_DIR
           cd argobots
           ./autogen.sh
-          ./configure --prefix=vol-async/argobots/install
+          ./configure --prefix=$HDF5_DIR
           make && make install
           
           # Compile Asynchronous VOL connector
           cd src
           cp Makefile.summit Makefile
-          export HDF5_DIR=hdf5/install
-          export ABT_DIR=vol-async/argobots/install
+          
           
           # Set Environmental Variables
-          export LD_LIBRARY_PATH=VOL_DIR/src:H5_DIR/install/lib:ABT_DIR/install/lib:LD_LIBRARY_PATH
-          export HDF5_PLUGIN_PATH="VOL_DIR/src"
+          export LD_LIBRARY_PATH=$VOL_DIR/src:$H5_DIR/install/lib:$ABT_DIR/install/lib:$LD_LIBRARY_PATH
+          export HDF5_PLUGIN_PATH="$VOL_DIR/src"
           export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
           
       - name: Test vol-async
