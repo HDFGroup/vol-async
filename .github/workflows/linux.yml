@@ -27,13 +27,11 @@ jobs:
         run: |
           # Compile HDF5
           cd $H5_DIR
-          ./autogen.sh
           ./configure --prefix=$H5_DIR/install --enable-parallel --enable-threadsafe --enable-unsupported
           make && make install
           
           # Compile Argobots
           cd $ABT_DIR
-          ./autogen.sh
           ./configure --prefix=$ABT_DIR/install
           make && make install
           
