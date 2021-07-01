@@ -23,10 +23,9 @@ jobs:
           # hdf5
           git clone https://github.com/HDFGroup/hdf5.git
           # environmental variables
-          cat /hdf5
-          cat /vol-async
-          cat /argobots
-          export H5_DIR=/usr/include/hdf5
+          export H5_DIR=/hdf5
+          export VOL_DIR=/vol-async
+          export ABT_DIR=/vol-async/argobots
           
           
           
