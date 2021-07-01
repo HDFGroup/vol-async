@@ -6,7 +6,7 @@
 #define __h5_async_lib_H
 
 /* Public headers needed by this file */
-#include "hdf5.h"        /* HDF5 */
+#include "hdf5.h" /* HDF5 */
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,4 +34,3 @@ extern herr_t H5async_start(void *request);
 #endif
 
 #endif /* __h5_async_lib_H */
-
