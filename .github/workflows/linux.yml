@@ -21,6 +21,8 @@ jobs:
           sudo apt-get install libtool
           # hdf5
           git clone https://github.com/HDFGroup/hdf5.git
+          # mpi
+          sudo apt-get install libopenmpi-dev
           
           
       - name: Installation
