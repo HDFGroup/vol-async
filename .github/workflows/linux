@@ -1,0 +1,55 @@
+name: linux 
+
+on:
+  pull_request:
+    branches: [ develop ]
+
+  # Allows to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  h5bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Dependencies
+        run: |
+          sudo apt-get update
+          # vol-async
+          git clone --recursive https://github.com/hpc-io/vol-async.git
+          # hdf5
+          git clone https://github.com/HDFGroup/hdf5.git
+          
+      - name: Installation
+        run: |
+          # Compile HDF5
+          cd $H5_DIR
+          ./autogen.sh
+          ./configure --prefix=$H5_DIR/install --enable-parallel --enable-threadsafe --enable-unsupported
+          make && make install
+          
+          # Compile Argobots
+          cd $ABT_DIR
+          ./autogen.sh
+          ./configure --prefix=$ABT_DIR/install
+          make && make install
+          
+          # Compile Asynchronous VOL connector
+          cd $VOL_DIR/src
+          cp Makefile.summit Makefile
+          export HDF5_DIR=$H5_DIR/install
+          export ABT_DIR=$ABT_DIR/install
+          
+          # Set Environmental Variables
+          export LD_LIBRARY_PATH=$VOL_DIR/src:$H5_DIR/install/lib:$ABT_DIR/install/lib:$LD_LIBRARY_PATH
+          export HDF5_PLUGIN_PATH="$VOL_DIR/src"
+          export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
+          
+      - name: Test vol-async
+        run: |
+          cd $VOL_DIR/test
+          cp Makefile.summit Makefile
+          make
