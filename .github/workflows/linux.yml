@@ -22,33 +22,27 @@ jobs:
           git clone --recursive https://github.com/hpc-io/vol-async.git
           # hdf5
           git clone https://github.com/HDFGroup/hdf5.git
-          # environmental variables
-          export H5_DIR=/hdf5
-          export VOL_DIR=/vol-async
-          export ABT_DIR=/vol-async/argobots
-          
-          
           
           
       - name: Installation
         run: |
           # Compile HDF5
-          cd H5_DIR
+          cd hdf5
           ./autogen.sh
-          ./configure --prefix=$H5_DIR/install --enable-parallel --enable-threadsafe --enable-unsupported
+          ./configure --prefix=hdf5/install --enable-parallel --enable-threadsafe --enable-unsupported
           make && make install
           
           # Compile Argobots
-          cd ABT_DIR
+          cd vol-async/argobots
           ./autogen.sh
-          ./configure --prefix=$ABT_DIR/install
+          ./configure --prefix=vol-async/argobots/install
           make && make install
           
           # Compile Asynchronous VOL connector
-          cd VOL_DIR/src
+          cd vol-async/src
           cp Makefile.summit Makefile
-          export HDF5_DIR=$H5_DIR/install
-          export ABT_DIR=$ABT_DIR/install
+          export HDF5_DIR=hdf5/install
+          export ABT_DIR=vol-async/argobots/install
           
           # Set Environmental Variables
           export LD_LIBRARY_PATH=VOL_DIR/src:H5_DIR/install/lib:ABT_DIR/install/lib:LD_LIBRARY_PATH
@@ -57,6 +51,6 @@ jobs:
           
       - name: Test vol-async
         run: |
-          cd VOL_DIR/test
+          cd vol-async/test
           cp Makefile.summit Makefile
           make
