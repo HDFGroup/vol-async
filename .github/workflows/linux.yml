@@ -17,10 +17,13 @@ jobs:
 
       - name: Dependencies
         run: |
+          sudo apt-get update
           # vol-async
           git clone --recursive https://github.com/hpc-io/vol-async.git
           # hdf5
           git clone https://github.com/HDFGroup/hdf5.git
+          
+          
           
           
       - name: Installation
