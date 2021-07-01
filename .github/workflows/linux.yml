@@ -22,6 +22,10 @@ jobs:
           git clone --recursive https://github.com/hpc-io/vol-async.git
           # hdf5
           git clone https://github.com/HDFGroup/hdf5.git
+          # environmental variables
+          export H5_DIR=/hdf5
+          export VOL_DIR=/vol-async
+          export ABT_DIR=/argobots
           
           
           
