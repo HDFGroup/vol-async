@@ -18,8 +18,6 @@ jobs:
       - name: Dependencies
         run: |
           sudo apt-get update
-          # vol-async
-          git clone --recursive https://github.com/hpc-io/vol-async.git
           # hdf5
           git clone https://github.com/HDFGroup/hdf5.git
           
@@ -33,13 +31,13 @@ jobs:
           make && make install
           
           # Compile Argobots
-          cd vol-async/argobots
+          cd argobots
           ./autogen.sh
           ./configure --prefix=vol-async/argobots/install
           make && make install
           
           # Compile Asynchronous VOL connector
-          cd vol-async/src
+          cd src
           cp Makefile.summit Makefile
           export HDF5_DIR=hdf5/install
           export ABT_DIR=vol-async/argobots/install
