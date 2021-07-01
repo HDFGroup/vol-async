@@ -18,12 +18,15 @@ jobs:
       - name: Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install libtool
           # vol-async
           git clone --recursive https://github.com/hpc-io/vol-async.git
           # hdf5
           git clone https://github.com/HDFGroup/hdf5.git
           # environmental variables
+          cat /usr/include/hdf5
+          cat /usr/include/vol-async
+          cat /usr/include/argobots
+          export H5_DIR=/usr/include/hdf5
           
           
           
