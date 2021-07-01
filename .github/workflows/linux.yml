@@ -27,6 +27,7 @@ jobs:
         run: |
           # Compile HDF5
           cd hdf5
+          export HDF5_LIBTOOL=/usr/bin/libtoolize
           ./autogen.sh
           ./configure --prefix=hdf5/install --enable-parallel --enable-threadsafe --enable-unsupported
           make && make install
