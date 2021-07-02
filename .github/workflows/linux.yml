@@ -39,8 +39,10 @@ jobs:
           ./configure --prefix=$HDF5_DIR --enable-parallel --enable-threadsafe --enable-unsupported
           make && make install
           
+          ls -l
+          
           # Compile Argobots
-          cd $ABT_DIR
+          cd argobots
           ./autogen.sh
           ./configure --prefix=$HDF5_DIR
           make && make install
