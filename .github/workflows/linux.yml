@@ -41,7 +41,7 @@ jobs:
           
           # Compile Argobots
           mkdir $ABT_DIR
-          cd argobots
+          cd $ABT_DIR
           ./autogen.sh
           ./configure --prefix=$HDF5_DIR
           make && make install
