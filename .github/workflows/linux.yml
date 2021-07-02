@@ -29,7 +29,7 @@ jobs:
         run: |
           mydir="$PWD"
           export HDF5_DIR=$mydir/hdf5/install
-          export ABT_DIR=$mydir/argobots
+          export ABT_DIR=$mydir/vol-async/argobots
           export VOL_DIR=$mydir/vol-async
           mkdir $HDF5_DIR
           # Compile HDF5
@@ -40,7 +40,6 @@ jobs:
           make && make install
           
           # Compile Argobots
-          mkdir $ABT_DIR
           cd $ABT_DIR
           ./autogen.sh
           ./configure --prefix=$HDF5_DIR
