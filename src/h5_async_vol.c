@@ -19472,6 +19472,9 @@ H5VL_async_dataset_read(void *dset, hid_t mem_type_id, hid_t mem_space_id,
     printf("------- ASYNC VOL DATASET Read\n");
 #endif
 
+    H5VL_async_dxpl_set_disable_implicit(plist_id);
+    H5VL_async_dxpl_set_pause(plist_id);
+
     if (async_instance_g->disable_implicit) {
         ret_value = H5VLdataset_read(o->under_object, o->under_vol_id, mem_type_id, mem_space_id, file_space_id,
                                      plist_id, buf, req);
@@ -19510,6 +19513,9 @@ H5VL_async_dataset_write(void *dset, hid_t mem_type_id, hid_t mem_space_id,
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATASET Write\n");
 #endif
+
+    H5VL_async_dxpl_set_disable_implicit(plist_id);
+    H5VL_async_dxpl_set_pause(plist_id);
 
     if (async_instance_g->disable_implicit) {
         ret_value = H5VLdataset_write(o->under_object, o->under_vol_id, mem_type_id, mem_space_id, file_space_id,
