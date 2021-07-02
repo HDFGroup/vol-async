@@ -41,6 +41,7 @@ jobs:
           
           # Compile Argobots
           cd $mydir
+          ls -l
           cd argobots
           ./autogen.sh
           ./configure --prefix=$HDF5_DIR
