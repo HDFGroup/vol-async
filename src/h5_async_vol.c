@@ -1139,6 +1139,12 @@ H5VL_async_dxpl_set_disable_implicit(hid_t dxpl)
             fprintf(stderr, "  [ASYNC VOL DBG] set implicit mode to %d\n", is_disable);
 #endif
         }
+        else {
+            async_instance_g->disable_implicit = false;
+#ifdef ENABLE_DBG_MSG
+            fprintf(stderr, "  [ASYNC VOL DBG] set implicit mode to false (new dxpl used)\n");
+#endif
+        }
     }
 
     return status;
@@ -1168,6 +1174,12 @@ H5VL_async_dxpl_set_pause(hid_t dxpl)
             async_instance_g->pause = is_pause;
 #ifdef ENABLE_DBG_MSG
             fprintf(stderr, "  [ASYNC VOL DBG] set pause async execution to %d\n", is_pause);
+#endif
+        }
+        else {
+            async_instance_g->pause = false;
+#ifdef ENABLE_DBG_MSG
+            fprintf(stderr, "  [ASYNC VOL DBG] set pause async execution to false (new dxpl used)\n");
 #endif
         }
     }
