@@ -51,6 +51,7 @@ jobs:
           make && make install
           
           # Compile Asynchronous VOL connector
+          cd $mydir
           cd src
           cp Makefile.summit Makefile
           
