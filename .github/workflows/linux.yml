@@ -63,6 +63,6 @@ jobs:
           
       - name: Test vol-async
         run: |
-          cd vol-async/test
+          cd test
           cp Makefile.summit Makefile
           make
