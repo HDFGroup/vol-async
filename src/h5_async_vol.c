@@ -177,6 +177,8 @@ typedef struct async_instance_t {
     ABT_xstream         *scheds;
     ABT_sched           *progress_scheds;
     int                 nfopen;
+    int                 mpi_size;
+    int                 mpi_rank;
     bool                ex_delay;            /* Delay background thread execution */
     bool                ex_fclose;           /* Delay background thread execution until file close */
     bool                ex_gclose;           /* Delay background thread execution until group close */
@@ -856,7 +858,7 @@ async_init(hid_t vipl_id)
             ret_val = -1;
             goto done;
         }
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
         else
             fprintf(stderr, "  [ASYNC VOL DBG] Success with Argobots init\n");
 #endif
@@ -914,7 +916,7 @@ async_instance_finalize(void)
         ret_val = -1;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     fprintf(stderr, "  [ASYNC VOL DBG] Success with async_instance_finalize\n");
 #endif
 
@@ -1094,6 +1096,17 @@ async_instance_init(int backing_thread_count)
     /* Set "delay execution" convenience flag, if any of the others are set */
     if(aid->ex_fclose || aid->ex_gclose || aid->ex_dclose)
         aid->ex_delay  = true;
+
+#ifdef MPI_VERSION
+{
+    int flag;
+    MPI_Initialized(&flag);
+    if (flag) {
+        MPI_Comm_size(MPI_COMM_WORLD, &aid->mpi_size);
+        MPI_Comm_rank(MPI_COMM_WORLD, &aid->mpi_rank);
+    }
+}
+#endif
 
     async_instance_g = aid;
 
@@ -1310,7 +1323,8 @@ H5VL_async_term(void)
     herr_t ret_val = 0;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] ASYNC VOL terminate\n");
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] ASYNC VOL terminate\n");
 #endif
 
     /* Wait for all operations to complete */
@@ -4062,8 +4076,8 @@ async_attr_create_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -4154,11 +4168,11 @@ async_attr_create_fn(void *foo)
     task->async_obj->create_task = NULL;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -4210,7 +4224,8 @@ async_attr_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_lo
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -4383,7 +4398,6 @@ async_attr_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_lo
 #endif
 
 done:
-    fflush(stdout);
     return async_obj;
 error:
     if (lock_parent) {
@@ -4414,8 +4428,8 @@ async_attr_open_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -4505,11 +4519,11 @@ async_attr_open_fn(void *foo)
     task->async_obj->create_task = NULL;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -4558,7 +4572,8 @@ async_attr_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -4719,7 +4734,6 @@ async_attr_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc_
 #endif
 
 done:
-    fflush(stdout);
     return async_obj;
 error:
     if (lock_parent) {
@@ -4750,8 +4764,8 @@ async_attr_read_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -4837,11 +4851,11 @@ async_attr_read_fn(void *foo)
     }
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -4887,7 +4901,8 @@ async_attr_read(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type_
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -5029,7 +5044,6 @@ async_attr_read(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type_
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
@@ -5060,8 +5074,8 @@ async_attr_write_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -5147,11 +5161,11 @@ async_attr_write_fn(void *foo)
     }
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -5198,7 +5212,8 @@ async_attr_write(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type
     /* hsize_t attr_size; */
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -5353,7 +5368,6 @@ async_attr_write(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_type
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
@@ -5384,8 +5398,8 @@ async_attr_get_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -5471,11 +5485,11 @@ async_attr_get_fn(void *foo)
     }
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -5519,7 +5533,8 @@ async_attr_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -5662,7 +5677,6 @@ async_attr_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
@@ -5693,8 +5707,8 @@ async_attr_specific_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -5782,11 +5796,11 @@ async_attr_specific_fn(void *foo)
     }
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -5831,7 +5845,8 @@ async_attr_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -5981,7 +5996,6 @@ async_attr_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
@@ -6012,8 +6026,8 @@ async_attr_optional_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -6099,11 +6113,11 @@ async_attr_optional_fn(void *foo)
     }
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -6147,7 +6161,8 @@ async_attr_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -6287,7 +6302,6 @@ async_attr_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
@@ -6318,8 +6332,8 @@ async_attr_close_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -6405,11 +6419,11 @@ async_attr_close_fn(void *foo)
     }
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -6452,7 +6466,8 @@ async_attr_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *par
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -6601,7 +6616,6 @@ async_attr_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *par
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
@@ -6632,8 +6646,8 @@ async_dataset_create_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -6723,11 +6737,11 @@ async_dataset_create_fn(void *foo)
     task->async_obj->create_task = NULL;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -6780,7 +6794,8 @@ async_dataset_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -6958,7 +6973,6 @@ async_dataset_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL
 #endif
 
 done:
-    fflush(stdout);
     return async_obj;
 error:
     if (lock_parent) {
@@ -6989,8 +7003,8 @@ async_dataset_open_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -7080,11 +7094,11 @@ async_dataset_open_fn(void *foo)
     task->async_obj->create_task = NULL;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -7132,7 +7146,8 @@ async_dataset_open(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *p
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -7295,7 +7310,6 @@ async_dataset_open(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *p
 #endif
 
 done:
-    fflush(stdout);
     return async_obj;
 error:
     if (lock_parent) {
@@ -7326,8 +7340,8 @@ async_dataset_read_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -7414,11 +7428,11 @@ async_dataset_read_fn(void *foo)
 
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -7466,7 +7480,8 @@ async_dataset_read(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_ty
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -7613,7 +7628,6 @@ async_dataset_read(async_instance_t* aid, H5VL_async_t *parent_obj, hid_t mem_ty
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
@@ -7644,8 +7658,8 @@ async_dataset_write_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -7728,9 +7742,7 @@ async_dataset_write_fn(void *foo)
     if ( status < 0 ) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
             fprintf(stderr,"  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
-#ifdef ENABLE_LOG
         fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s failed\n", __func__);
-#endif
 #ifdef PRINT_ERROR_STACK
         H5Eprint2(task->err_stack, stderr);
 #endif
@@ -7738,11 +7750,11 @@ async_dataset_write_fn(void *foo)
     }
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -7790,7 +7802,8 @@ async_dataset_write(async_instance_t* aid, H5VL_async_t *parent_obj,
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -7937,7 +7950,6 @@ async_dataset_write(async_instance_t* aid, H5VL_async_t *parent_obj,
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 
 error:
@@ -7969,8 +7981,8 @@ async_dataset_get_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -8056,11 +8068,11 @@ async_dataset_get_fn(void *foo)
     }
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -8104,7 +8116,8 @@ async_dataset_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -8250,7 +8263,6 @@ async_dataset_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
 #endif
 
 done:
-    fflush(stdout);
     return 0;
 error:
     if (lock_parent) {
@@ -8281,8 +8293,8 @@ async_dataset_specific_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -8368,11 +8380,11 @@ async_dataset_specific_fn(void *foo)
     }
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -8417,7 +8429,8 @@ async_dataset_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -8560,7 +8573,6 @@ async_dataset_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
@@ -8591,8 +8603,8 @@ async_dataset_optional_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -8678,11 +8690,11 @@ async_dataset_optional_fn(void *foo)
     }
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -8726,7 +8738,8 @@ async_dataset_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -8866,7 +8879,6 @@ async_dataset_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
@@ -8897,8 +8909,8 @@ async_dataset_close_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -8984,11 +8996,11 @@ async_dataset_close_fn(void *foo)
     }
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -9032,7 +9044,8 @@ async_dataset_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -9185,7 +9198,6 @@ async_dataset_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
@@ -9216,8 +9228,8 @@ async_datatype_commit_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -9304,11 +9316,11 @@ async_datatype_commit_fn(void *foo)
     task->async_obj->under_object = under_obj;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -9359,7 +9371,8 @@ async_datatype_commit(async_instance_t* aid, H5VL_async_t *parent_obj, const H5V
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -9528,7 +9541,6 @@ async_datatype_commit(async_instance_t* aid, H5VL_async_t *parent_obj, const H5V
 #endif
 
 done:
-    fflush(stdout);
     return async_obj;
 error:
     if (lock_parent) {
@@ -9559,8 +9571,8 @@ async_datatype_open_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -9651,11 +9663,11 @@ async_datatype_open_fn(void *foo)
     task->async_obj->create_task = NULL;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -9703,7 +9715,8 @@ async_datatype_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -9864,7 +9877,6 @@ async_datatype_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_
 #endif
 
 done:
-    fflush(stdout);
     return async_obj;
 error:
     if (lock_parent) {
@@ -9895,8 +9907,8 @@ async_datatype_get_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -9982,11 +9994,11 @@ async_datatype_get_fn(void *foo)
     }
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -10030,7 +10042,8 @@ async_datatype_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *p
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -10173,7 +10186,6 @@ async_datatype_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *p
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
@@ -10204,8 +10216,8 @@ async_datatype_specific_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -10291,11 +10303,11 @@ async_datatype_specific_fn(void *foo)
     }
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -10339,7 +10351,8 @@ async_datatype_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -10479,7 +10492,6 @@ async_datatype_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
@@ -10510,8 +10522,8 @@ async_datatype_optional_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -10597,11 +10609,11 @@ async_datatype_optional_fn(void *foo)
     }
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -10646,7 +10658,8 @@ async_datatype_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -10786,7 +10799,6 @@ async_datatype_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
@@ -10817,8 +10829,8 @@ async_datatype_close_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -10904,11 +10916,11 @@ async_datatype_close_fn(void *foo)
     }
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -10951,7 +10963,8 @@ async_datatype_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -11097,7 +11110,6 @@ async_datatype_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
@@ -11132,8 +11144,8 @@ async_file_create_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -11218,7 +11230,8 @@ async_file_create_fn(void *foo)
     task->async_obj->create_task = NULL;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
     // Increase file open ref count
@@ -11233,7 +11246,6 @@ async_file_create_fn(void *foo)
     };
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -11283,7 +11295,8 @@ async_file_create(async_instance_t* aid, const char *name, unsigned flags, hid_t
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -11431,7 +11444,6 @@ async_file_create(async_instance_t* aid, const char *name, unsigned flags, hid_t
 #endif
 
 done:
-    fflush(stdout);
     return async_obj;
 error:
     if (lock_self) {
@@ -11466,8 +11478,8 @@ async_file_open_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -11557,7 +11569,8 @@ async_file_open_fn(void *foo)
     task->async_obj->create_task = NULL;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
     // Increase file open ref count
@@ -11572,7 +11585,6 @@ async_file_open_fn(void *foo)
     };
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -11621,7 +11633,8 @@ async_file_open(task_list_qtype qtype, async_instance_t* aid, const char *name, 
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -11766,7 +11779,6 @@ async_file_open(task_list_qtype qtype, async_instance_t* aid, const char *name, 
 #endif
 
 done:
-    fflush(stdout);
     return async_obj;
 
 error:
@@ -11798,8 +11810,8 @@ async_file_get_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -11885,11 +11897,11 @@ async_file_get_fn(void *foo)
     }
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -11934,7 +11946,8 @@ async_file_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -12077,7 +12090,6 @@ async_file_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
@@ -12108,8 +12120,8 @@ async_file_specific_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -12195,11 +12207,11 @@ async_file_specific_fn(void *foo)
     }
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -12244,7 +12256,8 @@ async_file_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -12384,7 +12397,6 @@ async_file_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
@@ -12415,8 +12427,8 @@ async_file_optional_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -12502,11 +12514,11 @@ async_file_optional_fn(void *foo)
     }
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -12551,7 +12563,8 @@ async_file_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -12688,7 +12701,6 @@ async_file_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
@@ -12719,8 +12731,8 @@ async_file_close_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -12807,7 +12819,8 @@ async_file_close_fn(void *foo)
 
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
     // Decrease file open ref count
@@ -12822,7 +12835,6 @@ async_file_close_fn(void *foo)
     };
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -12874,7 +12886,8 @@ async_file_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *par
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -13038,7 +13051,6 @@ wait:
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
@@ -13069,8 +13081,8 @@ async_group_create_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -13160,11 +13172,11 @@ async_group_create_fn(void *foo)
     task->async_obj->create_task = NULL;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -13216,7 +13228,8 @@ async_group_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_l
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -13388,7 +13401,6 @@ async_group_create(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_l
 #endif
 
 done:
-    fflush(stdout);
     return async_obj;
 error:
     if (lock_parent) {
@@ -13422,8 +13434,8 @@ async_group_open_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -13513,11 +13525,11 @@ async_group_open_fn(void *foo)
     task->async_obj->create_task = NULL;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -13565,7 +13577,8 @@ async_group_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -13726,7 +13739,6 @@ async_group_open(async_instance_t* aid, H5VL_async_t *parent_obj, const H5VL_loc
 #endif
 
 done:
-    fflush(stdout);
     return async_obj;
 error:
     if (lock_parent) {
@@ -13757,8 +13769,8 @@ async_group_get_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -13844,11 +13856,11 @@ async_group_get_fn(void *foo)
     }
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -13892,7 +13904,8 @@ async_group_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pare
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -14038,7 +14051,6 @@ async_group_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pare
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
@@ -14069,8 +14081,8 @@ async_group_specific_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -14157,11 +14169,11 @@ async_group_specific_fn(void *foo)
 
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -14206,7 +14218,8 @@ async_group_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -14346,7 +14359,6 @@ async_group_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
@@ -14377,8 +14389,8 @@ async_group_optional_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -14464,11 +14476,11 @@ async_group_optional_fn(void *foo)
     }
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -14513,7 +14525,8 @@ async_group_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -14653,7 +14666,6 @@ async_group_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
@@ -14684,8 +14696,8 @@ async_group_close_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -14774,11 +14786,11 @@ async_group_close_fn(void *foo)
 
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -14824,7 +14836,8 @@ async_group_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -14980,7 +14993,6 @@ async_group_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
@@ -15014,8 +15026,8 @@ async_link_create_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -15101,14 +15113,14 @@ async_link_create_fn(void *foo)
     }
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
     /* va_end is needed as arguments is copied previously */
     va_end(args->arguments);
 
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -15156,7 +15168,8 @@ async_link_create(task_list_qtype qtype, async_instance_t* aid, H5VL_link_create
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -15322,7 +15335,6 @@ async_link_create(task_list_qtype qtype, async_instance_t* aid, H5VL_link_create
 #endif
 
 done:
-    fflush(stdout);
     return 0;
 error:
     if (lock_parent) {
@@ -15353,8 +15365,8 @@ async_link_copy_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -15441,11 +15453,11 @@ async_link_copy_fn(void *foo)
 
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -15494,7 +15506,8 @@ async_link_copy(async_instance_t* aid, H5VL_async_t *parent_obj1, const H5VL_loc
     H5VL_async_t *parent_obj = parent_obj1 ? parent_obj1 : parent_obj2;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -15653,7 +15666,6 @@ async_link_copy(async_instance_t* aid, H5VL_async_t *parent_obj1, const H5VL_loc
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
@@ -15684,8 +15696,8 @@ async_link_move_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -15772,11 +15784,11 @@ async_link_move_fn(void *foo)
 
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -15825,7 +15837,8 @@ async_link_move(async_instance_t* aid, H5VL_async_t *parent_obj1, const H5VL_loc
     H5VL_async_t *parent_obj = parent_obj1 ? parent_obj1 : parent_obj2;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -15984,7 +15997,6 @@ async_link_move(async_instance_t* aid, H5VL_async_t *parent_obj1, const H5VL_loc
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
@@ -16015,8 +16027,8 @@ async_link_get_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -16103,11 +16115,11 @@ async_link_get_fn(void *foo)
 
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -16152,7 +16164,8 @@ async_link_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -16298,7 +16311,6 @@ async_link_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *paren
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
@@ -16329,8 +16341,8 @@ async_link_specific_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -16420,11 +16432,11 @@ async_link_specific_fn(void *foo)
 
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -16469,7 +16481,8 @@ async_link_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -16615,7 +16628,6 @@ async_link_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
@@ -16646,8 +16658,8 @@ async_link_optional_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -16734,11 +16746,11 @@ async_link_optional_fn(void *foo)
 
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -16784,7 +16796,8 @@ async_link_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -16930,7 +16943,6 @@ async_link_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
@@ -16961,8 +16973,8 @@ async_object_open_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -17052,11 +17064,11 @@ async_object_open_fn(void *foo)
     task->async_obj->create_task = NULL;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -17101,7 +17113,8 @@ async_object_open(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -17262,7 +17275,6 @@ async_object_open(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
 #endif
 
 done:
-    fflush(stdout);
     return async_obj;
 error:
     if (lock_parent) {
@@ -17293,8 +17305,8 @@ async_object_copy_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -17381,11 +17393,11 @@ async_object_copy_fn(void *foo)
 
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -17438,7 +17450,8 @@ async_object_copy(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
     H5VL_async_t *parent_obj = parent_obj1 ? parent_obj1 : parent_obj2;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -17592,7 +17605,6 @@ async_object_copy(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
@@ -17623,8 +17635,8 @@ async_object_get_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -17714,11 +17726,11 @@ async_object_get_fn(void *foo)
 
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -17763,7 +17775,8 @@ async_object_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *par
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -17914,7 +17927,6 @@ async_object_get(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *par
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
@@ -17945,8 +17957,8 @@ async_object_specific_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -18034,11 +18046,11 @@ async_object_specific_fn(void *foo)
     }
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -18083,7 +18095,8 @@ async_object_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -18232,7 +18245,6 @@ async_object_specific(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
@@ -18263,8 +18275,8 @@ async_object_optional_fn(void *foo)
 #endif
 
 #ifdef ENABLE_LOG
-    fprintf(stdout,"  [ASYNC ABT LOG] entering %s\n", __func__);
-    fflush(stdout);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] entering %s\n", __func__);
 #endif
     assert(args);
     assert(task);
@@ -18350,11 +18362,11 @@ async_object_optional_fn(void *foo)
     }
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
 
 done:
-    fflush(stdout);
     if(is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(stderr,"  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
@@ -18399,7 +18411,8 @@ async_object_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t
     unsigned int mutex_count = 1;
 
 #ifdef ENABLE_LOG
-    fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr,"  [ASYNC VOL LOG] entering %s\n", __func__);
 #endif
 
     assert(aid);
@@ -18545,7 +18558,6 @@ async_object_optional(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t
 #endif
 
 done:
-    fflush(stdout);
     return 1;
 error:
     if (lock_parent) {
