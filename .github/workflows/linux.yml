@@ -64,6 +64,7 @@ jobs:
           
       - name: Test vol-async
         run: |
+          find /usr -iname "*hdf5.h*"
           pwd
           cd test
           cp Makefile.summit Makefile
