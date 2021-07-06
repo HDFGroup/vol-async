@@ -64,8 +64,8 @@ jobs:
           
       - name: Test vol-async
         run: |
-          export CPATH="/hdf5/serial/hdf5.h"
           pwd
+          export CPATH="/hdf5/serial/hdf5.h"
           cd test
           cp Makefile.summit Makefile
           make
