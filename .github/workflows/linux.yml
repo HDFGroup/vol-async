@@ -45,7 +45,7 @@ jobs:
           cd argobots
           ls -l
           ./autogen.sh
-          ./configure --prefix=$HDF5_DIR
+          ./configure --prefix=$ABT_DIR
           make && make install
           
           # Compile Asynchronous VOL connector
