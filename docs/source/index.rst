@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-HDF5 Asynchronous I/O VOL Connector!
+HDF5 Asynchronous I/O VOL Connector
 ===============================================================
 
 With scientific applications moving toward exascale levels, an increasing amount of data is being produced and ana- lyzed. Providing efficient data access is crucial to the productivity of the scientific discovery process. Compared to improvements in CPU and network speeds, I/O performance lags far behind, such that moving data across the storage hierarchy can take longer than data generation or analysis. To alleviate this I/O bottleneck, asynchronous read and write operations have been provided by the POSIX and MPI-I/O interfaces and can overlap I/O operations with computation, and thus hide I/O latency. However, these standards lack support for non-data operations such as file open, stat, and close, and their read and write operations require users to both manually manage data dependencies and use low- level byte offsets. This requires significant effort and expertise for applications to utilize.
