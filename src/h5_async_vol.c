@@ -1,14 +1,20 @@
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Copyright by The HDF Group.                                               *
- * All rights reserved.                                                      *
- *                                                                           *
- * This file is part of HDF5.  The full HDF5 copyright notice, including     *
- * terms governing use, modification, and redistribution, is contained in    *
- * the COPYING file, which can be found at the root of the source code       *
- * distribution tree, or in https://support.hdfgroup.org/ftp/HDF5/releases.  *
- * If you do not have access to either file, you may request a copy from     *
- * help@hdfgroup.org.                                                        *
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/*******************************************************************************
+Asynchronous I/O VOL Connector (AsyncVOL) Copyright (c) 2021, The
+Regents of the University of California, through Lawrence Berkeley
+National Laboratory (subject to receipt of any required approvals from
+the U.S. Dept. of Energy).  All rights reserved.
+
+If you have questions about your rights to use or distribute this software,
+please contact Berkeley Lab's Intellectual Property Office at
+IPO@lbl.gov.
+
+NOTICE.  This Software was developed under funding from the U.S. Department
+of Energy and the U.S. Government consequently retains certain rights.  As
+such, the U.S. Government has been granted for itself and others acting on
+its behalf a paid-up, nonexclusive, irrevocable, worldwide license in the
+Software to reproduce, distribute copies to the public, prepare derivative 
+works, and perform publicly and display publicly, and to permit others to do so.
+********************************************************************************/
 
 /*
  * Purpose:     This is a "async" VOL connector, which forwards each
@@ -55,10 +61,11 @@
 /* (Uncomment to enable) */
 /* #define ENABLE_LOG                  1 */
 /* #define ENABLE_DBG_MSG              1 */
-#define ENABLE_TIMING               1
 /* #define PRINT_ERROR_STACK           1 */
 /* #define ENABLE_ASYNC_LOGGING */
 
+/* Record timing information */
+#define ENABLE_TIMING               1
 
 /* Default # of background threads */
 #define ASYNC_VOL_DEFAULT_NTHREAD   1
