@@ -31,18 +31,19 @@ jobs:
           export HDF5_DIR=$mydir/hdf5/install
           export ABT_DIR=$mydir/argobots
           export VOL_DIR=$mydir
-          mkdir $HDF5_DIR
+          # mkdir $HDF5_DIR
           # Compile HDF5
-          cd hdf5
-          export HDF5_LIBTOOL=/usr/bin/libtoolize
-          ./autogen.sh
-          ./configure --prefix=$HDF5_DIR --enable-parallel --enable-threadsafe --enable-unsupported
-          make && make install
+          # cd hdf5
+          # export HDF5_LIBTOOL=/usr/bin/libtoolize
+          # ./autogen.sh
+          # ./configure --prefix=$HDF5_DIR --enable-parallel --enable-threadsafe --enable-unsupported
+          # make && make install
           
           # Compile Argobots
           cd $mydir
           ls -l
           cd argobots
+          ls -l
           ./autogen.sh
           ./configure --prefix=$HDF5_DIR
           make && make install
