@@ -64,7 +64,6 @@ jobs:
       - name: Test vol-async
         run: |
           pwd
-          cd $mydir
           cd test
           cp Makefile.summit Makefile
           make
