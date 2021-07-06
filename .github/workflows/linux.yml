@@ -33,8 +33,9 @@ jobs:
           export HDF5_DIR=$mydir/hdf5/install
           export ABT_DIR=$mydir/argobots
           export VOL_DIR=$mydir
+          
           mkdir $HDF5_DIR
-          Compile HDF5
+          # Compile HDF5
           cd hdf5
           export HDF5_LIBTOOL=/usr/bin/libtoolize
           ./autogen.sh
