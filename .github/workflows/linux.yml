@@ -44,9 +44,7 @@ jobs:
           
           # Compile Argobots
           cd $mydir
-          ls -l
           cd argobots
-          ls -l
           ./autogen.sh
           ./configure --prefix=$ABT_DIR
           make && make install
@@ -65,6 +63,7 @@ jobs:
       - name: Test vol-async
         run: |
           pwd
+          ls -l
           git clone https://github.com/HDFGroup/hdf5.git
           export CPATH="/hdf5/src/hdf5.h"
           cd test
