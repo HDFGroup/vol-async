@@ -64,5 +64,5 @@ jobs:
           cd $mydir
           cd test
           cp Makefile.summit Makefile
-          export CPATH=$mydir/hdf5/src/
+          export CPATH=$mydir/hdf5/src/:$mydir/src/
           make
