@@ -65,6 +65,7 @@ jobs:
       - name: Test vol-async
         run: |
           pwd
+          git clone https://github.com/HDFGroup/hdf5.git
           export CPATH="/hdf5/src/hdf5.h"
           cd test
           cp Makefile.summit Makefile
