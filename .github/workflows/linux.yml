@@ -61,6 +61,7 @@ jobs:
           export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
           
           # Test vol-async
+          cd $mydir
           cd test
           cp Makefile.summit Makefile
           export CPATH=$mydir/hdf5/src/
