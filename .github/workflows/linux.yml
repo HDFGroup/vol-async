@@ -65,5 +65,5 @@ jobs:
           pwd
           cd test
           cp Makefile.summit Makefile
-          export CPATH=$mydir/hdf5/serial/
+          export CPATH=$mydir/hdf5/install/include/hdf5.h
           make
