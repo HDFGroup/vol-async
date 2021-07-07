@@ -60,11 +60,8 @@ jobs:
           export HDF5_PLUGIN_PATH="$VOL_DIR/src"
           export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
           
-      - name: Test vol-async
-        run: |
-          mydir="$PWD"
-          pwd
+          # Test vol-async
           cd test
           cp Makefile.summit Makefile
-          export CPATH=$mydir/hdf5/install/include/hdf5.h
+          export CPATH=$mydir/hdf5/src/
           make
