@@ -64,8 +64,7 @@ jobs:
         run: |
           pwd
           ls -l
-          git clone https://github.com/HDFGroup/hdf5.git
-          export CPATH="/hdf5/src/hdf5.h"
+          export CPATH="/home/runner/work/vol-async/vol-async/hdf5/src/hdf5.h"
           cd test
           cp Makefile.summit Makefile
           make
