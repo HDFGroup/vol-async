@@ -62,7 +62,8 @@ jobs:
           
       - name: Test vol-async
         run: |
-          cd $VOL_DIR/test
+          pwd
+          cd test
           cp Makefile.summit Makefile
           export CPATH=$mydir/hdf5/serial/
           make
