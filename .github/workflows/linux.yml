@@ -6,7 +6,6 @@ on:
 
   # Allows to run this workflow manually from the Actions tab
   workflow_dispatch:
-
 jobs:
   vol-async:
     runs-on: ubuntu-latest
@@ -14,7 +13,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-
+      - name: Checkout submodule argobots
+        run: git submodule update --init --recursive
+      
+      
       - name: Dependencies
         run: |
           sudo apt-get update
@@ -31,6 +33,7 @@ jobs:
           export HDF5_DIR=$mydir/hdf5/install
           export ABT_DIR=$mydir/argobots
           export VOL_DIR=$mydir
+          
           mkdir $HDF5_DIR
           # Compile HDF5
           cd hdf5
@@ -41,13 +44,13 @@ jobs:
           
           # Compile Argobots
           cd $mydir
-          ls -l
           cd argobots
           ./autogen.sh
-          ./configure --prefix=$HDF5_DIR
+          ./configure --prefix=$ABT_DIR
           make && make install
           
           # Compile Asynchronous VOL connector
+          cd $mydir
           cd src
           cp Makefile.summit Makefile
           
@@ -57,8 +60,9 @@ jobs:
           export HDF5_PLUGIN_PATH="$VOL_DIR/src"
           export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
           
-      - name: Test vol-async
-        run: |
-          cd vol-async/test
+          # Test vol-async
+          cd $mydir
+          cd test
           cp Makefile.summit Makefile
+          export CPATH=$mydir/hdf5/src/:$mydir/src/
           make
