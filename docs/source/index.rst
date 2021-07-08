@@ -22,11 +22,16 @@ To overcome these issues, we present an asynchronous I/O framework that provides
    :maxdepth: 2
    :caption: Resources:
 
+   resources
+
 
 
 .. toctree::
    :maxdepth: 2
    :caption: Legal:
+
+   copyright
+   license
 
 
 
