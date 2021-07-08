@@ -199,6 +199,7 @@ int main(int argc, char *argv[])
     }
     if (print_dbg_msg) printf("H5Aread done\n");
 
+    H5Pset_dxpl_disable_async_implicit(async_dxpl, true);
 
     // W0, R0, W1, R1, W1', W0', R0', R1'
     if (print_dbg_msg) printf("H5Dwrite 0 start\n");
@@ -212,6 +213,8 @@ int main(int argc, char *argv[])
     if (print_dbg_msg) printf("H5Dwrite 0 done\n");
     fflush(stdout);
     /* usleep(sleeptime); */
+
+    H5Pset_dxpl_disable_async_implicit(async_dxpl, false);
 
     if (print_dbg_msg) printf("H5Dread 0 start\n");
     fflush(stdout);

@@ -553,10 +553,18 @@ herr_t
 H5Pset_dxpl_disable_async_implicit(hid_t dxpl, hbool_t is_disable)
 {
     herr_t status;
-    status = H5Pinsert2(dxpl, H5VL_ASYNC_DISABLE_IMPLICIT_NAME, sizeof(hbool_t), false, NULL, NULL, NULL, NULL, NULL, NULL);
+
+    status = H5Pexist(dxpl, H5VL_ASYNC_DISABLE_IMPLICIT_NAME);
     if (status < 0) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s: H5Pinsert2 failed!\n", __func__);
-        return(-1);
+        fprintf(stderr,"  [ASYNC VOL ERROR] %s H5Pexist failed!\n", __func__);
+        return -1;
+    }
+    else if (status == 0) {
+        status = H5Pinsert2(dxpl, H5VL_ASYNC_DISABLE_IMPLICIT_NAME, sizeof(hbool_t), &is_disable, NULL, NULL, NULL, NULL, NULL, NULL);
+        if (status < 0) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s: H5Pinsert2 failed!\n", __func__);
+            return(-1);
+        }
     }
 
     status = H5Pset(dxpl, H5VL_ASYNC_DISABLE_IMPLICIT_NAME, &is_disable);
@@ -616,10 +624,18 @@ herr_t
 H5Pset_dxpl_pause(hid_t dxpl, hbool_t is_pause)
 {
     herr_t status;
-    status = H5Pinsert2(dxpl, H5VL_ASYNC_PAUSE_NAME, sizeof(hbool_t), false, NULL, NULL, NULL, NULL, NULL, NULL);
+
+    status = H5Pexist(dxpl, H5VL_ASYNC_PAUSE_NAME);
     if (status < 0) {
-        fprintf(stderr, "  [ASYNC VOL ERROR] %s: H5Pinsert2 failed!\n", __func__);
-        return(-1);
+        fprintf(stderr,"  [ASYNC VOL ERROR] %s H5Pexist failed!\n", __func__);
+        return -1;
+    }
+    else if (status == 0) {
+        status = H5Pinsert2(dxpl, H5VL_ASYNC_PAUSE_NAME, sizeof(hbool_t), &is_pause, NULL, NULL, NULL, NULL, NULL, NULL);
+        if (status < 0) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s: H5Pinsert2 failed!\n", __func__);
+            return(-1);
+        }
     }
 
     status = H5Pset(dxpl, H5VL_ASYNC_PAUSE_NAME, &is_pause);
