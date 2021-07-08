@@ -53,6 +53,7 @@ jobs:
           cd $mydir
           cd src
           cp Makefile.summit Makefile
+          make
           
           
           # Set Environmental Variables
