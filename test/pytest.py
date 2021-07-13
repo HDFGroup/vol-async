@@ -3,7 +3,7 @@
 # Arguments:
 # -h: help, -v: verbose mode -m mpi-tasks
 
-import os, sys, argparse, subprocess
+import os, sys, argparse, subprocess, multiprocessing
 
 #------------------------------------------------
 def guess_mpi_cmd(mpi_tasks, cpu_allocation, verbose):
@@ -13,7 +13,7 @@ def guess_mpi_cmd(mpi_tasks, cpu_allocation, verbose):
     sys_name = os.uname()[0]
     if verbose: print('sys_name=', sys_name)
 
-    if mpi_tasks<=0: mpi_tasks = 4
+    if mpi_tasks<=0: mpi_tasks = multiprocessing.cpu_count()
 
     if 'quartz' in node_name:
         # the following setting is needed to combine h5py and subprocess.run on LC
