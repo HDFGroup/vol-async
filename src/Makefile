@@ -1,5 +1,10 @@
-HDF5_DIR = /global/u1/h/houhun/hpc-io/hdf5/async_optional_gnu/hdf5
-ABT_DIR = /global/u1/h/houhun/cori/argobots/install
+ifndef HDF5_DIR
+        HDF5_DIR = /global/u1/h/houhun/hpc-io/hdf5/async_optional_gnu/hdf5
+endif
+
+ifndef ABT_DIR
+        ABT_DIR = /global/u1/h/houhun/cori/argobots/install
+endif
 
 CC = cc
 #CC = gcc-9
