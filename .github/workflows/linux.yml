@@ -68,7 +68,7 @@ jobs:
           tail -n 47 Makefile.summit > Makefile
           export H5_DIR=$mydir/hdf5/install
           export ABT_DIR=$mydir/argobots
-          export VOL_DIR=$mydir/src
+          export ASYNC_DIR=$mydir/src
           make
           
           # Set Environmental Variables
