@@ -66,7 +66,7 @@ jobs:
           mydir="$PWD"
           cd $mydir
           cd test
-          tail -n 47 Makefile.summit > Makefile
+
           
           # Set Environmental Variables
           export H5_DIR=$mydir/hdf5
@@ -76,14 +76,16 @@ jobs:
           export HDF5_DIR=$mydir/hdf5/install
           export LD_LIBRARY_PATH=$VOL_DIR/src:$H5_DIR/install/lib:$ABT_DIR/lib:$LD_LIBRARY_PATH
           export HDF5_PLUGIN_PATH="$VOL_DIR/src"
-          export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
+          export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}"
+          
+          # Makefile
+          tail -n 47 Makefile.summit > Makefile
           make
+          export LD_PRELOAD=$mydir/argobots/lib/libabt.so
           
           # Run serial and parallel tests
           python3 pytest.py
-          mpirun -np 2 ./async_test_multifile.exe
           
           # Run serial tests only
           python3 pytest.py -p
-          mpirun -np 2 ./async_test_multifile.exe
           
