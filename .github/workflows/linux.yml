@@ -84,11 +84,13 @@ jobs:
           
           # Run serial and parallel tests
           make check
+          python3 pytest.py
           mpirun -np 2 ./async_test_serial_event_set_error_stack.exe
           
           
           # Run serial tests only
           make check_serial
+          python3 pytest.py -p
           mpirun -np 2 ./async_test_serial_event_set_error_stack.exe
           
           
