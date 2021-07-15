@@ -192,7 +192,7 @@ main(int argc, char *argv[])
         goto done;
     }
     H5free_memory((void *)err_info.app_func_name);
-    if (77 != err_info.app_line_num) { // Somewhat fragile
+    if (85 != err_info.app_line_num) { // Somewhat fragile
         fprintf(stderr, "Event set didn't return app source line # correctly?!?, got: %u\n",
                 err_info.app_line_num);
         ret = -1;
