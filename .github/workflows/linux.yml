@@ -25,7 +25,8 @@ jobs:
           git clone https://github.com/HDFGroup/hdf5.git
           # mpi
           sudo apt-get install libopenmpi-dev
-          
+          # zlib
+          sudo apt-get install zlib1g-dev 
           
       - name: Installation
         run: |
@@ -54,7 +55,7 @@ jobs:
           cd src
           
           export HDF5=$mydir/hdf5/install
-          export ABT_DIR=$mydir/vol-async/argobots
+          export ABT_DIR=$mydir/vol-async/argobots/
           make
           
           # Set Environmental Variables
