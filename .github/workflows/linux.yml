@@ -80,7 +80,9 @@ jobs:
           
           # Run serial and parallel tests
           python3 pytest.py
+          mpirun -np 2 ./async_test_multifile.exe
           
           # Run serial tests only
           python3 pytest.py -p
+          mpirun -np 2 ./async_test_multifile.exe
           
