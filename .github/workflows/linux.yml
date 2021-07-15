@@ -67,7 +67,6 @@ jobs:
           cd $mydir
           cd test
 
-          
           # Set Environmental Variables
           export H5_DIR=$mydir/hdf5
           export VOL_DIR=$mydir/
@@ -85,13 +84,11 @@ jobs:
           
           # Run serial and parallel tests
           make check
-          python3 pytest.py
-          cat async_vol_test.err
+          mpirun -np 2 ./async_test_serial_event_set_error_stack.exe
           
           
           # Run serial tests only
           make check_serial
-          python3 pytest.py -p
-          cat async_vol_test.err
+          mpirun -np 2 ./async_test_serial_event_set_error_stack.exe
           
           
