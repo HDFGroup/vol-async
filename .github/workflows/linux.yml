@@ -55,7 +55,6 @@ jobs:
           # Compile Asynchronous VOL connector
           cd $mydir
           cd src
-          tail -n 48 Makefile.summit > Makefile
           export HDF5_DIR=$mydir/hdf5/install
           export ABT_DIR=$mydir/argobots
           make
