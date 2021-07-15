@@ -82,16 +82,14 @@ jobs:
           make
           export LD_PRELOAD=$mydir/argobots/lib/libabt.so
           
-          # Run serial and parallel tests
-          make check
-          cat async_vol_test.err
-          python3 pytest.py
-          cat async_vol_test.err
-          
           # Run serial tests only
           make check_serial
           cat async_vol_test.err
           python3 pytest.py -p
           cat async_vol_test.err
           
-          
+          # Run serial and parallel tests
+          make check
+          cat async_vol_test.err
+          python3 pytest.py
+          cat async_vol_test.err
