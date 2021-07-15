@@ -60,8 +60,9 @@ jobs:
           export ABT_DIR=$mydir/argobots
           make
           
-      - name: Test vol -async
+      - name: Test vol-async
         run: |
+          # Compile vol-async tests
           mydir="$PWD"
           cd $mydir
           cd test
@@ -75,4 +76,11 @@ jobs:
           export HDF5_PLUGIN_PATH="$VOL_DIR/src"
           export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
           make
+          export LD_PRELOAD=$mydir/argobots/lib/libabt.so
+          
+          # Run serial and parallel tests
+          make check
+          
+          # Run serial tests only
+          make check_serial
           
