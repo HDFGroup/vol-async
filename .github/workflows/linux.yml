@@ -80,7 +80,9 @@ jobs:
           
           # Run serial and parallel tests
           make check
+          cat async_vol_test.err
           
           # Run serial tests only
           make check_serial
+          cat async_vol_test.err
           
