@@ -4,6 +4,7 @@
 # -h: help, -v: verbose mode -m mpi-tasks
 
 import os, sys, argparse, subprocess
+import multiprocessing
 
 #------------------------------------------------
 def guess_mpi_cmd(mpi_tasks, cpu_allocation, verbose):
@@ -13,7 +14,12 @@ def guess_mpi_cmd(mpi_tasks, cpu_allocation, verbose):
     sys_name = os.uname()[0]
     if verbose: print('sys_name=', sys_name)
 
-    if mpi_tasks<=0: mpi_tasks = 4
+    if mpi_tasks<=0: 
+        mpi_tasks = 4
+        max_task = multiprocessing.cpu_count()
+        if max_task < 4:
+            mpi_tasks = max_task
+        print('\nParallel test run with %d MPI ranks' % (mpi_tasks))
 
     if 'quartz' in node_name:
         # the following setting is needed to combine h5py and subprocess.run on LC
@@ -84,7 +90,6 @@ def main_test(mpi_tasks=0, cpu_allocation="", run_parallel=False, verbose=False)
     if run_parallel:
         # guess the mpi run command from the uname info
         mpirun_cmd=guess_mpi_cmd(mpi_tasks, cpu_allocation, verbose)
-        print("\nRunning parallel tests")
 
         for qq in range(len(parallel_cases)):
             num_test = num_test+1

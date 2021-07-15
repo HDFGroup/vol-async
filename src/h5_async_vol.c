@@ -6568,7 +6568,7 @@ async_attr_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *par
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
-            add_task_to_queue(&aid->qhead, async_task, REGULAR);
+            add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
     }
 
     if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS) {
@@ -9148,7 +9148,7 @@ async_dataset_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
-            add_task_to_queue(&aid->qhead, async_task, REGULAR);
+            add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
     }
 
     if (lock_parent && ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS) {
@@ -11062,7 +11062,7 @@ async_datatype_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t 
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
-            add_task_to_queue(&aid->qhead, async_task, REGULAR);
+            add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
     }
 
     if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS) {
@@ -13008,7 +13008,7 @@ async_file_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *par
         else if (async_task->async_obj->is_col_meta == true)
             add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
         else
-            add_task_to_queue(&aid->qhead, async_task, REGULAR);
+            add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
     }
 
     if (parent_obj->obj_mutex && ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS) {
@@ -14937,7 +14937,7 @@ async_group_close(task_list_qtype qtype, async_instance_t* aid, H5VL_async_t *pa
             else if (async_task->async_obj->is_col_meta == true)
                 add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
             else
-                add_task_to_queue(&aid->qhead, async_task, REGULAR);
+                add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
 
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS) {
@@ -19356,7 +19356,7 @@ H5VL_async_attr_close(void *attr, hid_t dxpl_id, void **req)
     H5VL_async_t *o = (H5VL_async_t *)attr;
     herr_t ret_value;
     hbool_t is_term;
-    task_list_qtype qtype = ISOLATED;
+    task_list_qtype qtype = DEPENDENT;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL ATTRIBUTE Close\n");
@@ -20002,7 +20002,7 @@ H5VL_async_datatype_close(void *dt, hid_t dxpl_id, void **req)
     H5VL_async_t *o = (H5VL_async_t *)dt;
     herr_t ret_value;
     hbool_t is_term;
-    task_list_qtype qtype = ISOLATED;
+    task_list_qtype qtype = DEPENDENT;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATATYPE Close\n");
