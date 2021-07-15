@@ -67,7 +67,6 @@ jobs:
           cd $mydir
           cd test
           tail -n 47 Makefile.summit > Makefile
-          export HDF5_DIR=$mydir/hdf5/install
           
           # Set Environmental Variables
           export H5_DIR=$mydir/hdf5
