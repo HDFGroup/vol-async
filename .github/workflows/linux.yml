@@ -27,6 +27,8 @@ jobs:
           sudo apt-get install libopenmpi-dev
           # zlib
           sudo apt-get install zlib1g-dev 
+          # python3
+          sudo apt-get install python3
           
       - name: Installation
         run: |
