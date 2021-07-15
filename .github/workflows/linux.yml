@@ -80,9 +80,11 @@ jobs:
           
           # Run serial and parallel tests
           make check
+          ./async_test_multifile.exe
           cat async_vol_test.err
           
           # Run serial tests only
           make check_serial
+          ./async_test_multifile.exe
           cat async_vol_test.err
           
