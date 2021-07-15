@@ -73,6 +73,7 @@ jobs:
           export VOL_DIR=$mydir/
           export ABT_DIR=$mydir/argobots
           export ASYNC_DIR=$mydir/src
+          export HDF5_DIR=$mydir/hdf5/install
           export LD_LIBRARY_PATH=$VOL_DIR/src:$H5_DIR/install/lib:$ABT_DIR/lib:$LD_LIBRARY_PATH
           export HDF5_PLUGIN_PATH="$VOL_DIR/src"
           export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
