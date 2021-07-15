@@ -74,6 +74,7 @@ int main(int argc, char *argv[])
 
     if (print_dbg_msg) fprintf(stderr, "H5Gcreate 2 start (should fail when executed)\n");
     fflush(stdout);
+    int err_line = __LINE__ + 1;
     grp1_id = H5Gcreate_async(file_id, grp_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
     if (grp1_id < 0) {
         fprintf(stderr, "Error with group create\n");
@@ -173,7 +174,7 @@ int main(int argc, char *argv[])
         goto done;
     }
     H5free_memory((void*)err_info.app_func_name);
-    if (77 != err_info.app_line_num) { // Somewhat fragile
+    if (err_line != err_info.app_line_num) {
         fprintf(stderr, "Event set didn't return app source line # correctly?!?, got: %u\n", err_info.app_line_num);
         ret = -1;
         goto done;
