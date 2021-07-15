@@ -69,4 +69,6 @@ jobs:
           cd $mydir
           cd test
           cp Makefile.summit Makefile
+          export HDF5_DIR=$mydir/hdf5/install
+          export ABT_DIR=$mydir/argobots
           make
