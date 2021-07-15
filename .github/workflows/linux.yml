@@ -55,7 +55,6 @@ jobs:
           # Compile Asynchronous VOL connector
           cd $mydir
           cd src
-          tail -n 48 Makefile.summit > Makefile
           export HDF5_DIR=$mydir/hdf5/install
           export ABT_DIR=$mydir/argobots
           make
@@ -83,18 +82,7 @@ jobs:
           export LD_PRELOAD=$mydir/argobots/lib/libabt.so
           
           # Run serial tests only
-          #make check_serial
-          #cat async_vol_test.err
-          #python3 pytest.py -p
-          #cat async_vol_test.err
-          ./async_test_serial.exe
-          ./async_test_serial2.exe
-          ./async_test_multifile.exe
-          ./async_test_serial_event_set.exe
-          ./async_test_serial_event_set_error_stack.exe
-          
+          python3 pytest.py
+
           # Run serial and parallel tests
-          #make check
-          #cat async_vol_test.err
-          #python3 pytest.py
-          #cat async_vol_test.err
+          python3 pytest.py -p
