@@ -82,9 +82,9 @@ jobs:
           make
           export LD_PRELOAD=$mydir/argobots/lib/libabt.so
           
-          # Run serial tests only
-          python3 pytest.py
-
           # Run serial and parallel tests
-          python3 pytest.py -p
-          mpirun -np 2 ./async_test_parallel5.exe
+          make check
+
+          # Run serial tests only
+          make check_serial
+          
