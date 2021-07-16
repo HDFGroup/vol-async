@@ -85,10 +85,12 @@ jobs:
       - name: Test Serial and Parallel
         run: |
           # Run serial and parallel tests
+          cd test
           make check
 
       - name: Test Serial
         run: |
           # Run serial tests only
+          cd test
           make check_serial
           
