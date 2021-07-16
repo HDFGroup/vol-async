@@ -60,7 +60,7 @@ jobs:
           export ABT_DIR=$mydir/argobots
           make
           
-      - name: Test vol-async
+      - name: Compile Vol-Async
         run: |
           # Compile vol-async tests
           mydir="$PWD"
@@ -82,9 +82,13 @@ jobs:
           make
           export LD_PRELOAD=$mydir/argobots/lib/libabt.so
           
+      - name: Test Serial and Parallel
+        run: |
           # Run serial and parallel tests
           make check
 
+      - name: Test Serial
+        run: |
           # Run serial tests only
           make check_serial
           
