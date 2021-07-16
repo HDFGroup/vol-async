@@ -60,7 +60,7 @@ jobs:
           export ABT_DIR=$mydir/argobots
           make
           
-      - name: Compile Vol-Async
+      - name: Compile and Test Vol-Async
         run: |
           # Compile vol-async tests
           mydir="$PWD"
