@@ -1658,10 +1658,11 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool)
             DL_DELETE(task_list_elt->task_list, task_elt);
             task_elt->prev = NULL;
             task_elt->next = NULL;
-            break;
+            goto done;
         } // End  DL_FOREACH_SAFE(task_list_elt, task_elt,  task_tmp)
     } // End DL_FOREACH_SAFE(qhead->queue, task_list_elt, task_list_tmp)
 
+done:
     // Remove head if all its tasks have been pushed to Argobots pool
     if (qhead->queue->task_list == NULL) {
         /* tmp = qhead->queue; */
@@ -1671,7 +1672,6 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool)
         /* free(tmp); */
     }
 
-done:
     if (ABT_mutex_unlock(qhead->head_mutex) != ABT_SUCCESS) {
         fprintf(stderr,"  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         return -1;
