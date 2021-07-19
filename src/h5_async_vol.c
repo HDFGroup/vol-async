@@ -1658,7 +1658,7 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool)
 
 done:
     // Remove head if all its tasks have been pushed to Argobots pool
-    if (qhead->queue->task_list == NULL) {
+    if (qhead->queue && qhead->queue->task_list == NULL) {
         /* tmp = qhead->queue; */
         DL_DELETE(qhead->queue, qhead->queue);
         /* qhead->queue->prev = qhead->queue->next->prev; */

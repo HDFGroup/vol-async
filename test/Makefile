@@ -1,4 +1,4 @@
-HDF5_DIR = /global/u1/h/houhun/hpc-io/hdf5/async_optional_gnu/hdf5
+HDF5_DIR = /global/u1/h/houhun/hdf5/develop_gnu/hdf5
 ABT_DIR = /global/u1/h/houhun/cori/argobots/install
 ASYNC_DIR = /global/homes/h/houhun/hdf5vol/vol-async/src
 
@@ -41,10 +41,10 @@ DBG = $(SRC:.c=.exe.dSYM)
 all: $(EXE)
 
 check: 
-	./pytest.py -p
+	python3 ./pytest.py -p
 
 check_serial: 
-	./pytest.py
+	python3 ./pytest.py
 
 .PHONY: clean
 clean:
