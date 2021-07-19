@@ -18,6 +18,8 @@ extern herr_t H5Pset_dxpl_disable_async_implicit(hid_t dxpl, hbool_t is_disable)
 extern herr_t H5Pget_dxpl_disable_async_implicit(hid_t dxpl, hbool_t *is_disable);
 extern herr_t H5Pset_dxpl_pause(hid_t dxpl, hbool_t is_pause);
 extern herr_t H5Pget_dxpl_pause(hid_t dxpl, hbool_t *is_pause);
+extern herr_t H5Pset_dxpl_delay(hid_t dxpl, uint64_t time_us);
+extern herr_t H5Pget_dxpl_delay(hid_t dxpl, uint64_t *time_us);
 extern herr_t H5Fwait(hid_t file_id, hid_t dxpl_id);
 extern herr_t H5Dwait(hid_t dset_id, hid_t dxpl_id);
 extern herr_t H5Fstart(hid_t file_id, hid_t dxpl_id);

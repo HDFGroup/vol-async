@@ -1234,6 +1234,7 @@ H5VL_async_dxpl_set_pause(hid_t dxpl)
 {
     herr_t  status   = 0;
     hbool_t is_pause = false;
+    uint64_t delay_us = 0;
 
     assert(async_instance_g);
 
@@ -1261,7 +1262,31 @@ H5VL_async_dxpl_set_pause(hid_t dxpl)
             fprintf(stderr, "  [ASYNC VOL DBG] set pause async execution to false (new dxpl used)\n");
 #endif
         }
-    }
+
+        status = H5Pexist(dxpl, H5VL_ASYNC_DELAY_NAME);
+        if (status < 0) {
+            fprintf(stderr,"  [ASYNC VOL ERROR] %s H5Pexist failed!\n", __func__);
+            return -1;
+        }
+        else if (status > 0) {
+            status = H5Pget(dxpl, H5VL_ASYNC_DELAY_NAME, &delay_us);
+            if (status < 0) {
+                fprintf(stderr,"  [ASYNC VOL ERROR] %s H5Pget failed!\n", __func__);
+                return -1;
+            }
+
+            async_instance_g->delay_time = delay_us;
+#ifdef ENABLE_DBG_MSG
+            fprintf(stderr, "  [ASYNC VOL DBG] set delay execution to %ld\n", delay_us);
+#endif
+        }
+        else {
+            async_instance_g->delay_time = delay_us;
+#ifdef ENABLE_DBG_MSG
+            fprintf(stderr, "  [ASYNC VOL DBG] set async delay time to 0 (new dxpl used)\n");
+#endif
+        }
+    } // End if dxpl
 
     return status;
 }

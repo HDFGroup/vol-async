@@ -6,16 +6,16 @@
 #include "h5_async_lib.h"
 
 /* #define DIMLEN 1024 */
-#define DIMLEN 10
+#define DIMLEN 100
 
-int verify(int *data, int size, int multiplier)
+int verify(int *data, int size, int multiplier, char *msg)
 {
     int i;
     assert(data);
 
     for(i = 0; i < size; ++i) {
         if (data[i] != i * multiplier) {
-            printf("Error with data, %d/%d\n", data[i], i);
+            fprintf(stderr, "%s: Error with data, %d/%d\n", msg, data[i], multiplier*i);
             return -1;
         }
     }
@@ -134,12 +134,11 @@ int main(int argc, char *argv[])
         goto done;
     }
     // Verify read data
-    if (verify(data0_read, DIMLEN*DIMLEN, 1) != 1) {
+    if (verify(data0_read, DIMLEN*DIMLEN, 1, "R0") != 1) {
         fprintf(stderr, "Error with R0 verify %d/%d\n", data0_read[i], i);
         ret = -1;
         goto done;
     }
-
 
     // W1
     status = H5Dwrite(dset1_id, H5T_NATIVE_INT, mspace_id, fspace_id, dxpl_ind_id, data1_write);
@@ -168,7 +167,7 @@ int main(int argc, char *argv[])
         goto done;
     }
     // Verify read data
-    if (verify(data1_read, DIMLEN*DIMLEN, 2) != 1) {
+    if (verify(data1_read, DIMLEN*DIMLEN, 2, "R1") != 1) {
         fprintf(stderr, "Error with dset 1 read %d/%d\n", data1_read[i], i);
         ret = -1;
         goto done;
@@ -200,6 +199,8 @@ int main(int argc, char *argv[])
     else
         printf("Succeed with W0'\n");
 
+    H5Fflush(file_id, H5F_SCOPE_GLOBAL);
+
     // R0'
     status = H5Dread(dset0_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl_ind_id, data0_read);
     if (status < 0) {
@@ -217,12 +218,11 @@ int main(int argc, char *argv[])
         goto done;
     }
     // Verify read data
-    if (verify(data0_read, DIMLEN*DIMLEN, -1) != 1) {
-        fprintf(stderr, "Error with dset 0 read\n");
+    if (verify(data0_read, DIMLEN*DIMLEN, -1, "R0\'") != 1) {
+        fprintf(stderr, "Error with dset 0\' read\n");
         ret = -1;
         goto done;
     }
-
 
     // R1'
     status = H5Dread(dset1_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl_ind_id, data1_read);
@@ -240,7 +240,7 @@ int main(int argc, char *argv[])
         goto done;
     }
     // Verify read data
-    if (verify(data1_read, DIMLEN*DIMLEN, -2) != 1) {
+    if (verify(data1_read, DIMLEN*DIMLEN, -2, "R1\'") != 1) {
         fprintf(stderr, "Error with dset 1 read\n");
         ret = -1;
         goto done;

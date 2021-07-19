@@ -23,6 +23,7 @@
 #define H5VL_ASYNC_DYN_REQUEST_START     "gov.lbl.async.request.start"
 #define H5VL_ASYNC_DYN_REQUEST_DEP       "gov.lbl.async.request.dep"
 #define H5VL_ASYNC_DISABLE_IMPLICIT_NAME "gov.lbl.async.disable.implicit"
+#define H5VL_ASYNC_DELAY_NAME            "gov.lbl.async.delay"
 #define H5VL_ASYNC_PAUSE_NAME            "gov.lbl.async.pause"
 
 /* Parameters for each of the dynamically registered operations */
