@@ -13,9 +13,12 @@ int verify(int *data, int size, int multiplier)
     int i;
     assert(data);
 
-    for(i = 0; i < size; ++i) 
-        if (data[i] != i * multiplier) 
+    for(i = 0; i < size; ++i) {
+        if (data[i] != i * multiplier) {
+            printf("Error with data, %d/%d\n", data[i], i);
             return -1;
+        }
+    }
 
     return 1;
 }
@@ -215,7 +218,7 @@ int main(int argc, char *argv[])
     }
     // Verify read data
     if (verify(data0_read, DIMLEN*DIMLEN, -1) != 1) {
-        fprintf(stderr, "Error with dset 0 read %d/%d\n", data0_read[i], i);
+        fprintf(stderr, "Error with dset 0 read\n");
         ret = -1;
         goto done;
     }
@@ -238,12 +241,13 @@ int main(int argc, char *argv[])
     }
     // Verify read data
     if (verify(data1_read, DIMLEN*DIMLEN, -2) != 1) {
-        fprintf(stderr, "Error with dset 1 read %d/%d\n", data1_read[i], i);
+        fprintf(stderr, "Error with dset 1 read\n");
         ret = -1;
         goto done;
     }
 
 
+done:
     H5Pclose(async_fapl);
     H5Sclose(mspace_id);
     H5Dclose(dset0_id);
@@ -251,7 +255,6 @@ int main(int argc, char *argv[])
     H5Gclose(grp_id);
     H5Fclose(file_id);
 
-done:
     if (data0_write != NULL) 
         free(data0_write);
     if (data0_read != NULL) 
