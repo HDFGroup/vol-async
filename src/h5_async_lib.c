@@ -762,3 +762,76 @@ H5async_set_request_dep(void *request, void *parent_request)
 
     return status;
 }
+
+/*-------------------------------------------------------------------------
+ * Function:    H5Pset_dxpl_delay
+ *
+ * Purpose:     Set to delay async operations
+ *
+ * Return:      SUCCEED/FAIL
+ *
+ *-------------------------------------------------------------------------
+ */
+herr_t 
+H5Pset_dxpl_delay(hid_t dxpl, uint64_t time_us)
+{
+    herr_t status;
+
+    status = H5Pexist(dxpl, H5VL_ASYNC_DELAY_NAME);
+    if (status < 0) {
+        fprintf(stderr,"  [ASYNC VOL ERROR] %s H5Pexist failed!\n", __func__);
+        return -1;
+    }
+    else if (status == 0) {
+        status = H5Pinsert2(dxpl, H5VL_ASYNC_DELAY_NAME, sizeof(uint64_t), &time_us, NULL, NULL, NULL, NULL, NULL, NULL);
+        if (status < 0) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s: H5Pinsert2 failed!\n", __func__);
+            return(-1);
+        }
+    }
+
+    status = H5Pset(dxpl, H5VL_ASYNC_DELAY_NAME, &time_us);
+    if (status < 0) {
+        fprintf(stderr, "  [ASYNC VOL ERROR] %s: H5Pset failed!\n", __func__);
+        return(-1);
+    }
+
+    return status;
+}
+
+/*-------------------------------------------------------------------------
+ * Function:    H5Pget_dxpl_delay
+ *
+ * Purpose:     Get the delay async operations
+ *
+ * Return:      SUCCEED/NOTEXIST/FAIL
+ *
+ *-------------------------------------------------------------------------
+ */
+herr_t 
+H5Pget_dxpl_delay(hid_t dxpl, uint64_t *time_us)
+{
+    herr_t status;
+    assert(time_us);
+
+    *time_us = 0;
+
+    status = H5Pexist(dxpl, H5VL_ASYNC_DELAY_NAME);
+    if (status < 0) {
+        fprintf(stderr,"  [ASYNC VOL ERROR] %s H5Pexist failed!\n", __func__);
+        return -1;
+    }
+    else if (status > 0) {
+        status = H5Pget(dxpl, H5VL_ASYNC_DELAY_NAME, time_us);
+        if (status < 0) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s: H5Pget failed!\n", __func__);
+            return(-1);
+        }
+    }
+    else
+        return 0;
+
+    return status;
+}
+
+

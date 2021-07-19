@@ -122,6 +122,11 @@ int main(int argc, char *argv[])
     }
     if (print_dbg_msg) printf("H5Aread done\n");
 
+    if (H5Pset_dxpl_delay(async_dxpl, 100) < 0){
+        fprintf(stderr, "Error with H5Pset_dxpl_delay\n");
+        ret = -1;
+        goto done;
+    }
 
     // W0, R0, W1, R1, W1', W0', R0', R1'
     if (print_dbg_msg) printf("H5Dwrite 0 start\n");
@@ -170,6 +175,18 @@ int main(int argc, char *argv[])
         }
     }
     printf("Finished verification\n");
+
+    uint64_t delay;
+    if (H5Pget_dxpl_delay(async_dxpl, &delay) < 0){
+        fprintf(stderr, "Error with H5Pset_dxpl_delay\n");
+        ret = -1;
+        goto done;
+    }
+    else if (delay != 100) {
+        fprintf(stderr, "Error with H5Pget_dxpl_delay %lu\n", delay);
+        ret = -1;
+        goto done;
+    }
 
     if (print_dbg_msg) printf("H5Dwrite 1 start\n");
     fflush(stdout);
