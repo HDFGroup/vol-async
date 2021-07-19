@@ -82,7 +82,7 @@ jobs:
           export LD_PRELOAD=$mydir/argobots/lib/libabt.so
           make
           
-          mpirun -np 2 ./async_test_parallel5.exe
+          ./async_test_serial.exe
           
           # Run serial and parallel tests
           make check
