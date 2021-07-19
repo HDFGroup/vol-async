@@ -83,8 +83,8 @@ jobs:
           make
           
           # Run serial and parallel tests
-          make check
+          make check_serial
 
           # Run serial tests only
-          make check_serial
+          make check
           
