@@ -83,7 +83,6 @@ jobs:
           export LD_PRELOAD=$mydir/argobots/lib/libabt.so
 
           # Run serial and parallel tests
-          ./async_test_serial.exe
           make check
 
           # Run serial tests only
