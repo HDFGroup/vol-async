@@ -186,15 +186,16 @@ typedef struct async_instance_t {
     int           nfopen;
     int           mpi_size;
     int           mpi_rank;
-    bool          ex_delay;         /* Delay background thread execution */
-    bool          ex_fclose;        /* Delay background thread execution until file close */
-    bool          ex_gclose;        /* Delay background thread execution until group close */
-    bool          ex_dclose;        /* Delay background thread execution until dset close */
-    bool          start_abt_push;   /* Start pushing tasks to Argobots pool */
-    bool          pause;            /* Pause background thread execution */
-    bool          disable_implicit; /* Disable implicit async execution*/
-    int           sleep_time;       /* Sleep time between checking the global mutex attemp count */
-    uint64_t      delay_time;       /* Sleep time before background thread trying to acquire global mutex */
+    bool          ex_delay;              /* Delay background thread execution */
+    bool          ex_fclose;             /* Delay background thread execution until file close */
+    bool          ex_gclose;             /* Delay background thread execution until group close */
+    bool          ex_dclose;             /* Delay background thread execution until dset close */
+    bool          start_abt_push;        /* Start pushing tasks to Argobots pool */
+    bool          pause;                 /* Pause background thread execution */
+    bool          disable_implicit_file; /* Disable implicit async execution globally */
+    bool          disable_implicit;      /* Disable implicit async execution for dxpl */
+    int           sleep_time;            /* Sleep time between checking the global mutex attemp count */
+    uint64_t      delay_time; /* Sleep time before background thread trying to acquire global mutex */
 } async_instance_t;
 
 typedef struct async_future_obj_t {
@@ -1132,18 +1133,19 @@ async_instance_init(int backing_thread_count)
         } // end for
     }     // end else
 
-    aid->pool             = pool;
-    aid->xstreams         = progress_xstreams;
-    aid->num_xstreams     = backing_thread_count;
-    aid->progress_scheds  = progress_scheds;
-    aid->nfopen           = 0;
-    aid->ex_delay         = false;
-    aid->ex_fclose        = false;
-    aid->ex_gclose        = false;
-    aid->ex_dclose        = false;
-    aid->pause            = false;
-    aid->start_abt_push   = false;
-    aid->disable_implicit = false;
+    aid->pool                  = pool;
+    aid->xstreams              = progress_xstreams;
+    aid->num_xstreams          = backing_thread_count;
+    aid->progress_scheds       = progress_scheds;
+    aid->nfopen                = 0;
+    aid->ex_delay              = false;
+    aid->ex_fclose             = false;
+    aid->ex_gclose             = false;
+    aid->ex_dclose             = false;
+    aid->pause                 = false;
+    aid->start_abt_push        = false;
+    aid->disable_implicit      = false;
+    aid->disable_implicit_file = false;
 
     // Check for delaying operations to file / group / dataset close operations
     env_var = getenv("HDF5_ASYNC_EXE_FCLOSE");
@@ -1193,6 +1195,52 @@ done:
 } // End async_instance_init
 
 herr_t
+H5VL_async_set_disable_implicit(hbool_t is_disable)
+{
+    assert(async_instance_g);
+    async_instance_g->disable_implicit_file = is_disable;
+
+    return 0;
+}
+
+herr_t
+H5VL_async_fapl_set_disable_implicit(hid_t fapl)
+{
+    herr_t  status     = 0;
+    hbool_t is_disable = false;
+
+    assert(async_instance_g);
+
+    if (fapl > 0) {
+        status = H5Pexist(fapl, H5VL_ASYNC_DISABLE_IMPLICIT_NAME);
+        if (status < 0) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s H5Pexist failed!\n", __func__);
+            return -1;
+        }
+        else if (status > 0) {
+            status = H5Pget(fapl, H5VL_ASYNC_DISABLE_IMPLICIT_NAME, &is_disable);
+            if (status < 0) {
+                fprintf(stderr, "  [ASYNC VOL ERROR] %s H5Pget failed!\n", __func__);
+                return -1;
+            }
+
+            async_instance_g->disable_implicit_file = is_disable;
+#ifdef ENABLE_DBG_MSG
+            fprintf(stderr, "  [ASYNC VOL DBG] set implicit mode to %d\n", is_disable);
+#endif
+        }
+        else {
+            async_instance_g->disable_implicit_file = false;
+#ifdef ENABLE_DBG_MSG
+            fprintf(stderr, "  [ASYNC VOL DBG] set implicit mode to false (new fapl used)\n");
+#endif
+        }
+    }
+
+    return status;
+}
+
+herr_t
 H5VL_async_dxpl_set_disable_implicit(hid_t dxpl)
 {
     herr_t  status     = 0;
@@ -1213,16 +1261,30 @@ H5VL_async_dxpl_set_disable_implicit(hid_t dxpl)
                 return -1;
             }
 
-            async_instance_g->disable_implicit = is_disable;
+            if (async_instance_g->disable_implicit_file) {
 #ifdef ENABLE_DBG_MSG
-            fprintf(stderr, "  [ASYNC VOL DBG] set implicit mode to %d\n", is_disable);
+                fprintf(stderr, "  [ASYNC VOL DBG] already set disable implicit file\n");
 #endif
+            }
+            else {
+                async_instance_g->disable_implicit = is_disable;
+#ifdef ENABLE_DBG_MSG
+                fprintf(stderr, "  [ASYNC VOL DBG] set implicit mode to %d\n", is_disable);
+#endif
+            }
         }
         else {
-            async_instance_g->disable_implicit = false;
+            if (async_instance_g->disable_implicit_file) {
 #ifdef ENABLE_DBG_MSG
-            fprintf(stderr, "  [ASYNC VOL DBG] set implicit mode to false (new dxpl used)\n");
+                fprintf(stderr, "  [ASYNC VOL DBG] already set disable implicit file\n");
 #endif
+            }
+            else {
+                async_instance_g->disable_implicit = false;
+#ifdef ENABLE_DBG_MSG
+                fprintf(stderr, "  [ASYNC VOL DBG] set implicit mode to false (new dxpl used)\n");
+#endif
+            }
         }
     }
 
@@ -1401,6 +1463,11 @@ static herr_t H5VL_async_init(hid_t __attribute__((unused)) vipl_id)
             return -1;
         }
     }
+
+#ifdef ENABLE_LOG
+    if (async_instance_g->mpi_rank == 0)
+        fprintf(stderr, "  [ASYNC VOL LOG] ASYNC VOL init\n");
+#endif
 
     return 0;
 }
@@ -19532,7 +19599,7 @@ H5VL_async_attr_create(void *obj, const H5VL_loc_params_t *loc_params, const cha
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         under = H5VLattr_create(o->under_object, loc_params, o->under_vol_id, name, type_id, space_id,
                                 acpl_id, aapl_id, dxpl_id, req);
         if (under) {
@@ -19576,7 +19643,7 @@ H5VL_async_attr_open(void *obj, const H5VL_loc_params_t *loc_params, const char 
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         under = H5VLattr_open(o->under_object, loc_params, o->under_vol_id, name, aapl_id, dxpl_id, req);
         if (under) {
             attr = H5VL_async_new_obj(under, o->under_vol_id);
@@ -19616,7 +19683,7 @@ H5VL_async_attr_read(void *attr, hid_t mem_type_id, void *buf, hid_t dxpl_id, vo
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         ret_value = H5VLattr_read(o->under_object, o->under_vol_id, mem_type_id, buf, dxpl_id, req);
 
         /* Check for async request */
@@ -19654,7 +19721,7 @@ H5VL_async_attr_write(void *attr, hid_t mem_type_id, const void *buf, hid_t dxpl
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         ret_value = H5VLattr_write(o->under_object, o->under_vol_id, mem_type_id, buf, dxpl_id, req);
 
         /* Check for async request */
@@ -19693,7 +19760,7 @@ H5VL_async_attr_get(void *obj, H5VL_attr_get_args_t *args, hid_t dxpl_id, void *
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         ret_value = H5VLattr_get(o->under_object, o->under_vol_id, args, dxpl_id, req);
 
         /* Check for async request */
@@ -19732,7 +19799,7 @@ H5VL_async_attr_specific(void *obj, const H5VL_loc_params_t *loc_params, H5VL_at
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         ret_value = H5VLattr_specific(o->under_object, loc_params, o->under_vol_id, args, dxpl_id, req);
 
         /* Check for async request */
@@ -19773,7 +19840,7 @@ H5VL_async_attr_optional(void *obj, H5VL_optional_args_t *args, hid_t dxpl_id, v
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         ret_value = H5VLattr_optional(o->under_object, o->under_vol_id, args, dxpl_id, req);
 
         /* Check for async request */
@@ -19818,7 +19885,7 @@ H5VL_async_attr_close(void *attr, hid_t dxpl_id, void **req)
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         ret_value = H5VLattr_close(o->under_object, o->under_vol_id, dxpl_id, req);
 
         /* Check for async request */
@@ -19869,7 +19936,7 @@ H5VL_async_dataset_create(void *obj, const H5VL_loc_params_t *loc_params, const 
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         under = H5VLdataset_create(o->under_object, loc_params, o->under_vol_id, name, lcpl_id, type_id,
                                    space_id, dcpl_id, dapl_id, dxpl_id, req);
         if (under) {
@@ -19915,7 +19982,7 @@ H5VL_async_dataset_open(void *obj, const H5VL_loc_params_t *loc_params, const ch
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         under = H5VLdataset_open(o->under_object, loc_params, o->under_vol_id, name, dapl_id, dxpl_id, req);
         if (under) {
             dset = H5VL_async_new_obj(under, o->under_vol_id);
@@ -19958,7 +20025,7 @@ H5VL_async_dataset_read(void *dset, hid_t mem_type_id, hid_t mem_space_id, hid_t
     H5VL_async_dxpl_set_disable_implicit(plist_id);
     H5VL_async_dxpl_set_pause(plist_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         ret_value = H5VLdataset_read(o->under_object, o->under_vol_id, mem_type_id, mem_space_id,
                                      file_space_id, plist_id, buf, req);
 
@@ -20000,7 +20067,7 @@ H5VL_async_dataset_write(void *dset, hid_t mem_type_id, hid_t mem_space_id, hid_
     H5VL_async_dxpl_set_disable_implicit(plist_id);
     H5VL_async_dxpl_set_pause(plist_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         ret_value = H5VLdataset_write(o->under_object, o->under_vol_id, mem_type_id, mem_space_id,
                                       file_space_id, plist_id, buf, req);
 
@@ -20041,7 +20108,7 @@ H5VL_async_dataset_get(void *dset, H5VL_dataset_get_args_t *args, hid_t dxpl_id,
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         ret_value = H5VLdataset_get(o->under_object, o->under_vol_id, args, dxpl_id, req);
 
         /* Check for async request */
@@ -20080,7 +20147,7 @@ H5VL_async_dataset_specific(void *obj, H5VL_dataset_specific_args_t *args, hid_t
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         // Save copy of underlying VOL connector ID and prov helper, in case of
         // refresh destroying the current object
         under_vol_id = o->under_vol_id;
@@ -20138,7 +20205,7 @@ H5VL_async_dataset_optional(void *obj, H5VL_optional_args_t *args, hid_t dxpl_id
         return (H5VL_async_set_delay_time(delay_args->delay_time));
     }
     else {
-        if (async_instance_g->disable_implicit) {
+        if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
             ret_value = H5VLdataset_optional(o->under_object, o->under_vol_id, args, dxpl_id, req);
 
             /* Check for async request */
@@ -20184,7 +20251,7 @@ H5VL_async_dataset_close(void *dset, hid_t dxpl_id, void **req)
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         ret_value = H5VLdataset_close(o->under_object, o->under_vol_id, dxpl_id, req);
 
         /* Check for async request */
@@ -20234,7 +20301,7 @@ H5VL_async_datatype_commit(void *obj, const H5VL_loc_params_t *loc_params, const
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         under = H5VLdatatype_commit(o->under_object, loc_params, o->under_vol_id, name, type_id, lcpl_id,
                                     tcpl_id, tapl_id, dxpl_id, req);
         if (under) {
@@ -20279,7 +20346,7 @@ H5VL_async_datatype_open(void *obj, const H5VL_loc_params_t *loc_params, const c
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         under = H5VLdatatype_open(o->under_object, loc_params, o->under_vol_id, name, tapl_id, dxpl_id, req);
         if (under) {
             dt = H5VL_async_new_obj(under, o->under_vol_id);
@@ -20321,7 +20388,7 @@ H5VL_async_datatype_get(void *dt, H5VL_datatype_get_args_t *args, hid_t dxpl_id,
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         ret_value = H5VLdatatype_get(o->under_object, o->under_vol_id, args, dxpl_id, req);
 
         /* Check for async request */
@@ -20360,7 +20427,7 @@ H5VL_async_datatype_specific(void *obj, H5VL_datatype_specific_args_t *args, hid
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         // Save copy of underlying VOL connector ID and prov helper, in case of
         // refresh destroying the current object
         under_vol_id = o->under_vol_id;
@@ -20402,7 +20469,7 @@ H5VL_async_datatype_optional(void *obj, H5VL_optional_args_t *args, hid_t dxpl_i
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         ret_value = H5VLdatatype_optional(o->under_object, o->under_vol_id, args, dxpl_id, req);
 
         /* Check for async request */
@@ -20447,7 +20514,7 @@ H5VL_async_datatype_close(void *dt, hid_t dxpl_id, void **req)
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         assert(o->under_object);
 
         ret_value = H5VLdatatype_close(o->under_object, o->under_vol_id, dxpl_id, req);
@@ -20540,13 +20607,15 @@ H5VL_async_file_create(const char *name, unsigned flags, hid_t fcpl_id, hid_t fa
     }
 #endif /* MPI_VERSION */
 
+    H5VL_async_fapl_set_disable_implicit(fapl_id);
+
     /* Copy the FAPL */
     under_fapl_id = H5Pcopy(fapl_id);
 
     /* Set the VOL ID and info for the underlying FAPL */
     H5Pset_vol(under_fapl_id, info->under_vol_id, info->under_vol_info);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         /* Open the file with the underlying VOL connector */
         under = H5VLfile_create(name, flags, fcpl_id, under_fapl_id, dxpl_id, req);
         if (under) {
@@ -20635,13 +20704,15 @@ H5VL_async_file_open(const char *name, unsigned flags, hid_t fapl_id, hid_t dxpl
     }
 #endif /* MPI_VERSION */
 
+    H5VL_async_fapl_set_disable_implicit(fapl_id);
+
     /* Copy the FAPL */
     under_fapl_id = H5Pcopy(fapl_id);
 
     /* Set the VOL ID and info for the underlying FAPL */
     H5Pset_vol(under_fapl_id, info->under_vol_id, info->under_vol_info);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         /* Open the file with the underlying VOL connector */
         under = H5VLfile_open(name, flags, under_fapl_id, dxpl_id, req);
         if (under) {
@@ -20691,7 +20762,7 @@ H5VL_async_file_get(void *file, H5VL_file_get_args_t *args, hid_t dxpl_id, void 
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         ret_value = H5VLfile_get(o->under_object, o->under_vol_id, args, dxpl_id, req);
 
         /* Check for async request */
@@ -20784,7 +20855,7 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_args_t *args, hid_t dxpl
         /* Keep the correct underlying VOL ID for later */
         under_vol_id = o->under_vol_id;
 
-        if (async_instance_g->disable_implicit) {
+        if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
             ret_value = H5VLfile_specific(o->under_object, o->under_vol_id, args, dxpl_id, req);
         }
         else {
@@ -20839,7 +20910,7 @@ H5VL_async_file_optional(void *file, H5VL_optional_args_t *args, hid_t dxpl_id, 
         return (H5VL_async_set_delay_time(delay_args->delay_time));
     }
     else {
-        if (async_instance_g->disable_implicit) {
+        if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
             ret_value = H5VLfile_optional(o->under_object, o->under_vol_id, args, dxpl_id, req);
 
             /* Check for async request */
@@ -20885,7 +20956,7 @@ H5VL_async_file_close(void *file, hid_t dxpl_id, void **req)
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         ret_value = H5VLfile_close(o->under_object, o->under_vol_id, dxpl_id, req);
 
         /* Check for async request */
@@ -20935,7 +21006,7 @@ H5VL_async_group_create(void *obj, const H5VL_loc_params_t *loc_params, const ch
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         under = H5VLgroup_create(o->under_object, loc_params, o->under_vol_id, name, lcpl_id, gcpl_id,
                                  gapl_id, dxpl_id, req);
         if (under) {
@@ -20980,7 +21051,7 @@ H5VL_async_group_open(void *obj, const H5VL_loc_params_t *loc_params, const char
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         under = H5VLgroup_open(o->under_object, loc_params, o->under_vol_id, name, gapl_id, dxpl_id, req);
         if (under) {
             group = H5VL_async_new_obj(under, o->under_vol_id);
@@ -21022,7 +21093,7 @@ H5VL_async_group_get(void *obj, H5VL_group_get_args_t *args, hid_t dxpl_id, void
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         ret_value = H5VLgroup_get(o->under_object, o->under_vol_id, args, dxpl_id, req);
 
         /* Check for async request */
@@ -21081,7 +21152,7 @@ H5VL_async_group_specific(void *obj, H5VL_group_specific_args_t *args, hid_t dxp
         /* Set argument pointer to current arguments */
         new_args = args;
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         // Save copy of underlying VOL connector ID and prov helper, in case of
         // refresh destroying the current object
         under_vol_id = o->under_vol_id;
@@ -21123,7 +21194,7 @@ H5VL_async_group_optional(void *obj, H5VL_optional_args_t *args, hid_t dxpl_id, 
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         ret_value = H5VLgroup_optional(o->under_object, o->under_vol_id, args, dxpl_id, req);
 
         /* Check for async request */
@@ -21168,7 +21239,7 @@ H5VL_async_group_close(void *grp, hid_t dxpl_id, void **req)
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         ret_value = H5VLgroup_close(o->under_object, o->under_vol_id, dxpl_id, req);
 
         /* Check for async request */
@@ -21224,7 +21295,7 @@ H5VL_async_link_create(H5VL_link_create_args_t *args, void *obj, const H5VL_loc_
         return (-1);
     }
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         H5VL_link_create_args_t  my_args;
         H5VL_link_create_args_t *new_args;
         hid_t                    under_vol_id = -1;
@@ -21324,7 +21395,7 @@ H5VL_async_link_copy(void *src_obj, const H5VL_loc_params_t *loc_params1, void *
         under_vol_id = o_dst->under_vol_id;
     assert(under_vol_id > 0);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         ret_value = H5VLlink_copy((o_src ? o_src->under_object : NULL), loc_params1,
                                   (o_dst ? o_dst->under_object : NULL), loc_params2, under_vol_id, lcpl_id,
                                   lapl_id, dxpl_id, req);
@@ -21390,7 +21461,7 @@ H5VL_async_link_move(void *src_obj, const H5VL_loc_params_t *loc_params1, void *
         under_vol_id = o_dst->under_vol_id;
     assert(under_vol_id > 0);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         ret_value = H5VLlink_move((o_src ? o_src->under_object : NULL), loc_params1,
                                   (o_dst ? o_dst->under_object : NULL), loc_params2, under_vol_id, lcpl_id,
                                   lapl_id, dxpl_id, req);
@@ -21432,7 +21503,7 @@ H5VL_async_link_get(void *obj, const H5VL_loc_params_t *loc_params, H5VL_link_ge
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         ret_value = H5VLlink_get(o->under_object, loc_params, o->under_vol_id, args, dxpl_id, req);
 
         /* Check for async request */
@@ -21471,7 +21542,7 @@ H5VL_async_link_specific(void *obj, const H5VL_loc_params_t *loc_params, H5VL_li
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         ret_value = H5VLlink_specific(o->under_object, loc_params, o->under_vol_id, args, dxpl_id, req);
 
         /* Check for async request */
@@ -21510,7 +21581,7 @@ H5VL_async_link_optional(void *obj, const H5VL_loc_params_t *loc_params, H5VL_op
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         ret_value = H5VLlink_optional(o->under_object, loc_params, o->under_vol_id, args, dxpl_id, req);
 
         /* Check for async request */
@@ -21556,7 +21627,7 @@ H5VL_async_object_open(void *obj, const H5VL_loc_params_t *loc_params, H5I_type_
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         under = H5VLobject_open(o->under_object, loc_params, o->under_vol_id, opened_type, dxpl_id, req);
         if (under) {
             new_obj = H5VL_async_new_obj(under, o->under_vol_id);
@@ -21603,7 +21674,7 @@ H5VL_async_object_copy(void *src_obj, const H5VL_loc_params_t *src_loc_params, c
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         ret_value =
             H5VLobject_copy(o_src->under_object, src_loc_params, src_name, o_dst->under_object,
                             dst_loc_params, dst_name, o_src->under_vol_id, ocpypl_id, lcpl_id, dxpl_id, req);
@@ -21645,7 +21716,7 @@ H5VL_async_object_get(void *obj, const H5VL_loc_params_t *loc_params, H5VL_objec
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         ret_value = H5VLobject_get(o->under_object, loc_params, o->under_vol_id, args, dxpl_id, req);
 
         /* Check for async request */
@@ -21685,7 +21756,7 @@ H5VL_async_object_specific(void *obj, const H5VL_loc_params_t *loc_params, H5VL_
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         under_vol_id = o->under_vol_id;
 
         ret_value = H5VLobject_specific(o->under_object, loc_params, o->under_vol_id, args, dxpl_id, req);
@@ -21730,7 +21801,7 @@ H5VL_async_object_optional(void *obj, const H5VL_loc_params_t *loc_params, H5VL_
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit) {
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         ret_value = H5VLobject_optional(o->under_object, loc_params, o->under_vol_id, args, dxpl_id, req);
 
         /* Check for async request */

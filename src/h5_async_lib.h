@@ -14,6 +14,8 @@ extern "C" {
 
 /* API routines for this package */
 extern herr_t H5Pset_vol_async(hid_t fapl_id);
+extern herr_t H5Pset_fapl_disable_async_implicit(hid_t fapl, hbool_t is_disable);
+extern herr_t H5Pget_fapl_disable_async_implicit(hid_t fapl, hbool_t *is_disable);
 extern herr_t H5Pset_dxpl_disable_async_implicit(hid_t dxpl, hbool_t is_disable);
 extern herr_t H5Pget_dxpl_disable_async_implicit(hid_t dxpl, hbool_t *is_disable);
 extern herr_t H5Pset_dxpl_pause(hid_t dxpl, hbool_t is_pause);

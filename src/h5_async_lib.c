@@ -840,3 +840,75 @@ H5Pget_dxpl_delay(hid_t dxpl, uint64_t *time_us)
 
     return status;
 }
+
+/*-------------------------------------------------------------------------
+ * Function:    H5Pset_fapl_disable_async_implicit
+ *
+ * Purpose:     Set to disable async implicit mode with fapl
+ *
+ * Return:      SUCCEED/FAIL
+ *
+ *-------------------------------------------------------------------------
+ */
+herr_t
+H5Pset_fapl_disable_async_implicit(hid_t fapl, hbool_t is_disable)
+{
+    herr_t status;
+
+    status = H5Pexist(fapl, H5VL_ASYNC_DISABLE_IMPLICIT_NAME);
+    if (status < 0) {
+        fprintf(stderr, "  [ASYNC VOL ERROR] %s H5Pexist failed!\n", __func__);
+        return -1;
+    }
+    else if (status == 0) {
+        status = H5Pinsert2(fapl, H5VL_ASYNC_DISABLE_IMPLICIT_NAME, sizeof(hbool_t), &is_disable, NULL, NULL,
+                            NULL, NULL, NULL, NULL);
+        if (status < 0) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s: H5Pinsert2 failed!\n", __func__);
+            return (-1);
+        }
+    }
+
+    status = H5Pset(fapl, H5VL_ASYNC_DISABLE_IMPLICIT_NAME, &is_disable);
+    if (status < 0) {
+        fprintf(stderr, "  [ASYNC VOL ERROR] %s: H5Pset failed!\n", __func__);
+        return (-1);
+    }
+
+    return status;
+}
+
+/*-------------------------------------------------------------------------
+ * Function:    H5Pget_fapl_disable_async_implicit
+ *
+ * Purpose:     Get the async implicit mode from fapl
+ *
+ * Return:      SUCCEED/NOTEXIST/FAIL
+ *
+ *-------------------------------------------------------------------------
+ */
+herr_t
+H5Pget_fapl_disable_async_implicit(hid_t fapl, hbool_t *is_disable)
+{
+    herr_t status;
+    assert(is_disable);
+
+    *is_disable = false;
+
+    status = H5Pexist(fapl, H5VL_ASYNC_DISABLE_IMPLICIT_NAME);
+    if (status < 0) {
+        fprintf(stderr, "  [ASYNC VOL ERROR] %s H5Pexist failed!\n", __func__);
+        return -1;
+    }
+    else if (status > 0) {
+        status = H5Pget(fapl, H5VL_ASYNC_DISABLE_IMPLICIT_NAME, is_disable);
+        if (status < 0) {
+            fprintf(stderr, "  [ASYNC VOL ERROR] %s: H5Pget failed!\n", __func__);
+            return (-1);
+        }
+    }
+    else
+        return 0;
+
+    return status;
+}
