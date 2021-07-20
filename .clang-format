@@ -27,12 +27,6 @@ IncludeCategories:
   - Regex:           '^(<|"(gtest|gmock|isl|json)/)'
     Priority:        4
     SortPriority:    0
-  - Regex:           '.*'
-    Priority:        0
-    SortPriority:    0
-  - Regex:           '^PDC*.*'
-    Priority:        1
-    SortPriority:    0
   - Regex:           'private.*'
     Priority:        2
     SortPriority:    0
