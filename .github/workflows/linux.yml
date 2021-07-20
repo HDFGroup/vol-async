@@ -46,18 +46,14 @@ jobs:
           make && make install
           
           # Compile Argobots
-          cd $mydir
-          cd argobots
+          cd $ABT_DIR
           ./autogen.sh
           ./configure --prefix=$ABT_DIR
           make && make install
           
           # Compile Asynchronous VOL connector
-          cd $mydir
-          cd src
+          cd $VOL_DIR/src
           tail -n 48 Makefile.summit > Makefile
-          export HDF5_DIR=$mydir/hdf5/install
-          export ABT_DIR=$mydir/argobots
           make
           
       - name: Compile and Test Vol-Async
