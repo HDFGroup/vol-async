@@ -9,7 +9,7 @@
 #include "h5_async_vol.h" /* Public header for connector */
 
 /* Private characteristics of the pass-through VOL connector */
-#define H5VL_ASYNC_VERSION     0
+#define H5VL_ASYNC_VERSION 0
 
 /* Names for dynamically registered operations */
 #define H5VL_ASYNC_DYN_FILE_WAIT         "gov.lbl.async.file.wait"
@@ -39,15 +39,12 @@ typedef struct H5VL_async_req_dep_args_t {
     void *parent_req;
 } H5VL_async_req_dep_args_t;
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* _h5_async_vol_private_H */
-

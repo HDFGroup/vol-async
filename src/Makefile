@@ -52,3 +52,8 @@ $(STATLIB): $(STATOBJ)
 .PHONY: clean
 clean:
 	rm -rf $(DYNLIB) $(DYNOBJ) $(DYNPCH) $(STATLIB) $(STATOBJ) $(STATPCH)
+
+format:
+	clang-format -i -style=file ./*.c
+	clang-format -i -style=file ./*.h
+	clang-format -i -style=file ../test/*.c
