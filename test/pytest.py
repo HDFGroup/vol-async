@@ -32,6 +32,8 @@ def guess_mpi_cmd(mpi_tasks, cpu_allocation, verbose):
         mpirun_cmd="srun -ppdebug -n " + str(mpi_tasks)
     elif 'nid' in node_name: # the cori knl nodes are called nid
         mpirun_cmd="srun --cpu_bind=cores -n " + str(mpi_tasks)
+    elif 'spock' in node_name:
+        mpirun_cmd="srun --cpu_bind=cores -n " + str(mpi_tasks)
     elif 'fourier' in node_name:
         mpirun_cmd="mpirun -np " + str(mpi_tasks)
     elif 'batch' in node_name: # for summit
