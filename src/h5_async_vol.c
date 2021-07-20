@@ -19091,8 +19091,8 @@ H5VL_async_new_obj(void *under_obj, hid_t under_vol_id)
  *
  * Purpose:     Release a async object
  *
- * Note:	Take care to preserve the current HDF5 error stack
- *		when calling HDF5 API calls.
+ * Note:    Take care to preserve the current HDF5 error stack
+ *      when calling HDF5 API calls.
  *
  * Return:      Success:    0
  *              Failure:    -1
@@ -19200,8 +19200,8 @@ H5VL_async_info_cmp(int *cmp_value, const void *_info1, const void *_info2)
  *
  * Purpose:     Release an info object for the connector.
  *
- * Note:	Take care to preserve the current HDF5 error stack
- *		when calling HDF5 API calls.
+ * Note:    Take care to preserve the current HDF5 error stack
+ *      when calling HDF5 API calls.
  *
  * Return:      Success:    0
  *              Failure:    -1
@@ -19444,7 +19444,7 @@ H5VL_async_wrap_object(void *obj, H5I_type_t obj_type, void *_wrap_ctx)
  * Function:    H5VL_async_unwrap_object
  *
  * Purpose:     Unwrap a wrapped object, discarding the wrapper, but returning
- *		underlying object.
+ *      underlying object.
  *
  * Return:      Success:    Pointer to unwrapped object
  *              Failure:    NULL
@@ -19475,8 +19475,8 @@ H5VL_async_unwrap_object(void *obj)
  *
  * Purpose:     Release a "wrapper context" for an object
  *
- * Note:	Take care to preserve the current HDF5 error stack
- *		when calling HDF5 API calls.
+ * Note:    Take care to preserve the current HDF5 error stack
+ *      when calling HDF5 API calls.
  *
  * Return:      Success:    0
  *              Failure:    -1
