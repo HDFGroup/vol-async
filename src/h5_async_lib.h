@@ -6,7 +6,7 @@
 #define __h5_async_lib_H
 
 /* Public headers needed by this file */
-#include "hdf5.h"        /* HDF5 */
+#include "hdf5.h" /* HDF5 */
 
 #ifdef __cplusplus
 extern "C" {
@@ -14,10 +14,14 @@ extern "C" {
 
 /* API routines for this package */
 extern herr_t H5Pset_vol_async(hid_t fapl_id);
+extern herr_t H5Pset_fapl_disable_async_implicit(hid_t fapl, hbool_t is_disable);
+extern herr_t H5Pget_fapl_disable_async_implicit(hid_t fapl, hbool_t *is_disable);
 extern herr_t H5Pset_dxpl_disable_async_implicit(hid_t dxpl, hbool_t is_disable);
 extern herr_t H5Pget_dxpl_disable_async_implicit(hid_t dxpl, hbool_t *is_disable);
 extern herr_t H5Pset_dxpl_pause(hid_t dxpl, hbool_t is_pause);
 extern herr_t H5Pget_dxpl_pause(hid_t dxpl, hbool_t *is_pause);
+extern herr_t H5Pset_dxpl_delay(hid_t dxpl, uint64_t time_us);
+extern herr_t H5Pget_dxpl_delay(hid_t dxpl, uint64_t *time_us);
 extern herr_t H5Fwait(hid_t file_id, hid_t dxpl_id);
 extern herr_t H5Dwait(hid_t dset_id, hid_t dxpl_id);
 extern herr_t H5Fstart(hid_t file_id, hid_t dxpl_id);
@@ -34,4 +38,3 @@ extern herr_t H5async_start(void *request);
 #endif
 
 #endif /* __h5_async_lib_H */
-

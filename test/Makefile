@@ -1,6 +1,14 @@
-HDF5_DIR = /global/u1/h/houhun/hpc-io/hdf5/async_optional_gnu/hdf5
-ABT_DIR = /global/u1/h/houhun/cori/argobots/install
-ASYNC_DIR = /global/homes/h/houhun/hdf5vol/vol-async/src
+ifndef HDF5_DIR
+	HDF5_DIR = /global/u1/h/houhun/hdf5/develop_gnu/hdf5
+endif
+
+ifndef ABT_DIR
+	ABT_DIR = /global/u1/h/houhun/cori/argobots/install
+endif
+
+ifndef ASYNC_DIR
+	ASYNC_DIR = /global/homes/h/houhun/hdf5vol/vol-async/src
+endif
 
 STATLIB = libasynchdf5.a
 # Uncomment this line Linux builds:
@@ -9,7 +17,7 @@ DYNLIB = libh5async.so
 # DYNLIB = libh5async.dylib
 
 CC = cc
-#CC = gcc-9
+# CC = gcc-9
 # CC = mpicc
 
 # These lines may need to be adjusted for your compiler environment:
@@ -41,10 +49,10 @@ DBG = $(SRC:.c=.exe.dSYM)
 all: $(EXE)
 
 check: 
-	./pytest.py -p
+	python3 ./pytest.py -p
 
 check_serial: 
-	./pytest.py
+	python3 ./pytest.py
 
 .PHONY: clean
 clean:
