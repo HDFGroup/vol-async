@@ -80,7 +80,4 @@ jobs:
           
           # Run serial and parallel tests
           make check
-
-          # Run serial tests only
-          make check_serial
           
