@@ -1,9 +1,9 @@
 ifndef HDF5_DIR
-        HDF5_DIR = /global/u1/h/houhun/hpc-io/hdf5/async_optional_gnu/hdf5
+    HDF5_DIR = /global/u1/h/houhun/hdf5/develop_gnu/hdf5
 endif
 
 ifndef ABT_DIR
-        ABT_DIR = /global/u1/h/houhun/cori/argobots/install
+    ABT_DIR = /global/u1/h/houhun/cori/argobots/install
 endif
 
 CC = cc
@@ -43,7 +43,7 @@ $(DYNOBJ): $(DYNSRC) $(DYNHDR)
 $(DYNLIB): $(DYNOBJ)
 	$(CC) $(CFLAGS) $(DYNLDFLAGS) $^ -o $@
 
-$(STATOBJ): $(STATSRC) $(STATHDR)
+$(STATOBJ): $(STATSRC)
 	$(CC) -c $(CFLAGS) $^
 
 $(STATLIB): $(STATOBJ)

@@ -39,7 +39,7 @@ $(DYNOBJ): $(DYNSRC) $(DYNHDR)
 $(DYNLIB): $(DYNOBJ)
 	$(CC) $(CFLAGS) $(DYNLDFLAGS) $^ -o $@
 
-$(STATOBJ): $(STATSRC) $(STATHDR)
+$(STATOBJ): $(STATSRC)
 	$(CC) -c $(CFLAGS) $^
 
 $(STATLIB): $(STATOBJ)
