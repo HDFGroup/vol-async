@@ -5,8 +5,8 @@
 
 from spack import *
 
-class Hdf5VolAsync(CMakePackage):
-    """An asynchronous I/O framework that provides support for all I/O operations
+class Hdf5volasync(CMakePackage):
+    """An asynchronous I/O framework that support all HDF5 I/O operations 
        and manages data dependencies transparently and automatically."""
 
     homepage = "https://hdf5-vol-async.readthedocs.io"
