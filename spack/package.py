@@ -28,8 +28,3 @@ class Hdf5volasync(CMakePackage):
             '-DBUILD_TESTING:BOOL=ON',
         ]
         return args
-
-#    def check_build(self):
-#        """Run ctest after building project."""
-#        with working_dir("test"):
-#            ctest(parallel=False)
