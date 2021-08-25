@@ -3,7 +3,7 @@ MIN_NODE=1
 MAX_NODE=128
 
 CASES=( "vpic" "bdcats" )
-FILESYS=( "lst" "bb" )
+FILESYS=( "gpfs" )
 
 curdir=$(pwd)
 for fs in "${FILESYS[@]}"
@@ -17,7 +17,7 @@ do
         for (( i = $MIN_NODE; i <= $MAX_NODE; i*=2 )); do
             echo "====Node $i"
 
-            for file in "$curdir/${mycase}/${i}/"o*.${mycase}_${fs}
+            for file in "$curdir/${mycase}/${i}/"o*.${mycase}_${i}node
             do
                 echo $file
 

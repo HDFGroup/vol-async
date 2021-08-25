@@ -17449,10 +17449,14 @@ async_link_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 #ifdef ENABLE_TIMING
     async_task->create_time = clock();
 #endif
-    if (loc_params->type == H5VL_OBJECT_BY_NAME && loc_params->loc_data.loc_by_name.lapl_id < 0)
+    if (loc_params->type == H5VL_OBJECT_BY_NAME && loc_params->loc_data.loc_by_name.lapl_id < 0) {
+        fprintf(stderr, "  [ASYNC VOL ERROR] %s with loc_by_name.lapl_id\n", __func__);
         goto error;
-    if (loc_params->type == H5VL_OBJECT_BY_IDX && loc_params->loc_data.loc_by_idx.lapl_id < 0)
+    }
+    if (loc_params->type == H5VL_OBJECT_BY_IDX && loc_params->loc_data.loc_by_idx.lapl_id < 0) {
+        fprintf(stderr, "  [ASYNC VOL ERROR] %s with loc_by_idx.lapl_id\n", __func__);
         goto error;
+    }
     args->obj        = parent_obj->under_object;
     args->loc_params = (H5VL_loc_params_t *)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
@@ -17778,10 +17782,14 @@ async_link_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 #ifdef ENABLE_TIMING
     async_task->create_time = clock();
 #endif
-    if (loc_params->type == H5VL_OBJECT_BY_NAME && loc_params->loc_data.loc_by_name.lapl_id < 0)
+    if (loc_params->type == H5VL_OBJECT_BY_NAME && loc_params->loc_data.loc_by_name.lapl_id < 0) {
+        fprintf(stderr, "  [ASYNC VOL ERROR] %s with loc_by_name.lapl_id\n", __func__);
         goto error;
-    if (loc_params->type == H5VL_OBJECT_BY_IDX && loc_params->loc_data.loc_by_idx.lapl_id < 0)
+    }
+    if (loc_params->type == H5VL_OBJECT_BY_IDX && loc_params->loc_data.loc_by_idx.lapl_id < 0) {
+        fprintf(stderr, "  [ASYNC VOL ERROR] %s with loc_by_idx.lapl_id\n", __func__);
         goto error;
+    }
     args->obj        = parent_obj->under_object;
     args->loc_params = (H5VL_loc_params_t *)calloc(1, sizeof(*loc_params));
     dup_loc_param(args->loc_params, loc_params);
