@@ -37,6 +37,7 @@ works, and perform publicly and display publicly, and to permit others to do so.
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
+#include <sys/sysinfo.h>
 
 /* Public HDF5 file */
 #include "hdf5.h"
@@ -200,6 +201,10 @@ typedef struct async_instance_t {
     bool          disable_implicit;      /* Disable implicit async execution for dxpl */
     int           sleep_time;            /* Sleep time between checking the global mutex attemp count */
     uint64_t      delay_time; /* Sleep time before background thread trying to acquire global mutex */
+#ifdef ENABLE_WRITE_MEMCPY
+    hsize_t       max_mem;
+    hsize_t       used_mem;
+#endif
 } async_instance_t;
 
 typedef struct async_future_obj_t {
@@ -242,6 +247,10 @@ typedef struct async_attr_write_args_t {
     void * buf;
     hid_t  dxpl_id;
     void **req;
+#ifdef ENABLE_WRITE_MEMCPY
+    bool free_buf;
+    hsize_t data_size;
+#endif
 } async_attr_write_args_t;
 
 typedef struct async_attr_get_args_t {
@@ -315,6 +324,7 @@ typedef struct async_dataset_write_args_t {
     void **req;
 #ifdef ENABLE_WRITE_MEMCPY
     bool free_buf;
+    hsize_t data_size;
 #endif
 } async_dataset_write_args_t;
 
@@ -1169,6 +1179,17 @@ async_instance_init(int backing_thread_count)
     /* Set "delay execution" convenience flag, if any of the others are set */
     if (aid->ex_fclose || aid->ex_gclose || aid->ex_dclose)
         aid->ex_delay = true;
+
+#ifdef ENABLE_WRITE_MEMCPY
+    // Get max memory allowed for async memcpy
+    env_var = getenv("HDF5_ASYNC_MAX_MEM_MB");
+    if (env_var && *env_var && atoi(env_var) > 0) {
+        aid->max_mem = atoi(env_var);
+        aid->max_mem *= 1048576;
+    }
+    else
+        aid->max_mem = (hsize_t)get_avphys_pages() * sysconf(_SC_PAGESIZE);
+#endif
 
 #ifdef MPI_VERSION
     {
@@ -5542,7 +5563,10 @@ done:
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr);
 
 #ifdef ENABLE_WRITE_MEMCPY
-    free(args->buf);
+    if (args->free_buf && args->buf) {
+        free(args->buf);
+        async_instance_g->used_mem -= args->data_size;
+    }
 #endif
 
 #ifdef ENABLE_TIMING
@@ -5609,13 +5633,16 @@ async_attr_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type
 
 #ifdef ENABLE_WRITE_MEMCPY
     if (parent_obj->data_size == 0) {
-        /* fprintf(stderr, "  [ASYNC VOL ERROR] %s unknown attr size\n", __func__); */
-        parent_obj->data_size = 4096;
+        /* fprintf(stderr, "  [ASYNC VOL ERROR] %s unknown dataset write size\n", __func__); */
+        parent_obj->data_size = 1048576;
     }
     if (NULL == (args->buf = malloc(parent_obj->data_size))) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s malloc failed!\n", __func__);
         goto done;
     }
+    async_instance_g->used_mem += parent_obj->data_size;
+    args->data_size = parent_obj->data_size;
+    args->free_buf = true;
     memcpy(args->buf, buf, parent_obj->data_size);
 #else
     args->buf = (void *)buf;
@@ -8283,8 +8310,10 @@ done:
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr);
 
 #ifdef ENABLE_WRITE_MEMCPY
-    if (args->free_buf && args->buf)
+    if (args->free_buf && args->buf) {
         free(args->buf);
+        async_instance_g->used_mem -= args->data_size;
+    }
 #endif
 
 #ifdef ENABLE_TIMING
@@ -8383,11 +8412,27 @@ async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_t
 
     /* fprintf(stderr, "buf size = %llu\n", buf_size); */
 
-    if (buf_size > 0) {
+    // Get available system memory
+    hsize_t avail_mem = (hsize_t)get_avphys_pages() * sysconf(_SC_PAGESIZE);
+
+    if (async_instance_g->used_mem + buf_size > async_instance_g->max_mem) {
+        is_blocking = true;
+        args->buf = (void *)buf;
+        fprintf(stderr, "  [ASYNC ABT INFO] %d write size %lu larger than async memory limit %lu, switch to synchronous write\n", async_instance_g->mpi_rank, buf_size, async_instance_g->max_mem);
+    }
+    else if (buf_size > avail_mem) {
+        is_blocking = true;
+        args->buf = (void *)buf;
+        fprintf(stderr, "  [ASYNC ABT INFO] %d write size %lu larger than available memory %lu, switch to synchronous write\n",  async_instance_g->mpi_rank, buf_size, avail_mem);
+    }
+    else {
         if (NULL == (args->buf = malloc(buf_size))) {
             fprintf(stderr, "  [ASYNC VOL ERROR] %s malloc failed!\n", __func__);
             goto done;
         }
+        async_instance_g->used_mem += buf_size;
+        args->free_buf = true;
+        args->data_size = buf_size;
 
         // If is contiguous space, no need to go through gather process as it can be costly
         if (1 != is_contig_memspace(mem_space_id)) {
@@ -8404,7 +8449,6 @@ async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_t
         else {
             memcpy(args->buf, buf, buf_size);
         }
-        args->free_buf = true;
     }
 #endif
 
