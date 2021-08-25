@@ -202,8 +202,8 @@ typedef struct async_instance_t {
     int           sleep_time;            /* Sleep time between checking the global mutex attemp count */
     uint64_t      delay_time; /* Sleep time before background thread trying to acquire global mutex */
 #ifdef ENABLE_WRITE_MEMCPY
-    hsize_t       max_mem;
-    hsize_t       used_mem;
+    hsize_t max_mem;
+    hsize_t used_mem;
 #endif
 } async_instance_t;
 
@@ -248,7 +248,7 @@ typedef struct async_attr_write_args_t {
     hid_t  dxpl_id;
     void **req;
 #ifdef ENABLE_WRITE_MEMCPY
-    bool free_buf;
+    bool    free_buf;
     hsize_t data_size;
 #endif
 } async_attr_write_args_t;
@@ -323,7 +323,7 @@ typedef struct async_dataset_write_args_t {
     void * buf;
     void **req;
 #ifdef ENABLE_WRITE_MEMCPY
-    bool free_buf;
+    bool    free_buf;
     hsize_t data_size;
 #endif
 } async_dataset_write_args_t;
@@ -5642,7 +5642,7 @@ async_attr_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type
     }
     async_instance_g->used_mem += parent_obj->data_size;
     args->data_size = parent_obj->data_size;
-    args->free_buf = true;
+    args->free_buf  = true;
     memcpy(args->buf, buf, parent_obj->data_size);
 #else
     args->buf = (void *)buf;
@@ -8417,13 +8417,19 @@ async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_t
 
     if (async_instance_g->used_mem + buf_size > async_instance_g->max_mem) {
         is_blocking = true;
-        args->buf = (void *)buf;
-        fprintf(stderr, "  [ASYNC ABT INFO] %d write size %lu larger than async memory limit %lu, switch to synchronous write\n", async_instance_g->mpi_rank, buf_size, async_instance_g->max_mem);
+        args->buf   = (void *)buf;
+        fprintf(stderr,
+                "  [ASYNC ABT INFO] %d write size %lu larger than async memory limit %lu, switch to "
+                "synchronous write\n",
+                async_instance_g->mpi_rank, buf_size, async_instance_g->max_mem);
     }
     else if (buf_size > avail_mem) {
         is_blocking = true;
-        args->buf = (void *)buf;
-        fprintf(stderr, "  [ASYNC ABT INFO] %d write size %lu larger than available memory %lu, switch to synchronous write\n",  async_instance_g->mpi_rank, buf_size, avail_mem);
+        args->buf   = (void *)buf;
+        fprintf(stderr,
+                "  [ASYNC ABT INFO] %d write size %lu larger than available memory %lu, switch to "
+                "synchronous write\n",
+                async_instance_g->mpi_rank, buf_size, avail_mem);
     }
     else {
         if (NULL == (args->buf = malloc(buf_size))) {
@@ -8431,7 +8437,7 @@ async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_t
             goto done;
         }
         async_instance_g->used_mem += buf_size;
-        args->free_buf = true;
+        args->free_buf  = true;
         args->data_size = buf_size;
 
         // If is contiguous space, no need to go through gather process as it can be costly
