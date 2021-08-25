@@ -1,7 +1,7 @@
 #!/bin/bash
 
-MIN_PROC=1
-MAX_PROC=2
+MIN_PROC=4
+MAX_PROC=128
 
 CASES=( "vpic" "bdcats" )
 
