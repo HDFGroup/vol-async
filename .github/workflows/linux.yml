@@ -3,6 +3,8 @@ name: linux
 on:
   pull_request:
     branches: [ develop ]
+  push:
+    branches: [ develop ]
 
   # Allows to run this workflow manually from the Actions tab
   workflow_dispatch:
