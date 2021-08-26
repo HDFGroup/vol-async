@@ -220,7 +220,7 @@ Applications may choose to have async VOL to manage the write buffer consistency
     Async vol checks available system memory before its double buffer allocation at runtime, using get_avphys_pages() and sysconf().
     When there is not enough memory for duplicating the current write buffer, it will not allocate memory and force the current write to be synchronous.
 
-With the double buffering enabled, users can also specify how much memory is allowed for async VOL to allocate, with can be set through an environment variable:
+With the double buffering enabled, users can also specify how much memory is allowed for async VOL to allocate, with can be set through an environment variable. When the limit is reached during runtime, async VOL will skip the memory allocation and execute the write synchronously, until previous duplicated buffers are freed after their operation compeleted.
 
 .. code-block::
 
