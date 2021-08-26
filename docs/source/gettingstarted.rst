@@ -182,7 +182,7 @@ More detailed description on how to enable async VOL is descritbed in Hello Asyn
     H5ESclose(es_id);
 
 .. warning::
-    The buffers used for H5Dwrite can only be changed after H5ESwait unless async VOL double buffering is enabled, see :ref:`(Optional) Async VOL double buffering`.
+    The buffers used for H5Dwrite can only be changed after H5ESwait unless async VOL double buffering is enabled, see subsection 5 below.
 
 4. (Optional) Error handling with event set
 
@@ -221,7 +221,11 @@ Applications may choose to have async VOL to manage the write buffer consistency
 
 7. (Optional) Finer control of asynchronous I/O operation
 
-When async VOL is enabled, each HDF5 operation is recorded and put into a task queue and returns without actually executing it. The async VOL detects whether the application is busy issuing HDF5 I/O calls or has moved on to other tasks (e.g. computation). If it finds no HDF5 function is called within a short period (600ms by default), it will start the background thread to execute the tasks in the queue. This is mainly due to the global mutex from the HDF5, allowing only one thread to execute the HDF5 operations at a given time to maintain its internal data consistency. The application status detection can avoid an effectively synchronous I/O when the application thread and the async VOL background thread acquire the mutex in an interleaved fashion. However, some applications may have larger time gaps between HDF5 function calls and experience partially asynchronous behavior. To mitigate this, we provide a way by setting an environment variable that informs async VOL to queue the operations and not start their execution until file/group/dataset close time. This is especially useful for applications that periodically output (write-only) data, e.g. checkpoint, and can take full advantage of the asynchronous I/O. 
+When async VOL is enabled, each HDF5 operation is recorded and put into a task queue and returns without actually executing it. The async VOL detects whether the application is busy issuing HDF5 I/O calls or has moved on to other tasks (e.g. computation). If it finds no HDF5 function is called within a short period (600ms by default), it will start the background thread to execute the tasks in the queue. This is mainly due to the global mutex from the HDF5, allowing only one thread to execute the HDF5 operations at a given time to maintain its internal data consistency. 
+
+The application status detection can avoid an effectively synchronous I/O when the application thread and the async VOL background thread acquire the mutex in an interleaved fashion. However, some applications may have larger time gaps between HDF5 function calls and experience partially asynchronous behavior. To mitigate this, we provide a way by setting an environment variable that informs async VOL to queue the operations and not start their execution until file/group/dataset close time. 
+
+When set properly, it make async VOL especially effective for applications that periodically output (write-only) data, e.g. checkpoint.
 
 .. code-block::
 
