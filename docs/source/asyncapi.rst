@@ -11,8 +11,8 @@ Besides the HDF5 EventSet and asynchronous I/O operation APIs, the async VOL con
     herr_t H5Pset_dxpl_disable_async_implicit(hid_t dxpl, hbool_t is_disable);
 
     // Retrieve the status of disable implicit mode (true when implicit is disabled).
-    herr_t H5Pget_fapl_disable_async_implicit(hid_t fapl, hbool_t \*is_disable);
-    herr_t H5Pget_dxpl_disable_async_implicit(hid_t dxpl, hbool_t \*is_disable);
+    herr_t H5Pget_fapl_disable_async_implicit(hid_t fapl, hbool_t *is_disable);
+    herr_t H5Pget_dxpl_disable_async_implicit(hid_t dxpl, hbool_t *is_disable);
 
 .. note::
     The disable implicit flag only becomes effective when the corresponding fapl or dxpl is actually used by another HDF5 function call, e.g. with H5Fopen or H5Dwrite. When a new fapl or dxpl is used by any HDF5 function without setting the disable implict flag, e.g. H5P_DEFAULT, it will reset the mode back to asynchronous execution.
@@ -28,7 +28,7 @@ Besides the HDF5 EventSet and asynchronous I/O operation APIs, the async VOL con
 .. code-block::
 
     // Retrieve the pause flag.
-    herr_t H5Pget_dxpl_pause(hid_t dxpl, hbool_t \*is_pause);
+    herr_t H5Pget_dxpl_pause(hid_t dxpl, hbool_t *is_pause);
 
     // Restart all paused operations, takes effect immediately.
     herr_t H5Fstart(hid_t file_id, hid_t dxpl_id);
@@ -36,11 +36,13 @@ Besides the HDF5 EventSet and asynchronous I/O operation APIs, the async VOL con
 
 * Set and get a delay time for all async operations.
 
+.. code-block::
+
     // Set a delay time (microseconds) to property list that adds a delay for asynchronous I/O operations.
     herr_t H5Pset_dxpl_delay(hid_t dxpl, uint64_t time_us);
 
     // Retrieve the delay time.
-    herr_t H5Pget_dxpl_delay(hid_t dxpl, uint64_t \*time_us);
+    herr_t H5Pget_dxpl_delay(hid_t dxpl, uint64_t *time_us);
 
 .. note::
     The operations are only delayed when the dxpl is used by another HDF5 function call.
@@ -53,8 +55,8 @@ Besides the HDF5 EventSet and asynchronous I/O operation APIs, the async VOL con
 .. code-block::
 
     // Set a dependency parent to a request, should only be used by a another stacked VOL.
-    herr_t H5async_set_request_dep(void \*request, void \*parent_request);
+    herr_t H5async_set_request_dep(void *request, void *parent_request);
 
     // Start all paused operations, should only be used by a another stacked VOL.
-    herr_t H5async_start(void \*request);
+    herr_t H5async_start(void *request);
 

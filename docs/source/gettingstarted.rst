@@ -80,7 +80,6 @@ Set Environmental Variables
 Async VOL requires the setting of the following environmental variable to enable asynchronous I/O:
 
 *Linux*
-
 .. code-block::
 
     export LD_LIBRARY_PATH=$VOL_DIR/src:$H5_DIR/install/lib:$ABT_DIR/install/lib:$LD_LIBRARY_PATH
@@ -88,7 +87,6 @@ Async VOL requires the setting of the following environmental variable to enable
     export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
 
 *MacOS*
-
 .. code-block::
 
     export DYLD_LIBRARY_PATH=$VOL_DIR/src:$H5_DIR/install/lib:$ABT_DIR/install/lib:$DYLD_LIBRARY_PATH
@@ -137,13 +135,13 @@ Implicit mode
 
 The implicit mode allows an application to enable asynchronous I/O through setting the following environemental variables and without any major code change. By default, the HDF5 metadata operations are executed asynchronously, and the dataset operations are executed synchronously.
 
-.. note::
-    Due to the limitations of the implicit mode, we highly recommend applications to use the explicit mode for the best I/O performance.
-
 .. code-block::
 
     [Set environment variables, from step 3 above]
     Run your application
+
+.. note::
+    Due to the limitations of the implicit mode, we highly recommend applications to use the explicit mode for the best I/O performance.
 
 
 Explicit mode
@@ -183,6 +181,7 @@ Parallel HDF5 involve MPI collecive operations in many of its internal metadata 
     The buffers used for H5Dwrite can only be changed after H5ESwait unless async VOL double buffering is enabled, see :ref:`(Optional) Async VOL double buffering`.
 
 4. (Optional) Error handling with event set
+
 Although it is listed as optional, it is highly recommended to integrate the asynchronous I/O error checking into the application code.
 
 .. code-block::
@@ -210,7 +209,7 @@ Applications may choose to have async VOL to manage the write buffer consistency
 
     Add -DENABLE_WRITE_MEMCPY=1 to the end of the CFLAGS line of src/Makefile before compiling.
 
-6. (Optional) Include the header file if async VOL API is used (see Async API section)
+6. (Optional) Include the header file if async VOL API is used (see Async VOL APIs section)
 
 .. code-block::
 
@@ -219,9 +218,6 @@ Applications may choose to have async VOL to manage the write buffer consistency
 7. (Optional) Finer control of asynchronous I/O operation
 
 When async VOL is enabled, each HDF5 operation is recorded and put into a task queue and returns without actually executing it. The async VOL detects whether the application is busy issuing HDF5 I/O calls or has moved on to other tasks (e.g. computation). If it finds no HDF5 function is called within a short period (600ms by default), it will start the background thread to execute the tasks in the queue. This is mainly due to the global mutex from the HDF5, allowing only one thread to execute the HDF5 operations at a given time to maintain its internal data consistency. The application status detection can avoid an effectively synchronous I/O when the application thread and the async VOL background thread acquire the mutex in an interleaved fashion. However, some applications may have larger time gaps between HDF5 function calls and experience partially asynchronous behavior. To mitigate this, we provide a way by setting an environment variable that informs async VOL to queue the operations and not start their execution until file/group/dataset close time. This is especially useful for applications that periodically output (write-only) data, e.g. checkpoint, and can take full advantage of the asynchronous I/O. 
-
-.. warning::
-    This option requires the application developer to ensure that no deadlock occurs.
 
 .. code-block::
 
@@ -232,4 +228,6 @@ When async VOL is enabled, each HDF5 operation is recorded and put into a task q
     // Start execution at dataset close time
     export HDF5_ASYNC_EXE_DCLOSE=1
 
+.. warning::
+    This option requires the application developer to ensure that no deadlock occurs.
 
