@@ -214,7 +214,18 @@ Applications may choose to have async VOL to manage the write buffer consistency
 
 .. code-block::
 
-    Add -DENABLE_WRITE_MEMCPY=1 to the end of the CFLAGS line of src/Makefile before compiling.
+    Add -DENABLE_WRITE_MEMCPY=1 to the end of the CFLAGS line in src/Makefile before compiling.
+
+.. note::
+    Async vol checks available system memory before its double buffer allocation at runtime, using get_avphys_pages() and sysconf().
+    When there is not enough memory for duplicating the current write buffer, it will not allocate memory and force the current write to be synchronous.
+
+With the double buffering enabled, users can also specify how much memory is allowed for async VOL to allocate, with can be set through an environment variable:
+
+.. code-block::
+
+    export HDF5_ASYNC_MAX_MEM_MB=max_total_async_vol_memory_allocation_in_mb
+
 
 6. (Optional) Include the header file if async VOL API is used (see Async VOL APIs section)
 
