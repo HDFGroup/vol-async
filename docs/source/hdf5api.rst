@@ -64,6 +64,7 @@ File operations
 Group operations
 ----------------
 .. code-block::
+
     hid_t H5Gcreate_async(hid_t loc_id, const char *name, hid_t lcpl_id, hid_t gcpl_id, hid_t gapl_id, hid_t es_id);
     
     hid_t H5Gopen_async(hid_t loc_id, const char *name, hid_t gapl_id, hid_t es_id);
