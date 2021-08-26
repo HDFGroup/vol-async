@@ -13,22 +13,26 @@ To overcome these issues, we present an asynchronous I/O framework that provides
 
 .. toctree::
    :maxdepth: 2
-   :caption: Getting Started:
+   :caption: Getting Started
 
    gettingstarted
 
+.. toctree::
+   :maxdepth: 2
+   :caption: API
+
+   hdf5api
+   asyncapi
 
 .. toctree::
    :maxdepth: 2
-   :caption: Resources:
+   :caption: Hello Async
 
-   resources
-
-
+   example
 
 .. toctree::
    :maxdepth: 2
-   :caption: Legal:
+   :caption: Legal
 
    copyright
    license

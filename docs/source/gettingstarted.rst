@@ -1,68 +1,60 @@
-Introduction
-===================================
-
---------------------------------------------------------------------------------------
 Background
---------------------------------------------------------------------------------------
+==========
 
 Asynchronous I/O is becoming increasingly popular with the large amount of data access required by scientific applications. They can take advantage of an asynchronous interface by scheduling I/O as early as possible and overlap computation or communication with I/O operations, which hides the cost associated with I/O and improves the overall performance.
+
+
+Preparation
+-----------
 
 Some configuration parameters used in the instructions:
 
 .. code-block::
 
-	VOL_DIR : directory of HDF5 Asynchronous I/O VOL connector repository
-	ABT_DIR : directory of Argobots source code
-	H5_DIR  : directory of HDF5 source code
+    VOL_DIR : directory of HDF5 Asynchronous I/O VOL connector repository
+    ABT_DIR : directory of Argobots source code
+    H5_DIR  : directory of HDF5 source code
 
 
-
---------------------------------------------------------------------------------------
-Preparation
---------------------------------------------------------------------------------------
-
-1.1 Download the Asynchronous I/O VOL connector code (this repository) with Argobots git submodule Use system provided by HDF5 
+#. Download the Asynchronous I/O VOL connector code (this repository) with Argobots git submodule Use system provided by HDF5.
 Latest Argobots can also be downloaded separately from https://github.com/pmodels/argobots
 
 .. code-block::
 
-	git clone --recursive https://github.com/hpc-io/vol-async.git
-	
+    git clone --recursive https://github.com/hpc-io/vol-async.git
 
 
-1.2 Download the HDF5 source code
-
-.. code-block::
-
-	git clone https://github.com/HDFGroup/hdf5.git
-
-
-1.3 (Optional) Set the environment variables for the paths of the codes if the full path of VOL_DIR, ABT_DIR, and H5_DIR are not used in later setup
+#. Download the HDF5 source code
 
 .. code-block::
 
-	export H5_DIR=/path/to/hdf5/dir
-	export VOL_DIR=/path/to/async_vol/dir
-	export ABT_DIR=/path/to/argobots/dir
+    git clone https://github.com/HDFGroup/hdf5.git
 
 
+#. (Optional) Set the environment variables for the paths of the codes if the full path of VOL_DIR, ABT_DIR, and H5_DIR are not used in later setup.
+
+.. code-block::
+
+    export H5_DIR=/path/to/hdf5/dir
+    export VOL_DIR=/path/to/async_vol/dir
+    export ABT_DIR=/path/to/argobots/dir
 
 
---------------------------------------------------------------------------------------
 Installation
---------------------------------------------------------------------------------------
+------------
 
-2.1 Compile HDF5
+#. Compile HDF5
 
 .. code-block::
 
     cd $H5_DIR
-    ./autogen.sh  (may skip this step if the configure file exists)
-    ./configure --prefix=$H5_DIR/install --enable-parallel --enable-threadsafe --enable-unsupported #(may need to add CC=cc or CC=mpicc)
+    ./autogen.sh
+    (Optional) CC=mpicc/gcc/cc
+    ./configure --prefix=$H5_DIR/install --enable-parallel --enable-threadsafe --enable-unsupported 
     make && make install
 
 
-2.2 Compile Argobots
+#. Compile Argobots
 
 .. code-block::
 
@@ -72,8 +64,7 @@ Installation
     make && make install
 
 
-
-2.3 Compile Asynchronous VOL connector
+#. Compile Asynchronous VOL connector
 
 .. code-block::
 
@@ -86,13 +77,12 @@ Installation
     make
 
 
---------------------------------------------------------------------------------------
 Set Environmental Variables
---------------------------------------------------------------------------------------
+---------------------------
 
-Will need to set the following environmental variable before running the asynchronous operation tests and your async application, e.g.:
+Async VOL requires the setting of the following environmental variable to enable asynchronous I/O:
 
-for Linux:
+* Linux:
 
 .. code-block::
 
@@ -100,123 +90,141 @@ for Linux:
     export HDF5_PLUGIN_PATH="$VOL_DIR/src"
     export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
 
+* MacOS
 .. code-block::
 
-	export DYLD_LIBRARY_PATH=$VOL_DIR/src:$H5_DIR/install/lib:$ABT_DIR/install/lib:$DYLD_LIBRARY_PATH
+    export DYLD_LIBRARY_PATH=$VOL_DIR/src:$H5_DIR/install/lib:$ABT_DIR/install/lib:$DYLD_LIBRARY_PATH
     export HDF5_PLUGIN_PATH="$VOL_DIR/src"
     export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
 
 
-
---------------------------------------------------------------------------------------
 Test
---------------------------------------------------------------------------------------
+----
+
+#. Compile test codes.
 
 .. code-block::
 
-	cd $VOL_DIR/test
-	Edit "Makefile":
-	    Copy a sample Makefile (Makefile.cori, Makefile.summit, Makefile.macos), e.g. "cp Makefile.summit Makefile", Makefile.summit should work for most linux systems
-	    Update H5_DIR, ABT_DIR and ASYNC_DIR to the correct paths of their installation directory
-	    (Optional) update the compiler flag macros: DEBUG, CFLAGS, LIBS, ARFLAGS
-	    (Optional) comment/uncomment the correct DYNLIB & LDFLAGS macro
-	make
+    cd $VOL_DIR/test
+    Edit "Makefile":
+        Copy a sample Makefile (Makefile.cori, Makefile.summit, Makefile.macos), e.g. "cp Makefile.summit Makefile", Makefile.summit should work for most linux systems
+        Update H5_DIR, ABT_DIR and ASYNC_DIR to the correct paths of their installation directory
+        (Optional) update the compiler flag macros: DEBUG, CFLAGS, LIBS, ARFLAGS
+        (Optional) comment/uncomment the correct DYNLIB & LDFLAGS macro
+    make
 
-Running the automated tests requires Python3.
+
+#. Run serial and parallel tests
+.. note::
+    Running the automated tests requires Python3.
+
 (Optional) If the system is not using mpirun to launch MPI tasks, edit mpirun_cmd in pytest.py with the corresponding MPI launch command.
 
-Run both the serial and parallel tests
+.. code-block::
+
+    //Run serial and parallel tests
+    make check
+
+    //Run the serial tests only
+    make check_serial
+
+If any test fails, check async_vol_test.err in the test directory for the error message. 
+
+(Optional) With certain file systems where file locking is not supported, an error of "file create failed" may occur and can be fixed with "export HDF5_USE_FILE_LOCKING=FALSE", which disables the HDF5 file locking.
+
+
+Implicit mode
+-------------
+
+The implicit mode allows an application to enable asynchronous I/O through setting the following environemental variables and without any major code change. By default, the HDF5 metadata operations are executed asynchronously, and the dataset operations are executed synchronously.
+.. note::
+    Due to the limitations of the implicit mode, we highly recommend applications to use the explicit mode for the best I/O performance.
 
 .. code-block::
 
-	make check
-
-Run the serial tests only
-
-.. code-block::
-
-	make check_serial
-
-If any test fails, check async_vol_test.err in the $VOL_DIR/test directory for the error message. 
-With certain file systems where file locking is not supported, an error of "file create failed" may occur and can be fixed with "export HDF5_USE_FILE_LOCKING=FALSE", which disables the HDF5 file locking.
+    [Set environment variables, from step 3 above]
+    Run your application
 
 
---------------------------------------------------------------------------------------
-Using the Asynchronous I/O VOL connector with application code (Implicit mode)
---------------------------------------------------------------------------------------
-
-The implicit mode allows an application to enable asynchronous I/O through setting the following environemental variables and without any major code change. 
-By default, the HDF5 metadata operations are executed asynchronously, and the dataset operations are executed synchronously.
-
-.. code-block::
-
-	[Set environment variables, from step 3 above]
-	Run your application
-
-
---------------------------------------------------------------------------------------
-Using the Asynchronous I/O VOL connector with application code (Explicit mode)
---------------------------------------------------------------------------------------
+Explicit mode
+-------------
 
 Please refer to the Makefile and source code (async_test_serial_event_set*) under $VOL_DIR/test/ for example usage.
 
+#. (Required) Set async VOL environment variables
+See :ref:`(Optional) Async VOL double buffering`.
 
-6.1 Include header file
+#. (Required) Init MPI with MPI_THREAD_MULTIPLE
 
-.. code-block::
-
-	#include "h5_async_vol.h" 
-
-
-
-6.2 Use event set and new async API to manage asynchronous I/O operations
+Parallel HDF5 involve MPI collecive operations in many of its internal metadata operations, and they can be executed concurrently with the application's MPI operations, thus we require to initialize MPI with MPI_THREAD_MULTIPLE support. Change MPI_Init(argc, argv) in your application's code to the following:
 
 .. code-block::
 
-    es_id = H5EScreate();                        // Create event set for tracking async operations
-    fid = H5Fopen_async(.., es_id);              // Asynchronous, can start immediately
-    gid = H5Gopen_async(fid, .., es_id);         // Asynchronous, starts when H5Fopen completes
-    did = H5Dopen_async(gid, .., es_id);         // Asynchronous, starts when H5Gopen completes
-    status = H5Dwrite_async(did, .., es_id);     // Asynchronous, starts when H5Dopen completes, may run concurrently with other H5Dwrite in event set
-    status = H5Dread_async(did, .., es_id);      // Asynchronous, starts when H5Dwrite completes, may run concurrently with other H5Dread in event set
+    MPI_Init_thread(argc, argv, MPI_THREAD_MULTIPLE, &provided);
+
+#. (Required) Use event set and new async API to manage asynchronous I/O operations, see API section for a complete of APIs.
+
+.. code-block::
+
+    // Create event set for tracking async operations
+    es_id = H5EScreate();
+    fid = H5Fcreate_async(.., es_id);
+    did = H5Dopen_async(fid, .., es_id);
+    H5Dwrite_async(did, .., es_id);
+    H5Dclose_async(did, .., es_id);
+    H5Fclose_async(fid, .., es_id);
+    // Wait for operations in event set to complete
     H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed); 
-                                                 // Wait for operations in event set to complete, buffers used for H5Dwrite must only be changed after wait
-    H5ESclose(es_id);                            // Close the event set (must wait first)
+    // Close the event set (must wait first)
+    H5ESclose(es_id);
 
+.. warning::
+    The buffers used for H5Dwrite can only be changed after H5ESwait unless async VOL double buffering is enabled, see :ref:`(Optional) Async VOL double buffering`.
 
-
-6.3 Error handling with event set
+#. (Optional) Error handling with event set
+Although it is listed as optional, it is highly recommended to integrate the asynchronous I/O error checking into the application code.
 
 .. code-block::
 
-    hbool_t es_err_status;
-    status = H5ESget_err_status(es_id, &es_err_status);   // Check if event set has failed operations (es_err_status is set to true)
-    size_t es_err_count;
-    status = H5ESget_err_count(es_id, &es_err_count);     // Retrieve the number of failed operations in this event set
-    size_t num_err_info;
-    H5ES_err_info_t err_info;
-    status = H5ESget_err_info(es_id, 1, &err_info, &es_err_cleared);   // Retrieve information about failed operations 
-    printf("API name: %s\nAPI args: %s\nAPI file name: %s\n API func name: %s\nAPI line number: %u\nOperation counter: %llu\nOperation timestamp: %llu\n",
-            err_info.api_name, err_info.api_args, err_info.api_file_name, err_info.api_func_name, err_info.api_line_num, err_info.op_ins_count, err_info.op_ins_ts);    
-            // Retrieve the faile operations's API name, arguments list, file name, function name, line number, operation counter (0-based), and operation timestamp
+    // Check if event set has failed operations (es_err_status is set to true)
+    status = H5ESget_err_status(es_id, &es_err_status);
+    // Retrieve the number of failed operations in this event set
+    H5ESget_err_count(es_id, &es_err_count);
+    // Retrieve information about failed operations 
+    H5ESget_err_info(es_id, 1, &err_info, &es_err_cleared);
+    // Inspect and handle the error if there is any
+    ...
+    // Free memory
     H5free_memory(err_info.api_name);
     H5free_memory(err_info.api_args);
     H5free_memory(err_info.app_file_name);
     H5free_memory(err_info.app_func_name);
 
 
+#. (Optional) Async VOL double buffering
+Applications may choose to have async VOL to manage the write buffer consistency. When enabled, async VOL will automatically makes a memory copy of the buffer for data writes. This increases the runtime memory usage but relieves the burden for the application to manage the double buffering. The copy is automatically freed after the background asynchronous write completes.
 
-6.4 Use MPI_THREAD_MULTIPLE (REQUIRED)
+.. code-block::
+    Add -DENABLE_WRITE_MEMCPY=1 to the end of the CFLAGS line of src/Makefile before compiling.
 
-
-The asynchronous tasks may involve MPI collecive operations, and can execute them concurrently with your application's MPI operations, 
-thus we require to initialize MPI with MPI_THREAD_MULTIPLE support. Change MPI_Init(argc, argv) in your application's code to the following:
+#. (Optional) Include the header file if async VOL API is used (see Async API section)
 
 .. code-block::
 
-	MPI_Init_thread(argc, argv, MPI_THREAD_MULTIPLE, &provided);
+	#include "h5_async_vol.h" 
+
+#. (Optional) Finer control of asynchronous I/O operation
+When async VOL is enabled, each HDF5 operation is recorded and put into a task queue and returns without actually executing it. The async VOL detects whether the application is busy issuing HDF5 I/O calls or has moved on to other tasks (e.g. computation). If it finds no HDF5 function is called within a short period (600ms by default), it will start the background thread to execute the tasks in the queue. This is mainly due to the global mutex from the HDF5, allowing only one thread to execute the HDF5 operations at a given time to maintain its internal data consistency. The application status detection can avoid an effectively synchronous I/O when the application thread and the async VOL background thread acquire the mutex in an interleaved fashion. However, some applications may have larger time gaps between HDF5 function calls and experience partially asynchronous behavior. To mitigate this, we provide a way by setting an environment variable that informs async VOL to queue the operations and not start their execution until file/group/dataset close time. This is especially useful for applications that periodically output (write-only) data, e.g. checkpoint, and can take full advantage of the asynchronous I/O. 
+
+.. warning::
+    This option requires the application developer to ensure that no deadlock occurs.
 
 .. code-block::
+	// Start execution at file close time
+	export HDF5_ASYNC_EXE_FCLOSE=1
+	// Start execution at group close time
+	export HDF5_ASYNC_EXE_GCLOSE=1
+	// Start execution at dataset close time
+	export HDF5_ASYNC_EXE_DCLOSE=1
 
-    [Set environment variables, from step 3 above]
-    Run your application
+
