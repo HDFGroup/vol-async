@@ -167,7 +167,7 @@ Parallel HDF5 involve MPI collecive operations in many of its internal metadata 
 
 3. (Required) Use event set and new async API to manage asynchronous I/O operations, see API section for a complete of APIs.
 
-More detailed description on how to enable async VOL is descritbed in Hello Async Section.
+More detailed description on how to enable async VOL can be found in Hello Async Section.
 
 .. code-block::
 
