@@ -1,5 +1,5 @@
-Asynchronous VOL connector APIs
-===============================
+Async VOL APIs
+==============
 Besides the HDF5 EventSet and asynchronous I/O operation APIs, the async VOL connector also provides convinient functions for finer control of the asynchronous I/O operations. Application developers should be very careful with these APIs as they may cause unexpected behavior when not properly used. The "h5_async_lib.h" header file must be included in the application's source code and the static async VOL library (libasynchdf5.a) must be linked.
 
 .. code-block::
