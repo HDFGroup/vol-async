@@ -95,6 +95,8 @@ Async VOL requires the setting of the following environmental variable to enable
     export HDF5_PLUGIN_PATH="$VOL_DIR/src"
     export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
 
+.. note::
+    For some Linux systems, e.g. Ubuntu, LD_PRELOAD needs to be set to point to the shared libraries.
 
 Test
 ====
