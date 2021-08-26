@@ -3,6 +3,7 @@ Background
 
 Asynchronous I/O is becoming increasingly popular with the large amount of data access required by scientific applications. They can take advantage of an asynchronous interface by scheduling I/O as early as possible and overlap computation or communication with I/O operations, which hides the cost associated with I/O and improves the overall performance.
 
+H. Tang, Q. Koziol, S. Byna and J. Ravi, `Transparent Asynchronous Parallel I/O using Background Threads <https://ieeexplore.ieee.org/document/9459479>`_ in IEEE Transactions on Parallel and Distributed Systems, doi: 10.1109/TPDS.2021.3090322.
 
 Preparation
 ===========
