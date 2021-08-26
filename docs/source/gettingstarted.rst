@@ -80,6 +80,7 @@ Set Environmental Variables
 Async VOL requires the setting of the following environmental variable to enable asynchronous I/O:
 
 *Linux*
+
 .. code-block::
 
     export LD_LIBRARY_PATH=$VOL_DIR/src:$H5_DIR/install/lib:$ABT_DIR/install/lib:$LD_LIBRARY_PATH
@@ -87,6 +88,7 @@ Async VOL requires the setting of the following environmental variable to enable
     export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
 
 *MacOS*
+
 .. code-block::
 
     export DYLD_LIBRARY_PATH=$VOL_DIR/src:$H5_DIR/install/lib:$ABT_DIR/install/lib:$DYLD_LIBRARY_PATH
@@ -112,11 +114,6 @@ Test
 
 2. Run tests
 
-.. note::
-    Running the automated tests requires Python3.
-
-(Optional) If the system is not using mpirun to launch MPI tasks, edit mpirun_cmd in pytest.py with the corresponding MPI launch command.
-
 .. code-block::
 
     //Run serial and parallel tests
@@ -127,7 +124,12 @@ Test
 
 If any test fails, check async_vol_test.err in the test directory for the error message. 
 
-(Optional) With certain file systems where file locking is not supported, an error of "file create failed" may occur and can be fixed with "export HDF5_USE_FILE_LOCKING=FALSE", which disables the HDF5 file locking.
+.. note::
+    Running the automated tests requires Python3.
+
+    If the system is not using mpirun to launch MPI tasks, edit mpirun_cmd in pytest.py with the corresponding MPI launch command.
+
+    Some file systems do not support file locking, an error "file create failed" may occur and can be fixed with "export HDF5_USE_FILE_LOCKING=FALSE", which disables the HDF5 file locking. One can also disable HDF5 file locking when compiling HDF5.
 
 
 Implicit mode
@@ -137,7 +139,7 @@ The implicit mode allows an application to enable asynchronous I/O through setti
 
 .. code-block::
 
-    [Set environment variables, from step 3 above]
+    Set environment variables, see :ref:`Set Environmental Variables`
     Run your application
 
 .. note::
@@ -155,13 +157,15 @@ See :ref:`Set Environmental Variables`
 
 2. (Required) Init MPI with MPI_THREAD_MULTIPLE
 
-Parallel HDF5 involve MPI collecive operations in many of its internal metadata operations, and they can be executed concurrently with the application's MPI operations, thus we require to initialize MPI with MPI_THREAD_MULTIPLE support. Change MPI_Init(argc, argv) in your application's code to the following:
+Parallel HDF5 involve MPI collecive operations in many of its internal metadata operations, and they can be executed concurrently with the application's MPI operations, thus we require to initialize MPI with MPI_THREAD_MULTIPLE support. Change MPI_Init(argc, argv) in your application's code to:
 
 .. code-block::
 
     MPI_Init_thread(argc, argv, MPI_THREAD_MULTIPLE, &provided);
 
 3. (Required) Use event set and new async API to manage asynchronous I/O operations, see API section for a complete of APIs.
+
+More detailed description on how to enable async VOL is descritbed in Hello Async Section.
 
 .. code-block::
 

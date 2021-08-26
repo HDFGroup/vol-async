@@ -1,7 +1,7 @@
-The HDF5 asynchronous I/O VOL connector (async VOL) allows applications to fully or partially hide the I/O time from the computation. Here we provide more information on how applications can take advantage of it.
-
 Using Async
 ===========
+The HDF5 asynchronous I/O VOL connector (async VOL) allows applications to fully or partially hide the I/O time from the computation. Here we provide more information on how applications can take advantage of it.
+
 We recommend applications use the explicit mode, which requires modifying the application code to use HDF5 asynchronous I/O APIs. This includes 1) adding the EventSet API calls, 2) switching the existing HDF5 I/O calls to their asynchronous version, and 3) ensuring data consistency. 
 
 EventSet API
@@ -39,7 +39,11 @@ The HDF5-1.13 and later versions provide an asynchronous version of all the HDF5
 	
 Data Consistency
 ----------------
-Once switched to use the event set and asynchronous APIs, the application developer must re-examine the code to ensure data consistency as all the HDF5 I/O calls are non-blocking. For data write, the application must not modify or free the write buffer until the write operation has been executed by the background thread. This can be done by calling H5ESwait before the buffer reuse or free, or by double buffering with alternating one buffer for the asynchronous write and another for new data. Users may also choose to have async VOL to perform the double buffering automatically by adding "-DENABLE_WRITE_MEMCPY" to the CFLAGS in the Makefile, however, this requires double the buffer size in memory while the I/O operation is queued, and should be used with caution (the extra memory copy is automatically freed after the operation completes). For data read, an H5ESwait is needed before the data is accessed for the asynchronous operation to complete and fill the user's buffer. It is recommended to issue asynchronous read operations as early as possible and has their execution overlap with other tasks of the application to.
+Once switched to use the event set and asynchronous APIs, the application developer must re-examine the code to ensure data consistency as all the HDF5 I/O calls are non-blocking. 
+
+For data write, the application must not modify or free the write buffer until the write operation has been executed by the background thread. This can be done by calling H5ESwait before the buffer reuse or free, or by double buffering with alternating one buffer for the asynchronous write and another for new data. Users may also choose to have async VOL to perform the double buffering automatically by adding "-DENABLE_WRITE_MEMCPY" to the CFLAGS in the Makefile, however, this requires double the buffer size in memory while the I/O operation is queued, and should be used with caution (the extra memory copy is automatically freed after the operation completes). 
+
+For data read, an H5ESwait is needed before the data is accessed for the asynchronous operation to complete and fill the user's buffer. It is recommended to issue asynchronous read operations as early as possible and has their execution overlap with other tasks of the application to.
 
 
 An Example
