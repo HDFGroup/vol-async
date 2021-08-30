@@ -3,6 +3,10 @@ name: linux
 on:
   pull_request:
     branches: [ develop ]
+    paths-ignore:
+      - '**.md'
+      - '**.txt'
+      - 'docs/**'
   push:
     branches: [ develop ]
 
