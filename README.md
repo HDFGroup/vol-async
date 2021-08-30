@@ -2,9 +2,7 @@
 
 [**Full documentation**](https://hdf5-vol-async.readthedocs.io)
 
-## Background
 Asynchronous I/O is becoming increasingly popular with the large amount of data access required by scientific applications. They can take advantage of an asynchronous interface by scheduling I/O as early as possible and overlap computation or communication with I/O operations, which hides the cost associated with I/O and improves the overall performance.
-
 
 Some configuration parameters used in the instructions:
 
