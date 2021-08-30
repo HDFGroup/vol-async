@@ -89,7 +89,7 @@ Some configuration parameters used in the instructions:
     If any test fails, check async_vol_test.err in the $VOL_DIR/test directory for the error message. 
     With certain file systems where file locking is not supported, an error of "file create failed" may occur and can be fixed with "export HDF5_USE_FILE_LOCKING=FALSE", which disables the HDF5 file locking.
 
-## 5. Using the Asynchronous I/O VOL connector with application code (Implicit mode)
+## 5. Implicit mode
 
     The implicit mode allows an application to enable asynchronous I/O through setting the following environemental variables and without any major code change. 
     By default, the HDF5 metadata operations are executed asynchronously, and the dataset operations are executed synchronously.
@@ -97,14 +97,13 @@ Some configuration parameters used in the instructions:
         > [Set environment variables, from step 3 above]
         > Run your application
 
-## 6. Using the Asynchronous I/O VOL connector with application code (Explicit mode)
+## 6. Explicit mode
 
-    Please refer to the Makefile and source code (async_test_serial_event_set*) under $VOL_DIR/test/ for example usage.
-
-    6.1 Include header file
-
-        > #include "h5_async_vol.h" 
-
+    6.1 Use MPI_THREAD_MULTIPLE
+        The asynchronous tasks may involve MPI collecive operations, and can execute them concurrently with your application's MPI operations, 
+        thus we require to initialize MPI with MPI_THREAD_MULTIPLE support. Change MPI_Init(argc, argv) in your application's code to the following:
+        > MPI_Init_thread(argc, argv, MPI_THREAD_MULTIPLE, &provided);
+        
     6.2 Use event set and new async API to manage asynchronous I/O operations
         > es_id = H5EScreate();                        // Create event set for tracking async operations
         > fid = H5Fopen_async(.., es_id);              // Asynchronous, can start immediately
@@ -132,12 +131,7 @@ Some configuration parameters used in the instructions:
         > H5free_memory(err_info.app_file_name);
         > H5free_memory(err_info.app_func_name);
 
-    6.4 Use MPI_THREAD_MULTIPLE
-        The asynchronous tasks may involve MPI collecive operations, and can execute them concurrently with your application's MPI operations, 
-        thus we require to initialize MPI with MPI_THREAD_MULTIPLE support. Change MPI_Init(argc, argv) in your application's code to the following:
-        > MPI_Init_thread(argc, argv, MPI_THREAD_MULTIPLE, &provided);
-
-    6.5 Run with async
+    6.4 Run with async
         > [Set environment variables, from step 3 above]
         > Run your application
 
