@@ -112,16 +112,16 @@ thus we require to initialize MPI with MPI_THREAD_MULTIPLE support. Change MPI_I
     > status = H5Dwrite_async(did, .., es_id);     // Asynchronous, starts when H5Dopen completes
     > status = H5Dread_async(did, .., es_id);      // Asynchronous, starts when H5Dwrite completes
     > H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed); 
-    >                                              // Wait for operations in event set to complete, buffers used for H5Dwrite must only be changed after wait
+    > # Wait for operations in event set to complete, buffers used for H5Dwrite must only be changed after
     > H5ESclose(es_id);                            // Close the event set (must wait first)
 
 6.3 Error handling with event set
 
-    > H5ESget_err_status(es_id, &es_err_status);   // Check if event set has failed operations (es_err_status is set to true)
+    > H5ESget_err_status(es_id, &es_err_status);   // Check if event set has failed operations
     > H5ESget_err_count(es_id, &es_err_count);     // Retrieve the number of failed operations in this event set
     > H5ESget_err_info(es_id, 1, &err_info, &es_err_cleared);   // Retrieve information about failed operations 
     > H5free_memory(err_info.api_name);
-    > ...
+    > H5free_memory(...)
 
 6.4 Run with async
 
