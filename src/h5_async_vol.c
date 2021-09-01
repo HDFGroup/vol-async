@@ -83,6 +83,7 @@ works, and perform publicly and display publicly, and to permit others to do so.
 #define ASYNC_APP_CHECK_SLEEP_TIME     600
 #define ASYNC_APP_CHECK_SLEEP_TIME_MAX 4000
 #define ASYNC_DBG_MSG_RANK             0
+#define ASYNC_ATTR_MEMCPY_SIZE         4096
 
 /* Magic #'s for memory structures */
 #define ASYNC_MAGIC 10242048
@@ -206,8 +207,9 @@ typedef struct async_instance_t {
     int           sleep_time;            /* Sleep time between checking the global mutex attemp count */
     uint64_t      delay_time; /* Sleep time before background thread trying to acquire global mutex */
 #ifdef ENABLE_WRITE_MEMCPY
-    hsize_t max_mem;
-    hsize_t used_mem;
+    hsize_t       max_mem;
+    hsize_t       used_mem;
+    hsize_t       max_attr_size;
 #endif
 } async_instance_t;
 
@@ -4563,6 +4565,8 @@ async_attr_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_lo
 #ifdef ENABLE_WRITE_MEMCPY
     async_obj->data_size = H5Sget_select_npoints(space_id);
     async_obj->data_size *= H5Tget_size(type_id);
+    if (async_obj->data_size > async_instance_g->max_attr_size)
+        async_instance_g->max_attr_size = async_obj->data_size;
 #endif
 
     /* create a new task and insert into its file task list */
@@ -5637,8 +5641,11 @@ async_attr_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type
 
 #ifdef ENABLE_WRITE_MEMCPY
     if (parent_obj->data_size == 0) {
-        /* fprintf(stderr, "  [ASYNC VOL ERROR] %s unknown dataset write size\n", __func__); */
-        parent_obj->data_size = 1048576;
+        if (async_instance_g->max_attr_size > 0) {
+            parent_obj->data_size = async_instance_g->max_attr_size;
+        }
+        else
+            parent_obj->data_size = ASYNC_ATTR_MEMCPY_SIZE;
     }
     if (NULL == (args->buf = malloc(parent_obj->data_size))) {
         fprintf(stderr, "  [ASYNC VOL ERROR] %s malloc failed!\n", __func__);
@@ -5647,6 +5654,7 @@ async_attr_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type
     async_instance_g->used_mem += parent_obj->data_size;
     args->data_size = parent_obj->data_size;
     args->free_buf  = true;
+    /* fprintf(stderr, "  [ASYNC VOL DBG] %s attr write size %lu\n", __func__, parent_obj->data_size); */
     memcpy(args->buf, buf, parent_obj->data_size);
 #else
     args->buf = (void *)buf;
