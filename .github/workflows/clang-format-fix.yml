@@ -2,6 +2,10 @@ name: clang-format Check
 on: 
   workflow_dispatch:
   push:
+    paths-ignore:
+      - '**.md'
+      - '**.txt'
+      - 'docs/**'
 jobs:
   formatting-check:
     name: Formatting Check
