@@ -207,9 +207,9 @@ typedef struct async_instance_t {
     int           sleep_time;            /* Sleep time between checking the global mutex attemp count */
     uint64_t      delay_time; /* Sleep time before background thread trying to acquire global mutex */
 #ifdef ENABLE_WRITE_MEMCPY
-    hsize_t       max_mem;
-    hsize_t       used_mem;
-    hsize_t       max_attr_size;
+    hsize_t max_mem;
+    hsize_t used_mem;
+    hsize_t max_attr_size;
 #endif
 } async_instance_t;
 
