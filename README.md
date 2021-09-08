@@ -98,7 +98,8 @@ By default, the HDF5 metadata operations are executed asynchronously, and the da
 ## 6. Explicit mode
 
 6.1 Use MPI_THREAD_MULTIPLE
-The asynchronous tasks may involve MPI collecive operations, and can execute them concurrently with your application's MPI operations, 
+
+The asynchronous tasks often involve MPI collecive operations from the HDF5 library, and they may be executee concurrently with your application's MPI operations, 
 thus we require to initialize MPI with MPI_THREAD_MULTIPLE support. Change MPI_Init(argc, argv) in your application's code to the following:
 
     > MPI_Init_thread(argc, argv, MPI_THREAD_MULTIPLE, &provided);
