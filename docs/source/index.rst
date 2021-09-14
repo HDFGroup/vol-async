@@ -32,6 +32,13 @@ To overcome these issues, we present an asynchronous I/O framework that provides
 
 .. toctree::
    :maxdepth: 2
+   :caption: Best Practice
+
+   bestpractice
+   debug
+
+.. toctree::
+   :maxdepth: 2
    :caption: Legal
 
    copyright
