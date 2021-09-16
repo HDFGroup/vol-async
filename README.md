@@ -130,7 +130,7 @@ thus we require to initialize MPI with MPI_THREAD_MULTIPLE support. Change MPI_I
     > Run your application
 
 ## Know Issues
-When an application has a large number of HDF5 functions calls, an error like the following may occur:
+When an application has a large number of HDF5 function calls, an error like the following may occur:
 
     *** Process received signal ***
     Signal: Segmentation fault: 11 (11)
