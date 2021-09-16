@@ -141,6 +141,6 @@ When an application has a large number of HDF5 function calls, an error like the
     [ 2] 0 libabt.1.dylib 0x0000000105bdbdc0 ABT_thread_create + 128
     [ 3] 0 libh5async.dylib 0x00000001064bde1f push_task_to_abt_pool + 559
    
-This is due to the default Argobots thread stack size being too small, and can be resovled by setting the environement variable:
+This is due to the default Argobots thread stack size being too small (16384), and can be resovled by setting the environement variable:
 
     export ABT_THREAD_STACKSIZE=100000
