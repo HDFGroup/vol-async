@@ -38,6 +38,12 @@ To overcome these issues, we present an asynchronous I/O framework that provides
    debug
 
 .. toctree::
+   :maxdepth: 1
+   :caption: Known Issues
+
+   issue
+
+.. toctree::
    :maxdepth: 2
    :caption: Legal
 
