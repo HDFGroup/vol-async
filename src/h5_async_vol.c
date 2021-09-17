@@ -7431,10 +7431,10 @@ async_dataset_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL
 
 #ifdef ENABLE_WRITE_MEMCPY
     async_obj->data_size = H5Sget_select_npoints(space_id) * H5Tget_size(type_id);
-    if (async_obj->data_size == 0) {
+#ifdef ENABLE_DBG_MSG
+    if (async_obj->data_size == 0)
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with getting dataset size\n", __func__);
-        goto error;
-    }
+#endif
 #endif
 
     /* Lock parent_obj */
@@ -8502,10 +8502,10 @@ async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_t
     }
     else {
         buf_size = H5Tget_size(mem_type_id) * H5Sget_select_npoints(mem_space_id);
-        if (buf_size == 0) {
+#ifdef ENABLE_DBG_MSG
+        if (buf_size == 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with getting dataset size\n", __func__);
-            goto error;
-        }
+#endif
     }
 
     /* fprintf(fout_g, "buf size = %llu\n", buf_size); */
@@ -8529,7 +8529,7 @@ async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_t
                 "synchronous write\n",
                 async_instance_g->mpi_rank, buf_size, avail_mem);
     }
-    else {
+    else if (buf_size > 0) {
         if (NULL == (args->buf = malloc(buf_size))) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s malloc failed!\n", __func__);
             goto done;
