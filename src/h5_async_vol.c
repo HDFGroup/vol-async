@@ -1967,8 +1967,10 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool)
                     fprintf(fout_g, "  [ASYNC VOL DBG] %d tasks already in Argobots pool\n", ntask);
 #endif
                 if (ntask > 1) {
+#ifdef ENABLE_DBG_MSG
                     fprintf(fout_g, "  [ASYNC VOL DBG] Rank %d: %d tasks already in Argobots pool\n",
                             async_instance_g->mpi_rank, ntask);
+#endif
                     goto done;
                 }
 
