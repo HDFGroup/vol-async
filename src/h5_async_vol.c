@@ -1703,6 +1703,9 @@ free_async_task(async_task_t *task)
         return;
     }
 
+    if (task->abt_thread)
+        ABT_thread_free(&task->abt_thread);
+
     memset(task, 0, sizeof(async_task_t));
     free(task);
 
