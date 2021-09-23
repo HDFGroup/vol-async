@@ -4,7 +4,9 @@ The HDF5 asynchronous I/O VOL connector (async I/O VOL) allows applications to f
 
 The async I/O VOL can be used in ``explicit`` and ``implicit`` modes.
 
-The recommended mode for applications to use the async I/O VOL is ``explicit mode'', which is described below.
+To use the ``implicit`` mode, see `Implicit Mode <https://hdf5-vol-async.readthedocs.io/en/latest/gettingstarted.html#implicit-mode>`_
+
+The recommended mode for applications to use the async I/O VOL is ``explicit mode'', which is described below. 
 
 Explicit Mode
 =============
@@ -121,3 +123,5 @@ which can be converted to use async VOL as the following:
     H5ESclose(es_id);
     ...
 
+.. note::
+    More details on using the ``explicit`` mode are available at `Explicit Mode <https://hdf5-vol-async.readthedocs.io/en/latest/gettingstarted.html#explicit-mode>`_
