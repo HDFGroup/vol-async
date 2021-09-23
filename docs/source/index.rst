@@ -17,8 +17,8 @@ The HDF5 Asynchronous I/O VOL connector maintains a queue of asynchronous tasks 
 
 To cite the HDF5 Asynchronous I/O VOL connector, there are two publications. 
 
-- Houjun Tang, Quincey Koziol, Suren Byna, and John Ravi, "Transparent Asynchronous Parallel I/O using Background Threads", in IEEE Transactions on Parallel & Distributed Systems, vol. , no. 01, pp. 1-1, 5555. doi: 10.1109/TPDS.2021.3090322
-- Houjun Tang, Quincey Koziol, Suren Byna, John Mainzer, and Tonglin Li, "Enabling Transparent Asynchronous I/O using Background Threads", 2019 IEEE/ACM Fourth International Parallel Data Systems Workshop (PDSW), 2019, pp. 11-19, doi: 10.1109/PDSW49588.2019.00006.
+- Houjun Tang, Quincey Koziol, Suren Byna, and John Ravi, "`Transparent Asynchronous Parallel I/O using Background Threads <https://ieeexplore.ieee.org/document/9459479>`_ ", in IEEE Transactions on Parallel & Distributed Systems, vol. , no. 01, pp. 1-1, 5555. doi: 10.1109/TPDS.2021.3090322
+- Houjun Tang, Quincey Koziol, Suren Byna, John Mainzer, and Tonglin Li, "`Enabling Transparent Asynchronous I/O using Background Threads <https://ieeexplore.ieee.org/abstract/document/8955215>`_ ", 2019 IEEE/ACM Fourth International Parallel Data Systems Workshop (PDSW), 2019, pp. 11-19, doi: 10.1109/PDSW49588.2019.00006.
 
 
 
