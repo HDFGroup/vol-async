@@ -30,20 +30,20 @@ To cite the HDF5 Asynchronous I/O VOL connector, there are two publications.
 
 .. toctree::
    :maxdepth: 2
-   :caption: API
+   :caption: Async I/O API
 
    hdf5api
    asyncapi
 
 .. toctree::
    :maxdepth: 1
-   :caption: Hello Async
+   :caption: Hello Async I/O
 
    example
 
 .. toctree::
    :maxdepth: 1
-   :caption: Best Practice
+   :caption: Best Practices
 
    bestpractice
    debug
