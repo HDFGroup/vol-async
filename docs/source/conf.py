@@ -18,8 +18,8 @@
 # -- Project information -----------------------------------------------------
 
 project = 'HDF5 Asynchronous I/O VOL Connector'
-copyright = '2021, Houjun Tang, Quincey Koziol, Suren Byna, John Mainzer, Tonglin Li'
-author = 'Houjun Tang, Quincey Koziol, Suren Byna, John Mainzer, Tonglin Li'
+copyright = 'Copyright (c) 2020, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy)'
+author = 'Houjun Tang, Quincey Koziol, Suren Byna'
 
 # The full version, including alpha/beta/rc tags
 release = '0.1'
