@@ -39,7 +39,7 @@ Latest Argobots can also be downloaded separately from https://github.com/pmodel
 
     git clone https://github.com/HDFGroup/hdf5.git
 
-3. (Optional) Set the environment variables for the paths of the codes if the full path of VOL_DIR, ABT_DIR, and H5_DIR are not used in later setup.
+3. (Optional) Set the environment variables for the paths of the codes if the full path of ``VOL_DIR``, ``ABT_DIR``, and ``H5_DIR`` are not used in later setup.
 
 .. code-block::
 
@@ -106,7 +106,7 @@ Async VOL requires the setting of the following environmental variable to enable
     export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
 
 .. note::
-    For some Linux systems, e.g. Ubuntu, LD_PRELOAD needs to be set to point to the shared libraries.
+    For some Linux systems, e.g., Ubuntu, ``LD_PRELOAD`` needs to be set to point to the shared libraries.
 
 Test
 ====
@@ -117,7 +117,7 @@ Test
 
     cd $VOL_DIR/test
     Edit "Makefile":
-        Copy a sample Makefile (Makefile.cori, Makefile.summit, Makefile.macos), e.g. "cp Makefile.summit Makefile", Makefile.summit should work for most linux systems
+        Copy a sample Makefile (Makefile.cori, Makefile.summit, Makefile.macos), e.g., "cp Makefile.summit Makefile", Makefile.summit should work for most linux systems
         Update H5_DIR, ABT_DIR and ASYNC_DIR to the correct paths of their installation directory
         (Optional) update the compiler flag macros: DEBUG, CFLAGS, LIBS, ARFLAGS
         (Optional) comment/uncomment the correct DYNLIB & LDFLAGS macro
@@ -134,14 +134,14 @@ Test
     //Run the serial tests only
     make check_serial
 
-If any test fails, check async_vol_test.err in the test directory for the error message. 
+If any test fails, check ``async_vol_test.err`` in the test directory for the error message. 
 
 .. note::
     Running the automated tests requires Python3.
 
     If the system is not using mpirun to launch MPI tasks, edit mpirun_cmd in pytest.py with the corresponding MPI launch command.
 
-    Some file systems do not support file locking, an error "file create failed" may occur and can be fixed with "export HDF5_USE_FILE_LOCKING=FALSE", which disables the HDF5 file locking. One can also disable HDF5 file locking when compiling HDF5.
+    Some file systems do not support file locking, an error ``file create failed`` may occur and can be fixed with ``export HDF5_USE_FILE_LOCKING=FALSE``, which disables the HDF5 file locking. One can also disable HDF5 file locking when compiling HDF5.
 
 
 Implicit mode
@@ -169,7 +169,7 @@ See :ref:`Set Environmental Variables`
 
 2. (Required) Init MPI with MPI_THREAD_MULTIPLE
 
-Parallel HDF5 involves MPI collecive operations in many of its internal metadata operations, and they can be executed concurrently with the application's MPI operations, thus we require to initialize MPI with MPI_THREAD_MULTIPLE support. Change MPI_Init(argc, argv) in your application's code to:
+Parallel HDF5 involves MPI collecive operations in many of its internal metadata operations, and they can be executed concurrently with the application's MPI operations, thus we require to initialize MPI with ``MPI_THREAD_MULTIPLE`` support. Change ``MPI_Init (argc, argv)`` in your application's code to:
 
 .. code-block::
 
