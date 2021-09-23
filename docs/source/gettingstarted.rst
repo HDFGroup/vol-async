@@ -151,7 +151,7 @@ The implicit mode allows an application to enable asynchronous I/O through setti
 
 .. code-block::
 
-    Set environment variables, see :ref:`Set Environmental Variables`
+    Set environment variables, :ref:`Set Environmental Variables`
     Run your application
 
 .. note::
