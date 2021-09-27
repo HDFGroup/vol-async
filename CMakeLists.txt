@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.12)
 project(HDF5_VOL_ASYNC VERSION 0.0.1 LANGUAGES C)
-
+include(CTest)
+enable_testing()
 if(NOT HDF5_VOL_ASYNC_INSTALL_BIN_DIR)
   set(HDF5_VOL_ASYNC_INSTALL_BIN_DIR ${CMAKE_INSTALL_PREFIX}/bin)
 endif()
@@ -31,6 +32,9 @@ set(HDF5_VOL_ASYNC_PACKAGE_DESCRIPTION "HDF5 Asynchronous I/O VOL connector")
 set(HDF5_VOL_ASYNC_PACKAGE_URL "https://github.com/hpc-io/vol-async")
 set(HDF5_VOL_ASYNC_PACKAGE_VENDOR "HPC IO")
 message(STATUS "Configuring ${HDF5_VOL_ASYNC_PACKAGE} ${PROJECT_VERSION}")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY
+      ${PROJECT_BINARY_DIR}/lib CACHE PATH "Single Directory for all libraries."
+)
 
 #-----------------------------------------------------------------------------
 # Source
@@ -40,7 +44,5 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src)
 #-----------------------------------------------------------------------------
 # Testing
 #-----------------------------------------------------------------------------
-enable_testing()
-include(CTest)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/test)
