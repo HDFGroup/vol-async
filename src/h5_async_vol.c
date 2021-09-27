@@ -69,7 +69,7 @@ works, and perform publicly and display publicly, and to permit others to do so.
 /* #define PRINT_ERROR_STACK           1 */
 /* #define ENABLE_ASYNC_LOGGING */
 
-#define ASYNC_DBG_MSG_RANK          0
+#define ASYNC_DBG_MSG_RANK 0
 
 /* Record timing information */
 #define ENABLE_TIMING 1
