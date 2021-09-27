@@ -69,6 +69,8 @@ works, and perform publicly and display publicly, and to permit others to do so.
 /* #define PRINT_ERROR_STACK           1 */
 /* #define ENABLE_ASYNC_LOGGING */
 
+#define ASYNC_DBG_MSG_RANK          0
+
 /* Record timing information */
 #define ENABLE_TIMING 1
 
@@ -82,7 +84,6 @@ works, and perform publicly and display publicly, and to permit others to do so.
 #define ASYNC_ATTEMPT_CHECK_INTERVAL   4
 #define ASYNC_APP_CHECK_SLEEP_TIME     600
 #define ASYNC_APP_CHECK_SLEEP_TIME_MAX 4000
-#define ASYNC_DBG_MSG_RANK             0
 #define ASYNC_ATTR_MEMCPY_SIZE         4096
 
 /* Magic #'s for memory structures */
@@ -1832,7 +1833,7 @@ get_n_running_task_in_queue(async_task_t *task)
 
     DL_FOREACH2(task->async_obj->file_task_list_head, task_elt, file_list_next)
     {
-        if (task_elt->abt_thread != NULL) {
+        if (task_elt && task_elt->abt_thread != NULL) {
             ABT_thread_get_state(task_elt->abt_thread, &thread_state);
             if (thread_state != ABT_THREAD_STATE_TERMINATED) {
                 /* if (thread_state == ABT_THREAD_STATE_RUNNING) { */
@@ -4430,6 +4431,17 @@ async_attr_create_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
         if (NULL != task->parent_obj->under_object) {
@@ -4476,17 +4488,6 @@ async_attr_create_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
-
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
@@ -4518,7 +4519,7 @@ async_attr_create_fn(void *foo)
 
     task->async_obj->under_object = obj;
     task->async_obj->is_obj_valid = 1;
-    task->async_obj->create_task  = NULL;
+    /* task->async_obj->create_task  = NULL; */
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
@@ -4815,6 +4816,17 @@ async_attr_open_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
         if (NULL != task->parent_obj->under_object) {
@@ -4861,17 +4873,6 @@ async_attr_open_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
-
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
@@ -4903,7 +4904,7 @@ async_attr_open_fn(void *foo)
 
     task->async_obj->under_object = obj;
     task->async_obj->is_obj_valid = 1;
-    task->async_obj->create_task  = NULL;
+    /* task->async_obj->create_task  = NULL; */
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
@@ -5173,6 +5174,17 @@ async_attr_read_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->attr) {
         if (NULL != task->parent_obj->under_object) {
@@ -5218,17 +5230,6 @@ async_attr_read_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -5502,6 +5503,17 @@ async_attr_write_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->attr) {
         if (NULL != task->parent_obj->under_object) {
@@ -5547,17 +5559,6 @@ async_attr_write_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -5857,6 +5858,17 @@ async_attr_get_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
         if (NULL != task->parent_obj->under_object) {
@@ -5902,17 +5914,6 @@ async_attr_get_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -6183,6 +6184,17 @@ async_attr_specific_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
         if (NULL != task->parent_obj->under_object) {
@@ -6228,17 +6240,6 @@ async_attr_specific_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -6525,6 +6526,17 @@ async_attr_optional_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
         if (NULL != task->parent_obj->under_object) {
@@ -6570,17 +6582,6 @@ async_attr_optional_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -6848,6 +6849,17 @@ async_attr_close_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->attr) {
         if (NULL != task->parent_obj->under_object) {
@@ -6893,17 +6905,6 @@ async_attr_close_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -7177,6 +7178,17 @@ async_dataset_create_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
         if (NULL != task->parent_obj->under_object) {
@@ -7223,17 +7235,6 @@ async_dataset_create_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
-
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
@@ -7266,7 +7267,7 @@ async_dataset_create_fn(void *foo)
 
     task->async_obj->under_object = obj;
     task->async_obj->is_obj_valid = 1;
-    task->async_obj->create_task  = NULL;
+    /* task->async_obj->create_task  = NULL; */
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
@@ -7570,6 +7571,17 @@ async_dataset_open_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
         if (NULL != task->parent_obj->under_object) {
@@ -7616,17 +7628,6 @@ async_dataset_open_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
-
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
@@ -7658,7 +7659,7 @@ async_dataset_open_fn(void *foo)
 
     task->async_obj->under_object = obj;
     task->async_obj->is_obj_valid = 1;
-    task->async_obj->create_task  = NULL;
+    /* task->async_obj->create_task  = NULL; */
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
@@ -7931,6 +7932,17 @@ async_dataset_read_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->dset) {
         if (NULL != task->parent_obj->under_object) {
@@ -7976,17 +7988,6 @@ async_dataset_read_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -8269,6 +8270,17 @@ async_dataset_write_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->dset) {
         if (NULL != task->parent_obj->under_object) {
@@ -8314,17 +8326,6 @@ async_dataset_write_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -8720,6 +8721,17 @@ async_dataset_get_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->dset) {
         if (NULL != task->parent_obj->under_object) {
@@ -8765,17 +8777,6 @@ async_dataset_get_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -9049,6 +9050,17 @@ async_dataset_specific_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
         if (NULL != task->parent_obj->under_object) {
@@ -9094,17 +9106,6 @@ async_dataset_specific_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -9375,6 +9376,17 @@ async_dataset_optional_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
         if (NULL != task->parent_obj->under_object) {
@@ -9420,17 +9432,6 @@ async_dataset_optional_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -9698,6 +9699,17 @@ async_dataset_close_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->dset) {
         if (NULL != task->parent_obj->under_object) {
@@ -9743,17 +9755,6 @@ async_dataset_close_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -10033,6 +10034,17 @@ async_datatype_commit_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
         if (NULL != task->parent_obj->under_object) {
@@ -10078,17 +10090,6 @@ async_datatype_commit_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -10404,6 +10405,17 @@ async_datatype_open_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
         if (NULL != task->parent_obj->under_object) {
@@ -10450,17 +10462,6 @@ async_datatype_open_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
-
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
@@ -10492,7 +10493,7 @@ async_datatype_open_fn(void *foo)
 
     task->async_obj->under_object = obj;
     task->async_obj->is_obj_valid = 1;
-    task->async_obj->create_task  = NULL;
+    /* task->async_obj->create_task  = NULL; */
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
@@ -10762,6 +10763,17 @@ async_datatype_get_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->dt) {
         if (NULL != task->parent_obj->under_object) {
@@ -10807,17 +10819,6 @@ async_datatype_get_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -11088,6 +11089,17 @@ async_datatype_specific_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
         if (NULL != task->parent_obj->under_object) {
@@ -11133,17 +11145,6 @@ async_datatype_specific_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -11412,6 +11413,17 @@ async_datatype_optional_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
         if (NULL != task->parent_obj->under_object) {
@@ -11457,17 +11469,6 @@ async_datatype_optional_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -11736,6 +11737,17 @@ async_datatype_close_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->dt) {
         if (NULL != task->parent_obj->under_object) {
@@ -11781,17 +11793,6 @@ async_datatype_close_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -12067,6 +12068,17 @@ async_file_create_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
@@ -12079,16 +12091,6 @@ async_file_create_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
     /* async_instance_g->start_abt_push = false; */
 
     /* Aquire async obj mutex and set the obj */
@@ -12146,7 +12148,7 @@ async_file_create_fn(void *foo)
 
     task->async_obj->under_object = obj;
     task->async_obj->is_obj_valid = 1;
-    task->async_obj->create_task  = NULL;
+    /* task->async_obj->create_task  = NULL; */
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
@@ -12418,18 +12420,6 @@ async_file_open_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    // Restore previous library state
-    assert(task->h5_state);
-    if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
-        goto done;
-    }
-    if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
-        goto done;
-    }
-    is_lib_state_restored = true;
-
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
@@ -12441,6 +12431,18 @@ async_file_open_fn(void *foo)
         fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
 #endif
     /* async_instance_g->start_abt_push = false; */
+
+    // Restore previous library state
+    assert(task->h5_state);
+    if (H5VLstart_lib_state() < 0) {
+        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        goto done;
+    }
+    if (H5VLrestore_lib_state(task->h5_state) < 0) {
+        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        goto done;
+    }
+    is_lib_state_restored = true;
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -12502,7 +12504,7 @@ async_file_open_fn(void *foo)
 
     task->async_obj->under_object = obj;
     task->async_obj->is_obj_valid = 1;
-    task->async_obj->create_task  = NULL;
+    /* task->async_obj->create_task  = NULL; */
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
@@ -12766,6 +12768,17 @@ async_file_get_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->file) {
         if (NULL != task->parent_obj->under_object) {
@@ -12811,17 +12824,6 @@ async_file_get_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -13092,6 +13094,17 @@ async_file_specific_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->file) {
         if (NULL != task->parent_obj->under_object) {
@@ -13137,17 +13150,6 @@ async_file_specific_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -13417,6 +13419,17 @@ async_file_optional_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->file) {
         if (NULL != task->parent_obj->under_object) {
@@ -13462,17 +13475,6 @@ async_file_optional_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -13739,6 +13741,17 @@ async_file_close_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->file) {
         if (NULL != task->parent_obj->under_object) {
@@ -13784,17 +13797,6 @@ async_file_close_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     /* assert(task->async_obj->obj_mutex); */
@@ -14106,6 +14108,17 @@ async_group_create_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
         if (NULL != task->parent_obj->under_object) {
@@ -14152,17 +14165,6 @@ async_group_create_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
-
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
@@ -14194,7 +14196,7 @@ async_group_create_fn(void *foo)
 
     task->async_obj->under_object = obj;
     task->async_obj->is_obj_valid = 1;
-    task->async_obj->create_task  = NULL;
+    /* task->async_obj->create_task  = NULL; */
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
@@ -14484,6 +14486,17 @@ async_group_open_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
         if (NULL != task->parent_obj->under_object) {
@@ -14530,17 +14543,6 @@ async_group_open_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
-
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
@@ -14572,7 +14574,7 @@ async_group_open_fn(void *foo)
 
     task->async_obj->under_object = obj;
     task->async_obj->is_obj_valid = 1;
-    task->async_obj->create_task  = NULL;
+    /* task->async_obj->create_task  = NULL; */
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
@@ -14842,6 +14844,17 @@ async_group_get_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
         if (NULL != task->parent_obj->under_object) {
@@ -14887,17 +14900,6 @@ async_group_get_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -15171,6 +15173,17 @@ async_group_specific_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
         if (NULL != task->parent_obj->under_object) {
@@ -15216,17 +15229,6 @@ async_group_specific_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -15494,6 +15496,17 @@ async_group_optional_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
         if (NULL != task->parent_obj->under_object) {
@@ -15539,17 +15552,6 @@ async_group_optional_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -15817,6 +15819,17 @@ async_group_close_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->grp) {
         if (NULL != task->parent_obj->under_object) {
@@ -15862,17 +15875,6 @@ async_group_close_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     // There may be cases, e.g. with link iteration, that enters group close without a valid async_obj mutex
     if (task->async_obj->obj_mutex) {
@@ -16162,6 +16164,17 @@ async_link_create_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
         if (NULL != task->parent_obj->under_object) {
@@ -16207,17 +16220,6 @@ async_link_create_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -16520,6 +16522,17 @@ async_link_copy_fn(void *foo)
     assert(task->async_obj);
     assert(task->async_obj->magic == ASYNC_MAGIC);
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     pool_ptr = task->async_obj->pool_ptr;
 
     /* Update the dependent parent object if it is NULL */
@@ -16565,17 +16578,6 @@ async_link_copy_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -16878,6 +16880,17 @@ async_link_move_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     /* if (NULL == args->src_obj) { */
     /*     if (NULL != task->parent_obj->under_object) { */
@@ -16921,17 +16934,6 @@ async_link_move_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -17235,6 +17237,17 @@ async_link_get_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
         if (NULL != task->parent_obj->under_object) {
@@ -17280,17 +17293,6 @@ async_link_get_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -17570,6 +17572,17 @@ async_link_specific_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
         if (NULL != task->parent_obj->under_object) {
@@ -17615,17 +17628,6 @@ async_link_specific_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     assert(task->async_obj->magic == ASYNC_MAGIC);
     /* No need to lock the object with iteration */
@@ -17909,6 +17911,17 @@ async_link_optional_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
         if (NULL != task->parent_obj->under_object) {
@@ -17954,17 +17967,6 @@ async_link_optional_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -18245,6 +18247,17 @@ async_object_open_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
         if (NULL != task->parent_obj->under_object) {
@@ -18291,17 +18304,6 @@ async_object_open_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
-
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
@@ -18333,7 +18335,7 @@ async_object_open_fn(void *foo)
 
     task->async_obj->under_object = obj;
     task->async_obj->is_obj_valid = 1;
-    task->async_obj->create_task  = NULL;
+    /* task->async_obj->create_task  = NULL; */
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
@@ -18597,6 +18599,17 @@ async_object_copy_fn(void *foo)
     assert(task->async_obj);
     assert(task->async_obj->magic == ASYNC_MAGIC);
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     pool_ptr = task->async_obj->pool_ptr;
 
     /* Update the dependent parent object if it is NULL */
@@ -18642,17 +18655,6 @@ async_object_copy_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -18948,6 +18950,17 @@ async_object_get_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
         if (NULL != task->parent_obj->under_object) {
@@ -18993,17 +19006,6 @@ async_object_get_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     /* assert(task->async_obj->obj_mutex); */
@@ -19292,6 +19294,17 @@ async_object_specific_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
         if (NULL != task->parent_obj->under_object) {
@@ -19337,17 +19350,6 @@ async_object_specific_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
@@ -19634,6 +19636,17 @@ async_object_optional_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
+#endif
+    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+        goto done;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
+#endif
+
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
         if (NULL != task->parent_obj->under_object) {
@@ -19679,17 +19692,6 @@ async_object_optional_fn(void *foo)
         goto done;
     }
     is_lib_state_restored = true;
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: trying to aquire global lock\n", __func__);
-#endif
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
-        goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired\n", __func__);
-#endif
 
     /* Aquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
