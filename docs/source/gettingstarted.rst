@@ -1,14 +1,23 @@
+Installation
+============
+
+This section describes how to build the HDF5 Asynchronous I/O VOL connector. 
+
+- Current method for installing the async I/O VOL connector is from the source code.
+- A Spack recipe will be available soon.
+
 Background
 ==========
 
 Asynchronous I/O is becoming increasingly popular with the large amount of data access required by scientific applications. They can take advantage of an asynchronous interface by scheduling I/O as early as possible and overlap computation or communication with I/O operations, which hides the cost associated with I/O and improves the overall performance.
 
-H. Tang, Q. Koziol, S. Byna and J. Ravi, `Transparent Asynchronous Parallel I/O using Background Threads <https://ieeexplore.ieee.org/document/9459479>`_ in IEEE Transactions on Parallel and Distributed Systems, doi: 10.1109/TPDS.2021.3090322.
+- Houjun Tang, Quincey Koziol, Suren Byna and John Ravi, `Transparent Asynchronous Parallel I/O using Background Threads <https://ieeexplore.ieee.org/document/9459479>`_ in IEEE Transactions on Parallel and Distributed Systems, doi: 10.1109/TPDS.2021.3090322.
+- Houjun Tang, Quincey Koziol, Suren Byna, John Mainzer, and Tonglin Li, "`Enabling Transparent Asynchronous I/O using Background Threads <https://ieeexplore.ieee.org/abstract/document/8955215>`_ ", 2019 IEEE/ACM Fourth International Parallel Data Systems Workshop (PDSW), 2019, pp. 11-19, doi: 10.1109/PDSW49588.2019.00006.
 
 Preparation
 ===========
 
-Some configuration parameters used in the instructions:
+Define the following configuration parameters, which are used in the instructions. 
 
 .. code-block::
 
@@ -30,7 +39,7 @@ Latest Argobots can also be downloaded separately from https://github.com/pmodel
 
     git clone https://github.com/HDFGroup/hdf5.git
 
-3. (Optional) Set the environment variables for the paths of the codes if the full path of VOL_DIR, ABT_DIR, and H5_DIR are not used in later setup.
+3. (Optional) Set the environment variables for the paths of the codes if the full path of ``VOL_DIR``, ``ABT_DIR``, and ``H5_DIR`` are not used in later setup.
 
 .. code-block::
 
@@ -39,8 +48,8 @@ Latest Argobots can also be downloaded separately from https://github.com/pmodel
     export ABT_DIR=/path/to/argobots/dir
 
 
-Installation
-============
+Build Async I/O VOL
+===================
 
 1. Compile HDF5
 
@@ -97,7 +106,7 @@ Async VOL requires the setting of the following environmental variable to enable
     export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
 
 .. note::
-    For some Linux systems, e.g. Ubuntu, LD_PRELOAD needs to be set to point to the shared libraries.
+    For some Linux systems, e.g., Ubuntu, ``LD_PRELOAD`` needs to be set to point to the shared libraries.
 
 Test
 ====
@@ -108,7 +117,7 @@ Test
 
     cd $VOL_DIR/test
     Edit "Makefile":
-        Copy a sample Makefile (Makefile.cori, Makefile.summit, Makefile.macos), e.g. "cp Makefile.summit Makefile", Makefile.summit should work for most linux systems
+        Copy a sample Makefile (Makefile.cori, Makefile.summit, Makefile.macos), e.g., "cp Makefile.summit Makefile", Makefile.summit should work for most linux systems
         Update H5_DIR, ABT_DIR and ASYNC_DIR to the correct paths of their installation directory
         (Optional) update the compiler flag macros: DEBUG, CFLAGS, LIBS, ARFLAGS
         (Optional) comment/uncomment the correct DYNLIB & LDFLAGS macro
@@ -125,14 +134,14 @@ Test
     //Run the serial tests only
     make check_serial
 
-If any test fails, check async_vol_test.err in the test directory for the error message. 
+If any test fails, check ``async_vol_test.err`` in the test directory for the error message. 
 
 .. note::
     Running the automated tests requires Python3.
 
     If the system is not using mpirun to launch MPI tasks, edit mpirun_cmd in pytest.py with the corresponding MPI launch command.
 
-    Some file systems do not support file locking, an error "file create failed" may occur and can be fixed with "export HDF5_USE_FILE_LOCKING=FALSE", which disables the HDF5 file locking. One can also disable HDF5 file locking when compiling HDF5.
+    Some file systems do not support file locking, an error ``file create failed`` may occur and can be fixed with ``export HDF5_USE_FILE_LOCKING=FALSE``, which disables the HDF5 file locking. One can also disable HDF5 file locking when compiling HDF5.
 
 
 Implicit mode
@@ -142,7 +151,7 @@ The implicit mode allows an application to enable asynchronous I/O through setti
 
 .. code-block::
 
-    Set environment variables, see :ref:`Set Environmental Variables`
+    Set environment variables, :ref:`Set Environmental Variables`
     Run your application
 
 .. note::
@@ -160,7 +169,7 @@ See :ref:`Set Environmental Variables`
 
 2. (Required) Init MPI with MPI_THREAD_MULTIPLE
 
-Parallel HDF5 involve MPI collecive operations in many of its internal metadata operations, and they can be executed concurrently with the application's MPI operations, thus we require to initialize MPI with MPI_THREAD_MULTIPLE support. Change MPI_Init(argc, argv) in your application's code to:
+Parallel HDF5 involves MPI collecive operations in many of its internal metadata operations, and they can be executed concurrently with the application's MPI operations, thus we require to initialize MPI with ``MPI_THREAD_MULTIPLE`` support. Change ``MPI_Init (argc, argv)`` in your application's code to:
 
 .. code-block::
 
@@ -235,11 +244,11 @@ With the double buffering enabled, users can also specify how much memory is all
 
 7. (Optional) Finer control of asynchronous I/O operation
 
-When async VOL is enabled, each HDF5 operation is recorded and put into a task queue and returns without actually executing it. The async VOL detects whether the application is busy issuing HDF5 I/O calls or has moved on to other tasks (e.g. computation). If it finds no HDF5 function is called within a short period (600ms by default), it will start the background thread to execute the tasks in the queue. This is mainly due to the global mutex from the HDF5, allowing only one thread to execute the HDF5 operations at a given time to maintain its internal data consistency. 
+When async VOL is enabled, each HDF5 operation is recorded and put into a task queue and returns without actually executing it. The async VOL detects whether the application is busy issuing HDF5 I/O calls or has moved on to other tasks (e.g., computation). If it finds no HDF5 function is called within a short period (600 ms by default), it will start the background thread to execute the tasks in the queue. This is mainly due to the global mutex from the HDF5, allowing only one thread to execute the HDF5 operations at a given time to maintain its internal data consistency. 
 
 The application status detection can avoid an effectively synchronous I/O when the application thread and the async VOL background thread acquire the mutex in an interleaved fashion. However, some applications may have larger time gaps between HDF5 function calls and experience partially asynchronous behavior. To mitigate this, we provide a way by setting an environment variable that informs async VOL to queue the operations and not start their execution until file/group/dataset close time. 
 
-When set properly, it make async VOL especially effective for applications that periodically output (write-only) data, e.g. checkpoint.
+When set properly, it make async VOL especially effective for applications that periodically output (write-only) data, e.g., a checkpointing file output.
 
 .. code-block::
 

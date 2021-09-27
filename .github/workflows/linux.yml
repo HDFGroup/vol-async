@@ -91,6 +91,7 @@ jobs:
           # Test with async VOL double buffering
           cd ../src
           sed -i "s/CFLAGS =/CFLAGS = -DENABLE_WRITE_MEMCPY/g" ./Makefile
+          make clean
           make
           cd ../test
           make check
