@@ -1,49 +1,34 @@
-if(DEFINED ENV{HDF5_PLUGIN_PATH})
-  message("HDF5_PLUGIN_PATH is " $ENV{HDF5_PLUGIN_PATH})
-endif()
+set(HDF5_VOL_ASYNC_HEADERS
+  ${CMAKE_CURRENT_SOURCE_DIR}/h5_async_lib.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/h5_async_vol.h
+)
 
-if(DEFINED ENV{HDF5_PLUGIN_PATH})
-   message("HDF5_VOL_CONNECTOR is " $ENV{HDF5_VOL_CONNECTOR})
-endif()
+set(HDF5_VOL_ASYNC_SRCS
+    ${CMAKE_CURRENT_SOURCE_DIR}/h5_async_vol.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/h5_async_lib.c)
 
-find_package(MPI)
-include_directories(SYSTEM ${MPI_INCLUDE_PATH})
+add_library(hdf5_vol_async SHARED ${HDF5_VOL_ASYNC_SRCS})
 
-set(test  async_test_multifile
-	  async_test_multifile_env
-	  async_test_serial 
-	  async_test_serial2
-	  async_test_serial_error_stack
-	  async_test_serial_event_set
-	  async_test_serial_event_set_error_stack
-    	  async_test_parallel2
-	  async_test_parallel3
-	  async_test_parallel4
-	  async_test_parallel5
-	  async_test_parallel)
-          
+target_include_directories(hdf5_vol_async 
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
 
-foreach(test ${tests})
-  add_executable(${test}.exe ${CMAKE_CURRENT_SOURCE_DIR}/${test}.c)
-  target_link_libraries(${test}.exe PRIVATE hdf5_vol_async hdf5 abt ${MPI_C_LIBRARIES})
-  # Option 1: If you want to test individually, use the following.
-  if(${test} MATCHES *parallel* )
-    add_test(${test} ${test}.exe)
-  else()
-    add_test(${test} "mpirun -np 2 " ${test}.exe)	
-  endif()
-  set_tests_properties(
-    ${test}
-    PROPERTIES
-    ENVIRONMENT "HDF5_VOL_CONNECTOR=\"async under_vol=0;under_info={}\"")
-  set_tests_properties(
-    ${test}
-    PROPERTIES
-    ENVIRONMENT "HDF5_PLUGIN_PATH=$ENV{HDF5_PLUGIN_PATH}")
-endforeach ()
+target_link_libraries(hdf5_vol_async PRIVATE ${LINK_LIBS} abt mpi hdf5)
 
-# Option2: Test all executables in one Python script.
-# This will not work because pytest.py uses a fixed path.
+install(
+  FILES
+    ${HDF5_VOL_ASYNC_HEADERS}
+  DESTINATION
+    ${HDF5_VOL_ASYNC_INSTALL_INCLUDE_DIR}
+  COMPONENT
+    headers
+)
 
-# add_test(check_serial ${CMAKE_CURRENT_SOURCE_DIR}/pytest.py)
-# add_test(check ${CMAKE_CURRENT_SOURCE_DIR}/pytest.py -p)
+install(
+  TARGETS
+    hdf5_vol_async
+  EXPORT
+    ${HDF5_VOL_ASYNC_EXPORTED_TARGETS}
+  LIBRARY DESTINATION ${HDF5_VOL_ASYNC_INSTALL_LIB_DIR}
+  ARCHIVE DESTINATION ${HDF5_VOL_ASYNC_INSTALL_LIB_DIR}
+)
