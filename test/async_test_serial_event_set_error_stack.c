@@ -199,7 +199,7 @@ main(int argc, char *argv[])
         ret = -1;
         goto done;
     }
-    if (3 != err_info.op_ins_count) {
+    if (2 != err_info.op_ins_count) {
         fprintf(stderr, "Event set didn't return op counter correctly?!?\n");
         ret = -1;
         goto done;
@@ -209,7 +209,7 @@ main(int argc, char *argv[])
         ret = -1;
         goto done;
     }
-    if (9 != H5Eget_num(err_info.err_stack_id)) { // Somewhat fragile
+    if (11 != H5Eget_num(err_info.err_stack_id)) { // Somewhat fragile
         fprintf(stderr, "Event set didn't return error stack correctly?!?\n");
         ret = -1;
         goto done;
