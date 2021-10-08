@@ -22,3 +22,11 @@ This is due to the default Argobots thread stack size being too small, and can b
 
     export ABT_THREAD_STACKSIZE=100000
 
+Object Flush
+------------
+Currently due to an issue with the HDF5 library handling its internal object ID, asynchronous and synchronous flush operations will fail. 
+
+EventSet ID with Multiple Files
+-------------------------------
+Currently each event set ID should only be associated with operations of one file, otherwise there can be unexpected errors from the HDF5 library.
+This `patch <https://gist.github.com/houjun/4c556f5e5c5e64275c3f412eca395c4e>`_ (applies to the HDF5 develop branch) may be needed when an HDF5 iteration error occurs.
