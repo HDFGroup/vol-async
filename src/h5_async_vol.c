@@ -940,16 +940,16 @@ H5PLget_plugin_info(void)
  *
  * \return \herr_t
  *
- * \details 
- *          vipl_id is either H5P_DEFAULT or the identifier of a VOL initialization 
- *          property list of class H5P_VOL_INITIALIZE created with H5Pcreate(). 
- *          When created, this property list contains no library properties. 
- *          If a VOL connector author decides that initialization-specific data are 
- *          needed, they can be added to the empty list and retrieved by the connector 
- *          in the VOL connector's initialize callback. Use of the VOL initialization 
- *          property list is uncommon, as most VOL-specific properties are added to 
- *          the file access property list via the connector's API calls which set 
- *          the VOL connector for the file open/create. For more information, see 
+ * \details
+ *          vipl_id is either H5P_DEFAULT or the identifier of a VOL initialization
+ *          property list of class H5P_VOL_INITIALIZE created with H5Pcreate().
+ *          When created, this property list contains no library properties.
+ *          If a VOL connector author decides that initialization-specific data are
+ *          needed, they can be added to the empty list and retrieved by the connector
+ *          in the VOL connector's initialize callback. Use of the VOL initialization
+ *          property list is uncommon, as most VOL-specific properties are added to
+ *          the file access property list via the connector's API calls which set
+ *          the VOL connector for the file open/create. For more information, see
  *          VOL documentation.
  *
  */
@@ -996,7 +996,7 @@ done:
  *
  * \return \herr_t
  *
- * \details 
+ * \details
  *          Free various mutexes and Argobot streams and scheduler.
  *
  */
@@ -1055,7 +1055,7 @@ async_instance_finalize(void)
  *
  * \return \herr_t
  *
- * \details 
+ * \details
  *          Free async VOL global mutex and finalize Argobots
  *
  */
@@ -1110,8 +1110,8 @@ done:
  *
  * \return \herr_t
  *
- * \details 
- *          Create Argobots xstream, pool, and scheduler. Retrieve environment variables 
+ * \details
+ *          Create Argobots xstream, pool, and scheduler. Retrieve environment variables
  *          set by userSet initial values for async internal structure values.
  *
  *          \par Currently only supports 1 background thread due to HDF5 global mutex.
@@ -1313,8 +1313,8 @@ done:
  *
  * \return \herr_t
  *
- * \details 
- *          By setting is_disable to true, async VOL will execute each of the HDF5 API using the 
+ * \details
+ *          By setting is_disable to true, async VOL will execute each of the HDF5 API using the
  *          underlying VOL connector (default is native) without going through the async VOL task
  *          management or creating Argobots threads.
  *
@@ -1337,8 +1337,8 @@ H5VL_async_set_disable_implicit(hbool_t is_disable)
  *
  * \return \herr_t
  *
- * \details 
- *          This routine first check whether the disable implicit flag exists in the fapl, 
+ * \details
+ *          This routine first check whether the disable implicit flag exists in the fapl,
  *          retrieves the value if it does, and set the value correspondingly.
  *
  */
@@ -1396,8 +1396,8 @@ H5VL_async_fapl_set_disable_implicit(hid_t fapl)
  *
  * \return \herr_t
  *
- * \details 
- *          This routine first check whether the disable implicit flag exists in the dxpl, 
+ * \details
+ *          This routine first check whether the disable implicit flag exists in the dxpl,
  *          retrieves the value if it does, and set the value correspondingly.
  *
  */
@@ -1469,14 +1469,14 @@ H5VL_async_dxpl_set_disable_implicit(hid_t dxpl)
  *
  * \return \herr_t
  *
- * \details 
- *          This routine first check whether the pause and delay flag exist in the dxpl, 
+ * \details
+ *          This routine first check whether the pause and delay flag exist in the dxpl,
  *          retrieves the their value if they do, and set the values correspondingly.
  *
  *          \par The pause flag controls whether to pause all async operations, and won't
  *          execute any operations until the flag is unset. The delay flag has an additional
- *          value indicating how long to delay each of the background thread execution. 
- *          They are mainly used to overcome the limit from the HDF5 global mutex and 
+ *          value indicating how long to delay each of the background thread execution.
+ *          They are mainly used to overcome the limit from the HDF5 global mutex and
  *          avoid the potential interleaved execution that makes everything effectively
  *          synchronous.
  *
@@ -1568,16 +1568,16 @@ H5VL_async_dxpl_set_pause(hid_t dxpl)
  *
  * \return \herr_t
  *
- * \details 
- *          vipl_id is either H5P_DEFAULT or the identifier of a VOL initialization 
- *          property list of class H5P_VOL_INITIALIZE created with H5Pcreate(). 
- *          When created, this property list contains no library properties. 
- *          If a VOL connector author decides that initialization-specific data are 
- *          needed, they can be added to the empty list and retrieved by the connector 
- *          in the VOL connector's initialize callback. Use of the VOL initialization 
- *          property list is uncommon, as most VOL-specific properties are added to 
- *          the file access property list via the connector's API calls which set 
- *          the VOL connector for the file open/create. For more information, see 
+ * \details
+ *          vipl_id is either H5P_DEFAULT or the identifier of a VOL initialization
+ *          property list of class H5P_VOL_INITIALIZE created with H5Pcreate().
+ *          When created, this property list contains no library properties.
+ *          If a VOL connector author decides that initialization-specific data are
+ *          needed, they can be added to the empty list and retrieved by the connector
+ *          in the VOL connector's initialize callback. Use of the VOL initialization
+ *          property list is uncommon, as most VOL-specific properties are added to
+ *          the file access property list via the connector's API calls which set
+ *          the VOL connector for the file open/create. For more information, see
  *          VOL documentation.
  *
  */
@@ -1705,7 +1705,7 @@ static herr_t H5VL_async_init(hid_t __attribute__((unused)) vipl_id)
  *
  * \brief   Wait for all operations.
  *
- * \details 
+ * \details
  *          Block and wait for all async operations to finish, based on the number of opened files and
  *          Argobots pool content.
  *
@@ -1735,12 +1735,12 @@ async_waitall(void)
 /**
  * \ingroup ASYNC
  *
- * \brief Terminate async VOL 
+ * \brief Terminate async VOL
  *
  * \return \herr_t
  *
- * \details 
- *          Wait for all operations to finish, terminate Argobots threads and 
+ * \details
+ *          Wait for all operations to finish, terminate Argobots threads and
  *          unregister all async dynamic registered operations.
  *
  */
@@ -1829,7 +1829,7 @@ H5VL_async_term(void)
  *
  * \return async_task_t
  *
- * \details 
+ * \details
  *          Allocate an async task structure, create mutex and Argobots eventual (used for determining
  *          whether a task has completed).
  *
@@ -1866,7 +1866,7 @@ create_async_task(void)
  *
  * \param[in] task Async VOL task
  *
- * \details 
+ * \details
  *          Free the async task structure, mutex and Argobots eventual.
  *
  */
@@ -1940,8 +1940,8 @@ static void async_file_close_fn(void *foo);
  *
  * \param[in] file Async VOL file object
  *
- * \details 
- *          Free the completed async operations of the file, their async task structure, 
+ * \details
+ *          Free the completed async operations of the file, their async task structure,
  *          mutex and Argobots eventual.
  *
  *          \par Note that the file object itself it not freed here, due to H5ESwait requires it.
@@ -2047,7 +2047,7 @@ add_to_dep_task(async_task_t *task, async_task_t *parent_task)
  *
  * \brief Get the number of tasks in Argobots pool
  *
- * \param[in] task Async task 
+ * \param[in] task Async task
  *
  * \return int
  *
@@ -2128,8 +2128,8 @@ get_n_running_task_in_queue_obj(H5VL_async_t *async_obj)
  *
  * \return \herr_t
  *
- * \details Push a task from the async queue that can be executed without dependency requirements, 
- *          first checks the type of the task to see whether it has dependency, if so, go over all 
+ * \details Push a task from the async queue that can be executed without dependency requirements,
+ *          first checks the type of the task to see whether it has dependency, if so, go over all
  *          its dependent parents and only execute it if all of them are completed.
  *
  */
@@ -2294,7 +2294,7 @@ done:
  * \brief Insert a task to the async queue
  *
  * \param[in] qhead Head pointer of the async queue
- * \param[in] task  Async task 
+ * \param[in] task  Async task
  * \param[in] task_type Type of task
  *
  * \return \herr_t
@@ -2302,9 +2302,9 @@ done:
  * \details This is the main async queue and task management routine. It enforces the following rules:
  *          Any read/write operation must be executed after a prior write operation of same object.
  *          Any write operation must be executed after a prior read operation of same object.
- *          Any collective operation must be executed in same order with regards to other collective operations.
- *          There can only be 1 collective operation in execution at any time (amongst all the threads on a process).
- *          by the following procedure:
+ *          Any collective operation must be executed in same order with regards to other collective
+ * operations. There can only be 1 collective operation in execution at any time (amongst all the threads on a
+ * process). by the following procedure:
  *          1. Check for collective operation
  *                If collective, create a new CTL, or append it to an existing tail CTL.
  *          2. Check for object dependency.
@@ -2769,7 +2769,7 @@ H5VL_async_pause()
  *
  * \return \herr_t
  *
- * \details Set a delay time for each async task, effective for the next task to be executed. 
+ * \details Set a delay time for each async task, effective for the next task to be executed.
  *
  */
 int
@@ -2944,10 +2944,10 @@ H5VL_async_set_delay_time(uint64_t time_us)
  *
  * \return \herr_t
  *
- * \details This function is a workaround of avoiding synchronous execution due to the HDF5 global 
- *          mutex. If we start the background thread executing the task as they are created by 
- *          the application, the backgrond thread will compete with the application thread for 
- *          acquiring the HDF5 mutex and may effective make everything synchronous. Thus we 
+ * \details This function is a workaround of avoiding synchronous execution due to the HDF5 global
+ *          mutex. If we start the background thread executing the task as they are created by
+ *          the application, the backgrond thread will compete with the application thread for
+ *          acquiring the HDF5 mutex and may effective make everything synchronous. Thus we
  *          implemented this "spying" approach by checking the HDF5 global mutex counter value,
  *          if the value does not increase within a predefined (short) amount of time, then we
  *          think that the application is likely to move to its non-I/O phase and thus we can start
@@ -3054,7 +3054,7 @@ check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *
  *
  * \return \herr_t
  *
- * \details This function works with check_app_acquire_mutex(), it detects whether the HDF5 global 
+ * \details This function works with check_app_acquire_mutex(), it detects whether the HDF5 global
  *          mutex counter value increased right after a task is executed by the background thread.
  *          If so, then it is likely that our check period in check_app_acquire_mutex() is too short
  *          and we executed a task while the application has more HDF5 I/O calls. So we increase the
@@ -4881,8 +4881,6 @@ free_native_object_optional_args(async_object_optional_args_t *args)
         }
     }
 }
-
-
 
 static void
 async_attr_create_fn(void *foo)
