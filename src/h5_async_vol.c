@@ -927,6 +927,32 @@ H5PLget_plugin_info(void)
     return &H5VL_async_g;
 }
 
+/** @defgroup ASYNC
+ * This group is for async VOL functionalities.
+ */
+
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Init the async VOL with Argobots threads.
+ *
+ * \param[in] VOL initialization property list identifier
+ *
+ * \return \herr_t
+ *
+ * \details 
+ *          vipl_id is either H5P_DEFAULT or the identifier of a VOL initialization 
+ *          property list of class H5P_VOL_INITIALIZE created with H5Pcreate(). 
+ *          When created, this property list contains no library properties. 
+ *          If a VOL connector author decides that initialization-specific data are 
+ *          needed, they can be added to the empty list and retrieved by the connector 
+ *          in the VOL connector's initialize callback. Use of the VOL initialization 
+ *          property list is uncommon, as most VOL-specific properties are added to 
+ *          the file access property list via the connector's API calls which set 
+ *          the VOL connector for the file open/create. For more information, see 
+ *          VOL documentation.
+ *
+ */
 static herr_t
 async_init(hid_t vipl_id)
 {
@@ -963,6 +989,17 @@ done:
     return ret_val;
 }
 
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Release resources used by Argobots.
+ *
+ * \return \herr_t
+ *
+ * \details 
+ *          Free various mutexes and Argobot streams and scheduler.
+ *
+ */
 static herr_t
 async_instance_finalize(void)
 {
@@ -1011,6 +1048,17 @@ async_instance_finalize(void)
     return ret_val;
 } // End async_instance_finalize
 
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Finalize Argobots.
+ *
+ * \return \herr_t
+ *
+ * \details 
+ *          Free async VOL global mutex and finalize Argobots
+ *
+ */
 static herr_t
 async_term(void)
 {
@@ -1053,7 +1101,22 @@ done:
     return ret_val;
 }
 
-/* Init Argobots for async IO */
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Init various mutexes and Argobots resources.
+ *
+ * \param[in] backing_thread_count Number of background threads to use
+ *
+ * \return \herr_t
+ *
+ * \details 
+ *          Create Argobots xstream, pool, and scheduler. Retrieve environment variables 
+ *          set by userSet initial values for async internal structure values.
+ *
+ *          \par Currently only supports 1 background thread due to HDF5 global mutex.
+ *
+ */
 static herr_t
 async_instance_init(int backing_thread_count)
 {
@@ -1241,6 +1304,21 @@ done:
     return hg_ret;
 } // End async_instance_init
 
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Set whether to disable implicit async mode.
+ *
+ * \param[in] is_disable flag to whether disable or not
+ *
+ * \return \herr_t
+ *
+ * \details 
+ *          By setting is_disable to true, async VOL will execute each of the HDF5 API using the 
+ *          underlying VOL connector (default is native) without going through the async VOL task
+ *          management or creating Argobots threads.
+ *
+ */
 herr_t
 H5VL_async_set_disable_implicit(hbool_t is_disable)
 {
@@ -1250,6 +1328,20 @@ H5VL_async_set_disable_implicit(hbool_t is_disable)
     return 0;
 }
 
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Set disable implicit async mode based on the fapl ID.
+ *
+ * \param[in] fapl File access property list.
+ *
+ * \return \herr_t
+ *
+ * \details 
+ *          This routine first check whether the disable implicit flag exists in the fapl, 
+ *          retrieves the value if it does, and set the value correspondingly.
+ *
+ */
 herr_t
 H5VL_async_fapl_set_disable_implicit(hid_t fapl)
 {
@@ -1295,6 +1387,20 @@ H5VL_async_fapl_set_disable_implicit(hid_t fapl)
     return status;
 }
 
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Set disable implicit async mode based on the dxpl ID.
+ *
+ * \param[in] dxpl Dataset access property list.
+ *
+ * \return \herr_t
+ *
+ * \details 
+ *          This routine first check whether the disable implicit flag exists in the dxpl, 
+ *          retrieves the value if it does, and set the value correspondingly.
+ *
+ */
 herr_t
 H5VL_async_dxpl_set_disable_implicit(hid_t dxpl)
 {
@@ -1354,6 +1460,27 @@ H5VL_async_dxpl_set_disable_implicit(hid_t dxpl)
     return status;
 }
 
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Set disable pause async mode based on the dxpl ID.
+ *
+ * \param[in] dxpl Dataset access property list.
+ *
+ * \return \herr_t
+ *
+ * \details 
+ *          This routine first check whether the pause and delay flag exist in the dxpl, 
+ *          retrieves the their value if they do, and set the values correspondingly.
+ *
+ *          \par The pause flag controls whether to pause all async operations, and won't
+ *          execute any operations until the flag is unset. The delay flag has an additional
+ *          value indicating how long to delay each of the background thread execution. 
+ *          They are mainly used to overcome the limit from the HDF5 global mutex and 
+ *          avoid the potential interleaved execution that makes everything effectively
+ *          synchronous.
+ *
+ */
 herr_t
 H5VL_async_dxpl_set_pause(hid_t dxpl)
 {
@@ -1432,6 +1559,28 @@ H5VL_async_dxpl_set_pause(hid_t dxpl)
     return status;
 }
 
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Init the async VOL with dynamic registered operations.
+ *
+ * \param[in] VOL initialization property list identifier
+ *
+ * \return \herr_t
+ *
+ * \details 
+ *          vipl_id is either H5P_DEFAULT or the identifier of a VOL initialization 
+ *          property list of class H5P_VOL_INITIALIZE created with H5Pcreate(). 
+ *          When created, this property list contains no library properties. 
+ *          If a VOL connector author decides that initialization-specific data are 
+ *          needed, they can be added to the empty list and retrieved by the connector 
+ *          in the VOL connector's initialize callback. Use of the VOL initialization 
+ *          property list is uncommon, as most VOL-specific properties are added to 
+ *          the file access property list via the connector's API calls which set 
+ *          the VOL connector for the file open/create. For more information, see 
+ *          VOL documentation.
+ *
+ */
 static herr_t H5VL_async_init(hid_t __attribute__((unused)) vipl_id)
 {
     /* Initialize the Argobots I/O instance */
@@ -1551,6 +1700,16 @@ static herr_t H5VL_async_init(hid_t __attribute__((unused)) vipl_id)
     return 0;
 }
 
+/**
+ * \ingroup ASYNC
+ *
+ * \brief   Wait for all operations.
+ *
+ * \details 
+ *          Block and wait for all async operations to finish, based on the number of opened files and
+ *          Argobots pool content.
+ *
+ */
 static void
 async_waitall(void)
 {
@@ -1573,6 +1732,18 @@ async_waitall(void)
     return;
 }
 
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Terminate async VOL 
+ *
+ * \return \herr_t
+ *
+ * \details 
+ *          Wait for all operations to finish, terminate Argobots threads and 
+ *          unregister all async dynamic registered operations.
+ *
+ */
 static herr_t
 H5VL_async_term(void)
 {
@@ -1651,6 +1822,18 @@ H5VL_async_term(void)
     return ret_val;
 }
 
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Create an async task
+ *
+ * \return async_task_t
+ *
+ * \details 
+ *          Allocate an async task structure, create mutex and Argobots eventual (used for determining
+ *          whether a task has completed).
+ *
+ */
 static async_task_t *
 create_async_task(void)
 {
@@ -1676,6 +1859,17 @@ create_async_task(void)
     return async_task;
 }
 
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Free an async task
+ *
+ * \param[in] task Async VOL task
+ *
+ * \details 
+ *          Free the async task structure, mutex and Argobots eventual.
+ *
+ */
 static void
 free_async_task(async_task_t *task)
 {
@@ -1739,6 +1933,21 @@ free_async_task(async_task_t *task)
 
 static void async_file_close_fn(void *foo);
 
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Free all async VOL resources of a file
+ *
+ * \param[in] file Async VOL file object
+ *
+ * \details 
+ *          Free the completed async operations of the file, their async task structure, 
+ *          mutex and Argobots eventual.
+ *
+ *          \par Note that the file object itself it not freed here, due to H5ESwait requires it.
+ *          It is freed at the request free time later
+ *
+ */
 static void
 free_file_async_resources(H5VL_async_t *file)
 {
@@ -1786,6 +1995,20 @@ free_file_async_resources(H5VL_async_t *file)
     /* free(file); */
 }
 
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Add dependency to a task
+ *
+ * \param[in] task Task with dependency
+ * \param[in] parent_task Dependent parent of the task
+ *
+ * \return \herr_t
+ *
+ * \details Add a dependent parent to a task, both must exist. The memory allocation is automatically
+ *          adjusted when the number of parents exceeds previous allocation.
+ *
+ */
 static herr_t
 add_to_dep_task(async_task_t *task, async_task_t *parent_task)
 {
@@ -1819,6 +2042,19 @@ add_to_dep_task(async_task_t *task, async_task_t *parent_task)
     return 1;
 }
 
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Get the number of tasks in Argobots pool
+ *
+ * \param[in] task Async task 
+ *
+ * \return int
+ *
+ * \details Retrieve the number of tasks already pushed into the Argobots pool but iterating through
+ *          all existing tasks and check their Argobots running state.
+ *
+ */
 static int
 get_n_running_task_in_queue(async_task_t *task)
 {
@@ -1850,6 +2086,19 @@ get_n_running_task_in_queue(async_task_t *task)
     return remaining_task;
 }
 
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Get the number of tasks in Argobots pool.
+ *
+ * \param[in] async_obj Async object
+ *
+ * \return int
+ *
+ * \details Retrieve the number of tasks already pushed into the Argobots pool but iterating through
+ *          all existing tasks and check their Argobots running state.
+ *
+ */
 int
 get_n_running_task_in_queue_obj(H5VL_async_t *async_obj)
 {
@@ -1869,6 +2118,21 @@ get_n_running_task_in_queue_obj(H5VL_async_t *async_obj)
     return remaining_task;
 }
 
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Push a task to Argobots pool for background thread execution.
+ *
+ * \param[in] qhead Head pointer of the async queue
+ * \param[in] pool  Argobots pool
+ *
+ * \return \herr_t
+ *
+ * \details Push a task from the async queue that can be executed without dependency requirements, 
+ *          first checks the type of the task to see whether it has dependency, if so, go over all 
+ *          its dependent parents and only execute it if all of them are completed.
+ *
+ */
 static herr_t
 push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool)
 {
@@ -2024,11 +2288,34 @@ done:
     return 1;
 } // End push_task_to_abt_pool
 
-/*
- * Any read/write operation must be executed after a prior write operation of same object.
- * Any write operation must be executed after a prior read operation of same object.
- * Any collective operation must be executed in same order with regards to other collective operations.
- * There can only be 1 collective operation in execution at any time (amongst all the threads on a process).
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Insert a task to the async queue
+ *
+ * \param[in] qhead Head pointer of the async queue
+ * \param[in] task  Async task 
+ * \param[in] task_type Type of task
+ *
+ * \return \herr_t
+ *
+ * \details This is the main async queue and task management routine. It enforces the following rules:
+ *          Any read/write operation must be executed after a prior write operation of same object.
+ *          Any write operation must be executed after a prior read operation of same object.
+ *          Any collective operation must be executed in same order with regards to other collective operations.
+ *          There can only be 1 collective operation in execution at any time (amongst all the threads on a process).
+ *          by the following procedure:
+ *          1. Check for collective operation
+ *                If collective, create a new CTL, or append it to an existing tail CTL.
+ *          2. Check for object dependency.
+ *                E.g. a group open depends on its file open/create.
+ *                (Rule 1) Any read/write operation depends on a prior write operation of same object.
+ *                (Rule 2) Any write operation depends on a prior read operation of same object.
+ *                If satisfies any of the above, create a new DTL and insert to it.
+ *          3. If the async task is not the above 2, create or insert it to tail RTL.
+ *                If current RTL is also head, add to Argobots pool.
+ *          4. Any time an async task has completed, push all tasks in the head into Argobots pool.
+ *
  */
 static herr_t
 add_task_to_queue(async_qhead_t *qhead, async_task_t *task, task_list_qtype task_type)
@@ -2040,18 +2327,6 @@ add_task_to_queue(async_qhead_t *qhead, async_task_t *task, task_list_qtype task
 
     assert(qhead);
     assert(task);
-
-    /* 1. Check for collective operation
-     *       If collective, create a new CTL, or append it to an existing tail CTL.
-     * 2. Check for object dependency.
-     *       E.g. a group open depends on its file open/create.
-     *       (Rule 1) Any read/write operation depends on a prior write operation of same object.
-     *       (Rule 2) Any write operation depends on a prior read operation of same object.
-     *       If satisfies any of the above, create a new DTL and insert to it.
-     * 3. If the async task is not the above 2, create or insert it to tail RTL.
-     *       If current RTL is also head, add to Argobots pool.
-     * 4. Any time an async task has completed, push all tasks in the head into Argobots pool.
-     */
 
     tail_list = qhead->queue == NULL ? NULL : qhead->queue->prev;
 
@@ -2178,6 +2453,689 @@ add_task_to_queue(async_qhead_t *qhead, async_task_t *task, task_list_qtype task
     return 1;
 } // add_task_to_queue
 
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Set a dependency for objects with their request
+ *
+ * \param[in] request Request of a task
+ * \param[in] parent_request Request of the task's parent
+ *
+ * \return \herr_t
+ *
+ * \details This functions provides a method to set user-defined dependency to a given
+ *          async task through their requests. This is only meant to be used by another
+ *          VOL connector and not for a general user.
+ *
+ */
+herr_t
+H5VL_async_set_request_dep(void *request, void *parent_request)
+{
+    herr_t        ret_val;
+    H5VL_async_t *req, *parent_req;
+    async_task_t *task, *parent_task;
+
+    assert(request);
+    assert(parent_request);
+
+    req        = (H5VL_async_t *)request;
+    parent_req = (H5VL_async_t *)parent_request;
+
+    assert(req->my_task);
+    assert(parent_req->my_task);
+
+    task        = req->my_task;
+    parent_task = parent_req->my_task;
+
+    assert(task->magic == TASK_MAGIC);
+    assert(parent_task->magic == TASK_MAGIC);
+
+    /* ABT_mutex_lock(task->task_mutex); */
+
+    ret_val = add_to_dep_task(task, parent_task);
+    if (ret_val < 0) {
+        fprintf(fout_g, "  [ASYNC VOL ERROR] %s calloc failed\n", __func__);
+        return -1;
+    }
+
+    /* ABT_mutex_unlock(task->task_mutex); */
+
+    return ret_val;
+}
+
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Wait for an object's task until completion
+ *
+ * \param[in] async_obj Async object pointer
+ *
+ * \return \herr_t
+ *
+ * \details Block and wait for an existing async object to be completed in the background
+ *          thread. There may be other async tasks executed before the specified one, and
+ *          it does not increase the priority of the current task in any way.
+ *
+ */
+herr_t
+H5VL_async_object_wait(H5VL_async_t *async_obj)
+{
+    async_task_t *task_iter;
+    hbool_t       acquired    = false;
+    unsigned int  mutex_count = 1;
+    hbool_t       tmp         = async_instance_g->start_abt_push;
+
+    async_instance_g->start_abt_push = true;
+
+    if (get_n_running_task_in_queue_obj(async_obj) == 0)
+        push_task_to_abt_pool(&async_instance_g->qhead, *async_obj->pool_ptr);
+
+    if (H5TSmutex_release(&mutex_count) < 0)
+        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__);
+
+    // Check for all tasks on this dset of a file
+
+    if (ABT_mutex_lock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
+        return -1;
+    }
+    DL_FOREACH2(async_obj->file_task_list_head, task_iter, file_list_next)
+    {
+        /* if (ABT_mutex_lock(async_obj->obj_mutex) != ABT_SUCCESS) { */
+        /*     fprintf(fout_g,"  [ASYNC VOL ERROR] %s ABT_mutex_lock failed\n", __func__); */
+        /*     return -1; */
+        /* } */
+
+        if (task_iter->async_obj == async_obj) {
+            if (task_iter->is_done != 1) {
+                ABT_eventual_wait(task_iter->eventual, NULL);
+            }
+        }
+        /* if (ABT_mutex_unlock(async_obj->obj_mutex) != ABT_SUCCESS) */
+        /*     fprintf(fout_g,"  [ASYNC VOL ERROR] %s ABT_mutex_lock failed\n", __func__); */
+    }
+
+    if (ABT_mutex_unlock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
+        return -1;
+    }
+    while (false == acquired) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_acquire\n", __func__);
+    }
+
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC VOL DBG] %s setting start_abt_push false!\n", __func__);
+#endif
+    async_instance_g->start_abt_push = tmp;
+
+    return 0;
+}
+
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Wait for an object's task until completion
+ *
+ * \param[in] async_obj Async object pointer
+ *
+ * \return \herr_t
+ *
+ * \details Block and wait for an existing async object to be completed in the background
+ *          thread. There may be other async tasks executed before the specified one, and
+ *          it does not increase the priority of the current task in any way.
+ *          This function is used specifically for H5Dwait.
+ *
+ */
+herr_t
+H5VL_async_dataset_wait(H5VL_async_t *async_obj)
+{
+    async_task_t *task_iter;
+    hbool_t       acquired    = false;
+    unsigned int  mutex_count = 1;
+    hbool_t       tmp         = async_instance_g->start_abt_push;
+
+    async_instance_g->start_abt_push = true;
+
+    if (get_n_running_task_in_queue_obj(async_obj) == 0)
+        push_task_to_abt_pool(&async_instance_g->qhead, *async_obj->pool_ptr);
+
+    if (H5TSmutex_release(&mutex_count) < 0)
+        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__);
+
+    // Check for all tasks on this dset of a file
+
+    if (ABT_mutex_lock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
+        return -1;
+    }
+    DL_FOREACH2(async_obj->file_task_list_head, task_iter, file_list_next)
+    {
+        /* if (ABT_mutex_lock(async_obj->obj_mutex) != ABT_SUCCESS) { */
+        /*     fprintf(fout_g,"  [ASYNC VOL ERROR] %s ABT_mutex_lock failed\n", __func__); */
+        /*     return -1; */
+        /* } */
+
+        if (task_iter->async_obj == async_obj) {
+            if (task_iter->is_done != 1) {
+                ABT_eventual_wait(task_iter->eventual, NULL);
+            }
+        }
+        /* if (ABT_mutex_unlock(async_obj->obj_mutex) != ABT_SUCCESS) */
+        /*     fprintf(fout_g,"  [ASYNC VOL ERROR] %s ABT_mutex_lock failed\n", __func__); */
+    }
+
+    if (ABT_mutex_unlock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
+        return -1;
+    }
+    while (false == acquired) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_acquire\n", __func__);
+    }
+
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC VOL DBG] %s setting start_abt_push false!\n", __func__);
+#endif
+    async_instance_g->start_abt_push = tmp;
+
+    return 0;
+}
+
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Wait for an object's task until completion
+ *
+ * \param[in] async_obj Async object pointer
+ *
+ * \return \herr_t
+ *
+ * \details Block and wait for an existing async object to be completed in the background
+ *          thread. There may be other async tasks executed before the specified one, and
+ *          it does not increase the priority of the current task in any way.
+ *          This function is used specifically for H5Fwait.
+ *
+ */
+herr_t
+H5VL_async_file_wait(H5VL_async_t *async_obj)
+{
+    async_task_t *task_iter;
+    hbool_t       acquired    = false;
+    unsigned int  mutex_count = 1;
+    hbool_t       tmp         = async_instance_g->start_abt_push;
+
+    async_instance_g->start_abt_push = true;
+
+    if (get_n_running_task_in_queue_obj(async_obj) == 0)
+        push_task_to_abt_pool(&async_instance_g->qhead, *async_obj->pool_ptr);
+
+    if (H5TSmutex_release(&mutex_count) < 0)
+        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__);
+
+    if (ABT_mutex_lock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
+        return -1;
+    }
+    // Check for all tasks on this dset of a file
+    DL_FOREACH2(async_obj->file_task_list_head, task_iter, file_list_next)
+    {
+        /* if (ABT_mutex_lock(async_obj->obj_mutex) != ABT_SUCCESS) { */
+        /*     fprintf(fout_g,"  [ASYNC VOL ERROR] %s ABT_mutex_lock failed\n", __func__); */
+        /*     return -1; */
+        /* } */
+
+        if (task_iter->is_done != 1) {
+            ABT_eventual_wait(task_iter->eventual, NULL);
+        }
+        /* if (NULL != task_iter->abt_thread) { */
+        /* if (NULL != task_iter->abt_task) { */
+        /* ABT_thread_get_state(task_iter->abt_thread, &thread_state); */
+        /* if (ABT_THREAD_STATE_TERMINATED != thread_state) */
+        /* ABT_eventual_wait(task_iter->eventual, NULL); */
+        /* ABT_task_get_state (task_iter->abt_task, &state); */
+        /* if (ABT_TASK_STATE_TERMINATED != state) */
+        /*     ABT_eventual_wait(task_iter->eventual, NULL); */
+        /* } */
+        /* if (ABT_mutex_unlock(async_obj->obj_mutex) != ABT_SUCCESS) */
+        /*     fprintf(fout_g,"  [ASYNC VOL ERROR] %s ABT_mutex_lock failed\n", __func__); */
+    }
+
+    if (ABT_mutex_unlock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
+        return -1;
+    }
+
+    while (false == acquired) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_acquire\n", __func__);
+    }
+
+    async_instance_g->start_abt_push = tmp;
+    return 0;
+}
+
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Force to start background task execution
+ *
+ * \return \herr_t
+ *
+ * \details Start the Argobots background thread immediately, must be used after a previous
+ *          pause.
+ *
+ */
+herr_t
+H5VL_async_start()
+{
+    assert(async_instance_g);
+    async_instance_g->start_abt_push = true;
+    async_instance_g->pause          = false;
+    if (async_instance_g && NULL != async_instance_g->qhead.queue)
+        push_task_to_abt_pool(&async_instance_g->qhead, async_instance_g->pool);
+    return 0;
+}
+
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Stop background task execution
+ *
+ * \return \herr_t
+ *
+ * \details Stop the Argobots background thread, existing tasks in the Argobots queue will not
+ *          be affected and will run for completion. Effective for the next task to be inserted
+ *          into the async queue.
+ *
+ */
+herr_t
+H5VL_async_pause()
+{
+    assert(async_instance_g);
+    async_instance_g->start_abt_push = false;
+    async_instance_g->pause          = true;
+    return 0;
+}
+
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Set a delay time for each async task
+ *
+ * \param[in] time_us Time in us.
+ *
+ * \return \herr_t
+ *
+ * \details Set a delay time for each async task, effective for the next task to be executed. 
+ *
+ */
+int
+H5VL_async_set_delay_time(uint64_t time_us)
+{
+    async_instance_g->delay_time = time_us;
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s setting delay time to %lu us\n", __func__, time_us);
+#endif
+    return 0;
+}
+
+/* double get_elapsed_time(clock_t *tstart, clock_t *tend) */
+/* { */
+/*     return (double)(((tend-tstart) / CLOCKS_PER_SEC *1000000000LL ; */
+/* } */
+
+/* static void print_cpuset(int rank, int cpuset_size, int *cpuset) */
+/* { */
+/*     char *cpuset_str = NULL; */
+/*     int i; */
+/*     size_t pos = 0, len; */
+
+/*     cpuset_str = (char *)calloc(cpuset_size * 5, sizeof(char)); */
+/*     assert(cpuset_str); */
+
+/*     for (i = 0; i < cpuset_size; i++) { */
+/*         if (i) { */
+/*             sprintf(&cpuset_str[pos], ",%d", cpuset[i]); */
+/*         } else { */
+/*             sprintf(&cpuset_str[pos], "%d", cpuset[i]); */
+/*         } */
+/*         len = strlen(&cpuset_str[pos]); */
+/*         pos += len; */
+/*     } */
+/*     fprintf(fout_g, "[E%d] CPU set (%d): {%s}\n", rank, cpuset_size, cpuset_str); */
+
+/*     free(cpuset_str); */
+/* } */
+
+/* static void async_set_affinity() */
+/* { */
+/*     int ret, j; */
+/*     cpu_set_t cpuset; */
+
+/*     CPU_ZERO(&cpuset); */
+/*     for (j = 0; j < 2; j++) */
+/*         CPU_SET(j, &cpuset); */
+/*     ret = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset); */
+/*     if (ret != 0) { */
+/*         fprintf(fout_g, "  [ASYNC VOL ERROR] with pthread_setaffinity_np: %d\n", ret); */
+/*         return; */
+/*     } */
+/* } */
+
+/* static void async_get_affinity() */
+/* { */
+/*     int ret, j; */
+/*     cpu_set_t cpuset; */
+/*     int cpu; */
+
+/*     cpu = sched_getcpu(); */
+/*     fprintf(fout_g, "Argobots thread is running on CPU %d\n", cpu); */
+
+/*     /1* ret = pthread_getaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset); *1/ */
+/*     /1* if (ret != 0) { *1/ */
+/*     /1*     fprintf(fout_g, "  [ASYNC VOL ERROR] with pthread_getaffinity_np: %d\n", ret); *1/ */
+/*     /1*     return; *1/ */
+/*     /1* } *1/ */
+/*     /1* fprintf(fout_g, "Set returned by pthread_getaffinity_np() contained:\n"); *1/ */
+/*     /1* for (j = 0; j < CPU_SETSIZE; j++) *1/ */
+/*     /1*     if (CPU_ISSET(j, &cpuset)) *1/ */
+/*     /1*         fprintf(fout_g, "    CPU %d\n", j); *1/ */
+/* } */
+
+/* static void test_affinity() */
+/* { */
+/*     ABT_xstream xstream; */
+/*     int i, rank, ret; */
+/*     int cpuid = -1, new_cpuid; */
+/*     int cpuset_size, num_cpus = -1; */
+/*     int *cpuset = NULL; */
+/*     int num_xstreams = 1; */
+
+/*     ret = ABT_xstream_self(&xstream); */
+/*     if (ret != ABT_SUCCESS) { */
+/*         fprintf(fout_g, "  [ASYNC VOL ERROR] with ABT_xstream_self\n"); */
+/*         return; */
+/*     } */
+
+/*     ret = ABT_xstream_get_rank(xstream, &rank); */
+/*     if (ret != ABT_SUCCESS) { */
+/*         fprintf(fout_g, "  [ASYNC VOL ERROR] with ABT_xstream_get_rank\n"); */
+/*         return; */
+/*     } */
+
+/*     /1* ret = ABT_xstream_get_cpubind(xstream, &cpuid); *1/ */
+/*     /1* if (ret != ABT_SUCCESS) { *1/ */
+/*     /1*     fprintf(fout_g, "  [ASYNC VOL ERROR] with ABT_xstream_get_cpubind\n"); *1/ */
+/*     /1*     return; *1/ */
+/*     /1* } *1/ */
+/*     /1* fprintf(fout_g, "[E%d] CPU bind: %d\n", rank, cpuid); *1/ */
+
+/*     /1* new_cpuid = (cpuid + 1) % num_xstreams; *1/ */
+/*     /1* fprintf(fout_g, "[E%d] change binding: %d -> %d\n", rank, cpuid, new_cpuid); *1/ */
+
+/*     /1* ret = ABT_xstream_set_cpubind(xstream, new_cpuid); *1/ */
+/*     /1* if (ret != ABT_SUCCESS) { *1/ */
+/*     /1*     fprintf(fout_g, "  [ASYNC VOL ERROR] with ABT_xstream_set_cpubind\n"); *1/ */
+/*     /1*     return; *1/ */
+/*     /1* } *1/ */
+/*     /1* ret = ABT_xstream_get_cpubind(xstream, &cpuid); *1/ */
+/*     /1* if (ret != ABT_SUCCESS) { *1/ */
+/*     /1*     fprintf(fout_g, "  [ASYNC VOL ERROR] with ABT_xstream_get_cpubind\n"); *1/ */
+/*     /1*     return; *1/ */
+/*     /1* } *1/ */
+
+/*     /1* /2* assert(cpuid == new_cpuid); *2/ *1/ */
+/*     /1* fprintf(fout_g, "[E%d] CPU bind: %d\n", rank, cpuid); *1/ */
+
+/*     ret = ABT_xstream_get_affinity(xstream, 0, NULL, &num_cpus); */
+/*     if (ret != ABT_SUCCESS) { */
+/*         fprintf(fout_g, "  [ASYNC VOL ERROR] with ABT_xstream_get_affinity\n"); */
+/*         return; */
+/*     } */
+
+/*     fprintf(fout_g, "[E%d] num_cpus=%d\n", rank, num_cpus); */
+/*     if (num_cpus > 0) { */
+/*         cpuset_size = num_cpus; */
+/*         cpuset = (int *)malloc(cpuset_size * sizeof(int)); */
+/*         /1* assert(cpuset); *1/ */
+
+/*         num_cpus = 0; */
+/*         ret = ABT_xstream_get_affinity(xstream, cpuset_size, cpuset, &num_cpus); */
+/*         if (ret != ABT_SUCCESS) { */
+/*             fprintf(fout_g, "  [ASYNC VOL ERROR] with ABT_xstream_get_affinity\n"); */
+/*             return; */
+/*         } */
+/*         /1* assert(num_cpus == cpuset_size); *1/ */
+/*         print_cpuset(rank, cpuset_size, cpuset); */
+
+/*         free(cpuset); */
+/*     } */
+
+/*     /1* cpuset = (int *)malloc(num_xstreams * sizeof(int)); *1/ */
+/*     /1* /2* assert(cpuset); *2/ *1/ */
+/*     /1* for (i = 0; i < num_xstreams; i++) { *1/ */
+/*     /1*     cpuset[i] = i; *1/ */
+/*     /1* } *1/ */
+/*     /1* ret = ABT_xstream_set_affinity(xstream, num_xstreams, cpuset); *1/ */
+/*     /1* if (ret != ABT_SUCCESS) { *1/ */
+/*     /1*     fprintf(fout_g, "  [ASYNC VOL ERROR] with ABT_xstream_set_affinity\n"); *1/ */
+/*     /1*     return; *1/ */
+/*     /1* } *1/ */
+/*     /1* ret = ABT_xstream_get_affinity(xstream, num_xstreams, cpuset, &num_cpus); *1/ */
+/*     /1* if (ret != ABT_SUCCESS) { *1/ */
+/*     /1*     fprintf(fout_g, "  [ASYNC VOL ERROR] with ABT_xstream_get_affinity\n"); *1/ */
+/*     /1*     return; *1/ */
+/*     /1* } *1/ */
+/*     /1* /2* assert(num_cpus == num_xstreams); *2/ *1/ */
+/*     /1* print_cpuset(rank, num_xstreams, cpuset); *1/ */
+/*     /1* free(cpuset); *1/ */
+/* } */
+
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Check whether the application thread is busy issuing HDF5 I/O calls.
+ *
+ * \param[in] time_us Time in us.
+ *
+ * \return \herr_t
+ *
+ * \details This function is a workaround of avoiding synchronous execution due to the HDF5 global 
+ *          mutex. If we start the background thread executing the task as they are created by 
+ *          the application, the backgrond thread will compete with the application thread for 
+ *          acquiring the HDF5 mutex and may effective make everything synchronous. Thus we 
+ *          implemented this "spying" approach by checking the HDF5 global mutex counter value,
+ *          if the value does not increase within a predefined (short) amount of time, then we
+ *          think that the application is likely to move to its non-I/O phase and thus we can start
+ *          the background execution without worrying about the mutex competition.
+ *
+ */
+static int
+check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *acquired)
+{
+    unsigned int attempt_count = 0, new_attempt_count = 0, wait_count = 0;
+
+    if (async_instance_g->delay_time > 0) {
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC ABT DBG] %s delay for %lu us\n", __func__,
+                    async_instance_g->delay_time);
+#endif
+        usleep(async_instance_g->delay_time);
+    }
+
+    while (async_instance_g->pause) {
+        usleep(1000);
+        wait_count++;
+        if (wait_count == 10000) {
+            fprintf(fout_g, "  [ASYNC ABT INFO] async operations are paused for 10 seconds, use "
+                            "H5Fstart/H5Dstart to start execution\n");
+            wait_count = 0;
+        }
+    }
+
+    if (H5TSmutex_get_attempt_count(&attempt_count) < 0) {
+        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_get_attempt_count failed\n", __func__);
+        return -1;
+    }
+
+    if (!async_instance_g->start_abt_push && async_instance_g->ex_delay == false) {
+        while (1) {
+            if (task->async_obj->file_async_obj->attempt_check_cnt % ASYNC_ATTEMPT_CHECK_INTERVAL == 0) {
+                if (async_instance_g->sleep_time > 0)
+                    usleep(async_instance_g->sleep_time);
+
+                if (H5TSmutex_get_attempt_count(&new_attempt_count) < 0) {
+                    fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_get_attempt_count failed\n", __func__);
+                    return -1;
+                }
+
+                if (new_attempt_count <= attempt_count) {
+                    async_instance_g->sleep_time = ASYNC_APP_CHECK_SLEEP_TIME;
+
+#ifdef ENABLE_DBG_MSG
+                    if (async_instance_g &&
+                        (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+                        fprintf(fout_g, "  [ASYNC ABT DBG] %s counter %d/%d, reset wait time to %d \n",
+                                __func__, attempt_count, new_attempt_count, async_instance_g->sleep_time);
+#endif
+                    break;
+                }
+
+                attempt_count = new_attempt_count;
+                task->async_obj->file_async_obj->attempt_check_cnt++;
+                task->async_obj->file_async_obj->attempt_check_cnt %= ASYNC_ATTEMPT_CHECK_INTERVAL;
+            }
+            else
+                break;
+        }
+    }
+
+    wait_count = 0;
+    while (*acquired == false) {
+        if (H5TSmutex_acquire(*mutex_count, acquired) < 0) {
+            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
+            return -1;
+        }
+        if (false == *acquired) {
+#ifdef ENABLE_DBG_MSG
+            if (async_instance_g &&
+                (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+                fprintf(fout_g, "  [ASYNC ABT DBG] %s lock NOT acquired, wait\n", __func__);
+#endif
+        }
+        if (wait_count > 0) {
+            usleep(1000);
+            wait_count++;
+            if (wait_count == 10000) {
+                fprintf(fout_g,
+                        "  [ASYNC ABT INFO] %s unable to acquire HDF5 mutex for 10 seconds, deadlock?\n",
+                        __func__);
+                wait_count = 0;
+            }
+        }
+    }
+
+    return (new_attempt_count > attempt_count ? new_attempt_count : attempt_count);
+}
+
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Check whether the application thread issued HDF5 I/O calls during background task execution.
+ *
+ * \param[in] attempt_count Previous HDF5 mutex counter value
+ * \param[in] func_name     Name of the calling function
+ *
+ * \return \herr_t
+ *
+ * \details This function works with check_app_acquire_mutex(), it detects whether the HDF5 global 
+ *          mutex counter value increased right after a task is executed by the background thread.
+ *          If so, then it is likely that our check period in check_app_acquire_mutex() is too short
+ *          and we executed a task while the application has more HDF5 I/O calls. So we increase the
+ *          check period by a factor of two. On the other hand, if we found the value did not increase
+ *          then we can reduce the checking overhead by setting the check time to zero until next time
+ *          we detect the value is increased.
+ *
+ */
+static void
+check_app_wait(int attempt_count, const char *func_name)
+{
+    unsigned int new_attempt_count, op_count = 1;
+
+    // No need for status check when explicit file/group/dset delay is enabled
+    if (async_instance_g->ex_delay)
+        return;
+
+    if (H5TSmutex_get_attempt_count(&new_attempt_count) < 0) {
+        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_get_attempt_count failed\n", __func__);
+        return;
+    }
+
+    // If the application thread is waiting, double the current sleep time for next status check
+    if (attempt_count > 0 && new_attempt_count > attempt_count + op_count) {
+        if (async_instance_g->sleep_time < ASYNC_APP_CHECK_SLEEP_TIME_MAX) {
+            if (async_instance_g->sleep_time == 0)
+                async_instance_g->sleep_time = ASYNC_APP_CHECK_SLEEP_TIME;
+            else
+                async_instance_g->sleep_time *= 2;
+#ifdef ENABLE_DBG_MSG
+            if (async_instance_g &&
+                (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+                fprintf(fout_g, "  [ASYNC ABT DBG] %s counter %d/%d, increase wait time to %d \n", func_name,
+                        attempt_count, new_attempt_count, async_instance_g->sleep_time);
+#endif
+        }
+    }
+    else if (new_attempt_count <= attempt_count + op_count &&
+             async_instance_g->sleep_time > ASYNC_APP_CHECK_SLEEP_TIME) {
+        async_instance_g->sleep_time = 0;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC ABT DBG] %s counter %d/%d, reset wait time to %d \n", func_name,
+                    attempt_count, new_attempt_count, async_instance_g->sleep_time);
+#endif
+    }
+    return;
+}
+
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Check if a task's creation task is valid
+ *
+ * \param[in] parent_obj Async object
+ *
+ * \return \herr_t
+ *
+ * \details Check whether a task's parent task is successful or not.
+ *
+ */
+static int
+check_parent_task(H5VL_async_t *parent_obj)
+{
+    int ret_val = 0;
+    if (parent_obj->create_task && parent_obj->create_task->err_stack != 0)
+        return -1;
+
+    return ret_val;
+}
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Execute all dependent parent tasks
+ *
+ * \param[in] task Async task
+ *
+ * \details Execute all the parent tasks of a given tasks recursively.
+ *
+ */
 static void
 execute_parent_task_recursive(async_task_t *task)
 {
@@ -2203,6 +3161,19 @@ execute_parent_task_recursive(async_task_t *task)
 #endif
 }
 
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Realize a future object
+ *
+ * \param[in] _future_object Future object
+ * \param[in] actual_object_id Realized future object
+ *
+ * \return \herr_t
+ *
+ * \details Execute all the parent tasks of a given tasks recursively.
+ *
+ */
 static herr_t
 async_realize_future_cb(void *_future_object, hid_t *actual_object_id)
 {
@@ -2220,6 +3191,18 @@ async_realize_future_cb(void *_future_object, hid_t *actual_object_id)
     return (0);
 }
 
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Free a future object.
+ *
+ * \param[in] _future_object Future object
+ *
+ * \return \herr_t
+ *
+ * \details Free a future object.
+ *
+ */
 static herr_t
 async_discard_future_cb(void *future_object)
 {
@@ -2230,6 +3213,19 @@ async_discard_future_cb(void *future_object)
     return (0);
 }
 
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Duplicate an HDF5 location parameter object
+ *
+ * \param[in] dest Duplicated location parameters
+ * \param[in] loc_params Exist location parameters
+ *
+ * \return \herr_t
+ *
+ * \details Duplicate an HDF5 location parameter object
+ *
+ */
 static void
 dup_loc_param(H5VL_loc_params_t *dest, H5VL_loc_params_t const *loc_params)
 {
@@ -2258,6 +3254,18 @@ dup_loc_param(H5VL_loc_params_t *dest, H5VL_loc_params_t const *loc_params)
     }
 }
 
+/**
+ * \ingroup ASYNC
+ *
+ * \brief Free an HDF5 location parameter object
+ *
+ * \param[in] dest Duplicated location parameters
+ *
+ * \return \herr_t
+ *
+ * \details Free an HDF5 location parameter object
+ *
+ */
 static void
 free_loc_param(H5VL_loc_params_t *loc_params)
 {
@@ -3874,535 +4882,7 @@ free_native_object_optional_args(async_object_optional_args_t *args)
     }
 }
 
-herr_t
-H5VL_async_set_request_dep(void *request, void *parent_request)
-{
-    herr_t        ret_val;
-    H5VL_async_t *req, *parent_req;
-    async_task_t *task, *parent_task;
 
-    assert(request);
-    assert(parent_request);
-
-    req        = (H5VL_async_t *)request;
-    parent_req = (H5VL_async_t *)parent_request;
-
-    assert(req->my_task);
-    assert(parent_req->my_task);
-
-    task        = req->my_task;
-    parent_task = parent_req->my_task;
-
-    assert(task->magic == TASK_MAGIC);
-    assert(parent_task->magic == TASK_MAGIC);
-
-    /* ABT_mutex_lock(task->task_mutex); */
-
-    ret_val = add_to_dep_task(task, parent_task);
-    if (ret_val < 0) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s calloc failed\n", __func__);
-        return -1;
-    }
-
-    /* ABT_mutex_unlock(task->task_mutex); */
-
-    return ret_val;
-}
-
-herr_t
-H5VL_async_object_wait(H5VL_async_t *async_obj)
-{
-    async_task_t *task_iter;
-    hbool_t       acquired    = false;
-    unsigned int  mutex_count = 1;
-    hbool_t       tmp         = async_instance_g->start_abt_push;
-
-    async_instance_g->start_abt_push = true;
-
-    if (get_n_running_task_in_queue_obj(async_obj) == 0)
-        push_task_to_abt_pool(&async_instance_g->qhead, *async_obj->pool_ptr);
-
-    if (H5TSmutex_release(&mutex_count) < 0)
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__);
-
-    // Check for all tasks on this dset of a file
-
-    if (ABT_mutex_lock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        return -1;
-    }
-    DL_FOREACH2(async_obj->file_task_list_head, task_iter, file_list_next)
-    {
-        /* if (ABT_mutex_lock(async_obj->obj_mutex) != ABT_SUCCESS) { */
-        /*     fprintf(fout_g,"  [ASYNC VOL ERROR] %s ABT_mutex_lock failed\n", __func__); */
-        /*     return -1; */
-        /* } */
-
-        if (task_iter->async_obj == async_obj) {
-            if (task_iter->is_done != 1) {
-                ABT_eventual_wait(task_iter->eventual, NULL);
-            }
-        }
-        /* if (ABT_mutex_unlock(async_obj->obj_mutex) != ABT_SUCCESS) */
-        /*     fprintf(fout_g,"  [ASYNC VOL ERROR] %s ABT_mutex_lock failed\n", __func__); */
-    }
-
-    if (ABT_mutex_unlock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        return -1;
-    }
-    while (false == acquired) {
-        if (H5TSmutex_acquire(mutex_count, &acquired) < 0)
-            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_acquire\n", __func__);
-    }
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] %s setting start_abt_push false!\n", __func__);
-#endif
-    async_instance_g->start_abt_push = tmp;
-
-    return 0;
-}
-
-herr_t
-H5VL_async_dataset_wait(H5VL_async_t *async_obj)
-{
-    async_task_t *task_iter;
-    hbool_t       acquired    = false;
-    unsigned int  mutex_count = 1;
-    hbool_t       tmp         = async_instance_g->start_abt_push;
-
-    async_instance_g->start_abt_push = true;
-
-    if (get_n_running_task_in_queue_obj(async_obj) == 0)
-        push_task_to_abt_pool(&async_instance_g->qhead, *async_obj->pool_ptr);
-
-    if (H5TSmutex_release(&mutex_count) < 0)
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__);
-
-    // Check for all tasks on this dset of a file
-
-    if (ABT_mutex_lock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        return -1;
-    }
-    DL_FOREACH2(async_obj->file_task_list_head, task_iter, file_list_next)
-    {
-        /* if (ABT_mutex_lock(async_obj->obj_mutex) != ABT_SUCCESS) { */
-        /*     fprintf(fout_g,"  [ASYNC VOL ERROR] %s ABT_mutex_lock failed\n", __func__); */
-        /*     return -1; */
-        /* } */
-
-        if (task_iter->async_obj == async_obj) {
-            if (task_iter->is_done != 1) {
-                ABT_eventual_wait(task_iter->eventual, NULL);
-            }
-        }
-        /* if (ABT_mutex_unlock(async_obj->obj_mutex) != ABT_SUCCESS) */
-        /*     fprintf(fout_g,"  [ASYNC VOL ERROR] %s ABT_mutex_lock failed\n", __func__); */
-    }
-
-    if (ABT_mutex_unlock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        return -1;
-    }
-    while (false == acquired) {
-        if (H5TSmutex_acquire(mutex_count, &acquired) < 0)
-            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_acquire\n", __func__);
-    }
-
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] %s setting start_abt_push false!\n", __func__);
-#endif
-    async_instance_g->start_abt_push = tmp;
-
-    return 0;
-}
-
-herr_t
-H5VL_async_file_wait(H5VL_async_t *async_obj)
-{
-    async_task_t *task_iter;
-    hbool_t       acquired    = false;
-    unsigned int  mutex_count = 1;
-    hbool_t       tmp         = async_instance_g->start_abt_push;
-
-    async_instance_g->start_abt_push = true;
-
-    if (get_n_running_task_in_queue_obj(async_obj) == 0)
-        push_task_to_abt_pool(&async_instance_g->qhead, *async_obj->pool_ptr);
-
-    if (H5TSmutex_release(&mutex_count) < 0)
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__);
-
-    if (ABT_mutex_lock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        return -1;
-    }
-    // Check for all tasks on this dset of a file
-    DL_FOREACH2(async_obj->file_task_list_head, task_iter, file_list_next)
-    {
-        /* if (ABT_mutex_lock(async_obj->obj_mutex) != ABT_SUCCESS) { */
-        /*     fprintf(fout_g,"  [ASYNC VOL ERROR] %s ABT_mutex_lock failed\n", __func__); */
-        /*     return -1; */
-        /* } */
-
-        if (task_iter->is_done != 1) {
-            ABT_eventual_wait(task_iter->eventual, NULL);
-        }
-        /* if (NULL != task_iter->abt_thread) { */
-        /* if (NULL != task_iter->abt_task) { */
-        /* ABT_thread_get_state(task_iter->abt_thread, &thread_state); */
-        /* if (ABT_THREAD_STATE_TERMINATED != thread_state) */
-        /* ABT_eventual_wait(task_iter->eventual, NULL); */
-        /* ABT_task_get_state (task_iter->abt_task, &state); */
-        /* if (ABT_TASK_STATE_TERMINATED != state) */
-        /*     ABT_eventual_wait(task_iter->eventual, NULL); */
-        /* } */
-        /* if (ABT_mutex_unlock(async_obj->obj_mutex) != ABT_SUCCESS) */
-        /*     fprintf(fout_g,"  [ASYNC VOL ERROR] %s ABT_mutex_lock failed\n", __func__); */
-    }
-
-    if (ABT_mutex_unlock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        return -1;
-    }
-
-    while (false == acquired) {
-        if (H5TSmutex_acquire(mutex_count, &acquired) < 0)
-            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_acquire\n", __func__);
-    }
-
-    async_instance_g->start_abt_push = tmp;
-    return 0;
-}
-
-herr_t
-H5VL_async_start()
-{
-    assert(async_instance_g);
-    async_instance_g->start_abt_push = true;
-    async_instance_g->pause          = false;
-    if (async_instance_g && NULL != async_instance_g->qhead.queue)
-        push_task_to_abt_pool(&async_instance_g->qhead, async_instance_g->pool);
-    return 0;
-}
-
-herr_t
-H5VL_async_pause()
-{
-    assert(async_instance_g);
-    async_instance_g->start_abt_push = false;
-    async_instance_g->pause          = true;
-    return 0;
-}
-
-int
-H5VL_async_set_delay_time(uint64_t time_us)
-{
-    async_instance_g->delay_time = time_us;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s setting delay time to %lu us\n", __func__, time_us);
-#endif
-    return 0;
-}
-
-/* double get_elapsed_time(clock_t *tstart, clock_t *tend) */
-/* { */
-/*     return (double)(((tend-tstart) / CLOCKS_PER_SEC *1000000000LL ; */
-/* } */
-
-/* static void print_cpuset(int rank, int cpuset_size, int *cpuset) */
-/* { */
-/*     char *cpuset_str = NULL; */
-/*     int i; */
-/*     size_t pos = 0, len; */
-
-/*     cpuset_str = (char *)calloc(cpuset_size * 5, sizeof(char)); */
-/*     assert(cpuset_str); */
-
-/*     for (i = 0; i < cpuset_size; i++) { */
-/*         if (i) { */
-/*             sprintf(&cpuset_str[pos], ",%d", cpuset[i]); */
-/*         } else { */
-/*             sprintf(&cpuset_str[pos], "%d", cpuset[i]); */
-/*         } */
-/*         len = strlen(&cpuset_str[pos]); */
-/*         pos += len; */
-/*     } */
-/*     fprintf(fout_g, "[E%d] CPU set (%d): {%s}\n", rank, cpuset_size, cpuset_str); */
-
-/*     free(cpuset_str); */
-/* } */
-
-/* static void async_set_affinity() */
-/* { */
-/*     int ret, j; */
-/*     cpu_set_t cpuset; */
-
-/*     CPU_ZERO(&cpuset); */
-/*     for (j = 0; j < 2; j++) */
-/*         CPU_SET(j, &cpuset); */
-/*     ret = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset); */
-/*     if (ret != 0) { */
-/*         fprintf(fout_g, "  [ASYNC VOL ERROR] with pthread_setaffinity_np: %d\n", ret); */
-/*         return; */
-/*     } */
-/* } */
-
-/* static void async_get_affinity() */
-/* { */
-/*     int ret, j; */
-/*     cpu_set_t cpuset; */
-/*     int cpu; */
-
-/*     cpu = sched_getcpu(); */
-/*     fprintf(fout_g, "Argobots thread is running on CPU %d\n", cpu); */
-
-/*     /1* ret = pthread_getaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset); *1/ */
-/*     /1* if (ret != 0) { *1/ */
-/*     /1*     fprintf(fout_g, "  [ASYNC VOL ERROR] with pthread_getaffinity_np: %d\n", ret); *1/ */
-/*     /1*     return; *1/ */
-/*     /1* } *1/ */
-/*     /1* fprintf(fout_g, "Set returned by pthread_getaffinity_np() contained:\n"); *1/ */
-/*     /1* for (j = 0; j < CPU_SETSIZE; j++) *1/ */
-/*     /1*     if (CPU_ISSET(j, &cpuset)) *1/ */
-/*     /1*         fprintf(fout_g, "    CPU %d\n", j); *1/ */
-/* } */
-
-/* static void test_affinity() */
-/* { */
-/*     ABT_xstream xstream; */
-/*     int i, rank, ret; */
-/*     int cpuid = -1, new_cpuid; */
-/*     int cpuset_size, num_cpus = -1; */
-/*     int *cpuset = NULL; */
-/*     int num_xstreams = 1; */
-
-/*     ret = ABT_xstream_self(&xstream); */
-/*     if (ret != ABT_SUCCESS) { */
-/*         fprintf(fout_g, "  [ASYNC VOL ERROR] with ABT_xstream_self\n"); */
-/*         return; */
-/*     } */
-
-/*     ret = ABT_xstream_get_rank(xstream, &rank); */
-/*     if (ret != ABT_SUCCESS) { */
-/*         fprintf(fout_g, "  [ASYNC VOL ERROR] with ABT_xstream_get_rank\n"); */
-/*         return; */
-/*     } */
-
-/*     /1* ret = ABT_xstream_get_cpubind(xstream, &cpuid); *1/ */
-/*     /1* if (ret != ABT_SUCCESS) { *1/ */
-/*     /1*     fprintf(fout_g, "  [ASYNC VOL ERROR] with ABT_xstream_get_cpubind\n"); *1/ */
-/*     /1*     return; *1/ */
-/*     /1* } *1/ */
-/*     /1* fprintf(fout_g, "[E%d] CPU bind: %d\n", rank, cpuid); *1/ */
-
-/*     /1* new_cpuid = (cpuid + 1) % num_xstreams; *1/ */
-/*     /1* fprintf(fout_g, "[E%d] change binding: %d -> %d\n", rank, cpuid, new_cpuid); *1/ */
-
-/*     /1* ret = ABT_xstream_set_cpubind(xstream, new_cpuid); *1/ */
-/*     /1* if (ret != ABT_SUCCESS) { *1/ */
-/*     /1*     fprintf(fout_g, "  [ASYNC VOL ERROR] with ABT_xstream_set_cpubind\n"); *1/ */
-/*     /1*     return; *1/ */
-/*     /1* } *1/ */
-/*     /1* ret = ABT_xstream_get_cpubind(xstream, &cpuid); *1/ */
-/*     /1* if (ret != ABT_SUCCESS) { *1/ */
-/*     /1*     fprintf(fout_g, "  [ASYNC VOL ERROR] with ABT_xstream_get_cpubind\n"); *1/ */
-/*     /1*     return; *1/ */
-/*     /1* } *1/ */
-
-/*     /1* /2* assert(cpuid == new_cpuid); *2/ *1/ */
-/*     /1* fprintf(fout_g, "[E%d] CPU bind: %d\n", rank, cpuid); *1/ */
-
-/*     ret = ABT_xstream_get_affinity(xstream, 0, NULL, &num_cpus); */
-/*     if (ret != ABT_SUCCESS) { */
-/*         fprintf(fout_g, "  [ASYNC VOL ERROR] with ABT_xstream_get_affinity\n"); */
-/*         return; */
-/*     } */
-
-/*     fprintf(fout_g, "[E%d] num_cpus=%d\n", rank, num_cpus); */
-/*     if (num_cpus > 0) { */
-/*         cpuset_size = num_cpus; */
-/*         cpuset = (int *)malloc(cpuset_size * sizeof(int)); */
-/*         /1* assert(cpuset); *1/ */
-
-/*         num_cpus = 0; */
-/*         ret = ABT_xstream_get_affinity(xstream, cpuset_size, cpuset, &num_cpus); */
-/*         if (ret != ABT_SUCCESS) { */
-/*             fprintf(fout_g, "  [ASYNC VOL ERROR] with ABT_xstream_get_affinity\n"); */
-/*             return; */
-/*         } */
-/*         /1* assert(num_cpus == cpuset_size); *1/ */
-/*         print_cpuset(rank, cpuset_size, cpuset); */
-
-/*         free(cpuset); */
-/*     } */
-
-/*     /1* cpuset = (int *)malloc(num_xstreams * sizeof(int)); *1/ */
-/*     /1* /2* assert(cpuset); *2/ *1/ */
-/*     /1* for (i = 0; i < num_xstreams; i++) { *1/ */
-/*     /1*     cpuset[i] = i; *1/ */
-/*     /1* } *1/ */
-/*     /1* ret = ABT_xstream_set_affinity(xstream, num_xstreams, cpuset); *1/ */
-/*     /1* if (ret != ABT_SUCCESS) { *1/ */
-/*     /1*     fprintf(fout_g, "  [ASYNC VOL ERROR] with ABT_xstream_set_affinity\n"); *1/ */
-/*     /1*     return; *1/ */
-/*     /1* } *1/ */
-/*     /1* ret = ABT_xstream_get_affinity(xstream, num_xstreams, cpuset, &num_cpus); *1/ */
-/*     /1* if (ret != ABT_SUCCESS) { *1/ */
-/*     /1*     fprintf(fout_g, "  [ASYNC VOL ERROR] with ABT_xstream_get_affinity\n"); *1/ */
-/*     /1*     return; *1/ */
-/*     /1* } *1/ */
-/*     /1* /2* assert(num_cpus == num_xstreams); *2/ *1/ */
-/*     /1* print_cpuset(rank, num_xstreams, cpuset); *1/ */
-/*     /1* free(cpuset); *1/ */
-/* } */
-
-static int
-check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *acquired)
-{
-    unsigned int attempt_count = 0, new_attempt_count = 0, wait_count = 0;
-
-    if (async_instance_g->delay_time > 0) {
-#ifdef ENABLE_DBG_MSG
-        if (async_instance_g &&
-            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s delay for %lu us\n", __func__,
-                    async_instance_g->delay_time);
-#endif
-        usleep(async_instance_g->delay_time);
-    }
-
-    while (async_instance_g->pause) {
-        usleep(1000);
-        wait_count++;
-        if (wait_count == 10000) {
-            fprintf(fout_g, "  [ASYNC ABT INFO] async operations are paused for 10 seconds, use "
-                            "H5Fstart/H5Dstart to start execution\n");
-            wait_count = 0;
-        }
-    }
-
-    if (H5TSmutex_get_attempt_count(&attempt_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_get_attempt_count failed\n", __func__);
-        return -1;
-    }
-
-    if (!async_instance_g->start_abt_push && async_instance_g->ex_delay == false) {
-        while (1) {
-            if (task->async_obj->file_async_obj->attempt_check_cnt % ASYNC_ATTEMPT_CHECK_INTERVAL == 0) {
-                if (async_instance_g->sleep_time > 0)
-                    usleep(async_instance_g->sleep_time);
-
-                if (H5TSmutex_get_attempt_count(&new_attempt_count) < 0) {
-                    fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_get_attempt_count failed\n", __func__);
-                    return -1;
-                }
-
-                if (new_attempt_count <= attempt_count) {
-                    async_instance_g->sleep_time = ASYNC_APP_CHECK_SLEEP_TIME;
-
-#ifdef ENABLE_DBG_MSG
-                    if (async_instance_g &&
-                        (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-                        fprintf(fout_g, "  [ASYNC ABT DBG] %s counter %d/%d, reset wait time to %d \n",
-                                __func__, attempt_count, new_attempt_count, async_instance_g->sleep_time);
-#endif
-                    break;
-                }
-
-                attempt_count = new_attempt_count;
-                task->async_obj->file_async_obj->attempt_check_cnt++;
-                task->async_obj->file_async_obj->attempt_check_cnt %= ASYNC_ATTEMPT_CHECK_INTERVAL;
-            }
-            else
-                break;
-        }
-    }
-
-    wait_count = 0;
-    while (*acquired == false) {
-        if (H5TSmutex_acquire(*mutex_count, acquired) < 0) {
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
-            return -1;
-        }
-        if (false == *acquired) {
-#ifdef ENABLE_DBG_MSG
-            if (async_instance_g &&
-                (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-                fprintf(fout_g, "  [ASYNC ABT DBG] %s lock NOT acquired, wait\n", __func__);
-#endif
-        }
-        if (wait_count > 0) {
-            usleep(1000);
-            wait_count++;
-            if (wait_count == 10000) {
-                fprintf(fout_g,
-                        "  [ASYNC ABT INFO] %s unable to acquire HDF5 mutex for 10 seconds, deadlock?\n",
-                        __func__);
-                wait_count = 0;
-            }
-        }
-    }
-
-    return (new_attempt_count > attempt_count ? new_attempt_count : attempt_count);
-}
-
-static void
-check_app_wait(int attempt_count, const char *func_name)
-{
-    unsigned int new_attempt_count, op_count = 1;
-
-    // No need for status check when explicit file/group/dset delay is enabled
-    if (async_instance_g->ex_delay)
-        return;
-
-    if (H5TSmutex_get_attempt_count(&new_attempt_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_get_attempt_count failed\n", __func__);
-        return;
-    }
-
-    // If the application thread is waiting, double the current sleep time for next status check
-    if (attempt_count > 0 && new_attempt_count > attempt_count + op_count) {
-        if (async_instance_g->sleep_time < ASYNC_APP_CHECK_SLEEP_TIME_MAX) {
-            if (async_instance_g->sleep_time == 0)
-                async_instance_g->sleep_time = ASYNC_APP_CHECK_SLEEP_TIME;
-            else
-                async_instance_g->sleep_time *= 2;
-#ifdef ENABLE_DBG_MSG
-            if (async_instance_g &&
-                (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-                fprintf(fout_g, "  [ASYNC ABT DBG] %s counter %d/%d, increase wait time to %d \n", func_name,
-                        attempt_count, new_attempt_count, async_instance_g->sleep_time);
-#endif
-        }
-    }
-    else if (new_attempt_count <= attempt_count + op_count &&
-             async_instance_g->sleep_time > ASYNC_APP_CHECK_SLEEP_TIME) {
-        async_instance_g->sleep_time = 0;
-#ifdef ENABLE_DBG_MSG
-        if (async_instance_g &&
-            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s counter %d/%d, reset wait time to %d \n", func_name,
-                    attempt_count, new_attempt_count, async_instance_g->sleep_time);
-#endif
-    }
-    return;
-}
-
-static int
-check_parent_task(H5VL_async_t *parent_obj)
-{
-    int ret_val = 0;
-    if (parent_obj->create_task && parent_obj->create_task->err_stack != 0)
-        return -1;
-
-    return ret_val;
-}
 
 static void
 async_attr_create_fn(void *foo)
