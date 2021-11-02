@@ -4887,7 +4887,8 @@ async_attr_create_fn(void *foo)
 {
     void *                    obj;
     hbool_t                   acquired    = false;
-    unsigned int              mutex_count = 1, attempt_count = 0;
+    unsigned int              mutex_count = 1;
+    int                       attempt_count = 0;
     int                       is_lock               = 0;
     hbool_t                   is_lib_state_restored = false;
     ABT_pool *                pool_ptr;
@@ -5272,7 +5273,8 @@ async_attr_open_fn(void *foo)
 {
     void *                  obj;
     hbool_t                 acquired    = false;
-    unsigned int            mutex_count = 1, attempt_count = 0;
+    unsigned int            mutex_count = 1;
+    int                     attempt_count = 0;
     int                     is_lock               = 0;
     hbool_t                 is_lib_state_restored = false;
     ABT_pool *              pool_ptr;
@@ -5629,7 +5631,8 @@ static void
 async_attr_read_fn(void *foo)
 {
     hbool_t                 acquired    = false;
-    unsigned int            mutex_count = 1, attempt_count = 0;
+    unsigned int            mutex_count = 1;
+    int                     attempt_count = 0;
     int                     is_lock               = 0;
     hbool_t                 is_lib_state_restored = false;
     ABT_pool *              pool_ptr;
@@ -5958,7 +5961,8 @@ static void
 async_attr_write_fn(void *foo)
 {
     hbool_t                  acquired    = false;
-    unsigned int             mutex_count = 1, attempt_count = 0;
+    unsigned int             mutex_count = 1;
+    int                      attempt_count = 0;
     int                      is_lock               = 0;
     hbool_t                  is_lib_state_restored = false;
     ABT_pool *               pool_ptr;
@@ -6313,7 +6317,8 @@ static void
 async_attr_get_fn(void *foo)
 {
     hbool_t                acquired    = false;
-    unsigned int           mutex_count = 1, attempt_count = 0;
+    unsigned int           mutex_count = 1;
+    int                    attempt_count = 0;
     int                    is_lock               = 0;
     hbool_t                is_lib_state_restored = false;
     ABT_pool *             pool_ptr;
@@ -6639,7 +6644,8 @@ static void
 async_attr_specific_fn(void *foo)
 {
     hbool_t                     acquired    = false;
-    unsigned int                mutex_count = 1, attempt_count = 0;
+    unsigned int                mutex_count = 1;
+    int                         attempt_count = 0;
     int                         is_lock               = 0;
     hbool_t                     is_lib_state_restored = false;
     ABT_pool *                  pool_ptr;
@@ -6981,7 +6987,8 @@ static void
 async_attr_optional_fn(void *foo)
 {
     hbool_t                     acquired    = false;
-    unsigned int                mutex_count = 1, attempt_count = 0;
+    unsigned int                mutex_count = 1;
+    int                         attempt_count = 0;
     int                         is_lock               = 0;
     hbool_t                     is_lib_state_restored = false;
     ABT_pool *                  pool_ptr;
@@ -7304,7 +7311,8 @@ static void
 async_attr_close_fn(void *foo)
 {
     hbool_t                  acquired    = false;
-    unsigned int             mutex_count = 1, attempt_count = 0;
+    unsigned int             mutex_count = 1;
+    int                      attempt_count = 0;
     int                      is_lock               = 0;
     hbool_t                  is_lib_state_restored = false;
     ABT_pool *               pool_ptr;
@@ -7634,7 +7642,8 @@ async_dataset_create_fn(void *foo)
 {
     void *                       obj;
     hbool_t                      acquired    = false;
-    unsigned int                 mutex_count = 1, attempt_count = 0;
+    unsigned int                 mutex_count = 1;
+    int                          attempt_count = 0;
     int                          is_lock               = 0;
     hbool_t                      is_lib_state_restored = false;
     ABT_pool *                   pool_ptr;
@@ -8027,7 +8036,8 @@ async_dataset_open_fn(void *foo)
 {
     void *                     obj;
     hbool_t                    acquired    = false;
-    unsigned int               mutex_count = 1, attempt_count = 0;
+    unsigned int               mutex_count = 1;
+    int                        attempt_count = 0;
     int                        is_lock               = 0;
     hbool_t                    is_lib_state_restored = false;
     ABT_pool *                 pool_ptr;
@@ -8387,7 +8397,8 @@ static void
 async_dataset_read_fn(void *foo)
 {
     hbool_t                    acquired    = false;
-    unsigned int               mutex_count = 1, attempt_count = 0;
+    unsigned int               mutex_count = 1;
+    int                        attempt_count = 0;
     int                        is_lock               = 0;
     hbool_t                    is_lib_state_restored = false;
     ABT_pool *                 pool_ptr;
@@ -8725,7 +8736,8 @@ static void
 async_dataset_write_fn(void *foo)
 {
     hbool_t                     acquired    = false;
-    unsigned int                mutex_count = 1, attempt_count = 0;
+    unsigned int                mutex_count = 1;
+    int                         attempt_count = 0;
     int                         is_lock = 0, count = 0;
     hbool_t                     is_lib_state_restored = false;
     ABT_pool *                  pool_ptr;
@@ -9176,7 +9188,8 @@ static void
 async_dataset_get_fn(void *foo)
 {
     hbool_t                   acquired    = false;
-    unsigned int              mutex_count = 1, attempt_count = 0;
+    unsigned int              mutex_count = 1;
+    int                       attempt_count = 0;
     int                       is_lock               = 0;
     hbool_t                   is_lib_state_restored = false;
     ABT_pool *                pool_ptr;
@@ -9505,7 +9518,8 @@ static void
 async_dataset_specific_fn(void *foo)
 {
     hbool_t                        acquired    = false;
-    unsigned int                   mutex_count = 1, attempt_count = 0;
+    unsigned int                   mutex_count = 1;
+    int                            attempt_count = 0;
     int                            is_lock               = 0;
     hbool_t                        is_lib_state_restored = false;
     ABT_pool *                     pool_ptr;
@@ -9831,7 +9845,8 @@ static void
 async_dataset_optional_fn(void *foo)
 {
     hbool_t                        acquired    = false;
-    unsigned int                   mutex_count = 1, attempt_count = 0;
+    unsigned int                   mutex_count = 1;
+    int                            attempt_count = 0;
     int                            is_lock               = 0;
     hbool_t                        is_lib_state_restored = false;
     ABT_pool *                     pool_ptr;
@@ -10154,7 +10169,8 @@ static void
 async_dataset_close_fn(void *foo)
 {
     hbool_t                     acquired    = false;
-    unsigned int                mutex_count = 1, attempt_count = 0;
+    unsigned int                mutex_count = 1;
+    int                         attempt_count = 0;
     int                         is_lock               = 0;
     hbool_t                     is_lib_state_restored = false;
     ABT_pool *                  pool_ptr;
@@ -10489,7 +10505,8 @@ static void
 async_datatype_commit_fn(void *foo)
 {
     hbool_t                       acquired    = false;
-    unsigned int                  mutex_count = 1, attempt_count = 0;
+    unsigned int                  mutex_count = 1;
+    int                           attempt_count = 0;
     int                           is_lock               = 0;
     hbool_t                       is_lib_state_restored = false;
     ABT_pool *                    pool_ptr;
@@ -10861,7 +10878,8 @@ async_datatype_open_fn(void *foo)
 {
     void *                      obj;
     hbool_t                     acquired    = false;
-    unsigned int                mutex_count = 1, attempt_count = 0;
+    unsigned int                mutex_count = 1;
+    int                         attempt_count = 0;
     int                         is_lock               = 0;
     hbool_t                     is_lib_state_restored = false;
     ABT_pool *                  pool_ptr;
@@ -11218,7 +11236,8 @@ static void
 async_datatype_get_fn(void *foo)
 {
     hbool_t                    acquired    = false;
-    unsigned int               mutex_count = 1, attempt_count = 0;
+    unsigned int               mutex_count = 1;
+    int                        attempt_count = 0;
     int                        is_lock               = 0;
     hbool_t                    is_lib_state_restored = false;
     ABT_pool *                 pool_ptr;
@@ -11544,7 +11563,8 @@ static void
 async_datatype_specific_fn(void *foo)
 {
     hbool_t                         acquired    = false;
-    unsigned int                    mutex_count = 1, attempt_count = 0;
+    unsigned int                    mutex_count = 1;
+    int                             attempt_count = 0;
     int                             is_lock               = 0;
     hbool_t                         is_lib_state_restored = false;
     ABT_pool *                      pool_ptr;
@@ -11868,7 +11888,8 @@ static void
 async_datatype_optional_fn(void *foo)
 {
     hbool_t                         acquired    = false;
-    unsigned int                    mutex_count = 1, attempt_count = 0;
+    unsigned int                    mutex_count = 1;
+    int                             attempt_count = 0;
     int                             is_lock               = 0;
     hbool_t                         is_lib_state_restored = false;
     ABT_pool *                      pool_ptr;
@@ -12192,7 +12213,8 @@ static void
 async_datatype_close_fn(void *foo)
 {
     hbool_t                      acquired    = false;
-    unsigned int                 mutex_count = 1, attempt_count = 0;
+    unsigned int                 mutex_count = 1;
+    int                          attempt_count = 0;
     int                          is_lock               = 0;
     hbool_t                      is_lib_state_restored = false;
     ABT_pool *                   pool_ptr;
@@ -12520,7 +12542,8 @@ async_file_create_fn(void *foo)
 {
     void *                    obj;
     hbool_t                   acquired    = false;
-    unsigned int              mutex_count = 1, attempt_count = 0;
+    unsigned int              mutex_count = 1;
+    int                       attempt_count = 0;
     int                       is_lock               = 0;
     hbool_t                   is_lib_state_restored = false;
     ABT_pool *                pool_ptr;
@@ -12872,7 +12895,8 @@ async_file_open_fn(void *foo)
 {
     void *                  obj;
     hbool_t                 acquired    = false;
-    unsigned int            mutex_count = 1, attempt_count = 0;
+    unsigned int            mutex_count = 1;
+    int                     attempt_count = 0;
     int                     is_lock               = 0;
     hbool_t                 is_lib_state_restored = false;
     ABT_pool *              pool_ptr;
@@ -13223,7 +13247,8 @@ static void
 async_file_get_fn(void *foo)
 {
     hbool_t                acquired    = false;
-    unsigned int           mutex_count = 1, attempt_count = 0;
+    unsigned int           mutex_count = 1;
+    int                    attempt_count = 0;
     int                    is_lock               = 0;
     hbool_t                is_lib_state_restored = false;
     ABT_pool *             pool_ptr;
@@ -13549,7 +13574,8 @@ static void
 async_file_specific_fn(void *foo)
 {
     hbool_t                     acquired    = false;
-    unsigned int                mutex_count = 1, attempt_count = 0;
+    unsigned int                mutex_count = 1;
+    int                         attempt_count = 0;
     int                         is_lock               = 0;
     hbool_t                     is_lib_state_restored = false;
     ABT_pool *                  pool_ptr;
@@ -13874,7 +13900,8 @@ static void
 async_file_optional_fn(void *foo)
 {
     hbool_t                     acquired    = false;
-    unsigned int                mutex_count = 1, attempt_count = 0;
+    unsigned int                mutex_count = 1;
+    int                         attempt_count = 0;
     int                         is_lock               = 0;
     hbool_t                     is_lib_state_restored = false;
     ABT_pool *                  pool_ptr;
@@ -14196,7 +14223,8 @@ static void
 async_file_close_fn(void *foo)
 {
     hbool_t                  acquired    = false;
-    unsigned int             mutex_count = 1, attempt_count = 0;
+    unsigned int             mutex_count = 1;
+    int                      attempt_count = 0;
     int                      is_lock               = 0;
     hbool_t                  is_lib_state_restored = false;
     ABT_pool *               pool_ptr;
@@ -14564,7 +14592,8 @@ async_group_create_fn(void *foo)
 {
     void *                     obj;
     hbool_t                    acquired    = false;
-    unsigned int               mutex_count = 1, attempt_count = 0;
+    unsigned int               mutex_count = 1;
+    int                        attempt_count = 0;
     int                        is_lock               = 0;
     hbool_t                    is_lib_state_restored = false;
     ABT_pool *                 pool_ptr;
@@ -14942,7 +14971,8 @@ async_group_open_fn(void *foo)
 {
     void *                   obj;
     hbool_t                  acquired    = false;
-    unsigned int             mutex_count = 1, attempt_count = 0;
+    unsigned int             mutex_count = 1;
+    int                      attempt_count = 0;
     int                      is_lock               = 0;
     hbool_t                  is_lib_state_restored = false;
     ABT_pool *               pool_ptr;
@@ -15299,7 +15329,8 @@ static void
 async_group_get_fn(void *foo)
 {
     hbool_t                 acquired    = false;
-    unsigned int            mutex_count = 1, attempt_count = 0;
+    unsigned int            mutex_count = 1;
+    int                     attempt_count = 0;
     int                     is_lock               = 0;
     hbool_t                 is_lib_state_restored = false;
     ABT_pool *              pool_ptr;
@@ -15628,7 +15659,8 @@ static void
 async_group_specific_fn(void *foo)
 {
     hbool_t                      acquired    = false;
-    unsigned int                 mutex_count = 1, attempt_count = 0;
+    unsigned int                 mutex_count = 1;
+    int                          attempt_count = 0;
     int                          is_lock               = 0;
     hbool_t                      is_lib_state_restored = false;
     ABT_pool *                   pool_ptr;
@@ -15951,7 +15983,8 @@ static void
 async_group_optional_fn(void *foo)
 {
     hbool_t                      acquired    = false;
-    unsigned int                 mutex_count = 1, attempt_count = 0;
+    unsigned int                 mutex_count = 1;
+    int                          attempt_count = 0;
     int                          is_lock               = 0;
     hbool_t                      is_lib_state_restored = false;
     ABT_pool *                   pool_ptr;
@@ -16274,7 +16307,8 @@ static void
 async_group_close_fn(void *foo)
 {
     hbool_t                   acquired    = false;
-    unsigned int              mutex_count = 1, attempt_count = 0;
+    unsigned int              mutex_count = 1;
+    int                       attempt_count = 0;
     int                       is_lock               = 0;
     hbool_t                   is_lib_state_restored = false;
     ABT_pool *                pool_ptr;
@@ -16619,7 +16653,8 @@ static void
 async_link_create_fn(void *foo)
 {
     hbool_t                   acquired    = false;
-    unsigned int              mutex_count = 1, attempt_count = 0;
+    unsigned int              mutex_count = 1;
+    int                       attempt_count = 0;
     int                       is_lock               = 0;
     hbool_t                   is_lib_state_restored = false;
     ABT_pool *                pool_ptr;
@@ -16979,7 +17014,8 @@ static void
 async_link_copy_fn(void *foo)
 {
     hbool_t                 acquired    = false;
-    unsigned int            mutex_count = 1, attempt_count = 0;
+    unsigned int            mutex_count = 1;
+    int                     attempt_count = 0;
     int                     is_lock               = 0;
     hbool_t                 is_lib_state_restored = false;
     ABT_pool *              pool_ptr;
@@ -17335,7 +17371,8 @@ static void
 async_link_move_fn(void *foo)
 {
     hbool_t                 acquired    = false;
-    unsigned int            mutex_count = 1, attempt_count = 0;
+    unsigned int            mutex_count = 1;
+    int                     attempt_count = 0;
     int                     is_lock               = 0;
     hbool_t                 is_lib_state_restored = false;
     ABT_pool *              pool_ptr;
@@ -17692,7 +17729,8 @@ static void
 async_link_get_fn(void *foo)
 {
     hbool_t                acquired    = false;
-    unsigned int           mutex_count = 1, attempt_count = 0;
+    unsigned int           mutex_count = 1;
+    int                    attempt_count = 0;
     int                    is_lock               = 0;
     hbool_t                is_lib_state_restored = false;
     ABT_pool *             pool_ptr;
@@ -18027,7 +18065,8 @@ static void
 async_link_specific_fn(void *foo)
 {
     hbool_t                     acquired    = false;
-    unsigned int                mutex_count = 1, attempt_count = 0;
+    unsigned int                mutex_count = 1;
+    int                         attempt_count = 0;
     int                         is_lock               = 0;
     hbool_t                     is_lib_state_restored = false;
     ABT_pool *                  pool_ptr;
@@ -18366,7 +18405,8 @@ static void
 async_link_optional_fn(void *foo)
 {
     hbool_t                     acquired    = false;
-    unsigned int                mutex_count = 1, attempt_count = 0;
+    unsigned int                mutex_count = 1;
+    int                         attempt_count = 0;
     int                         is_lock               = 0;
     hbool_t                     is_lib_state_restored = false;
     ABT_pool *                  pool_ptr;
@@ -18702,7 +18742,8 @@ static void
 async_object_open_fn(void *foo)
 {
     hbool_t                   acquired    = false;
-    unsigned int              mutex_count = 1, attempt_count = 0;
+    unsigned int              mutex_count = 1;
+    int                       attempt_count = 0;
     int                       is_lock               = 0;
     hbool_t                   is_lib_state_restored = false;
     ABT_pool *                pool_ptr;
@@ -19056,7 +19097,8 @@ static void
 async_object_copy_fn(void *foo)
 {
     hbool_t                   acquired    = false;
-    unsigned int              mutex_count = 1, attempt_count = 0;
+    unsigned int              mutex_count = 1;
+    int                       attempt_count = 0;
     int                       is_lock               = 0;
     hbool_t                   is_lib_state_restored = false;
     ABT_pool *                pool_ptr;
@@ -19405,7 +19447,8 @@ static void
 async_object_get_fn(void *foo)
 {
     hbool_t                  acquired    = false;
-    unsigned int             mutex_count = 1, attempt_count = 0;
+    unsigned int             mutex_count = 1;
+    int                      attempt_count = 0;
     int                      is_lock               = 0;
     hbool_t                  is_lib_state_restored = false;
     ABT_pool *               pool_ptr;
@@ -19749,7 +19792,8 @@ static void
 async_object_specific_fn(void *foo)
 {
     hbool_t                       acquired    = false;
-    unsigned int                  mutex_count = 1, attempt_count = 0;
+    unsigned int                  mutex_count = 1;
+    int                           attempt_count = 0;
     int                           is_lock               = 0;
     hbool_t                       is_lib_state_restored = false;
     ABT_pool *                    pool_ptr;
@@ -20091,7 +20135,8 @@ static void
 async_object_optional_fn(void *foo)
 {
     hbool_t                       acquired    = false;
-    unsigned int                  mutex_count = 1, attempt_count = 0;
+    unsigned int                  mutex_count = 1;
+    int                           attempt_count = 0;
     int                           is_lock               = 0;
     hbool_t                       is_lib_state_restored = false;
     ABT_pool *                    pool_ptr;
