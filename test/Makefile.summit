@@ -1,6 +1,12 @@
-ASYNC_DIR = /gpfs/alpine/csc300/world-shared/xl_build/hpc-io/vol-async/src
-HDF5_DIR = /gpfs/alpine/csc300/world-shared/xl_build/hpc-io/hdf5/async_optional_build/hdf5
-ABT_DIR = /gpfs/alpine/csc300/world-shared/xl_build/hpc-io/vol-async/argobots/build
+ifndef ASYNC_DIR
+    ASYNC_DIR = /gpfs/alpine/csc300/world-shared/xl_build/vol-async/src
+endif
+ifndef HDF5_DIR
+    HDF5_DIR = /gpfs/alpine/csc300/world-shared/xl_build/hdf5/build_develop/install
+endif
+ifndef ABT_DIR
+    ABT_DIR = /gpfs/alpine/csc300/world-shared/xl_build/vol-async/argobots/install
+endif
 
 STATLIB = libasynchdf5.a
 # Uncomment this line Linux builds:

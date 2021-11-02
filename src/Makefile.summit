@@ -1,5 +1,9 @@
-HDF5_DIR = /gpfs/alpine/csc300/world-shared/xl_build/hpc-io/hdf5/async_optional_build/hdf5
-ABT_DIR = /gpfs/alpine/csc300/world-shared/xl_build/hpc-io/vol-async/argobots/build
+ifndef HDF5_DIR
+    HDF5_DIR = /gpfs/alpine/csc300/world-shared/xl_build/hdf5/build_develop/install
+endif
+ifndef ABT_DIR
+    ABT_DIR = /gpfs/alpine/csc300/world-shared/xl_build/vol-async/argobots/install
+endif
 
 #CC = cc
 #CC = gcc-9

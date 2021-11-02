@@ -1,5 +1,0 @@
-Notes & To Do Items:
---------------------
-- There are a number of operations that are currently executed synchronously by
-    default, e.g. all the *get, *specific, and *optional functions and others. 
-    Need to document them in detail.
