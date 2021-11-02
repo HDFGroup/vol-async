@@ -36,6 +36,7 @@ Some configuration parameters used in the instructions:
     > ./autogen.sh  (may skip this step if the configure file exists)
     > ./configure --prefix=$ABT_DIR/install #(may need to add CC=cc or CC=mpicc)
     > make && make install
+    # Note: using mpixlC on Summit will result in Argobots runtime error, use xlC or gcc instead.
 
 2.3 Compile Asynchronous VOL connector
 
