@@ -3139,6 +3139,9 @@ check_parent_task(H5VL_async_t *parent_obj)
 static void
 execute_parent_task_recursive(async_task_t *task)
 {
+    hbool_t acquired = false;
+    unsigned int mutex_count = 0;
+
     if (task == NULL || task->is_done == 1)
         return;
     if (task->parent_obj != NULL)
@@ -3148,13 +3151,29 @@ execute_parent_task_recursive(async_task_t *task)
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s: cancel argobots task and execute now \n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s: wait for argobots task\n", __func__);
 #endif
-        ABT_thread_cancel(task->abt_thread);
-        ABT_thread_free(&task->abt_thread);
+        if (H5TSmutex_release(&mutex_count) < 0) {
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
+            return;
+        }
+        if (ABT_eventual_wait(task->eventual, NULL) != ABT_SUCCESS) {
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
+            return;
+        }
+        while (acquired == false) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                return;
+            }
+        }
+        /* ABT_thread_cancel(task->abt_thread); */
+        /* ABT_thread_free(&task->abt_thread); */
     }
-    // Execute the task in current thread
-    task->func(task);
+    else {
+        // Execute the task in current thread
+        task->func(task);
+    }
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC VOL DBG] %s: finished executing task \n", __func__);
