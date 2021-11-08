@@ -9,6 +9,8 @@ Some configuration parameters used in the instructions:
         VOL_DIR : directory of HDF5 Asynchronous I/O VOL connector repository
         ABT_DIR : directory of Argobots source code
         H5_DIR  : directory of HDF5 source code
+        
+We have tested async VOL compiled with GNU(gcc 6.4+), Intel, and Cray compilers on Summit, Cori, and Theta supercomputers.
 
 ## 1. Preparation
 
