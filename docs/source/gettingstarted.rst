@@ -47,6 +47,7 @@ Latest Argobots can also be downloaded separately from https://github.com/pmodel
     export VOL_DIR=/path/to/async_vol/dir
     export ABT_DIR=/path/to/argobots/dir
 
+We have tested async VOL compiled with GNU(gcc 6.4+), Intel, and Cray compilers on Summit, Cori, and Theta supercomputers.
 
 Build Async I/O VOL
 ===================
