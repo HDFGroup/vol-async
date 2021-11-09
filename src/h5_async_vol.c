@@ -3167,8 +3167,6 @@ execute_parent_task_recursive(async_task_t *task)
                 return;
             }
         }
-        /* ABT_thread_cancel(task->abt_thread); */
-        /* ABT_thread_free(&task->abt_thread); */
     }
     else {
         // Execute the task in current thread
@@ -3196,12 +3194,30 @@ execute_parent_task_recursive(async_task_t *task)
 static herr_t
 async_realize_future_cb(void *_future_object, hid_t *actual_object_id)
 {
+    hbool_t             acquired    = false;
+    unsigned int        mutex_count = 0;
     async_future_obj_t *future_object = (async_future_obj_t *)_future_object;
 
     if (H5I_INVALID_HID == future_object->id) {
         /* Execute the task, recursively executing any parent tasks first */
         assert(future_object->task);
         execute_parent_task_recursive(future_object->task);
+
+        if (H5TSmutex_release(&mutex_count) < 0) {
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
+            return -1;
+        }
+        if (ABT_eventual_wait(future_object->task->eventual, NULL) != ABT_SUCCESS) {
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
+            return -1;
+        }
+        while (acquired == false) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                return -1;
+            }
+        }
+
         assert(H5I_INVALID_HID != future_object->id);
     }
     /* Set the ID to return */
