@@ -2062,6 +2062,9 @@ get_n_running_task_in_queue(async_task_t *task)
     ABT_thread_state thread_state;
     async_task_t *   task_elt;
 
+    if (task == NULL)
+        return 0;
+
     /* if (ABT_mutex_lock(task->async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) { */
     /*     fprintf(fout_g,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__); */
     /*     return -1; */
@@ -3133,20 +3136,23 @@ check_parent_task(H5VL_async_t *parent_obj)
  *
  * \param[in] task Async task
  *
- * \details Execute all the parent tasks of a given tasks recursively.
+ * \details Execute all the parent tasks of a given tasks recursively. If task already in 
+ *          the Argobots pool, wait for it, otherwise execute in current thread.
  *
  */
 static void
 execute_parent_task_recursive(async_task_t *task)
 {
+    int          i;
     hbool_t      acquired    = false;
     unsigned int mutex_count = 0;
 
     if (task == NULL || task->is_done == 1)
         return;
-    if (task->parent_obj != NULL)
-        execute_parent_task_recursive(task->parent_obj->create_task);
-    // Cancel the task already in the pool
+
+    for (i = 0; i < task->n_dep; i++)
+        execute_parent_task_recursive(task->dep_tasks[i]);
+
     if (task->in_abt_pool == 1) {
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
@@ -3169,7 +3175,6 @@ execute_parent_task_recursive(async_task_t *task)
         }
     }
     else {
-        // Execute the task in current thread
         task->func(task);
     }
 #ifdef ENABLE_DBG_MSG
@@ -3198,23 +3203,41 @@ async_realize_future_cb(void *_future_object, hid_t *actual_object_id)
     unsigned int        mutex_count = 0;
     async_future_obj_t *future_object = (async_future_obj_t *)_future_object;
 
+
+    // Drain the existing tasks in Argobots pool first
+    while (get_n_running_task_in_queue(future_object->task) != 0) {
+        if (H5TSmutex_release(&mutex_count) < 0) {
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
+            return -1;
+        }
+        usleep(1000);
+    }
+    while (mutex_count > 0 && acquired == false) {
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+            return -1;
+        }
+    }
+
     if (H5I_INVALID_HID == future_object->id) {
         /* Execute the task, recursively executing any parent tasks first */
         assert(future_object->task);
         execute_parent_task_recursive(future_object->task);
 
-        if (H5TSmutex_release(&mutex_count) < 0) {
-            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
-            return -1;
-        }
-        if (ABT_eventual_wait(future_object->task->eventual, NULL) != ABT_SUCCESS) {
-            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
-            return -1;
-        }
-        while (acquired == false) {
-            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
-                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+        if (future_object->task) {
+            if (H5TSmutex_release(&mutex_count) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
                 return -1;
+            }
+            if (ABT_eventual_wait(future_object->task->eventual, NULL) != ABT_SUCCESS) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
+                return -1;
+            }
+            while (acquired == false) {
+                if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                    fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                    return -1;
+                }
             }
         }
 
@@ -8177,6 +8200,10 @@ async_dataset_open_fn(void *foo)
     if (NULL == obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
             fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC ABT DBG] %s: failed!\n", __func__);
+#endif
         goto done;
     }
 
