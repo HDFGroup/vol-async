@@ -3194,8 +3194,8 @@ execute_parent_task_recursive(async_task_t *task)
 static herr_t
 async_realize_future_cb(void *_future_object, hid_t *actual_object_id)
 {
-    hbool_t             acquired    = false;
-    unsigned int        mutex_count = 0;
+    hbool_t             acquired      = false;
+    unsigned int        mutex_count   = 0;
     async_future_obj_t *future_object = (async_future_obj_t *)_future_object;
 
     if (H5I_INVALID_HID == future_object->id) {
