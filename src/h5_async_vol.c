@@ -3139,7 +3139,7 @@ check_parent_task(H5VL_async_t *parent_obj)
 static void
 execute_parent_task_recursive(async_task_t *task)
 {
-    hbool_t acquired = false;
+    hbool_t      acquired    = false;
     unsigned int mutex_count = 0;
 
     if (task == NULL || task->is_done == 1)
