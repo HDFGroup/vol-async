@@ -3016,7 +3016,7 @@ check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *
         }
     }
 
-    wait_count = 0;
+    wait_count = 1;
     while (*acquired == false) {
         if (H5TSmutex_acquire(*mutex_count, acquired) < 0) {
             fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
@@ -3024,7 +3024,7 @@ check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *
         }
         if (false == *acquired) {
 #ifdef ENABLE_DBG_MSG
-            if (async_instance_g &&
+            if (wait_count % 1000 == 0 && async_instance_g &&
                 (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
                 fprintf(fout_g, "  [ASYNC ABT DBG] %s lock NOT acquired, wait\n", __func__);
 #endif
@@ -3036,7 +3036,7 @@ check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *
                 fprintf(fout_g,
                         "  [ASYNC ABT INFO] %s unable to acquire HDF5 mutex for 10 seconds, deadlock?\n",
                         __func__);
-                wait_count = 0;
+                wait_count = 1;
             }
         }
     }
