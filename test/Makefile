@@ -20,12 +20,15 @@ CC = cc
 # CC = gcc-9
 # CC = mpicc
 
+HDF5_LIBDIR = $(shell if [ -d $$HDF5_DIR/lib ]; then echo "$$HDF5_DIR/lib"; else echo "$$HDF5_DIR/lib64"; fi)
+ABT_LIBDIR =  $(shell if [ -d $$ABT_DIR/lib ]; then echo "$$ABT_DIR/lib"; else echo "$$ABT_DIR/lib64"; fi)
+
 # These lines may need to be adjusted for your compiler environment:
 DEBUG = -g -O0 -Wall
 CFLAGS = $(DEBUG) -I$(ABT_DIR)/include -I$(ASYNC_DIR) -I$(HDF5_DIR)/include
 
 # Uncomment this line Linux builds:
-LDFLAGS = $(DEBUG) -L$(ASYNC_DIR) -L$(ABT_DIR)/lib -L$(HDF5_DIR)/lib -Wl,-rpath=$(ASYNC_DIR) -Wl,-rpath=$(ABT_DIR)/lib -Wl,-rpath=$(HDF5_DIR)/lib -labt -lhdf5 -lh5async -lasynchdf5
+LDFLAGS = $(DEBUG) -L$(ASYNC_DIR) -L$(ABT_LIBDIR) -L$(HDF5_LIBDIR) -Wl,-rpath=$(ASYNC_DIR) -Wl,-rpath=$(ABT_LIBDIR) -Wl,-rpath=$(HDF5_LIBDIR) -labt -lhdf5 -lh5async -lasynchdf5
 # Uncomment this line MacOS builds:
 # LDFLAGS = $(DEBUG) -L$(ASYNC_DIR) -L$(ABT_DIR)/lib -L$(HDF5_DIR)/lib -labt -lhdf5 -lasynchdf5 -lh5async 
 
