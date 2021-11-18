@@ -49,7 +49,8 @@ jobs:
           cd hdf5
           export HDF5_LIBTOOL=/usr/bin/libtoolize
           ./autogen.sh
-          ./configure --prefix=$HDF5_DIR --enable-parallel --enable-threadsafe --enable-unsupported
+          ./configure --prefix=$HDF5_DIR --enable-parallel --enable-threadsafe --enable-unsupported \
+          --disable-tests --disable-hl --disable-fortran 
           make && make install
           
           # Compile Argobots
