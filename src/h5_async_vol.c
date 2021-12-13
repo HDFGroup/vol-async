@@ -22106,8 +22106,10 @@ H5VL_async_file_open(const char *name, unsigned flags, hid_t fapl_id, hid_t dxpl
                     return NULL;
 
                 /* We require MPI_THREAD_MULTIPLE to operate correctly */
-                if (MPI_THREAD_MULTIPLE != mpi_thread_lvl)
+                if (MPI_THREAD_MULTIPLE != mpi_thread_lvl) {
+                    fprintf(fout_g, "[ASYNC VOL ERROR] MPI is not initialized with MPI_THREAD_MULTIPLE!\n");
                     return NULL;
+                }
             } /* end if */
         }     /* end if */
     }
