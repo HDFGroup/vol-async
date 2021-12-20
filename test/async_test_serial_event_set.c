@@ -20,7 +20,6 @@ link_iterate_cb(hid_t group_id, const char *link_name, const H5L_info2_t *info, 
     return H5_ITER_CONT;
 }
 
-
 int
 main(int argc, char *argv[])
 {
