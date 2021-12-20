@@ -3136,7 +3136,7 @@ check_parent_task(H5VL_async_t *parent_obj)
  *
  * \param[in] task Async task
  *
- * \details Execute all the parent tasks of a given tasks recursively. If task already in 
+ * \details Execute all the parent tasks of a given tasks recursively. If task already in
  *          the Argobots pool, wait for it, otherwise execute in current thread.
  *
  */
@@ -3202,7 +3202,6 @@ async_realize_future_cb(void *_future_object, hid_t *actual_object_id)
     hbool_t             acquired      = false;
     unsigned int        mutex_count   = 0;
     async_future_obj_t *future_object = (async_future_obj_t *)_future_object;
-
 
     // Drain the existing tasks in Argobots pool first
     while (get_n_running_task_in_queue(future_object->task) != 0) {
@@ -8201,7 +8200,8 @@ async_dataset_open_fn(void *foo)
         if ((task->err_stack = H5Eget_current_stack()) < 0)
             fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
 #ifdef ENABLE_DBG_MSG
-        if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        if (async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
             fprintf(fout_g, "  [ASYNC ABT DBG] %s: failed!\n", __func__);
 #endif
         goto done;
@@ -22106,8 +22106,10 @@ H5VL_async_file_open(const char *name, unsigned flags, hid_t fapl_id, hid_t dxpl
                     return NULL;
 
                 /* We require MPI_THREAD_MULTIPLE to operate correctly */
-                if (MPI_THREAD_MULTIPLE != mpi_thread_lvl)
+                if (MPI_THREAD_MULTIPLE != mpi_thread_lvl) {
+                    fprintf(fout_g, "[ASYNC VOL ERROR] MPI is not initialized with MPI_THREAD_MULTIPLE!\n");
                     return NULL;
+                }
             } /* end if */
         }     /* end if */
     }
