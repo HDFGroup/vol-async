@@ -8,6 +8,19 @@
 
 int print_dbg_msg = 1;
 
+static int
+link_iterate_cb(hid_t group_id, const char *link_name, const H5L_info2_t *info, void *_op_data)
+{
+    int *nlink = (int *)_op_data;
+
+    ++(*nlink);
+    printf("nlink = %d, link_name = %s\n", *nlink, link_name);
+    fflush(stdout);
+
+    return H5_ITER_CONT;
+}
+
+
 int
 main(int argc, char *argv[])
 {
@@ -20,6 +33,8 @@ main(int argc, char *argv[])
     hsize_t ds_size[2] = {DIMLEN, DIMLEN};
     herr_t  status;
     hid_t   async_fapl;
+    hsize_t idx   = 0;
+    int     nlink = 0;
 
     async_fapl = H5Pcreate(H5P_FILE_ACCESS);
     async_dxpl = H5Pcreate(H5P_DATASET_XFER);
@@ -351,6 +366,32 @@ main(int argc, char *argv[])
         }
     }
     printf("Finished verification\n");
+
+    if (print_dbg_msg)
+        printf("H5Literate_async start\n");
+    fflush(stdout);
+
+    status = H5Literate_async(grp_id, H5_INDEX_NAME, H5_ITER_INC, &idx, link_iterate_cb, &nlink, es_id);
+    if (status < 0) {
+        fprintf(stderr, "Error with H5Literate\n");
+        ret = -1;
+        goto done;
+    }
+
+    if (print_dbg_msg)
+        printf("H5Literate_async done\n");
+    fflush(stdout);
+
+    if (print_dbg_msg)
+        printf("H5ESwait start\n");
+    status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
+    if (status < 0) {
+        fprintf(stderr, "Error with H5ESwait\n");
+        ret = -1;
+        goto done;
+    }
+    if (print_dbg_msg)
+        printf("H5ESwait done\n");
 
     H5ESclose(es_id);
 
