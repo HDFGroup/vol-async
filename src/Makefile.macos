@@ -1,14 +1,22 @@
-HDF5_DIR = 
-ABT_DIR = 
+ifndef HDF5_DIR
+    HDF5_DIR = /global/u1/h/houhun/hdf5/develop_gnu/hdf5
+endif
+
+ifndef ABT_DIR
+    ABT_DIR = /global/u1/h/houhun/cori/argobots/install
+endif
 
 CC = gcc
 #CC = gcc-9
 # CC = mpicc
 
+HDF5_LIBDIR = $(shell if [ -d $$(HDF5_DIR)/lib ]; then echo "lib"; else echo "lib64"; fi)
+ABT_LIBDIR =  $(shell if [ -d $$(ABT_DIR)/lib ]; then echo "lib"; else echo "lib64"; fi)
+
 # These lines may need to be adjusted for your compiler environment:
 DEBUG = -g -O0 
 CFLAGS = $(DEBUG) -fPIC -I$(ABT_DIR)/include -I$(HDF5_DIR)/include -Wall
-LIBS = -L$(HDF5_DIR)/lib -L$(ABT_DIR)/lib -labt -lhdf5 -lz
+LIBS = -L$(HDF5_DIR)/$(HDF5_LIBDIR) -L$(ABT_DIR)/$(ABT_LIBDIR) -labt -lhdf5 -lz
 ARFLAGS = rs
 
 # Uncomment this line Linux builds:

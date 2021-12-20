@@ -10,13 +10,13 @@ CC = cc
 #CC = gcc-9
 # CC = mpicc
 
-HDF5_LIBDIR = $(shell if [ -d $$HDF5_DIR/lib ]; then echo "$$HDF5_DIR/lib"; else echo "$$HDF5_DIR/lib64"; fi)
-ABT_LIBDIR =  $(shell if [ -d $$ABT_DIR/lib ]; then echo "$$ABT_DIR/lib"; else echo "$$ABT_DIR/lib64"; fi)
+HDF5_LIBDIR = $(shell if [ -d $$(HDF5_DIR)/lib ]; then echo "lib"; else echo "lib64"; fi)
+ABT_LIBDIR =  $(shell if [ -d $$(ABT_DIR)/lib ]; then echo "lib"; else echo "lib64"; fi)
 
 # These lines may need to be adjusted for your compiler environment:
 DEBUG = -g -O0 
 CFLAGS = $(DEBUG) -fPIC -I$(ABT_DIR)/include -I$(HDF5_DIR)/include -Wall
-LIBS = -L$(HDF5_LIBDIR) -L$(ABT_LIBDIR) -labt -lhdf5 -lz
+LIBS = -L$(HDF5_DIR)/$(HDF5_LIBDIR) -L$(ABT_DIR)/$(ABT_LIBDIR) -labt -lhdf5 -lz
 ARFLAGS = rs
 
 # Uncomment this line Linux builds:
