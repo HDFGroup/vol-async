@@ -1,13 +1,13 @@
 ifndef HDF5_DIR
-	HDF5_DIR = /global/u1/h/houhun/hdf5/develop_gnu/hdf5
+    HDF5_DIR = /global/u1/h/houhun/hdf5/develop_gnu/hdf5
 endif
 
 ifndef ABT_DIR
-	ABT_DIR = /global/u1/h/houhun/cori/argobots/install
+    ABT_DIR = /global/u1/h/houhun/cori/argobots/install
 endif
 
 ifndef ASYNC_DIR
-	ASYNC_DIR = /global/homes/h/houhun/hdf5vol/vol-async/src
+    ASYNC_DIR = /global/homes/h/houhun/hdf5vol/vol-async/src
 endif
 
 STATLIB = libasynchdf5.a
@@ -20,15 +20,15 @@ CC = cc
 # CC = gcc-9
 # CC = mpicc
 
-HDF5_LIBDIR = $(shell if [ -d $$HDF5_DIR/lib ]; then echo "$$HDF5_DIR/lib"; else echo "$$HDF5_DIR/lib64"; fi)
-ABT_LIBDIR =  $(shell if [ -d $$ABT_DIR/lib ]; then echo "$$ABT_DIR/lib"; else echo "$$ABT_DIR/lib64"; fi)
+HDF5_LIBDIR = $(shell if [ -d $$HDF5_DIR/lib ]; then echo "lib"; else echo "lib64"; fi)
+ABT_LIBDIR =  $(shell if [ -d $$ABT_DIR/lib ]; then echo "lib"; else echo "lib64"; fi)
 
 # These lines may need to be adjusted for your compiler environment:
 DEBUG = -g -O0 -Wall
 CFLAGS = $(DEBUG) -I$(ABT_DIR)/include -I$(ASYNC_DIR) -I$(HDF5_DIR)/include
 
 # Uncomment this line Linux builds:
-LDFLAGS = $(DEBUG) -L$(ASYNC_DIR) -L$(ABT_LIBDIR) -L$(HDF5_LIBDIR) -Wl,-rpath=$(ASYNC_DIR) -Wl,-rpath=$(ABT_LIBDIR) -Wl,-rpath=$(HDF5_LIBDIR) -labt -lhdf5 -lh5async -lasynchdf5
+LDFLAGS = $(DEBUG) -L$(ASYNC_DIR) -L$(ABT_DIR)/$(ABT_LIBDIR) -L$(HDF5_DIR)/$(HDF5_LIBDIR) -Wl,-rpath=$(ASYNC_DIR) -Wl,-rpath=$(ABT_DIR)/$(ABT_LIBDIR) -Wl,-rpath=$(HDF5_DIR)/$(HDF5_LIBDIR) -labt -lhdf5 -lh5async -lasynchdf5
 # Uncomment this line MacOS builds:
 # LDFLAGS = $(DEBUG) -L$(ASYNC_DIR) -L$(ABT_DIR)/lib -L$(HDF5_DIR)/lib -labt -lhdf5 -lasynchdf5 -lh5async 
 
@@ -38,6 +38,7 @@ SRC = async_test_serial.c async_test_serial2.c \
     async_test_parallel4.c async_test_parallel5.c \
     async_test_serial_event_set.c async_test_serial_error_stack.c \
     async_test_serial_event_set_error_stack.c
+
 #async_test_no_fclose.c
 OBJ = $(SRC:.c=.o)
 EXE = $(SRC:.c=.exe)

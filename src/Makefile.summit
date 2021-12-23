@@ -9,8 +9,8 @@ endif
 #CC = gcc-9
 CC = mpicc
 
-HDF5_LIBDIR = $(shell if [ -d $$(HDF5_DIR)/lib ]; then echo "lib"; else echo "lib64"; fi)
-ABT_LIBDIR =  $(shell if [ -d $$(ABT_DIR)/lib ]; then echo "lib"; else echo "lib64"; fi)
+HDF5_LIBDIR = $(shell if [ -d $$HDF5_DIR/lib ]; then echo "lib"; else echo "lib64"; fi)
+ABT_LIBDIR =  $(shell if [ -d $$ABT_DIR/lib ]; then echo "lib"; else echo "lib64"; fi)
 
 # These lines may need to be adjusted for your compiler environment:
 DEBUG = -g -O0
