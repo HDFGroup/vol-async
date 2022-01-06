@@ -37,7 +37,7 @@ def guess_mpi_cmd(mpi_tasks, cpu_allocation, verbose):
     elif 'fourier' in node_name:
         mpirun_cmd="mpirun -np " + str(mpi_tasks)
     elif 'batch' in node_name: # for summit
-        mpirun_cmd="jsrun -a1 -c7 -r6 -l CPU-CPU -d packed -b packed:7 -n " + str(mpi_tasks)
+        mpirun_cmd="jsrun -a1 -c7 -l CPU-CPU -d packed -b packed:7 -n " + str(mpi_tasks)
     else:
         #default mpi command
         mpirun_cmd="mpirun -np " + str(mpi_tasks)
