@@ -27,6 +27,7 @@ Mix sync and async operations
 It is generally discouraged to mix sync and async operations in an application, as deadlocks may occur unexpectedly. If it is unavoidable, we recommend to separate the sync and async operations as much as possible (ideally using different HDF5 file IDs, even they are opearting on the same file) and set the following FAPL property for the sync operations:
 
 .. code-block::
+
     fapl_sync = H5Pcreate(H5P_FILE_ACCESS);
     hbool_t is_disable = true;
     if (H5Pinsert2(fapl_sync,  "gov.lbl.async.disable.implicit", sizeof(hbool_t),
