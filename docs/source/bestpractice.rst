@@ -35,4 +35,3 @@ It is generally discouraged to mix sync and async operations in an application, 
     }
     fid_sync = H5Fcreate(fname, H5F_ACC_TRUNC, H5P_DEFAULT, fapl_sync);
     H5Pclose(fapl_sync)
-    ...
