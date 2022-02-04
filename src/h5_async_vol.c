@@ -1363,14 +1363,12 @@ H5VL_async_fapl_set_disable_implicit(hid_t fapl)
                 return -1;
             }
 
-            if (async_instance_g->disable_implicit_file) {
-                async_instance_g->disable_implicit_file = is_disable;
+            async_instance_g->disable_implicit_file = is_disable;
 #ifdef ENABLE_DBG_MSG
-                if (async_instance_g &&
-                    (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-                    fprintf(fout_g, "  [ASYNC VOL DBG] set implicit mode to %d\n", is_disable);
+            if (async_instance_g &&
+                (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+                fprintf(fout_g, "  [ASYNC VOL DBG] set implicit mode to %d\n", is_disable);
 #endif
-            }
         }
         else {
             if (async_instance_g->disable_implicit_file) {
