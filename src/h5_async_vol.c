@@ -12811,6 +12811,8 @@ async_file_create(async_instance_t *aid, const char *name, unsigned flags, hid_t
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
+    if (async_instance_g->ex_delay)
+        async_instance_g->start_abt_push = false;
 
 #ifdef ENABLE_TIMING
     async_task->create_time = clock();
@@ -12895,8 +12897,11 @@ async_file_create(async_instance_t *aid, const char *name, unsigned flags, hid_t
     }
     lock_self = false;
 
-    if (get_n_running_task_in_queue(async_task) == 0)
-        push_task_to_abt_pool(&aid->qhead, aid->pool);
+    if (aid->ex_delay == false && !async_instance_g->pause) {
+        if (get_n_running_task_in_queue(async_task) == 0)
+            push_task_to_abt_pool(&aid->qhead, aid->pool);
+    }
+
     /* Wait if blocking is needed */
     if (is_blocking) {
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
@@ -13166,6 +13171,8 @@ async_file_open(task_list_qtype qtype, async_instance_t *aid, const char *name, 
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
+    if (async_instance_g->ex_delay)
+        async_instance_g->start_abt_push = false;
 
 #ifdef ENABLE_TIMING
     async_task->create_time = clock();
@@ -13247,8 +13254,11 @@ async_file_open(task_list_qtype qtype, async_instance_t *aid, const char *name, 
     }
     lock_self = false;
 
-    if (get_n_running_task_in_queue(async_task) == 0)
-        push_task_to_abt_pool(&aid->qhead, aid->pool);
+    if (aid->ex_delay == false && !async_instance_g->pause) {
+        if (get_n_running_task_in_queue(async_task) == 0)
+            push_task_to_abt_pool(&aid->qhead, aid->pool);
+    }
+
     /* Wait if blocking is needed */
     if (is_blocking) {
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
