@@ -16,7 +16,7 @@ on:
 jobs:
   vol-async:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v2
@@ -87,7 +87,7 @@ jobs:
           make
           
           # Run serial and parallel tests
-          make check
+          stdbuf -i0 -o0 -e0 make check
           
           # Test with async VOL double buffering
           cd ../src
@@ -95,4 +95,4 @@ jobs:
           make clean
           make
           cd ../test
-          make check
+          stdbuf -i0 -o0 -e0 make check
