@@ -64,8 +64,8 @@ works, and perform publicly and display publicly, and to permit others to do so.
 
 /* Whether to display log messge when callback is invoked */
 /* (Uncomment to enable) */
-#define ENABLE_LOG     1
-#define ENABLE_DBG_MSG 1
+/* #define ENABLE_LOG     1 */
+/* #define ENABLE_DBG_MSG 1 */
 /* #define PRINT_ERROR_STACK           1 */
 /* #define ENABLE_ASYNC_LOGGING */
 
