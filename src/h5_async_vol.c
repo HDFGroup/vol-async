@@ -64,8 +64,8 @@ works, and perform publicly and display publicly, and to permit others to do so.
 
 /* Whether to display log messge when callback is invoked */
 /* (Uncomment to enable) */
-/* #define ENABLE_LOG                  1 */
-/* #define ENABLE_DBG_MSG              1 */
+#define ENABLE_LOG     1
+#define ENABLE_DBG_MSG 1
 /* #define PRINT_ERROR_STACK           1 */
 /* #define ENABLE_ASYNC_LOGGING */
 
@@ -202,6 +202,7 @@ typedef struct async_instance_t {
     bool          ex_gclose;             /* Delay background thread execution until group close */
     bool          ex_dclose;             /* Delay background thread execution until dset close */
     bool          start_abt_push;        /* Start pushing tasks to Argobots pool */
+    bool          prev_push_state;       /* Previous state of start_abt_push before a change*/
     bool          pause;                 /* Pause background thread execution */
     bool          disable_implicit_file; /* Disable implicit async execution globally */
     bool          disable_implicit;      /* Disable implicit async execution for dxpl */
@@ -1363,12 +1364,12 @@ H5VL_async_fapl_set_disable_implicit(hid_t fapl)
                 return -1;
             }
 
-            async_instance_g->disable_implicit_file = is_disable;
 #ifdef ENABLE_DBG_MSG
-            if (async_instance_g &&
+            if (async_instance_g->disable_implicit_file != is_disable && async_instance_g &&
                 (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
                 fprintf(fout_g, "  [ASYNC VOL DBG] set implicit mode to %d\n", is_disable);
 #endif
+            async_instance_g->disable_implicit_file = is_disable;
         }
         else {
             if (async_instance_g->disable_implicit_file) {
@@ -1428,12 +1429,12 @@ H5VL_async_dxpl_set_disable_implicit(hid_t dxpl)
 #endif
             }
             else {
-                async_instance_g->disable_implicit = is_disable;
 #ifdef ENABLE_DBG_MSG
-                if (async_instance_g &&
+                if (async_instance_g->disable_implicit != is_disable && async_instance_g &&
                     (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
                     fprintf(fout_g, "  [ASYNC VOL DBG] set implicit mode to %d\n", is_disable);
 #endif
+                async_instance_g->disable_implicit = is_disable;
             }
         }
         else {
@@ -1445,12 +1446,12 @@ H5VL_async_dxpl_set_disable_implicit(hid_t dxpl)
 #endif
             }
             else {
-                async_instance_g->disable_implicit = is_disable;
 #ifdef ENABLE_DBG_MSG
-                if (async_instance_g &&
+                if (async_instance_g->disable_implicit != is_disable && async_instance_g &&
                     (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
                     fprintf(fout_g, "  [ASYNC VOL DBG] set implicit mode to %d\n", is_disable);
 #endif
+                async_instance_g->disable_implicit = is_disable;
             }
         }
     }
@@ -2146,7 +2147,8 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool)
 
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] entering %s \n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL DBG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     if (ABT_mutex_lock(qhead->head_mutex) != ABT_SUCCESS) {
@@ -4956,7 +4958,8 @@ async_attr_create_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -5120,12 +5123,15 @@ async_attr_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_lo
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_attr_create_args_t *)calloc(1, sizeof(async_attr_create_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -5279,7 +5285,8 @@ async_attr_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_lo
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -5296,6 +5303,14 @@ async_attr_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_lo
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0) {
@@ -5342,7 +5357,8 @@ async_attr_open_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -5499,12 +5515,15 @@ async_attr_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc_
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_attr_open_args_t *)calloc(1, sizeof(async_attr_open_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -5640,7 +5659,8 @@ async_attr_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc_
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -5657,6 +5677,14 @@ async_attr_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc_
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -5701,7 +5729,8 @@ async_attr_read_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -5852,12 +5881,15 @@ async_attr_read(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type_
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_attr_read_args_t *)calloc(1, sizeof(async_attr_read_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -5970,7 +6002,8 @@ async_attr_read(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type_
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -5987,6 +6020,14 @@ async_attr_read(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type_
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -6031,7 +6072,8 @@ async_attr_write_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -6188,12 +6230,15 @@ async_attr_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_attr_write_args_t *)calloc(1, sizeof(async_attr_write_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -6326,7 +6371,8 @@ async_attr_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -6343,6 +6389,14 @@ async_attr_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -6387,7 +6441,8 @@ async_attr_get_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -6534,12 +6589,15 @@ async_attr_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_attr_get_args_t *)calloc(1, sizeof(async_attr_get_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -6653,7 +6711,8 @@ async_attr_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -6670,6 +6729,14 @@ async_attr_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -6714,7 +6781,8 @@ async_attr_specific_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -6866,12 +6934,15 @@ async_attr_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if (qtype == BLOCKING)
         is_blocking = true;
@@ -6996,7 +7067,8 @@ async_attr_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -7013,6 +7085,14 @@ async_attr_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -7057,7 +7137,8 @@ async_attr_optional_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -7204,12 +7285,15 @@ async_attr_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_attr_optional_args_t *)calloc(1, sizeof(async_attr_optional_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -7320,7 +7404,8 @@ async_attr_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -7337,6 +7422,14 @@ async_attr_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -7381,7 +7474,8 @@ async_attr_close_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -7527,12 +7621,15 @@ async_attr_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if (qtype == BLOCKING)
         is_blocking = true;
@@ -7650,7 +7747,8 @@ async_attr_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -7667,6 +7765,14 @@ async_attr_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -7711,7 +7817,8 @@ async_dataset_create_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -7878,12 +7985,15 @@ async_dataset_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_dataset_create_args_t *)calloc(1, sizeof(async_dataset_create_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -8044,7 +8154,8 @@ async_dataset_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -8061,6 +8172,14 @@ async_dataset_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -8105,7 +8224,8 @@ async_dataset_open_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -8268,12 +8388,15 @@ async_dataset_open(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *p
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_dataset_open_args_t *)calloc(1, sizeof(async_dataset_open_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -8411,7 +8534,8 @@ async_dataset_open(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *p
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -8428,6 +8552,14 @@ async_dataset_open(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *p
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -8472,7 +8604,8 @@ async_dataset_read_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -8627,12 +8760,15 @@ async_dataset_read(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_ty
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_dataset_read_args_t *)calloc(1, sizeof(async_dataset_read_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -8750,7 +8886,8 @@ async_dataset_read(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_ty
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -8767,6 +8904,14 @@ async_dataset_read(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_ty
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -8811,7 +8956,8 @@ async_dataset_write_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -9017,12 +9163,15 @@ async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_t
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_dataset_write_args_t *)calloc(1, sizeof(async_dataset_write_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -9201,7 +9350,8 @@ async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_t
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -9218,6 +9368,14 @@ async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_t
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -9263,7 +9421,8 @@ async_dataset_get_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -9410,12 +9569,15 @@ async_dataset_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if (qtype == BLOCKING)
         is_blocking = true;
@@ -9532,7 +9694,8 @@ async_dataset_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -9549,6 +9712,14 @@ async_dataset_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -9593,7 +9764,8 @@ async_dataset_specific_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -9740,12 +9912,15 @@ async_dataset_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if (qtype == BLOCKING)
         is_blocking = true;
@@ -9859,7 +10034,8 @@ async_dataset_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -9876,6 +10052,14 @@ async_dataset_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -9920,7 +10104,8 @@ async_dataset_optional_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -10067,12 +10252,15 @@ async_dataset_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_dataset_optional_args_t *)calloc(1, sizeof(async_dataset_optional_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -10183,7 +10371,8 @@ async_dataset_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -10200,6 +10389,14 @@ async_dataset_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -10244,7 +10441,8 @@ async_dataset_close_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -10391,12 +10589,15 @@ async_dataset_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if (qtype == BLOCKING)
         is_blocking = true;
@@ -10519,7 +10720,8 @@ async_dataset_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -10536,6 +10738,14 @@ async_dataset_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -10580,7 +10790,8 @@ async_datatype_commit_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -10742,12 +10953,15 @@ async_datatype_commit(async_instance_t *aid, H5VL_async_t *parent_obj, const H5V
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_datatype_commit_args_t *)calloc(1, sizeof(async_datatype_commit_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -10891,7 +11105,8 @@ async_datatype_commit(async_instance_t *aid, H5VL_async_t *parent_obj, const H5V
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -10908,6 +11123,14 @@ async_datatype_commit(async_instance_t *aid, H5VL_async_t *parent_obj, const H5V
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -10952,7 +11175,8 @@ async_datatype_open_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -11109,12 +11333,15 @@ async_datatype_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_datatype_open_args_t *)calloc(1, sizeof(async_datatype_open_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -11250,7 +11477,8 @@ async_datatype_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -11267,6 +11495,14 @@ async_datatype_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -11311,7 +11547,8 @@ async_datatype_get_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -11458,12 +11695,15 @@ async_datatype_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *p
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_datatype_get_args_t *)calloc(1, sizeof(async_datatype_get_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -11577,7 +11817,8 @@ async_datatype_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *p
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -11594,6 +11835,14 @@ async_datatype_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *p
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -11638,7 +11887,8 @@ async_datatype_specific_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -11785,12 +12035,15 @@ async_datatype_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_datatype_specific_args_t *)calloc(1, sizeof(async_datatype_specific_args_t))) ==
         NULL) {
@@ -11902,7 +12155,8 @@ async_datatype_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -11919,6 +12173,14 @@ async_datatype_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -11963,7 +12225,8 @@ async_datatype_optional_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -12110,12 +12373,15 @@ async_datatype_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_datatype_optional_args_t *)calloc(1, sizeof(async_datatype_optional_args_t))) ==
         NULL) {
@@ -12227,7 +12493,8 @@ async_datatype_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -12244,6 +12511,14 @@ async_datatype_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -12288,7 +12563,8 @@ async_datatype_close_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -12434,12 +12710,15 @@ async_datatype_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_datatype_close_args_t *)calloc(1, sizeof(async_datatype_close_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -12555,7 +12834,8 @@ async_datatype_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -12572,6 +12852,14 @@ async_datatype_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -12620,7 +12908,8 @@ async_file_create_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -12784,12 +13073,15 @@ async_file_create(async_instance_t *aid, const char *name, unsigned flags, hid_t
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
 
     H5Pget_vol_id(fapl_id, &under_vol_id);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_file_create_args_t *)calloc(1, sizeof(async_file_create_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -12913,7 +13205,8 @@ async_file_create(async_instance_t *aid, const char *name, unsigned flags, hid_t
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -12930,6 +13223,14 @@ async_file_create(async_instance_t *aid, const char *name, unsigned flags, hid_t
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -12978,7 +13279,8 @@ async_file_open_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -13144,12 +13446,15 @@ async_file_open(task_list_qtype qtype, async_instance_t *aid, const char *name, 
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
 
     H5Pget_vol_id(fapl_id, &under_vol_id);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_file_open_args_t *)calloc(1, sizeof(async_file_open_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -13270,7 +13575,8 @@ async_file_open(task_list_qtype qtype, async_instance_t *aid, const char *name, 
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -13287,6 +13593,14 @@ async_file_open(task_list_qtype qtype, async_instance_t *aid, const char *name, 
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -13332,7 +13646,8 @@ async_file_get_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -13479,12 +13794,15 @@ async_file_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_file_get_args_t *)calloc(1, sizeof(async_file_get_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -13598,7 +13916,8 @@ async_file_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -13615,6 +13934,14 @@ async_file_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -13659,7 +13986,8 @@ async_file_specific_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -13806,12 +14134,15 @@ async_file_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_file_specific_args_t *)calloc(1, sizeof(async_file_specific_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -13924,7 +14255,8 @@ async_file_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -13941,6 +14273,14 @@ async_file_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -13985,7 +14325,8 @@ async_file_optional_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -14132,12 +14473,15 @@ async_file_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_file_optional_args_t *)calloc(1, sizeof(async_file_optional_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -14234,8 +14578,12 @@ async_file_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
         goto error;
     }
     lock_parent = false;
-    if (get_n_running_task_in_queue(async_task) == 0)
-        push_task_to_abt_pool(&aid->qhead, aid->pool);
+
+    if (aid->ex_delay == false && !async_instance_g->pause) {
+        if (get_n_running_task_in_queue(async_task) == 0)
+            push_task_to_abt_pool(&aid->qhead, aid->pool);
+    }
+
     /* Wait if blocking is needed */
     if (is_blocking) {
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task) == 0)
@@ -14247,7 +14595,8 @@ async_file_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -14264,6 +14613,14 @@ async_file_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -14308,7 +14665,8 @@ async_file_close_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -14474,12 +14832,15 @@ async_file_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     // When there is already a close task created
     if (parent_obj->close_task) {
@@ -14615,7 +14976,8 @@ wait:
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -14632,6 +14994,14 @@ wait:
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -14676,7 +15046,8 @@ async_group_create_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -14839,12 +15210,15 @@ async_group_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_l
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_group_create_args_t *)calloc(1, sizeof(async_group_create_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -14991,7 +15365,8 @@ async_group_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_l
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -15008,6 +15383,14 @@ async_group_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_l
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -15055,7 +15438,8 @@ async_group_open_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -15212,12 +15596,15 @@ async_group_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_group_open_args_t *)calloc(1, sizeof(async_group_open_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -15353,7 +15740,8 @@ async_group_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -15370,6 +15758,14 @@ async_group_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -15414,7 +15810,8 @@ async_group_get_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -15561,12 +15958,15 @@ async_group_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pare
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_group_get_args_t *)calloc(1, sizeof(async_group_get_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -15683,7 +16083,8 @@ async_group_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pare
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -15700,6 +16101,14 @@ async_group_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pare
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -15744,7 +16153,8 @@ async_group_specific_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -15891,12 +16301,15 @@ async_group_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_group_specific_args_t *)calloc(1, sizeof(async_group_specific_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -16007,7 +16420,8 @@ async_group_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -16024,6 +16438,14 @@ async_group_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -16068,7 +16490,8 @@ async_group_optional_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -16215,12 +16638,15 @@ async_group_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_group_optional_args_t *)calloc(1, sizeof(async_group_optional_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -16331,7 +16757,8 @@ async_group_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -16348,6 +16775,14 @@ async_group_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -16392,7 +16827,8 @@ async_group_close_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -16542,12 +16978,15 @@ async_group_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_group_close_args_t *)calloc(1, sizeof(async_group_close_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -16674,7 +17113,8 @@ async_group_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -16691,6 +17131,14 @@ async_group_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -16738,7 +17186,8 @@ async_link_create_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -16896,12 +17345,15 @@ async_link_create(task_list_qtype qtype, async_instance_t *aid, H5VL_link_create
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_link_create_args_t *)calloc(1, sizeof(async_link_create_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -17038,7 +17490,8 @@ async_link_create(task_list_qtype qtype, async_instance_t *aid, H5VL_link_create
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -17055,6 +17508,14 @@ async_link_create(task_list_qtype qtype, async_instance_t *aid, H5VL_link_create
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -17099,7 +17560,8 @@ async_link_copy_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -17252,12 +17714,15 @@ async_link_copy(async_instance_t *aid, H5VL_async_t *parent_obj1, const H5VL_loc
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_link_copy_args_t *)calloc(1, sizeof(async_link_copy_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -17395,7 +17860,8 @@ async_link_copy(async_instance_t *aid, H5VL_async_t *parent_obj1, const H5VL_loc
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -17412,6 +17878,14 @@ async_link_copy(async_instance_t *aid, H5VL_async_t *parent_obj1, const H5VL_loc
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -17456,7 +17930,8 @@ async_link_move_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -17609,12 +18084,15 @@ async_link_move(async_instance_t *aid, H5VL_async_t *parent_obj1, const H5VL_loc
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_link_move_args_t *)calloc(1, sizeof(async_link_move_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -17753,7 +18231,8 @@ async_link_move(async_instance_t *aid, H5VL_async_t *parent_obj1, const H5VL_loc
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -17770,6 +18249,14 @@ async_link_move(async_instance_t *aid, H5VL_async_t *parent_obj1, const H5VL_loc
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -17814,7 +18301,8 @@ async_link_get_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -17963,12 +18451,15 @@ async_link_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_link_get_args_t *)calloc(1, sizeof(async_link_get_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -18089,7 +18580,8 @@ async_link_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -18106,6 +18598,14 @@ async_link_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -18150,7 +18650,8 @@ async_link_specific_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -18303,12 +18804,15 @@ async_link_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_link_specific_args_t *)calloc(1, sizeof(async_link_specific_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -18429,7 +18933,8 @@ async_link_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -18446,6 +18951,14 @@ async_link_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -18490,7 +19003,8 @@ async_link_optional_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -18640,12 +19154,15 @@ async_link_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_link_optional_args_t *)calloc(1, sizeof(async_link_optional_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -18766,7 +19283,8 @@ async_link_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -18783,6 +19301,14 @@ async_link_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -18827,7 +19353,8 @@ async_object_open_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -18980,12 +19507,15 @@ async_object_open(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if (qtype == BLOCKING)
         is_blocking = true;
@@ -19121,7 +19651,8 @@ async_object_open(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -19138,6 +19669,14 @@ async_object_open(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -19182,7 +19721,8 @@ async_object_copy_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -19341,12 +19881,15 @@ async_object_copy(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_object_copy_args_t *)calloc(1, sizeof(async_object_copy_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -19471,7 +20014,8 @@ async_object_copy(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -19488,6 +20032,14 @@ async_object_copy(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -19532,7 +20084,8 @@ async_object_get_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -19685,12 +20238,15 @@ async_object_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_object_get_args_t *)calloc(1, sizeof(async_object_get_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -19816,7 +20372,8 @@ async_object_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -19833,6 +20390,14 @@ async_object_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -19877,7 +20442,8 @@ async_object_specific_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -20029,12 +20595,15 @@ async_object_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if (qtype == BLOCKING)
         is_blocking = true;
@@ -20159,7 +20728,8 @@ async_object_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -20176,6 +20746,14 @@ async_object_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -20220,7 +20798,8 @@ async_object_optional_fn(void *foo)
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
     assert(args);
     assert(task);
@@ -20370,12 +20949,15 @@ async_object_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t
 
 #ifdef ENABLE_LOG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_object_optional_args_t *)calloc(1, sizeof(async_object_optional_args_t))) == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
@@ -20496,7 +21078,8 @@ async_object_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks\n", __func__);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s waiting to finish all previous tasks, SYNC MODE now!\n",
+                    __func__);
 #endif
         if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
@@ -20513,6 +21096,14 @@ async_object_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t
                 goto done;
             }
         }
+
+        // Restore async operation state
+        async_instance_g->start_abt_push = async_instance_g->prev_push_state;
+#ifdef ENABLE_DBG_MSG
+        if (async_instance_g->prev_push_state == false && async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s restored ASYNC MODE.\n", __func__);
+#endif
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
