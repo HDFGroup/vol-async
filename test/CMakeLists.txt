@@ -44,8 +44,8 @@ foreach(test ${tests} ${tests_p})
         ${MPI_LIBRARIES}
         ${ABT_LIBRARIES}
         ${HDF5_LIBRARIES}
-        libh5async
-        libasynchdf5
+        h5async
+        asynchdf5
     )
     
     # Option 1: If you want to test individually, use the following.

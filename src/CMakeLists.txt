@@ -3,11 +3,11 @@ set(HDF5_VOL_ASYNC_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/h5_async_vol.h
 )
 
-add_library(libh5async
+add_library(h5async
     SHARED
     ${CMAKE_CURRENT_SOURCE_DIR}/h5_async_vol.c
 )
-add_library(libasynchdf5
+add_library(asynchdf5
     STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/h5_async_lib.c
 )
@@ -25,20 +25,20 @@ set(ASYNC_LINK_LIBRARIES
     ${ABT_LIBRARIES}
 )
 
-target_include_directories(libh5async 
+target_include_directories(h5async 
     PRIVATE
     ${ASYNC_INCLUDE_LIBRARIES}
 )
-target_include_directories(libh5async 
+target_include_directories(h5async 
     PRIVATE
     ${ASYNC_INCLUDE_LIBRARIES}
 )
 
-target_link_libraries(libh5async
+target_link_libraries(h5async
     PRIVATE
     ${ASYNC_LINK_LIBRARIES}
 )
-target_link_libraries(libasynchdf5
+target_link_libraries(asynchdf5
     PRIVATE
     ${ASYNC_LINK_LIBRARIES}
 )
@@ -54,8 +54,8 @@ install(
 
 install(
     TARGETS
-        libh5async
-        libasynchdf5
+        h5async
+        asynchdf5
     EXPORT
         ${HDF5_VOL_ASYNC_EXPORTED_TARGETS}
     LIBRARY DESTINATION ${HDF5_VOL_ASYNC_INSTALL_LIB_DIR}
