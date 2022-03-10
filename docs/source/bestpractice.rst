@@ -36,3 +36,7 @@ It is generally discouraged to mix sync and async operations in an application, 
     }
     fid_sync = H5Fcreate(fname, H5F_ACC_TRUNC, H5P_DEFAULT, fapl_sync);
     H5Pclose(fapl_sync)
+
+Forced synchronous execution
+----------------------------
+Due to the nature of some HDF5 APIs such as H5\*exists, H5\*get\*, H5\*set\*, they must be executed synchronously and immediately in order to provide the correct return value back to the application, even asynchronous I/O VOL is used. This may lead to an effectively synchronous performance, especially when they are interleaved with other operations that can be executed asynchronously. It is recommended that applications either avoid these calls (by caching HDF5 IDs) or place them at the very beginning of the I/O phase.
