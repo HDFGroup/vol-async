@@ -14,8 +14,7 @@ link_iterate_cb(hid_t group_id, const char *link_name, const H5L_info2_t *info, 
     int *nlink = (int *)_op_data;
 
     ++(*nlink);
-    printf("nlink = %d, link_name = %s\n", *nlink, link_name);
-    fflush(stdout);
+    fprintf(stderr, "nlink = %d, link_name = %s\n", *nlink, link_name);
 
     return H5_ITER_CONT;
 }
@@ -41,8 +40,7 @@ main(int argc, char *argv[])
     //    H5Pset_vol_async(async_fapl);
 
     if (print_dbg_msg)
-        printf("H5Fcreate start\n");
-    fflush(stdout);
+        fprintf(stderr, "H5Fcreate start\n");
 
     hbool_t op_failed;
     size_t  num_in_progress;
@@ -55,12 +53,10 @@ main(int argc, char *argv[])
         goto done;
     }
     if (print_dbg_msg)
-        printf("H5Fcreate done\n");
-    fflush(stdout);
+        fprintf(stderr, "H5Fcreate done\n");
 
     if (print_dbg_msg)
-        printf("H5Gcreate start\n");
-    fflush(stdout);
+        fprintf(stderr, "H5Gcreate start\n");
     /* grp_id = H5Gcreate(file_id, grp_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT); */
     grp_id = H5Gcreate_async(file_id, grp_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
     if (grp_id < 0) {
@@ -69,8 +65,7 @@ main(int argc, char *argv[])
         goto done;
     }
     if (print_dbg_msg)
-        printf("H5Gcreate done\n");
-    fflush(stdout);
+        fprintf(stderr, "H5Gcreate done\n");
 
     data0_write = malloc(sizeof(int) * DIMLEN * DIMLEN);
     data1_write = malloc(sizeof(int) * DIMLEN * DIMLEN);
@@ -86,8 +81,7 @@ main(int argc, char *argv[])
     attr_space        = H5Screate_simple(1, &attr_size, NULL);
 
     if (print_dbg_msg)
-        printf("H5Dcreate 0 start\n");
-    fflush(stdout);
+        fprintf(stderr, "H5Dcreate 0 start\n");
     /* dset0_id  = H5Dcreate(grp_id,"dset0",H5T_NATIVE_INT,dspace_id,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT); */
     dset0_id = H5Dcreate_async(grp_id, "dset0", H5T_NATIVE_INT, dspace_id, H5P_DEFAULT, H5P_DEFAULT,
                                H5P_DEFAULT, es_id);
@@ -97,12 +91,10 @@ main(int argc, char *argv[])
         goto done;
     }
     if (print_dbg_msg)
-        printf("H5Dcreate 0 done\n");
-    fflush(stdout);
+        fprintf(stderr, "H5Dcreate 0 done\n");
 
     if (print_dbg_msg)
-        printf("H5Dcreate 1 start\n");
-    fflush(stdout);
+        fprintf(stderr, "H5Dcreate 1 start\n");
     /* dset1_id  = H5Dcreate(grp_id,"dset1",H5T_NATIVE_INT,dspace_id,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT); */
     dset1_id = H5Dcreate_async(grp_id, "dset1", H5T_NATIVE_INT, dspace_id, H5P_DEFAULT, H5P_DEFAULT,
                                H5P_DEFAULT, es_id);
@@ -112,8 +104,13 @@ main(int argc, char *argv[])
         goto done;
     }
     if (print_dbg_msg)
-        printf("H5Dcreate 1 done\n");
-    fflush(stdout);
+        fprintf(stderr, "H5Dcreate 1 done\n");
+
+    if (H5Aexists(dset0_id, "attr_0") != 0) {
+        fprintf(stderr, "Error with H5Aexist\n");
+        ret = -1;
+        goto done;
+    }
 
     // attribute async test
     attr0 = H5Acreate_async(dset0_id, "attr_0", H5T_NATIVE_INT, attr_space, H5P_DEFAULT, H5P_DEFAULT, es_id);
@@ -132,7 +129,13 @@ main(int argc, char *argv[])
 
     H5Sclose(attr_space);
 
+    if (print_dbg_msg)
+        fprintf(stderr, "H5Fwait start\n");
+
     H5Fwait(file_id, H5P_DEFAULT);
+
+    if (print_dbg_msg)
+        fprintf(stderr, "H5Fwait done\n");
 
     if (attr_data0 != attr_read_data0) {
         fprintf(stderr, "Error with attr 0 read\n");
@@ -145,7 +148,7 @@ main(int argc, char *argv[])
         goto done;
     }
     if (print_dbg_msg)
-        printf("H5Aread done\n");
+        fprintf(stderr, "H5Aread data verified\n");
 
     if (H5Pset_dxpl_delay(async_dxpl, 100) < 0) {
         fprintf(stderr, "Error with H5Pset_dxpl_delay\n");
@@ -155,8 +158,7 @@ main(int argc, char *argv[])
 
     // W0, R0, W1, R1, W1', W0', R0', R1'
     if (print_dbg_msg)
-        printf("H5Dwrite 0 start\n");
-    fflush(stdout);
+        fprintf(stderr, "H5Dwrite 0 start\n");
     status = H5Dwrite_async(dset0_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, async_dxpl, data0_write, es_id);
     if (status < 0) {
         fprintf(stderr, "Error with dset 0 write\n");
@@ -164,12 +166,10 @@ main(int argc, char *argv[])
         goto done;
     }
     if (print_dbg_msg)
-        printf("H5Dwrite 0 done\n");
-    fflush(stdout);
+        fprintf(stderr, "H5Dwrite 0 done\n");
 
     if (print_dbg_msg)
-        printf("H5Dread 0 start\n");
-    fflush(stdout);
+        fprintf(stderr, "H5Dread 0 start\n");
     status = H5Dread_async(dset0_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, async_dxpl, data0_read, es_id);
     if (status < 0) {
         fprintf(stderr, "Error with dset 0 read\n");
@@ -177,17 +177,15 @@ main(int argc, char *argv[])
         goto done;
     }
     if (print_dbg_msg)
-        printf("H5Dread 0 done\n");
-    fflush(stdout);
+        fprintf(stderr, "H5Dread 0 done\n");
 
-    /* if (print_dbg_msg) printf("Start H5Dwait\n"); */
-    /* fflush(stdout); */
+    /* if (print_dbg_msg) fprintf(stderr, "Start H5Dwait\n"); */
     /* H5Dwait(dset0_id); */
-    /* if (print_dbg_msg) printf("Done H5Dwait\n"); */
-    /* fflush(stdout); */
+    /* if (print_dbg_msg) fprintf(stderr, "Done H5Dwait\n"); */
 
     if (print_dbg_msg)
-        printf("H5ESwait start\n");
+        fprintf(stderr, "H5ESwait start\n");
+
     status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
     if (status < 0) {
         fprintf(stderr, "Error with H5ESwait\n");
@@ -195,7 +193,7 @@ main(int argc, char *argv[])
         goto done;
     }
     if (print_dbg_msg)
-        printf("H5ESwait done\n");
+        fprintf(stderr, "H5ESwait done\n");
 
     // Verify read data
     for (i = 0; i < DIMLEN * DIMLEN; ++i) {
@@ -205,7 +203,7 @@ main(int argc, char *argv[])
             break;
         }
     }
-    printf("Finished verification\n");
+    fprintf(stderr, "Finished verification\n");
 
     uint64_t delay;
     if (H5Pget_dxpl_delay(async_dxpl, &delay) < 0) {
@@ -220,8 +218,8 @@ main(int argc, char *argv[])
     }
 
     if (print_dbg_msg)
-        printf("H5Dwrite 1 start\n");
-    fflush(stdout);
+        fprintf(stderr, "H5Dwrite 1 start\n");
+
     status = H5Dwrite_async(dset1_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, async_dxpl, data1_write, es_id);
     if (status < 0) {
         fprintf(stderr, "Error with dset 1 write\n");
@@ -229,11 +227,10 @@ main(int argc, char *argv[])
         goto done;
     }
     if (print_dbg_msg)
-        printf("H5Dwrite 1 done\n");
-    fflush(stdout);
+        fprintf(stderr, "H5Dwrite 1 done\n");
 
     if (print_dbg_msg)
-        printf("H5Dread 1 start\n");
+        fprintf(stderr, "H5Dread 1 start\n");
     status = H5Dread_async(dset1_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, async_dxpl, data1_read, es_id);
     if (status < 0) {
         fprintf(stderr, "Error with dset 1 read\n");
@@ -241,19 +238,20 @@ main(int argc, char *argv[])
         goto done;
     }
     if (print_dbg_msg)
-        printf("H5Dread 1 done\n");
-    fflush(stdout);
+        fprintf(stderr, "H5Dread 1 done\n");
 
     if (print_dbg_msg)
-        printf("H5ESwait start\n");
+        fprintf(stderr, "H5ESwait start\n");
+
     status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
     if (status < 0) {
         fprintf(stderr, "Error with H5ESwait\n");
         ret = -1;
         goto done;
     }
+
     if (print_dbg_msg)
-        printf("H5ESwait done\n");
+        fprintf(stderr, "H5ESwait done\n");
 
     // Verify read data
     for (i = 0; i < DIMLEN * DIMLEN; ++i) {
@@ -263,7 +261,7 @@ main(int argc, char *argv[])
             break;
         }
     }
-    printf("Finished verification\n");
+    fprintf(stderr, "Finished verification\n");
 
     // Change data 0 and 1
     for (i = 0; i < DIMLEN * DIMLEN; ++i) {
@@ -272,8 +270,8 @@ main(int argc, char *argv[])
     }
 
     if (print_dbg_msg)
-        printf("H5Dwrite 1 start\n");
-    fflush(stdout);
+        fprintf(stderr, "H5Dwrite 1 start\n");
+
     status = H5Dwrite_async(dset1_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, async_dxpl, data1_write, es_id);
     if (status < 0) {
         fprintf(stderr, "Error with dset 1 write\n");
@@ -281,12 +279,11 @@ main(int argc, char *argv[])
         goto done;
     }
     if (print_dbg_msg)
-        printf("H5Dwrite 1 done\n");
-    fflush(stdout);
+        fprintf(stderr, "H5Dwrite 1 done\n");
 
     if (print_dbg_msg)
-        printf("H5Dwrite 0 start\n");
-    fflush(stdout);
+        fprintf(stderr, "H5Dwrite 0 start\n");
+
     status = H5Dwrite_async(dset0_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, async_dxpl, data0_write, es_id);
     if (status < 0) {
         fprintf(stderr, "Error with dset 0 write\n");
@@ -294,12 +291,11 @@ main(int argc, char *argv[])
         goto done;
     }
     if (print_dbg_msg)
-        printf("H5Dwrite 0 done\n");
-    fflush(stdout);
+        fprintf(stderr, "H5Dwrite 0 done\n");
 
     if (print_dbg_msg)
-        printf("H5Dread 0 start\n");
-    fflush(stdout);
+        fprintf(stderr, "H5Dread 0 start\n");
+
     status = H5Dread_async(dset0_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, async_dxpl, data0_read, es_id);
     if (status < 0) {
         fprintf(stderr, "Error with dset 0 read\n");
@@ -307,11 +303,10 @@ main(int argc, char *argv[])
         goto done;
     }
     if (print_dbg_msg)
-        printf("H5Dread 0 done\n");
-    fflush(stdout);
+        fprintf(stderr, "H5Dread 0 done\n");
 
     if (print_dbg_msg)
-        printf("H5ESwait start\n");
+        fprintf(stderr, "H5ESwait start\n");
     status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
     if (status < 0) {
         fprintf(stderr, "Error with H5ESwait\n");
@@ -319,7 +314,7 @@ main(int argc, char *argv[])
         goto done;
     }
     if (print_dbg_msg)
-        printf("H5ESwait done\n");
+        fprintf(stderr, "H5ESwait done\n");
 
     // Verify read data
     for (i = 0; i < DIMLEN * DIMLEN; ++i) {
@@ -329,11 +324,11 @@ main(int argc, char *argv[])
             break;
         }
     }
-    printf("Finished verification\n");
+    fprintf(stderr, "Finished verification\n");
 
     if (print_dbg_msg)
-        printf("H5Dread 1 start\n");
-    fflush(stdout);
+        fprintf(stderr, "H5Dread 1 start\n");
+
     status = H5Dread_async(dset1_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, async_dxpl, data1_read, es_id);
     if (status < 0) {
         fprintf(stderr, "Error with dset 1 read\n");
@@ -341,11 +336,10 @@ main(int argc, char *argv[])
         goto done;
     }
     if (print_dbg_msg)
-        printf("H5Dread 1 done\n");
-    fflush(stdout);
+        fprintf(stderr, "H5Dread 1 done\n");
 
     if (print_dbg_msg)
-        printf("H5ESwait start\n");
+        fprintf(stderr, "H5ESwait start\n");
     status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
     if (status < 0) {
         fprintf(stderr, "Error with H5ESwait\n");
@@ -353,7 +347,7 @@ main(int argc, char *argv[])
         goto done;
     }
     if (print_dbg_msg)
-        printf("H5ESwait done\n");
+        fprintf(stderr, "H5ESwait done\n");
 
     // Verify read data
     for (i = 0; i < DIMLEN * DIMLEN; ++i) {
@@ -364,11 +358,10 @@ main(int argc, char *argv[])
             break;
         }
     }
-    printf("Finished verification\n");
+    fprintf(stderr, "Finished verification\n");
 
     if (print_dbg_msg)
-        printf("H5Literate_async start\n");
-    fflush(stdout);
+        fprintf(stderr, "H5Literate_async start\n");
 
     status = H5Literate_async(grp_id, H5_INDEX_NAME, H5_ITER_INC, &idx, link_iterate_cb, &nlink, es_id);
     if (status < 0) {
@@ -378,11 +371,10 @@ main(int argc, char *argv[])
     }
 
     if (print_dbg_msg)
-        printf("H5Literate_async done\n");
-    fflush(stdout);
+        fprintf(stderr, "H5Literate_async done\n");
 
     if (print_dbg_msg)
-        printf("H5ESwait start\n");
+        fprintf(stderr, "H5ESwait start\n");
     status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
     if (status < 0) {
         fprintf(stderr, "Error with H5ESwait\n");
@@ -390,7 +382,7 @@ main(int argc, char *argv[])
         goto done;
     }
     if (print_dbg_msg)
-        printf("H5ESwait done\n");
+        fprintf(stderr, "H5ESwait done\n");
 
     H5ESclose(es_id);
 
