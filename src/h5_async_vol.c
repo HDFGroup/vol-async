@@ -14960,8 +14960,18 @@ async_file_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
     }
     lock_parent = false;
 
-    if (get_n_running_task_in_queue(async_task) == 0)
-        push_task_to_abt_pool(&aid->qhead, aid->pool);
+    if (aid->ex_delay == false && !async_instance_g->pause) {
+        if (get_n_running_task_in_queue(async_task) == 0)
+            push_task_to_abt_pool(&aid->qhead, aid->pool);
+        aid->start_abt_push = true;
+    }
+    else {
+        if (aid->ex_fclose) {
+            if (get_n_running_task_in_queue(async_task) == 0)
+                push_task_to_abt_pool(&aid->qhead, aid->pool);
+            aid->start_abt_push = true;
+        }
+    }
 
 wait:
     aid->start_abt_push = true;
@@ -17088,12 +17098,12 @@ async_group_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
         add_task_to_queue(&aid->qhead, async_task, REGULAR);
         is_blocking = true;
     }
+
     if (aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool);
         aid->start_abt_push = true;
     }
-
     else {
         if (aid->ex_gclose) {
             if (get_n_running_task_in_queue(async_task) == 0)
