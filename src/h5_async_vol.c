@@ -23972,14 +23972,16 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
         return ret_value;
     }
 
-    async_instance_g->start_abt_push = true;
+    if (timeout > 0) {
+        async_instance_g->start_abt_push = true;
 
-    if (task->async_obj && get_n_running_task_in_queue_obj(task->async_obj) == 0 &&
-        task->async_obj->pool_ptr && async_instance_g->qhead.queue)
-        push_task_to_abt_pool(&async_instance_g->qhead, *task->async_obj->pool_ptr);
+        if (task->async_obj && get_n_running_task_in_queue_obj(task->async_obj) == 0 &&
+            task->async_obj->pool_ptr && async_instance_g->qhead.queue)
+            push_task_to_abt_pool(&async_instance_g->qhead, *task->async_obj->pool_ptr);
 
-    if (H5TSmutex_release(&mutex_count) < 0)
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__);
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__);
+    }
 
     trigger    = (double)timeout;
     start_time = clock();
@@ -24015,7 +24017,8 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
             }
         }
 
-        usleep(100000);
+        if (timeout > 0)
+            usleep(100000);
         now_time = clock();
         elapsed  = (double)(now_time - start_time) / CLOCKS_PER_SEC;
 
@@ -24025,7 +24028,7 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
 #ifdef ENABLE_DBG_MSG
     if (elapsed > timeout &&
         (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK)))
-        fprintf(fout_g, "  [ASYNC VOL] timedout during wait (elapsed=%es, timeout=%.1fs)\n", elapsed,
+        fprintf(fout_g, "  [ASYNC VOL DBG] timedout during wait (elapsed=%es, timeout=%.1fs)\n", elapsed,
                 trigger);
 #endif
 

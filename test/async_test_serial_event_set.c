@@ -296,6 +296,18 @@ main(int argc, char *argv[])
     if (print_dbg_msg)
         fprintf(stderr, "H5Dread 0 start\n");
 
+    // Check for ops in progress
+    if (print_dbg_msg)
+        fprintf(stderr, "H5ESwait check start\n");
+    status = H5ESwait(es_id, 0, &num_in_progress, &op_failed);
+    if (status < 0) {
+        fprintf(stderr, "Error with H5ESwait\n");
+        ret = -1;
+        goto done;
+    }
+    if (print_dbg_msg)
+        fprintf(stderr, "H5ESwait check done, %lu in progress (2 expected)\n", num_in_progress);
+
     status = H5Dread_async(dset0_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, async_dxpl, data0_read, es_id);
     if (status < 0) {
         fprintf(stderr, "Error with dset 0 read\n");
