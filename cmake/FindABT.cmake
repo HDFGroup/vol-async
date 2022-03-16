@@ -1,9 +1,13 @@
 find_path(ABT_INCLUDE_DIR
     NAMES abt.h
+    HINTS $ENV{ABT_DIR}
+    PATH_SUFFIXES include
 )
 
 find_library(ABT_LIBRARY
     NAMES abt
+    HINTS $ENV{ABT_DIR}
+    PATH_SUFFIXES lib
 )
 
 set(ABT_INCLUDE_DIRS ${ABT_INCLUDE_DIR})

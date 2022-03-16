@@ -8,8 +8,6 @@ find_package(MPI REQUIRED)
 find_package(ABT REQUIRED)
 find_package(HDF5 REQUIRED COMPONENTS C)
 
-pkg_check_modules(ABT REQUIRED IMPORTED_TARGET argobots)
-
 include_directories(${MPI_INCLUDE_PATH})
 include_directories(${HDF5_INCLUDE_DIRS})
 
