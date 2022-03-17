@@ -14,16 +14,18 @@ endif()
 
 set(tests
     async_test_multifile
-    async_test_multifile_env
     async_test_serial 
     async_test_serial2
-    async_test_serial_error_stack
     async_test_serial_event_set
     async_test_serial_event_set_error_stack
 )
 
 if(MPI_FOUND)
-    message("MPIEXEC is found - ${MPIEXEC}.")
+    if(NOT DEFINED MPICMD)
+        message("MPIEXEC is found - ${MPIEXEC}.")
+        set(MPICMD ${MPIEXEC})
+    endif()
+
     set(tests_p
         async_test_parallel2
         async_test_parallel3
@@ -47,18 +49,26 @@ foreach(test ${tests} ${tests_p})
         h5async
         asynchdf5
     )
-    
+
     # Option 1: If you want to test individually, use the following.
     if(${test} MATCHES parallel)
-        add_test(${test} ${MPIEXEC} -np 2 ./${test}.exe) 
+        add_test(${test} ${MPICMD} -n 2 ./${test}.exe) 
     else()
         add_test(${test} ${test}.exe)
     endif()
 
-    set_tests_properties(
+    set_property(
+        TEST
         ${test}
-        PROPERTIES
-        ENVIRONMENT "HDF5_VOL_CONNECTOR=\"async under_vol=0;under_info={}\";HDF5_PLUGIN_PATH=$ENV{HDF5_PLUGIN_PATH}"
+        APPEND PROPERTY
+        ENVIRONMENT HDF5_PLUGIN_PATH=$ENV{HDF5_PLUGIN_PATH}
+    )
+
+    set_property(
+        TEST
+        ${test}
+        APPEND PROPERTY 
+        ENVIRONMENT "HDF5_VOL_CONNECTOR=async under_vol=0\;under_info={}"
     )
 endforeach()
 
