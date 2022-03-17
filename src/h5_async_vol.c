@@ -207,8 +207,8 @@ typedef struct async_instance_t {
     bool          disable_implicit_file; /* Disable implicit async execution globally */
     bool          disable_implicit;      /* Disable implicit async execution for dxpl */
     bool          delay_time_env;        /* Flag that indicates the delay time is set by env variable */
-    uint64_t      delay_time;            /* Sleep time before background thread trying to acquire global mutex */
-    int           sleep_time;            /* Sleep time between checking the global mutex attemp count */
+    uint64_t      delay_time; /* Sleep time before background thread trying to acquire global mutex */
+    int           sleep_time; /* Sleep time between checking the global mutex attemp count */
 #ifdef ENABLE_WRITE_MEMCPY
     hsize_t max_mem;
     hsize_t used_mem;
@@ -1255,7 +1255,7 @@ async_instance_init(int backing_thread_count)
 
     env_var = getenv("HDF5_ASYNC_DELAY_MICROSECOND");
     if (env_var && *env_var && atoi(env_var) > 0) {
-        aid->delay_time = atoi(env_var);
+        aid->delay_time     = atoi(env_var);
         aid->delay_time_env = true;
     }
 
