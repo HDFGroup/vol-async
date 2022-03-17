@@ -181,7 +181,7 @@ main(int argc, char *argv[])
         goto done;
     }
     H5free_memory((void *)err_info.api_args);
-    if (strcmp("async_test_serial_event_set_error_stack.c", err_info.app_file_name)) {
+    if (NULL != strstr("async_test_serial_event_set_error_stack.c", err_info.app_file_name)) {
         fprintf(stderr, "Event set didn't return app source file name correctly?!?\n");
         ret = -1;
         goto done;
