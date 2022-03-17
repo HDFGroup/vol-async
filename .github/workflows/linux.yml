@@ -87,7 +87,7 @@ jobs:
           make
           
           # Run serial and parallel tests
-          stdbuf -i0 -o0 -e0 make check
+          make check
           
           # Test with async VOL double buffering
           cd ../src
@@ -95,4 +95,4 @@ jobs:
           make clean
           make
           cd ../test
-          stdbuf -i0 -o0 -e0 make check
+          make check
