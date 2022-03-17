@@ -24043,9 +24043,11 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
 #endif
 
 done:
-    while (false == acquired) {
-        if (H5TSmutex_acquire(mutex_count, &acquired) < 0)
-            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_acquire\n", __func__);
+    if (timeout > 0) {
+        while (false == acquired) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0)
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_acquire\n", __func__);
+        }
     }
 
     async_instance_g->start_abt_push = tmp;
