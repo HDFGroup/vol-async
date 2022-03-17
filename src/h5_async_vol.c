@@ -206,8 +206,9 @@ typedef struct async_instance_t {
     bool          pause;                 /* Pause background thread execution */
     bool          disable_implicit_file; /* Disable implicit async execution globally */
     bool          disable_implicit;      /* Disable implicit async execution for dxpl */
+    bool          delay_time_env;        /* Flag that indicates the delay time is set by env variable */
+    uint64_t      delay_time;            /* Sleep time before background thread trying to acquire global mutex */
     int           sleep_time;            /* Sleep time between checking the global mutex attemp count */
-    uint64_t      delay_time; /* Sleep time before background thread trying to acquire global mutex */
 #ifdef ENABLE_WRITE_MEMCPY
     hsize_t max_mem;
     hsize_t used_mem;
@@ -1239,6 +1240,7 @@ async_instance_init(int backing_thread_count)
     aid->start_abt_push        = false;
     aid->disable_implicit      = false;
     aid->disable_implicit_file = false;
+    aid->delay_time_env        = false;
 
     // Check for delaying operations to file / group / dataset close operations
     env_var = getenv("HDF5_ASYNC_EXE_FCLOSE");
@@ -1250,6 +1252,12 @@ async_instance_init(int backing_thread_count)
     env_var = getenv("HDF5_ASYNC_EXE_DCLOSE");
     if (env_var && *env_var && atoi(env_var) > 0)
         aid->ex_dclose = true;
+
+    env_var = getenv("HDF5_ASYNC_DELAY_MICROSECOND");
+    if (env_var && *env_var && atoi(env_var) > 0) {
+        aid->delay_time = atoi(env_var);
+        aid->delay_time_env = true;
+    }
 
     /* Set "delay execution" convenience flag, if any of the others are set */
     if (aid->ex_fclose || aid->ex_gclose || aid->ex_dclose)
@@ -1544,8 +1552,8 @@ H5VL_async_dxpl_set_pause(hid_t dxpl)
             }
         }
         else {
-            if (async_instance_g->delay_time != delay_us) {
-                async_instance_g->delay_time = delay_us;
+            if (async_instance_g->delay_time != 0 && async_instance_g->delay_time_env == false) {
+                async_instance_g->delay_time = 0;
 #ifdef ENABLE_DBG_MSG
                 if (async_instance_g &&
                     (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
