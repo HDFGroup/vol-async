@@ -64,9 +64,9 @@ works, and perform publicly and display publicly, and to permit others to do so.
 
 /* Whether to display log messge when callback is invoked */
 /* (Uncomment to enable) */
-#define ENABLE_LOG     1
-#define ENABLE_DBG_MSG 1
-#define PRINT_ERROR_STACK           1
+#define ENABLE_LOG        1
+#define ENABLE_DBG_MSG    1
+#define PRINT_ERROR_STACK 1
 #define ENABLE_ASYNC_LOGGING
 
 #define ASYNC_DBG_MSG_RANK 0
@@ -2126,11 +2126,11 @@ get_n_running_task_in_queue_obj(H5VL_async_t *async_obj)
  *
  */
 herr_t
-H5VL_async_task_wait(async_task_t* async_task)
+H5VL_async_task_wait(async_task_t *async_task)
 {
-    hbool_t       acquired    = false;
-    unsigned int  mutex_count = 1;
-    hbool_t       tmp         = async_instance_g->start_abt_push;
+    hbool_t      acquired    = false;
+    unsigned int mutex_count = 1;
+    hbool_t      tmp         = async_instance_g->start_abt_push;
 
     async_instance_g->start_abt_push = true;
 
@@ -2138,8 +2138,8 @@ H5VL_async_task_wait(async_task_t* async_task)
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__);
 
 #ifdef ENABLE_DBG_MSG
-        if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s, released %u count\n", __func__, mutex_count);
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC VOL DBG] %s, released %u count\n", __func__, mutex_count);
 #endif
 
     if (async_task->is_done != 1)
@@ -2149,17 +2149,16 @@ H5VL_async_task_wait(async_task_t* async_task)
         if (H5TSmutex_acquire(mutex_count, &acquired) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_acquire\n", __func__);
 #ifdef ENABLE_DBG_MSG
-        if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        if (async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
             fprintf(fout_g, "  [ASYNC VOL DBG] %s, reacquiring global lock\n", __func__);
 #endif
-
     }
 
     async_instance_g->start_abt_push = tmp;
 
     return 0;
 }
-
 
 /**
  * \ingroup ASYNC
@@ -2197,18 +2196,21 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool)
         return -1;
     }
 
-
     if (NULL == qhead->queue) {
-        if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        if (async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
             fprintf(fout_g, "  [ASYNC VOL DBG] %s, qhead->queue is NULL\n", __func__);
         goto done;
     }
 
-    DL_FOREACH_SAFE(qhead->queue, task_list_elt, task_list_tmp) {
-        DL_FOREACH_SAFE(task_list_elt->task_list, task_elt, task_tmp) {
+    DL_FOREACH_SAFE(qhead->queue, task_list_elt, task_list_tmp)
+    {
+        DL_FOREACH_SAFE(task_list_elt->task_list, task_elt, task_tmp)
+        {
 
 #ifdef ENABLE_DBG_MSG
-            if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            if (async_instance_g &&
+                (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
                 fprintf(fout_g, "  [ASYNC VOL DBG] checking task func [%p] dependency\n", task_elt->func);
 #endif
             is_dep_done = 1;
@@ -2268,8 +2270,8 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool)
                         is_dep_done = 1;
                         continue;
                     } // End if thread is not terminated
-                } // End if dependent task is not finished
-            } // End for dependent parents of current task
+                }     // End if dependent task is not finished
+            }         // End for dependent parents of current task
 
             if (is_dep_done == 0) {
 #ifdef ENABLE_DBG_MSG
@@ -2458,8 +2460,8 @@ add_task_to_queue(async_qhead_t *qhead, async_task_t *task, task_list_qtype task
             }
             DL_FOREACH2(task->async_obj->file_task_list_head, task_elt, file_list_next)
             {
-                if (task_elt->in_abt_pool == 1 && task_elt->async_obj && task_elt->async_obj == task->async_obj &&
-                    !(task->op == READ && task_elt->op == READ)) {
+                if (task_elt->in_abt_pool == 1 && task_elt->async_obj &&
+                    task_elt->async_obj == task->async_obj && !(task->op == READ && task_elt->op == READ)) {
                     task_type = DEPENDENT;
                     if (add_to_dep_task(task, task_elt) < 0) {
                         fprintf(fout_g, "  [ASYNC VOL ERROR] %s add_to_dep_task failed\n", __func__);
@@ -2473,7 +2475,7 @@ add_task_to_queue(async_qhead_t *qhead, async_task_t *task, task_list_qtype task
                 return -1;
             }
         } // End has valid file_async_obj
-    } // End if task type is DEPENDENT
+    }     // End if task type is DEPENDENT
 
     /* // If regular task, add to Argobots pool for execution directly */
     /* if (task_type == REGULAR) { */
@@ -22967,7 +22969,8 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_args_t *args, hid_t dxpl
         /* Keep the correct underlying VOL ID for later */
         under_vol_id = o->under_vol_id;
 
-        if (args->op_type == H5VL_FILE_REOPEN || async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
+        if (args->op_type == H5VL_FILE_REOPEN || async_instance_g->disable_implicit_file ||
+            async_instance_g->disable_implicit) {
             ret_value = H5VLfile_specific(o->under_object, o->under_vol_id, args, dxpl_id, req);
         }
         else {
@@ -24082,11 +24085,11 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
             push_task_to_abt_pool(&async_instance_g->qhead, *task->async_obj->pool_ptr);
 
 #ifdef ENABLE_DBG_MSG
-            if ((async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK)))
+            if ((async_instance_g &&
+                 (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK)))
                 fprintf(fout_g, "  [ASYNC VOL DBG] %s, will push a task\n", __func__);
 #endif
         }
-
 
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__);
