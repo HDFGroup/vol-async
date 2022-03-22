@@ -2067,7 +2067,7 @@ add_to_dep_task(async_task_t *task, async_task_t *parent_task)
 static size_t
 get_n_running_task_in_queue(async_task_t *task, const char *call_func)
 {
-    size_t pool_size = 0;
+    size_t           pool_size = 0;
     ABT_thread_state thread_state;
     async_task_t *   task_elt;
     ABT_thread       self_thread;
@@ -2082,22 +2082,22 @@ get_n_running_task_in_queue(async_task_t *task, const char *call_func)
     if (pool_size == 0) {
         if (ABT_thread_self(&self_thread) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_thread_self\n", __func__);
-         
-	DL_FOREACH2(task->async_obj->file_task_list_head, task_elt, file_list_next)
-	{
+
+        DL_FOREACH2(task->async_obj->file_task_list_head, task_elt, file_list_next)
+        {
             ABT_thread_equal(task_elt->abt_thread, self_thread, &is_equal);
-	    if (task_elt && task_elt->abt_thread != NULL && is_equal == false) {
-		ABT_thread_get_state(task_elt->abt_thread, &thread_state);
-		if (thread_state != ABT_THREAD_STATE_TERMINATED)
-		    pool_size++;
-	    }
-	}
+            if (task_elt && task_elt->abt_thread != NULL && is_equal == false) {
+                ABT_thread_get_state(task_elt->abt_thread, &thread_state);
+                if (thread_state != ABT_THREAD_STATE_TERMINATED)
+                    pool_size++;
+            }
+        }
     }
 
 #ifdef ENABLE_DBG_MSG
-        if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s, pool size %lu, called by [%s]\n", 
-                    __func__, pool_size, call_func);
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC VOL DBG] %s, pool size %lu, called by [%s]\n", __func__, pool_size,
+                call_func);
 #endif
 
     return pool_size;
@@ -2117,9 +2117,9 @@ get_n_running_task_in_queue(async_task_t *task, const char *call_func)
  *
  */
 int
-get_n_running_task_in_queue_obj(H5VL_async_t *async_obj, const char * call_func)
+get_n_running_task_in_queue_obj(H5VL_async_t *async_obj, const char *call_func)
 {
-    size_t pool_size = 0;
+    size_t           pool_size = 0;
     ABT_thread_state thread_state;
     async_task_t *   task_elt;
     ABT_thread       self_thread;
@@ -2134,21 +2134,20 @@ get_n_running_task_in_queue_obj(H5VL_async_t *async_obj, const char * call_func)
     if (pool_size == 0) {
         if (ABT_thread_self(&self_thread) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_thread_self\n", __func__);
-         
-	DL_FOREACH2(async_obj->file_task_list_head, task_elt, file_list_next)
-	{
+
+        DL_FOREACH2(async_obj->file_task_list_head, task_elt, file_list_next)
+        {
             ABT_thread_equal(task_elt->abt_thread, self_thread, &is_equal);
-	    if (task_elt && task_elt->abt_thread != NULL && is_equal == false) {
-		ABT_thread_get_state(task_elt->abt_thread, &thread_state);
-		if (thread_state != ABT_THREAD_STATE_TERMINATED)
-		    pool_size++;
-	    }
-	}
+            if (task_elt && task_elt->abt_thread != NULL && is_equal == false) {
+                ABT_thread_get_state(task_elt->abt_thread, &thread_state);
+                if (thread_state != ABT_THREAD_STATE_TERMINATED)
+                    pool_size++;
+            }
+        }
     }
 
 #ifdef ENABLE_DBG_MSG
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s, pool size %lu, called by [%s]\n", 
-                    __func__, pool_size, call_func);
+    fprintf(fout_g, "  [ASYNC VOL DBG] %s, pool size %lu, called by [%s]\n", __func__, pool_size, call_func);
 #endif
 
     return pool_size;
@@ -2169,11 +2168,11 @@ get_n_running_task_in_queue_obj(H5VL_async_t *async_obj, const char * call_func)
  *
  */
 herr_t
-H5VL_async_task_wait(async_task_t* async_task)
+H5VL_async_task_wait(async_task_t *async_task)
 {
-    hbool_t       acquired    = false;
-    unsigned int  mutex_count = 1;
-    hbool_t       tmp         = async_instance_g->start_abt_push;
+    hbool_t      acquired    = false;
+    unsigned int mutex_count = 1;
+    hbool_t      tmp         = async_instance_g->start_abt_push;
 
     async_instance_g->start_abt_push = true;
 
@@ -2181,8 +2180,8 @@ H5VL_async_task_wait(async_task_t* async_task)
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__);
 
 #ifdef ENABLE_DBG_MSG
-        if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s, released %u count\n", __func__, mutex_count);
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC VOL DBG] %s, released %u count\n", __func__, mutex_count);
 #endif
 
     if (async_task->is_done != 1)
@@ -2204,7 +2203,6 @@ H5VL_async_task_wait(async_task_t* async_task)
 
     return 0;
 }
-
 
 /**
  * \ingroup ASYNC
@@ -2233,13 +2231,14 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool, const char *call_func
 
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] entering %s, called by [%s], mode=%d\n", __func__,
-                call_func, async_instance_g->start_abt_push);
+        fprintf(fout_g, "  [ASYNC VOL DBG] entering %s, called by [%s], mode=%d\n", __func__, call_func,
+                async_instance_g->start_abt_push);
 #endif
 
     if (NULL == qhead->queue) {
 #ifdef ENABLE_DBG_MSG
-        if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        if (async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
             fprintf(fout_g, "  [ASYNC VOL DBG] %s, qhead->queue is NULL\n", __func__);
 #endif
         goto done;
@@ -2250,11 +2249,14 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool, const char *call_func
         return -1;
     }
 
-    DL_FOREACH_SAFE(qhead->queue, task_list_elt, task_list_tmp) {
-        DL_FOREACH_SAFE(task_list_elt->task_list, task_elt, task_tmp) {
+    DL_FOREACH_SAFE(qhead->queue, task_list_elt, task_list_tmp)
+    {
+        DL_FOREACH_SAFE(task_list_elt->task_list, task_elt, task_tmp)
+        {
 
 #ifdef ENABLE_DBG_MSG
-            if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            if (async_instance_g &&
+                (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
                 fprintf(fout_g, "  [ASYNC VOL DBG] checking task func [%p] dependency\n", task_elt->func);
 #endif
             is_dep_done = 1;
@@ -2314,8 +2316,8 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool, const char *call_func
                         is_dep_done = 1;
                         continue;
                     } // End if thread is not terminated
-                } // End if dependent task is not finished
-            } // End for dependent parents of current task
+                }     // End if dependent task is not finished
+            }         // End for dependent parents of current task
 
             if (is_dep_done == 0) {
 #ifdef ENABLE_DBG_MSG
@@ -2399,7 +2401,8 @@ done:
 
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s, mode=%d\n", __func__, async_instance_g->start_abt_push);
+        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s, mode=%d\n", __func__,
+                async_instance_g->start_abt_push);
 #endif
 
     return 1;
@@ -2504,8 +2507,8 @@ add_task_to_queue(async_qhead_t *qhead, async_task_t *task, task_list_qtype task
             }
             DL_FOREACH2(task->async_obj->file_task_list_head, task_elt, file_list_next)
             {
-                if (task_elt->in_abt_pool == 1 && task_elt->async_obj && task_elt->async_obj == task->async_obj &&
-                    !(task->op == READ && task_elt->op == READ)) {
+                if (task_elt->in_abt_pool == 1 && task_elt->async_obj &&
+                    task_elt->async_obj == task->async_obj && !(task->op == READ && task_elt->op == READ)) {
                     task_type = DEPENDENT;
                     if (add_to_dep_task(task, task_elt) < 0) {
                         fprintf(fout_g, "  [ASYNC VOL ERROR] %s add_to_dep_task failed\n", __func__);
@@ -2519,7 +2522,7 @@ add_task_to_queue(async_qhead_t *qhead, async_task_t *task, task_list_qtype task
                 return -1;
             }
         } // End has valid file_async_obj
-    } // End if task type is DEPENDENT
+    }     // End if task type is DEPENDENT
 
     /* // If regular task, add to Argobots pool for execution directly */
     /* if (task_type == REGULAR) { */
@@ -3126,7 +3129,8 @@ check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *
         return -1;
     }
 
-    if (!async_instance_g->start_abt_push && async_instance_g->ex_delay == false && task->async_obj->file_async_obj) {
+    if (!async_instance_g->start_abt_push && async_instance_g->ex_delay == false &&
+        task->async_obj->file_async_obj) {
         while (1) {
             if (task->async_obj->file_async_obj->attempt_check_cnt % ASYNC_ATTEMPT_CHECK_INTERVAL == 0) {
                 if (async_instance_g->sleep_time > 0)
@@ -3174,8 +3178,8 @@ check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *
         }
         else {
 #ifdef ENABLE_DBG_MSG
-            if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || 
-                -1 == ASYNC_DBG_MSG_RANK))
+            if (async_instance_g &&
+                (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
                 fprintf(fout_g, "  [ASYNC ABT DBG] %s lock acquired, count %u\n", __func__, *mutex_count);
 #endif
             break;
@@ -5125,8 +5129,8 @@ async_attr_create_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -5526,8 +5530,8 @@ async_attr_open_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -5900,8 +5904,8 @@ async_attr_read_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -6245,8 +6249,8 @@ async_attr_write_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -6615,8 +6619,8 @@ async_attr_get_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -6956,8 +6960,8 @@ async_attr_specific_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -7104,7 +7108,7 @@ async_attr_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 
     if (qtype == BLOCKING) {
         async_instance_g->start_abt_push = true;
-        is_blocking = true;
+        is_blocking                      = true;
     }
 
     if ((args = (async_attr_specific_args_t *)calloc(1, sizeof(async_attr_specific_args_t))) == NULL) {
@@ -7315,8 +7319,8 @@ async_attr_optional_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -7653,8 +7657,8 @@ async_attr_close_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -7795,7 +7799,7 @@ async_attr_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
 
     if (qtype == BLOCKING) {
         async_instance_g->start_abt_push = true;
-        is_blocking = true;
+        is_blocking                      = true;
     }
 
     if ((args = (async_attr_close_args_t *)calloc(1, sizeof(async_attr_close_args_t))) == NULL) {
@@ -7999,8 +8003,8 @@ async_dataset_create_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -8407,8 +8411,8 @@ async_dataset_open_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -8788,8 +8792,8 @@ async_dataset_read_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -9141,8 +9145,8 @@ async_dataset_write_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", 
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -9607,8 +9611,8 @@ async_dataset_get_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -9750,7 +9754,7 @@ async_dataset_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
 
     if (qtype == BLOCKING) {
         async_instance_g->start_abt_push = true;
-        is_blocking = true;
+        is_blocking                      = true;
     }
 
     if ((args = (async_dataset_get_args_t *)calloc(1, sizeof(async_dataset_get_args_t))) == NULL) {
@@ -9953,8 +9957,8 @@ async_dataset_specific_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -10095,7 +10099,7 @@ async_dataset_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_
     async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if (qtype == BLOCKING) {
-        is_blocking = true;
+        is_blocking                      = true;
         async_instance_g->start_abt_push = true;
     }
 
@@ -10296,8 +10300,8 @@ async_dataset_optional_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -10634,8 +10638,8 @@ async_dataset_close_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -10777,7 +10781,7 @@ async_dataset_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 
     if (qtype == BLOCKING) {
         async_instance_g->start_abt_push = true;
-        is_blocking = true;
+        is_blocking                      = true;
     }
 
     if ((args = (async_dataset_close_args_t *)calloc(1, sizeof(async_dataset_close_args_t))) == NULL) {
@@ -10987,8 +10991,8 @@ async_datatype_commit_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -11373,8 +11377,8 @@ async_datatype_open_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -11746,8 +11750,8 @@ async_datatype_get_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -12087,8 +12091,8 @@ async_datatype_specific_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -12426,8 +12430,8 @@ async_datatype_optional_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -12765,8 +12769,8 @@ async_datatype_close_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -13111,8 +13115,8 @@ async_file_create_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     // Restore previous library state
@@ -13483,8 +13487,8 @@ async_file_open_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
     /* async_instance_g->start_abt_push = false; */
 
@@ -13851,8 +13855,8 @@ async_file_get_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -14192,8 +14196,8 @@ async_file_specific_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -14459,7 +14463,6 @@ async_file_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
             goto error;
         }
 
-
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
@@ -14541,8 +14544,8 @@ async_file_optional_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -14655,16 +14658,18 @@ done:
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
 
 #ifdef ENABLE_DBG_MSG
-        if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s pushed task to abt queue, mode=%d\n", 
-                    __func__, async_instance_g->start_abt_push);
+        if (async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC ABT DBG] %s pushed task to abt queue, mode=%d\n", __func__,
+                    async_instance_g->start_abt_push);
 #endif
     }
 #ifdef ENABLE_DBG_MSG
     else {
-        if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s did not pushed task to abt queue, %p, mode=%d\n", 
-                    __func__, async_instance_g->qhead.queue, async_instance_g->start_abt_push);
+        if (async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC ABT DBG] %s did not pushed task to abt queue, %p, mode=%d\n", __func__,
+                    async_instance_g->qhead.queue, async_instance_g->start_abt_push);
     }
 #endif
 
@@ -14897,8 +14902,8 @@ async_file_close_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -15066,7 +15071,7 @@ async_file_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
 
     if (qtype == BLOCKING) {
         async_instance_g->start_abt_push = true;
-        is_blocking = true;
+        is_blocking                      = true;
     }
 
     if ((args = (async_file_close_args_t *)calloc(1, sizeof(async_file_close_args_t))) == NULL) {
@@ -15290,8 +15295,8 @@ async_group_create_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -15684,8 +15689,8 @@ async_group_open_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -16057,8 +16062,8 @@ async_group_get_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -16222,7 +16227,7 @@ async_group_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pare
 
     if (qtype == BLOCKING) {
         async_instance_g->start_abt_push = true;
-        is_blocking = true;
+        is_blocking                      = true;
     }
 
     if (req) {
@@ -16403,8 +16408,8 @@ async_group_specific_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -16741,8 +16746,8 @@ async_group_optional_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -17079,8 +17084,8 @@ async_group_close_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -17439,8 +17444,8 @@ async_link_create_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -17813,8 +17818,8 @@ async_link_copy_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     pool_ptr = task->async_obj->pool_ptr;
@@ -18186,8 +18191,8 @@ async_link_move_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -18558,8 +18563,8 @@ async_link_get_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -18908,8 +18913,8 @@ async_link_specific_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -19262,8 +19267,8 @@ async_link_optional_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -19613,8 +19618,8 @@ async_object_open_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -19762,7 +19767,7 @@ async_object_open(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
 
     if (qtype == BLOCKING) {
         async_instance_g->start_abt_push = true;
-        is_blocking = true;
+        is_blocking                      = true;
     }
 
     if ((args = (async_object_open_args_t *)calloc(1, sizeof(async_object_open_args_t))) == NULL) {
@@ -19982,8 +19987,8 @@ async_object_copy_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     pool_ptr = task->async_obj->pool_ptr;
@@ -20361,8 +20366,8 @@ async_object_get_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -20720,8 +20725,8 @@ async_object_specific_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -20868,7 +20873,7 @@ async_object_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t
 
     if (qtype == BLOCKING) {
         async_instance_g->start_abt_push = true;
-        is_blocking = true;
+        is_blocking                      = true;
     }
 
     if ((args = (async_object_specific_args_t *)calloc(1, sizeof(async_object_specific_args_t))) == NULL) {
@@ -21079,8 +21084,8 @@ async_object_optional_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n",
-                __func__, acquired, mutex_count);
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+                mutex_count);
 #endif
 
     /* Update the dependent parent object if it is NULL */
@@ -23136,7 +23141,8 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_args_t *args, hid_t dxpl
         if (args->op_type == H5VL_FILE_REOPEN)
             qtype = BLOCKING;
 
-        if (args->op_type == H5VL_FILE_REOPEN || async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
+        if (args->op_type == H5VL_FILE_REOPEN || async_instance_g->disable_implicit_file ||
+            async_instance_g->disable_implicit) {
             ret_value = H5VLfile_specific(o->under_object, o->under_vol_id, args, dxpl_id, req);
         }
         else {
@@ -24253,7 +24259,8 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__);
 #ifdef ENABLE_DBG_MSG
-        if ((async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK)))
+        if ((async_instance_g &&
+             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK)))
             fprintf(fout_g, "  [ASYNC VOL DBG] released global lock, %d count\n", mutex_count);
 #endif
 
@@ -24267,7 +24274,8 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
                 push_task_to_abt_pool(&async_instance_g->qhead, *task->async_obj->pool_ptr, __func__);
 
 #ifdef ENABLE_DBG_MSG
-                if ((async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK)))
+                if ((async_instance_g &&
+                     (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK)))
                     fprintf(fout_g, "  [ASYNC VOL DBG] %s, will push a task\n", __func__);
 #endif
             }
@@ -24334,10 +24342,9 @@ done:
 
     async_instance_g->start_abt_push = tmp;
 #ifdef ENABLE_DBG_MSG
-    if (async_instance_g &&
-        (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] %s reacquire global lock, reset ASYNC MODE to %d\n", 
-                __func__, tmp);
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC VOL DBG] %s reacquire global lock, reset ASYNC MODE to %d\n", __func__,
+                tmp);
 #endif
 
     return ret_value;
