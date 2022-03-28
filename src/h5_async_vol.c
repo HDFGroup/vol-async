@@ -3162,6 +3162,13 @@ check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *
         }
     }
 
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g &&
+        (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s going to acquire %u lock\n",
+                __func__, *mutex_count);
+#endif
+
     wait_count = 1;
     while (*acquired == false && *mutex_count > 0) {
         if (H5TSmutex_acquire(*mutex_count, acquired) < 0) {
@@ -23084,7 +23091,7 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_args_t *args, hid_t dxpl
     H5VL_async_dxpl_set_pause(dxpl_id);
 
     /* Return error if file object not open / created, unless flush */
-    if (args->op_type != H5VL_FILE_FLUSH && o && !o->is_obj_valid) {
+    if (args->op_type != H5VL_FILE_FLUSH && o && !o->is_obj_valid && args->op_type != H5VL_FILE_REOPEN) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] with H5VL_async_file_specific, invalid object\n");
         return (-1);
     }
@@ -23143,6 +23150,8 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_args_t *args, hid_t dxpl
 
         if (args->op_type == H5VL_FILE_REOPEN || async_instance_g->disable_implicit_file ||
             async_instance_g->disable_implicit) {
+
+            H5VL_async_file_wait((H5VL_async_t *)o);
             ret_value = H5VLfile_specific(o->under_object, o->under_vol_id, args, dxpl_id, req);
         }
         else {
@@ -23578,7 +23587,7 @@ H5VL_async_link_create(H5VL_link_create_args_t *args, void *obj, const H5VL_loc_
 
     /* Return error if object not open / created */
     if (req == NULL && loc_params && loc_params->obj_type != H5I_BADID && o && !o->is_obj_valid) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] with async_file_create, invalid object\n");
+        fprintf(fout_g, "  [ASYNC VOL ERROR] with async_link_create, invalid object\n");
         return (-1);
     }
 
@@ -24279,7 +24288,7 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
                     fprintf(fout_g, "  [ASYNC VOL DBG] %s, will push a task\n", __func__);
 #endif
             }
-            usleep(100);
+            usleep(1000);
         }
     }
 
