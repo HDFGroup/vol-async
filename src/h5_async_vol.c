@@ -3163,10 +3163,8 @@ check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *
     }
 
 #ifdef ENABLE_DBG_MSG
-    if (async_instance_g &&
-        (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s going to acquire %u lock\n",
-                __func__, *mutex_count);
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC ABT DBG] %s going to acquire %u lock\n", __func__, *mutex_count);
 #endif
 
     wait_count = 1;
