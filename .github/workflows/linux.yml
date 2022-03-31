@@ -29,7 +29,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install libtool
           # hdf5
-          git clone https://github.com/HDFGroup/hdf5.git
+          git clone https://github.com/HDFGroup/hdf5.git --depth=1
           # mpi
           sudo apt-get install libopenmpi-dev
           # zlib
@@ -86,13 +86,18 @@ jobs:
           export LD_PRELOAD=$mydir/argobots/lib/libabt.so
           make
           
+          date
           # Run serial and parallel tests
           make check
+          date
           
           # Test with async VOL double buffering
-          cd ../src
-          sed -i "s/CFLAGS =/CFLAGS = -DENABLE_WRITE_MEMCPY/g" ./Makefile
-          make clean
-          make
-          cd ../test
-          make check
+          # cd ../src
+          # sed -i "s/CFLAGS =/CFLAGS = -DENABLE_WRITE_MEMCPY/g" ./Makefile
+          # make clean
+          # make
+          # cd ../test
+
+          # date
+          # make check
+          # date
