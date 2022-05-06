@@ -928,7 +928,8 @@ H5PLget_plugin_info(void)
     return &H5VL_async_g;
 }
 
-static inline void func_enter(const char* func, const char *name)
+static inline void
+func_enter(const char *func, const char *name)
 {
 #ifdef ENABLE_DBG_MSG
     const char *type = "VOL";
@@ -938,20 +939,23 @@ static inline void func_enter(const char* func, const char *name)
     gettimeofday(&now, NULL);
 
     if (name) {
-        if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC %s DBG] %ld.%06ld: entering [%s], push=%d, [%s]\n", 
-                    type, now.tv_sec, now.tv_usec, func, async_instance_g->start_abt_push, name);
+        if (async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC %s DBG] %ld.%06ld: entering [%s], push=%d, [%s]\n", type, now.tv_sec,
+                    now.tv_usec, func, async_instance_g->start_abt_push, name);
     }
-    else{
-        if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC %s DBG] %ld.%06ld: entering [%s], push=%d\n", 
-                    type, now.tv_sec, now.tv_usec, func, async_instance_g->start_abt_push);
+    else {
+        if (async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC %s DBG] %ld.%06ld: entering [%s], push=%d\n", type, now.tv_sec,
+                    now.tv_usec, func, async_instance_g->start_abt_push);
     }
 #endif
     return;
 }
 
-static inline void func_leave(const char* func)
+static inline void
+func_leave(const char *func)
 {
 #ifdef ENABLE_DBG_MSG
     const char *type = "VOL";
@@ -961,8 +965,8 @@ static inline void func_leave(const char* func)
     gettimeofday(&now, NULL);
 
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC %s DBG] %ld.%06ld: leaving  [%s], push=%d\n", 
-                type, now.tv_sec, now.tv_usec, func, async_instance_g->start_abt_push);
+        fprintf(fout_g, "  [ASYNC %s DBG] %ld.%06ld: leaving  [%s], push=%d\n", type, now.tv_sec, now.tv_usec,
+                func, async_instance_g->start_abt_push);
 #endif
     return;
 }
@@ -2584,8 +2588,8 @@ add_task_to_queue(async_qhead_t *qhead, async_task_t *task, task_list_qtype task
 
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %ld.%06ld: append [%p] to %s task list\n", 
-                    now.tv_sec, now.tv_usec, task->func, qtype_names_g[task_type]);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %ld.%06ld: append [%p] to %s task list\n", now.tv_sec,
+                    now.tv_usec, task->func, qtype_names_g[task_type]);
 #endif
         DL_APPEND(qhead->queue->prev->task_list, task);
     }
@@ -2599,7 +2603,7 @@ add_task_to_queue(async_qhead_t *qhead, async_task_t *task, task_list_qtype task
 
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %ld.%06ld: create and append [%p] to new %s task list\n", 
+            fprintf(fout_g, "  [ASYNC VOL DBG] %ld.%06ld: create and append [%p] to new %s task list\n",
                     now.tv_sec, now.tv_usec, task->func, qtype_names_g[task_type]);
 #endif
         DL_APPEND(new_list->task_list, task);
