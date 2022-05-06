@@ -64,7 +64,6 @@ works, and perform publicly and display publicly, and to permit others to do so.
 
 /* Whether to display log messge when callback is invoked */
 /* (Uncomment to enable) */
-/* #define ENABLE_LOG     1 */
 /* #define ENABLE_DBG_MSG 1 */
 /* #define PRINT_ERROR_STACK           1 */
 /* #define ENABLE_ASYNC_LOGGING */
@@ -929,6 +928,45 @@ H5PLget_plugin_info(void)
     return &H5VL_async_g;
 }
 
+static inline void func_enter(const char* func, const char *name)
+{
+#ifdef ENABLE_DBG_MSG
+    const char *type = "VOL";
+    if (strstr(func, "_fn"))
+        type = "ABT";
+    struct timeval now;
+    gettimeofday(&now, NULL);
+
+    if (name) {
+        if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC %s DBG] %ld.%06ld: entering [%s], push=%d, [%s]\n", 
+                    type, now.tv_sec, now.tv_usec, func, async_instance_g->start_abt_push, name);
+    }
+    else{
+        if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC %s DBG] %ld.%06ld: entering [%s], push=%d\n", 
+                    type, now.tv_sec, now.tv_usec, func, async_instance_g->start_abt_push);
+    }
+#endif
+    return;
+}
+
+static inline void func_leave(const char* func)
+{
+#ifdef ENABLE_DBG_MSG
+    const char *type = "VOL";
+    if (strstr(func, "_fn"))
+        type = "ABT";
+    struct timeval now;
+    gettimeofday(&now, NULL);
+
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC %s DBG] %ld.%06ld: leaving  [%s], push=%d\n", 
+                type, now.tv_sec, now.tv_usec, func, async_instance_g->start_abt_push);
+#endif
+    return;
+}
+
 /** @defgroup ASYNC
  * This group is for async VOL functionalities.
  */
@@ -1699,7 +1737,7 @@ static herr_t H5VL_async_init(hid_t __attribute__((unused)) vipl_id)
         }
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC VOL LOG] ASYNC VOL init\n");
 #endif
@@ -1756,7 +1794,7 @@ H5VL_async_term(void)
 {
     herr_t ret_val = 0;
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC VOL LOG] ASYNC VOL terminate\n");
 #endif
@@ -2399,11 +2437,7 @@ done:
         return -1;
     }
 
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_leave(__func__);
 
     return 1;
 } // End push_task_to_abt_pool
@@ -2447,6 +2481,8 @@ add_task_to_queue(async_qhead_t *qhead, async_task_t *task, task_list_qtype task
 
     assert(qhead);
     assert(task);
+
+    func_enter(__func__, NULL);
 
     tail_list = qhead->queue == NULL ? NULL : qhead->queue->prev;
 
@@ -2543,10 +2579,13 @@ add_task_to_queue(async_qhead_t *qhead, async_task_t *task, task_list_qtype task
     // Check if the tail is of the same type, append to it if so
     if (qhead->queue && qhead->queue->prev->type == task_type && task_type != COLLECTIVE) {
 #ifdef ENABLE_DBG_MSG
+        struct timeval now;
+        gettimeofday(&now, NULL);
+
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] append [%p] to %s task list\n", task->func,
-                    qtype_names_g[task_type]);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %ld.%06ld: append [%p] to %s task list\n", 
+                    now.tv_sec, now.tv_usec, task->func, qtype_names_g[task_type]);
 #endif
         DL_APPEND(qhead->queue->prev->task_list, task);
     }
@@ -2555,10 +2594,13 @@ add_task_to_queue(async_qhead_t *qhead, async_task_t *task, task_list_qtype task
         async_task_list_t *new_list = (async_task_list_t *)calloc(1, sizeof(async_task_list_t));
         new_list->type              = task_type;
 #ifdef ENABLE_DBG_MSG
+        struct timeval now;
+        gettimeofday(&now, NULL);
+
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] create and append [%p] to new %s task list\n", task->func,
-                    qtype_names_g[task_type]);
+            fprintf(fout_g, "  [ASYNC VOL DBG] %ld.%06ld: create and append [%p] to new %s task list\n", 
+                    now.tv_sec, now.tv_usec, task->func, qtype_names_g[task_type]);
 #endif
         DL_APPEND(new_list->task_list, task);
         DL_APPEND(qhead->queue, new_list);
@@ -2571,6 +2613,8 @@ add_task_to_queue(async_qhead_t *qhead, async_task_t *task, task_list_qtype task
 
     /* if (get_n_running_task_in_queue(task) == 0) */
     /*     push_task_to_abt_pool(qhead, *(task->async_obj->pool_ptr)); */
+
+    func_leave(__func__);
 
     return 1;
 } // add_task_to_queue
@@ -2647,11 +2691,7 @@ H5VL_async_object_wait(H5VL_async_t *async_obj)
     unsigned int  mutex_count = 1;
     hbool_t       tmp         = async_instance_g->start_abt_push;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     async_instance_g->start_abt_push = true;
 
@@ -2697,6 +2737,8 @@ H5VL_async_object_wait(H5VL_async_t *async_obj)
         fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s setting start_abt_push false!\n", __func__);
 #endif
     async_instance_g->start_abt_push = tmp;
+
+    func_leave(__func__);
 
     return 0;
 }
@@ -2724,11 +2766,7 @@ H5VL_async_dataset_wait(H5VL_async_t *async_obj)
     unsigned int  mutex_count = 1;
     hbool_t       tmp         = async_instance_g->start_abt_push;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     async_instance_g->start_abt_push = true;
 
@@ -2775,6 +2813,8 @@ H5VL_async_dataset_wait(H5VL_async_t *async_obj)
 #endif
     async_instance_g->start_abt_push = tmp;
 
+    func_leave(__func__);
+
     return 0;
 }
 
@@ -2801,11 +2841,7 @@ H5VL_async_file_wait(H5VL_async_t *async_obj)
     unsigned int  mutex_count = 1;
     hbool_t       tmp         = async_instance_g->start_abt_push;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     async_instance_g->start_abt_push = true;
 
@@ -2859,6 +2895,9 @@ H5VL_async_file_wait(H5VL_async_t *async_obj)
 #endif
 
     async_instance_g->start_abt_push = tmp;
+
+    func_leave(__func__);
+
     return 0;
 }
 
@@ -5114,11 +5153,8 @@ async_attr_create_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, args->name);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -5217,7 +5253,7 @@ async_attr_create_fn(void *foo)
     task->async_obj->is_obj_valid = 1;
     /* task->async_obj->create_task  = NULL; */
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -5264,6 +5300,9 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+
+    func_leave(__func__);
+
     return;
 } // End async_attr_create_fn
 
@@ -5280,11 +5319,7 @@ async_attr_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_lo
     hbool_t                   acquired    = false;
     unsigned int              mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, name);
 
     assert(aid);
     assert(parent_obj);
@@ -5479,10 +5514,7 @@ async_attr_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_lo
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
 
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+    func_leave(__func__);
 
 done:
     return async_obj;
@@ -5515,11 +5547,8 @@ async_attr_open_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, args->name);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -5618,7 +5647,7 @@ async_attr_open_fn(void *foo)
     task->async_obj->is_obj_valid = 1;
     /* task->async_obj->create_task  = NULL; */
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -5659,6 +5688,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_attr_open_fn
 
@@ -5674,11 +5705,7 @@ async_attr_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc_
     hbool_t                 acquired    = false;
     unsigned int            mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, name);
 
     assert(aid);
     assert(parent_obj);
@@ -5853,10 +5880,7 @@ async_attr_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc_
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
 
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+    func_leave(__func__);
 
 done:
     return async_obj;
@@ -5889,11 +5913,8 @@ async_attr_read_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -5988,7 +6009,7 @@ async_attr_read_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -6026,6 +6047,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_attr_read_fn
 
@@ -6042,11 +6065,7 @@ async_attr_read(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type_
     hbool_t                 acquired    = false;
     unsigned int            mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -6198,10 +6217,7 @@ async_attr_read(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type_
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
 
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+    func_leave(__func__);
 
 done:
     return 1;
@@ -6234,11 +6250,8 @@ async_attr_write_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -6333,7 +6346,7 @@ async_attr_write_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -6379,6 +6392,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_attr_write_fn
 
@@ -6393,11 +6408,7 @@ async_attr_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type
     hbool_t                  acquired    = false;
     unsigned int             mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -6568,10 +6579,8 @@ async_attr_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 1;
@@ -6604,11 +6613,8 @@ async_attr_get_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -6702,7 +6708,7 @@ async_attr_get_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -6739,6 +6745,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_attr_get_fn
 
@@ -6753,11 +6761,7 @@ async_attr_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
     hbool_t                acquired    = false;
     unsigned int           mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -6909,10 +6913,8 @@ async_attr_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 1;
@@ -6945,11 +6947,8 @@ async_attr_specific_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -7046,7 +7045,7 @@ async_attr_specific_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -7084,6 +7083,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_attr_specific_fn
 
@@ -7099,11 +7100,7 @@ async_attr_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
     hbool_t                     acquired    = false;
     unsigned int                mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -7268,10 +7265,8 @@ async_attr_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 1;
@@ -7304,11 +7299,8 @@ async_attr_optional_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -7402,7 +7394,7 @@ async_attr_optional_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -7439,6 +7431,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_attr_optional_fn
 
@@ -7453,11 +7447,7 @@ async_attr_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
     hbool_t                     acquired    = false;
     unsigned int                mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -7606,10 +7596,8 @@ async_attr_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 1;
@@ -7642,11 +7630,8 @@ async_attr_close_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -7740,7 +7725,7 @@ async_attr_close_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -7776,6 +7761,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_attr_close_fn
 
@@ -7790,11 +7777,7 @@ async_attr_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
     hbool_t                  acquired    = false;
     unsigned int             mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -7952,10 +7935,8 @@ async_attr_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 1;
@@ -7988,11 +7969,8 @@ async_dataset_create_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, args->name);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -8092,7 +8070,7 @@ async_dataset_create_fn(void *foo)
     task->async_obj->is_obj_valid = 1;
     /* task->async_obj->create_task  = NULL; */
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -8141,6 +8119,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_dataset_create_fn
 
@@ -8157,11 +8137,7 @@ async_dataset_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL
     hbool_t                      acquired    = false;
     unsigned int                 mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, name);
 
     assert(aid);
     assert(parent_obj);
@@ -8360,10 +8336,8 @@ async_dataset_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return async_obj;
@@ -8396,11 +8370,8 @@ async_dataset_open_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, args->name);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -8504,7 +8475,7 @@ async_dataset_open_fn(void *foo)
     task->async_obj->is_obj_valid = 1;
     /* task->async_obj->create_task  = NULL; */
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -8545,6 +8516,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_dataset_open_fn
 
@@ -8561,11 +8534,7 @@ async_dataset_open(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *p
     hbool_t                    acquired    = false;
     unsigned int               mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, name);
 
     assert(aid);
     assert(parent_obj);
@@ -8741,10 +8710,8 @@ async_dataset_open(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *p
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return async_obj;
@@ -8777,11 +8744,8 @@ async_dataset_read_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -8876,7 +8840,7 @@ async_dataset_read_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -8918,6 +8882,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_dataset_read_fn
 
@@ -8934,11 +8900,7 @@ async_dataset_read(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_ty
     hbool_t                    acquired    = false;
     unsigned int               mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -9094,10 +9056,8 @@ async_dataset_read(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_ty
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 1;
@@ -9130,11 +9090,8 @@ async_dataset_write_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -9239,7 +9196,7 @@ async_dataset_write_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -9294,6 +9251,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_dataset_write_fn
 
@@ -9338,11 +9297,7 @@ async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_t
     hbool_t                     acquired    = false;
     unsigned int                mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -9559,10 +9514,8 @@ async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_t
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 1;
@@ -9596,11 +9549,8 @@ async_dataset_get_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -9694,7 +9644,7 @@ async_dataset_get_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -9731,6 +9681,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_dataset_get_fn
 
@@ -9745,11 +9697,7 @@ async_dataset_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
     hbool_t                   acquired    = false;
     unsigned int              mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -9906,10 +9854,8 @@ async_dataset_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 0;
@@ -9942,11 +9888,8 @@ async_dataset_specific_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -10040,7 +9983,7 @@ async_dataset_specific_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -10077,6 +10020,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_dataset_specific_fn
 
@@ -10091,11 +10036,7 @@ async_dataset_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_
     hbool_t                        acquired    = false;
     unsigned int                   mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -10249,10 +10190,8 @@ async_dataset_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 1;
@@ -10285,11 +10224,8 @@ async_dataset_optional_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -10383,7 +10319,7 @@ async_dataset_optional_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -10420,6 +10356,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_dataset_optional_fn
 
@@ -10434,11 +10372,7 @@ async_dataset_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_
     hbool_t                        acquired    = false;
     unsigned int                   mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -10587,10 +10521,8 @@ async_dataset_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 1;
@@ -10623,11 +10555,8 @@ async_dataset_close_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -10721,7 +10650,7 @@ async_dataset_close_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -10758,6 +10687,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_dataset_close_fn
 
@@ -10772,11 +10703,7 @@ async_dataset_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
     hbool_t                     acquired    = false;
     unsigned int                mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -10939,10 +10866,8 @@ async_dataset_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 1;
@@ -10976,11 +10901,8 @@ async_datatype_commit_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -11077,7 +10999,7 @@ async_datatype_commit_fn(void *foo)
     }
     task->async_obj->under_object = under_obj;
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -11124,6 +11046,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_datatype_commit_fn
 
@@ -11140,11 +11064,7 @@ async_datatype_commit(async_instance_t *aid, H5VL_async_t *parent_obj, const H5V
     hbool_t                       acquired    = false;
     unsigned int                  mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -11326,10 +11246,8 @@ async_datatype_commit(async_instance_t *aid, H5VL_async_t *parent_obj, const H5V
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return async_obj;
@@ -11362,11 +11280,8 @@ async_datatype_open_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, args->name);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -11465,7 +11380,7 @@ async_datatype_open_fn(void *foo)
     task->async_obj->is_obj_valid = 1;
     /* task->async_obj->create_task  = NULL; */
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -11506,6 +11421,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_datatype_open_fn
 
@@ -11521,11 +11438,7 @@ async_datatype_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_
     hbool_t                     acquired    = false;
     unsigned int                mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, name);
 
     assert(aid);
     assert(parent_obj);
@@ -11699,10 +11612,8 @@ async_datatype_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return async_obj;
@@ -11735,11 +11646,8 @@ async_datatype_get_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -11833,7 +11741,7 @@ async_datatype_get_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -11870,6 +11778,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_datatype_get_fn
 
@@ -11884,11 +11794,7 @@ async_datatype_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *p
     hbool_t                    acquired    = false;
     unsigned int               mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -12040,10 +11946,8 @@ async_datatype_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *p
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 1;
@@ -12076,11 +11980,8 @@ async_datatype_specific_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -12174,7 +12075,7 @@ async_datatype_specific_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -12211,6 +12112,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_datatype_specific_fn
 
@@ -12225,11 +12128,7 @@ async_datatype_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async
     hbool_t                         acquired    = false;
     unsigned int                    mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -12379,10 +12278,8 @@ async_datatype_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 1;
@@ -12415,11 +12312,8 @@ async_datatype_optional_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -12513,7 +12407,7 @@ async_datatype_optional_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -12550,6 +12444,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_datatype_optional_fn
 
@@ -12564,11 +12460,7 @@ async_datatype_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async
     hbool_t                         acquired    = false;
     unsigned int                    mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -12718,10 +12610,8 @@ async_datatype_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 1;
@@ -12754,11 +12644,8 @@ async_datatype_close_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -12852,7 +12739,7 @@ async_datatype_close_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -12888,6 +12775,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_datatype_close_fn
 
@@ -12902,11 +12791,7 @@ async_datatype_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
     hbool_t                      acquired    = false;
     unsigned int                 mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -13060,10 +12945,8 @@ async_datatype_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 1;
@@ -13100,11 +12983,8 @@ async_file_create_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, args->name);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -13195,7 +13075,7 @@ async_file_create_fn(void *foo)
     task->async_obj->is_obj_valid = 1;
     /* task->async_obj->create_task  = NULL; */
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -13250,6 +13130,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_file_create_fn
 
@@ -13266,11 +13148,7 @@ async_file_create(async_instance_t *aid, const char *name, unsigned flags, hid_t
     hbool_t                   acquired    = false;
     unsigned int              mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, name);
 
     assert(aid);
 
@@ -13432,10 +13310,8 @@ async_file_create(async_instance_t *aid, const char *name, unsigned flags, hid_t
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return async_obj;
@@ -13472,11 +13348,8 @@ async_file_open_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, args->name);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -13571,7 +13444,7 @@ async_file_open_fn(void *foo)
     task->async_obj->is_obj_valid = 1;
     /* task->async_obj->create_task  = NULL; */
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -13624,6 +13497,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_file_open_fn
 
@@ -13640,11 +13515,7 @@ async_file_open(task_list_qtype qtype, async_instance_t *aid, const char *name, 
     hbool_t                 acquired    = false;
     unsigned int            mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, name);
 
     assert(aid);
 
@@ -13803,10 +13674,8 @@ async_file_open(task_list_qtype qtype, async_instance_t *aid, const char *name, 
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return async_obj;
@@ -13840,11 +13709,8 @@ async_file_get_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -13938,7 +13804,7 @@ async_file_get_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -13975,6 +13841,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_file_get_fn
 
@@ -13989,11 +13857,7 @@ async_file_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
     hbool_t                acquired    = false;
     unsigned int           mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -14145,10 +14009,8 @@ async_file_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 1;
@@ -14181,11 +14043,8 @@ async_file_specific_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -14279,7 +14138,7 @@ async_file_specific_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -14316,6 +14175,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_file_specific_fn
 
@@ -14330,11 +14191,7 @@ async_file_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
     hbool_t                     acquired    = false;
     unsigned int                mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -14493,10 +14350,8 @@ async_file_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 1;
@@ -14529,11 +14384,8 @@ async_file_optional_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -14627,7 +14479,7 @@ async_file_optional_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -14681,6 +14533,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_file_optional_fn
 
@@ -14695,11 +14549,7 @@ async_file_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
     hbool_t                     acquired    = false;
     unsigned int                mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -14851,10 +14701,8 @@ async_file_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 1;
@@ -14887,11 +14735,8 @@ async_file_close_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -14985,7 +14830,7 @@ async_file_close_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -15041,6 +14886,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_file_close_fn
 
@@ -15055,11 +14902,7 @@ async_file_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
     hbool_t                  acquired    = false;
     unsigned int             mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -15244,10 +15087,7 @@ wait:
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
 
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+    func_leave(__func__);
 
 done:
     return 1;
@@ -15280,11 +15120,8 @@ async_group_create_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, args->name);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -15383,7 +15220,7 @@ async_group_create_fn(void *foo)
     task->async_obj->is_obj_valid = 1;
     /* task->async_obj->create_task  = NULL; */
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -15430,6 +15267,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_group_create_fn
 
@@ -15445,11 +15284,7 @@ async_group_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_l
     hbool_t                    acquired    = false;
     unsigned int               mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, name);
 
     assert(aid);
     assert(parent_obj);
@@ -15635,10 +15470,7 @@ async_group_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_l
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
 
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+    func_leave(__func__);
 
 done:
     return async_obj;
@@ -15674,11 +15506,8 @@ async_group_open_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, args->name);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -15777,7 +15606,7 @@ async_group_open_fn(void *foo)
     task->async_obj->is_obj_valid = 1;
     /* task->async_obj->create_task  = NULL; */
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -15818,6 +15647,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_group_open_fn
 
@@ -15833,11 +15664,7 @@ async_group_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc
     hbool_t                  acquired    = false;
     unsigned int             mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, name);
 
     assert(aid);
     assert(parent_obj);
@@ -16011,10 +15838,8 @@ async_group_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return async_obj;
@@ -16047,11 +15872,8 @@ async_group_get_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -16145,7 +15967,7 @@ async_group_get_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -16182,6 +16004,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_group_get_fn
 
@@ -16196,11 +16020,7 @@ async_group_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pare
     hbool_t                 acquired    = false;
     unsigned int            mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -16357,10 +16177,8 @@ async_group_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pare
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 1;
@@ -16393,11 +16211,8 @@ async_group_specific_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -16491,7 +16306,7 @@ async_group_specific_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -16528,6 +16343,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_group_specific_fn
 
@@ -16542,11 +16359,7 @@ async_group_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
     hbool_t                      acquired    = false;
     unsigned int                 mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -16695,10 +16508,8 @@ async_group_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 1;
@@ -16731,11 +16542,8 @@ async_group_optional_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -16829,7 +16637,7 @@ async_group_optional_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -16866,6 +16674,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_group_optional_fn
 
@@ -16880,11 +16690,7 @@ async_group_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
     hbool_t                      acquired    = false;
     unsigned int                 mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -17033,10 +16839,8 @@ async_group_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 1;
@@ -17069,11 +16873,8 @@ async_group_close_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -17169,7 +16970,7 @@ async_group_close_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -17207,6 +17008,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_group_close_fn
 
@@ -17221,11 +17024,7 @@ async_group_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
     hbool_t                   acquired    = false;
     unsigned int              mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -17390,10 +17189,8 @@ async_group_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 1;
@@ -17429,11 +17226,8 @@ async_link_create_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -17528,7 +17322,7 @@ async_link_create_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -17573,6 +17367,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_link_create_fn
 
@@ -17589,11 +17385,7 @@ async_link_create(task_list_qtype qtype, async_instance_t *aid, H5VL_link_create
     hbool_t                   acquired    = false;
     unsigned int              mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -17769,10 +17561,8 @@ async_link_create(task_list_qtype qtype, async_instance_t *aid, H5VL_link_create
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 0;
@@ -17805,11 +17595,8 @@ async_link_copy_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -17902,7 +17689,7 @@ async_link_copy_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -17944,6 +17731,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_link_copy_fn
 
@@ -17960,11 +17749,7 @@ async_link_copy(async_instance_t *aid, H5VL_async_t *parent_obj1, const H5VL_loc
     unsigned int            mutex_count = 1;
     H5VL_async_t *          parent_obj  = parent_obj1 ? parent_obj1 : parent_obj2;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -18140,10 +17925,8 @@ async_link_copy(async_instance_t *aid, H5VL_async_t *parent_obj1, const H5VL_loc
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 1;
@@ -18176,11 +17959,8 @@ async_link_move_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -18273,7 +18053,7 @@ async_link_move_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -18315,6 +18095,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_link_move_fn
 
@@ -18331,11 +18113,7 @@ async_link_move(async_instance_t *aid, H5VL_async_t *parent_obj1, const H5VL_loc
     unsigned int            mutex_count = 1;
     H5VL_async_t *          parent_obj  = parent_obj1 ? parent_obj1 : parent_obj2;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -18512,10 +18290,8 @@ async_link_move(async_instance_t *aid, H5VL_async_t *parent_obj1, const H5VL_loc
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 1;
@@ -18548,11 +18324,8 @@ async_link_get_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -18647,7 +18420,7 @@ async_link_get_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -18685,6 +18458,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_link_get_fn
 
@@ -18699,11 +18474,7 @@ async_link_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
     hbool_t                acquired    = false;
     unsigned int           mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -18862,10 +18633,8 @@ async_link_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 1;
@@ -18898,11 +18667,8 @@ async_link_specific_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -19000,7 +18766,7 @@ async_link_specific_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -19038,6 +18804,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_link_specific_fn
 
@@ -19053,11 +18821,7 @@ async_link_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
     hbool_t                     acquired    = false;
     unsigned int                mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -19216,10 +18980,8 @@ async_link_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 1;
@@ -19252,11 +19014,8 @@ async_link_optional_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -19351,7 +19110,7 @@ async_link_optional_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -19389,6 +19148,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_link_optional_fn
 
@@ -19404,11 +19165,7 @@ async_link_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
     hbool_t                     acquired    = false;
     unsigned int                mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -19567,10 +19324,8 @@ async_link_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 1;
@@ -19603,11 +19358,8 @@ async_object_open_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -19706,7 +19458,7 @@ async_object_open_fn(void *foo)
     task->async_obj->is_obj_valid = 1;
     /* task->async_obj->create_task  = NULL; */
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -19743,6 +19495,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_object_open_fn
 
@@ -19758,11 +19512,7 @@ async_object_open(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
     hbool_t                   acquired    = false;
     unsigned int              mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -19938,10 +19688,8 @@ async_object_open(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return async_obj;
@@ -19974,11 +19722,8 @@ async_object_copy_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -20077,7 +19822,7 @@ async_object_copy_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -20123,6 +19868,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_object_copy_fn
 
@@ -20140,11 +19887,7 @@ async_object_copy(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
     unsigned int              mutex_count = 1;
     H5VL_async_t *            parent_obj  = parent_obj1 ? parent_obj1 : parent_obj2;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -20315,10 +20058,8 @@ async_object_copy(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 1;
@@ -20351,11 +20092,8 @@ async_object_get_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -20453,7 +20191,7 @@ async_object_get_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -20491,6 +20229,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_object_get_fn
 
@@ -20506,11 +20246,7 @@ async_object_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
     hbool_t                  acquired    = false;
     unsigned int             mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -20674,10 +20410,8 @@ async_object_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 1;
@@ -20710,11 +20444,8 @@ async_object_specific_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -20811,7 +20542,7 @@ async_object_specific_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -20849,6 +20580,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_object_specific_fn
 
@@ -20864,11 +20597,7 @@ async_object_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t
     hbool_t                       acquired    = false;
     unsigned int                  mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -21033,10 +20762,8 @@ async_object_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 1;
@@ -21069,11 +20796,8 @@ async_object_optional_fn(void *foo)
     task->start_time = clock();
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
+
     assert(args);
     assert(task);
     assert(task->async_obj);
@@ -21168,7 +20892,7 @@ async_object_optional_fn(void *foo)
         goto done;
     }
 
-#ifdef ENABLE_LOG
+#ifdef ENABLE_DBG_MSG
     if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
         fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s success\n", __func__);
 #endif
@@ -21206,6 +20930,8 @@ done:
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
+    func_leave(__func__);
+
     return;
 } // End async_object_optional_fn
 
@@ -21221,11 +20947,7 @@ async_object_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t
     hbool_t                       acquired    = false;
     unsigned int                  mutex_count = 1;
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
@@ -21384,10 +21106,8 @@ async_object_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t
 
     // Restore async operation state
     async_instance_g->start_abt_push = async_instance_g->prev_push_state;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] leaving %s \n", __func__);
-#endif
+
+    func_leave(__func__);
 
 done:
     return 1;
@@ -21456,6 +21176,8 @@ H5VL_async_free_obj(H5VL_async_t *obj)
 {
     hid_t err_id;
 
+    func_enter(__func__, NULL);
+
     // A reopened file may not have a valid obj
     if (NULL == obj)
         return 0;
@@ -21471,6 +21193,8 @@ H5VL_async_free_obj(H5VL_async_t *obj)
 
     memset(obj, 0, sizeof(H5VL_async_t));
     free(obj);
+
+    func_leave(__func__);
 
     return 0;
 } /* end H5VL__async_free_obj() */
@@ -22219,6 +21943,9 @@ H5VL_async_dataset_create(void *obj, const H5VL_loc_params_t *loc_params, const 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATASET Create\n");
 #endif
+
+    func_enter(__func__, name);
+
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
@@ -22239,6 +21966,8 @@ H5VL_async_dataset_create(void *obj, const H5VL_loc_params_t *loc_params, const 
         dset = async_dataset_create(async_instance_g, o, loc_params, name, lcpl_id, type_id, space_id,
                                     dcpl_id, dapl_id, dxpl_id, req);
     }
+
+    func_leave(__func__);
 
     return (void *)dset;
 } /* end H5VL_async_dataset_create() */
@@ -22534,6 +22263,8 @@ H5VL_async_dataset_close(void *dset, hid_t dxpl_id, void **req)
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATASET Close\n");
 #endif
+    func_enter(__func__, NULL);
+
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
@@ -22559,6 +22290,8 @@ H5VL_async_dataset_close(void *dset, hid_t dxpl_id, void **req)
         if ((ret_value = async_dataset_close(qtype, async_instance_g, o, dxpl_id, req)) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] with async_dataset_close\n");
     }
+
+    func_leave(__func__);
 
     return ret_value;
 } /* end H5VL_async_dataset_close() */
@@ -24243,11 +23976,7 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
     printf("------- ASYNC VOL REQUEST Wait\n");
 #endif
 
-#ifdef ENABLE_LOG
-    if ((async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL LOG] entering %s, mode=%d\n", __func__,
-                async_instance_g->start_abt_push);
-#endif
+    func_enter(__func__, NULL);
 
     request = (H5VL_async_t *)obj;
     task    = request->my_task;
