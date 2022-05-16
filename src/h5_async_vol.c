@@ -971,7 +971,8 @@ func_leave(const char *func)
     return;
 }
 
-static inline void func_log(const char* func, const char *name)
+static inline void
+func_log(const char *func, const char *name)
 {
 #ifdef ENABLE_DBG_MSG
     const char *type = "VOL";
@@ -981,12 +982,11 @@ static inline void func_log(const char* func, const char *name)
     gettimeofday(&now, NULL);
 
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC %s DBG] %ld.%06ld: [%s], push=%d, %s\n", 
-                type, now.tv_sec, now.tv_usec, func, async_instance_g->start_abt_push, name);
+        fprintf(fout_g, "  [ASYNC %s DBG] %ld.%06ld: [%s], push=%d, %s\n", type, now.tv_sec, now.tv_usec,
+                func, async_instance_g->start_abt_push, name);
 #endif
     return;
 }
-
 
 /** @defgroup ASYNC
  * This group is for async VOL functionalities.
@@ -1195,9 +1195,9 @@ async_instance_init(int backing_thread_count)
 
     async_init(H5P_DEFAULT);
 
-/* #ifdef ENABLE_DBG_MSG */
-/*     fprintf(stderr, "  [ASYNC VOL DBG] Init Argobots with %d threads\n", backing_thread_count); */
-/* #endif */
+    /* #ifdef ENABLE_DBG_MSG */
+    /*     fprintf(stderr, "  [ASYNC VOL DBG] Init Argobots with %d threads\n", backing_thread_count); */
+    /* #endif */
 
     /* Use mutex to guarentee there is only one Argobots IO instance (singleton) */
     abt_ret = ABT_mutex_lock(async_instance_mutex_g);
@@ -13812,7 +13812,6 @@ async_file_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
             goto error;
         }
-
 
         func_log(__func__, "finished all previous tasks");
 
