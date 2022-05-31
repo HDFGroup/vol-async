@@ -6,9 +6,9 @@ Asynchronous I/O is becoming increasingly popular with the large amount of data 
 
 Some configuration parameters used in the instructions:
 
-        VOL_DIR : directory of HDF5 Asynchronous I/O VOL connector repository
-        ABT_DIR : directory of Argobots source code
-        H5_DIR  : directory of HDF5 source code
+        VOL_DIR :  directory of HDF5 Asynchronous I/O VOL connector repository
+        ABT_DIR :  directory of Argobots source code
+        HDF5_DIR:  directory of HDF5 source code
         
 We have tested async VOL compiled with GNU(gcc 6.4+), Intel, and Cray compilers on Summit, Cori, and Theta supercomputers.
 
@@ -27,9 +27,9 @@ We have tested async VOL compiled with GNU(gcc 6.4+), Intel, and Cray compilers 
 
 2.1 Compile HDF5
 
-    > cd $H5_DIR
+    > cd $HDF5_DIR
     > ./autogen.sh  (may skip this step if the configure file exists)
-    > ./configure --prefix=$H5_DIR/install --enable-parallel --enable-threadsafe --enable-unsupported #(may need to add CC=cc or CC=mpicc)
+    > ./configure --prefix=$HDF5_DIR/install --enable-parallel --enable-threadsafe --enable-unsupported #(may need to add CC=cc or CC=mpicc)
     > make && make install
 
 2.2 Compile Argobots
@@ -45,7 +45,7 @@ We have tested async VOL compiled with GNU(gcc 6.4+), Intel, and Cray compilers 
     > cd $VOL_DIR/src
     > # Edit "Makefile"
     > # Use a template Makefile: e.g. "cp Makefile.summit Makefile"
-    > # Change the path of HDF5_DIR and ABT_DIR to $H5_DIR/install and $ABT_DIR/install
+    > # Change the path of HDF5_DIR and ABT_DIR to $HDF5_DIR/install and $ABT_DIR/install
     > # (Optional) update the compiler flag macros: DEBUG, CFLAGS, LIBS, ARFLAGS
     > # (Optional) comment/uncomment the correct DYNLDFLAGS & DYNLIB macros
     > make
@@ -56,14 +56,14 @@ Will need to set the following environmental variable before running the asynchr
 
 for Linux:
 
-    > export LD_LIBRARY_PATH=$VOL_DIR/src:$H5_DIR/install/lib:$ABT_DIR/install/lib:$LD_LIBRARY_PATH
+    > export LD_LIBRARY_PATH=$VOL_DIR/src:$HDF5_DIR/install/lib:$ABT_DIR/install/lib:$LD_LIBRARY_PATH
     > export HDF5_PLUGIN_PATH="$VOL_DIR/src"
     > export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
     > (optional) export MPICH_MAX_THREAD_SAFETY=multiple # Some systems like Cori@NERSC need this to support MPI_THREAD_MULTIPLE 
 
 MacOS:
 
-    > export DYLD_LIBRARY_PATH=$VOL_DIR/src:$H5_DIR/install/lib:$ABT_DIR/install/lib:$DYLD_LIBRARY_PATH
+    > export DYLD_LIBRARY_PATH=$VOL_DIR/src:$HDF5_DIR/install/lib:$ABT_DIR/install/lib:$DYLD_LIBRARY_PATH
     > export HDF5_PLUGIN_PATH="$VOL_DIR/src"
     > export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
 
@@ -72,7 +72,7 @@ MacOS:
     > cd $VOL_DIR/test
     > # Edit "Makefile":
     > # Use a template Makefile: e.g. "cp Makefile.summit Makefile"
-    > # Update H5_DIR, ABT_DIR and ASYNC_DIR to the correct paths of their installation directory
+    > # Update HDF5_DIR, ABT_DIR and ASYNC_DIR to the correct paths of their installation directory
     > (Optional) update the compiler flag macros: DEBUG, CFLAGS, LIBS, ARFLAGS
     > (Optional) comment/uncomment the correct DYNLIB & LDFLAGS macro
     > make
