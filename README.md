@@ -38,7 +38,7 @@ We have tested async VOL compiled with GNU(gcc 6.4+), Intel, and Cray compilers 
     ./autogen.sh  (may skip this step if the configure file exists)
     ./configure --prefix=$ABT_DIR/install #(may need to add CC=cc or CC=mpicc)
     make && make install
-    # Note: using mpixlC on Summit will result in Argobots runtime error, use xlC or gcc instead.
+    # Note: using mpixlC on Summit may result in Argobots runtime error, use xlC or gcc instead.
 
 2.3 Compile Asynchronous VOL connector
 
@@ -58,7 +58,7 @@ for Linux:
     export LD_LIBRARY_PATH=$VOL_DIR/src:$HDF5_DIR/install/lib:$ABT_DIR/install/lib:$LD_LIBRARY_PATH
     export HDF5_PLUGIN_PATH="$VOL_DIR/src"
     export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
-    (optional) export MPICH_MAX_THREAD_SAFETY=multiple # Some systems like Cori@NERSC need this to support MPI_THREAD_MULTIPLE 
+    # (optional) export MPICH_MAX_THREAD_SAFETY=multiple # Some systems like Cori@NERSC need this to support MPI_THREAD_MULTIPLE 
 
 MacOS:
 
@@ -94,8 +94,8 @@ With certain file systems where file locking is not supported, an error of "file
 The implicit mode allows an application to enable asynchronous I/O through setting the following environemental variables and without any major code change. 
 By default, the HDF5 metadata operations are executed asynchronously, and the dataset operations are executed synchronously. We recommend to use explicit mode (see next section) for best performance.
 
-    > # Set environment variables: HDF5_PLUGIN_PATH and HDF5_VOL_CONNECTOR
-    > Run your application
+    # Set environment variables: HDF5_PLUGIN_PATH and HDF5_VOL_CONNECTOR
+    Run your application
 
 ## 6. Explicit mode
 
