@@ -20512,7 +20512,8 @@ H5VL_async_str_to_info(const char *str, void **_info)
     if (strstr(str, "[") && strstr(str, "]")) {
         under_vol_info_start = strchr(str, '[');
         under_vol_info_end   = strrchr(str, ']');
-    } else {
+    }
+    else {
         under_vol_info_start = strchr(str, '{');
         under_vol_info_end   = strrchr(str, '}');
     }
