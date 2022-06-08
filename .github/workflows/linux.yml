@@ -101,6 +101,8 @@ jobs:
           cd ../test
 
           date
+          make clean
+          make
           export ABT_THREAD_STACKSIZE=100000
-          make check
+          stdbuf -i0 -o0 -e0 make check
           date
