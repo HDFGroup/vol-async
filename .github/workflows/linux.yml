@@ -88,16 +88,18 @@ jobs:
           
           date
           # Run serial and parallel tests
+          export ABT_THREAD_STACKSIZE=100000
           make check
           date
           
           # Test with async VOL double buffering
-          # cd ../src
-          # sed -i "s/CFLAGS =/CFLAGS = -DENABLE_WRITE_MEMCPY/g" ./Makefile
-          # make clean
-          # make
-          # cd ../test
+          cd ../src
+          sed -i "s/CFLAGS =/CFLAGS = -DENABLE_WRITE_MEMCPY/g" ./Makefile
+          make clean
+          make
+          cd ../test
 
-          # date
-          # make check
-          # date
+          date
+          export ABT_THREAD_STACKSIZE=100000
+          make check
+          date
