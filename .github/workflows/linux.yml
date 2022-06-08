@@ -104,5 +104,5 @@ jobs:
           make clean
           make
           export ABT_THREAD_STACKSIZE=100000
-          stdbuf -i0 -o0 -e0 make check_serial
+          # make check_serial
           date
