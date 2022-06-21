@@ -146,3 +146,5 @@ When an application has a large number of HDF5 function calls, an error like the
 This is due to the default Argobots thread stack size being too small (16384), and can be resovled by setting the environement variable:
 
     export ABT_THREAD_STACKSIZE=100000
+
+Setting the above environment variable could also fix an issue when an async application hangs.
