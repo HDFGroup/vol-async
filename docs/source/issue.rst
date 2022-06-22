@@ -40,3 +40,11 @@ Due to an issue in the HDF5 library handling HDF5 VOL objects, calling H5Aopen t
    ../../src/H5Fint.c:664: H5F__get_objects_cb: Assertion `obj_ptr' failed.
    
 This `patch <https://gist.github.com/houjun/208903d8e6a64e2670754d8ca0f6b548>`_ (applies to the HDF5 develop branch) is a temporary fix for the issue.
+
+Deadlock with H5Dget_space_async
+--------------------------------
+When an application calls H5Dget_space_async, and uses the dataspace ID immediately, a deadlock may occur occationally. This can be resovled by setting the following environement variable to disable the asynchronous execution of H5Dget_space_async:
+
+.. code-block::
+
+    export HDF5_ASYNC_DISABLE_DSET_GET=1
