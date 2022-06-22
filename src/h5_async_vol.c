@@ -1298,7 +1298,7 @@ async_instance_init(int backing_thread_count)
     aid->disable_implicit       = false;
     aid->disable_implicit_file  = false;
     aid->delay_time_env         = false;
-    aid->disable_async_dset_get = false;
+    aid->disable_async_dset_get = true;
 
     // Check for delaying operations to file / group / dataset close operations
     env_var = getenv("HDF5_ASYNC_EXE_FCLOSE");
@@ -1322,8 +1322,8 @@ async_instance_init(int backing_thread_count)
         aid->ex_delay = true;
 
     env_var = getenv("HDF5_ASYNC_DISABLE_DSET_GET");
-    if (env_var && *env_var && atoi(env_var) > 0)
-        aid->disable_async_dset_get = true;
+    if (env_var && *env_var && atoi(env_var) <= 0)
+        aid->disable_async_dset_get = false;
 
 #ifdef ENABLE_WRITE_MEMCPY
     // Get max memory allowed for async memcpy
