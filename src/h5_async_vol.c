@@ -196,16 +196,16 @@ typedef struct async_instance_t {
     int           nfopen;
     int           mpi_size;
     int           mpi_rank;
-    bool          ex_delay;              /* Delay background thread execution */
-    bool          ex_fclose;             /* Delay background thread execution until file close */
-    bool          ex_gclose;             /* Delay background thread execution until group close */
-    bool          ex_dclose;             /* Delay background thread execution until dset close */
-    bool          start_abt_push;        /* Start pushing tasks to Argobots pool */
-    bool          prev_push_state;       /* Previous state of start_abt_push before a change*/
-    bool          pause;                 /* Pause background thread execution */
-    bool          disable_implicit_file; /* Disable implicit async execution globally */
-    bool          disable_implicit;      /* Disable implicit async execution for dxpl */
-    bool          delay_time_env;        /* Flag that indicates the delay time is set by env variable */
+    bool          ex_delay;               /* Delay background thread execution */
+    bool          ex_fclose;              /* Delay background thread execution until file close */
+    bool          ex_gclose;              /* Delay background thread execution until group close */
+    bool          ex_dclose;              /* Delay background thread execution until dset close */
+    bool          start_abt_push;         /* Start pushing tasks to Argobots pool */
+    bool          prev_push_state;        /* Previous state of start_abt_push before a change*/
+    bool          pause;                  /* Pause background thread execution */
+    bool          disable_implicit_file;  /* Disable implicit async execution globally */
+    bool          disable_implicit;       /* Disable implicit async execution for dxpl */
+    bool          delay_time_env;         /* Flag that indicates the delay time is set by env variable */
     bool          disable_async_dset_get; /* Disable async execution for dataset get */
     uint64_t      delay_time; /* Sleep time before background thread trying to acquire global mutex */
     int           sleep_time; /* Sleep time between checking the global mutex attemp count */
@@ -1284,21 +1284,21 @@ async_instance_init(int backing_thread_count)
         } // end for
     }     // end else
 
-    aid->pool                  = pool;
-    aid->xstreams              = progress_xstreams;
-    aid->num_xstreams          = backing_thread_count;
-    aid->progress_scheds       = progress_scheds;
-    aid->nfopen                = 0;
-    aid->ex_delay              = false;
-    aid->ex_fclose             = false;
-    aid->ex_gclose             = false;
-    aid->ex_dclose             = false;
-    aid->pause                 = false;
-    aid->start_abt_push        = false;
-    aid->disable_implicit      = false;
-    aid->disable_implicit_file = false;
-    aid->delay_time_env        = false;
-    aid->disable_async_dset_get= false;
+    aid->pool                   = pool;
+    aid->xstreams               = progress_xstreams;
+    aid->num_xstreams           = backing_thread_count;
+    aid->progress_scheds        = progress_scheds;
+    aid->nfopen                 = 0;
+    aid->ex_delay               = false;
+    aid->ex_fclose              = false;
+    aid->ex_gclose              = false;
+    aid->ex_dclose              = false;
+    aid->pause                  = false;
+    aid->start_abt_push         = false;
+    aid->disable_implicit       = false;
+    aid->disable_implicit_file  = false;
+    aid->delay_time_env         = false;
+    aid->disable_async_dset_get = false;
 
     // Check for delaying operations to file / group / dataset close operations
     env_var = getenv("HDF5_ASYNC_EXE_FCLOSE");
