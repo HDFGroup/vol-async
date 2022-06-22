@@ -206,6 +206,7 @@ typedef struct async_instance_t {
     bool          disable_implicit_file; /* Disable implicit async execution globally */
     bool          disable_implicit;      /* Disable implicit async execution for dxpl */
     bool          delay_time_env;        /* Flag that indicates the delay time is set by env variable */
+    bool          disable_async_dset_get; /* Disable async execution for dataset get */
     uint64_t      delay_time; /* Sleep time before background thread trying to acquire global mutex */
     int           sleep_time; /* Sleep time between checking the global mutex attemp count */
 #ifdef ENABLE_WRITE_MEMCPY
@@ -1297,6 +1298,7 @@ async_instance_init(int backing_thread_count)
     aid->disable_implicit      = false;
     aid->disable_implicit_file = false;
     aid->delay_time_env        = false;
+    aid->disable_async_dset_get= false;
 
     // Check for delaying operations to file / group / dataset close operations
     env_var = getenv("HDF5_ASYNC_EXE_FCLOSE");
@@ -1318,6 +1320,10 @@ async_instance_init(int backing_thread_count)
     /* Set "delay execution" convenience flag, if any of the others are set */
     if (aid->ex_fclose || aid->ex_gclose || aid->ex_dclose)
         aid->ex_delay = true;
+
+    env_var = getenv("HDF5_ASYNC_DISABLE_DSET_GET");
+    if (env_var && *env_var && atoi(env_var) > 0)
+        aid->disable_async_dset_get = true;
 
 #ifdef ENABLE_WRITE_MEMCPY
     // Get max memory allowed for async memcpy
@@ -9464,7 +9470,8 @@ async_dataset_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
         args->dxpl_id = H5Pcopy(dxpl_id);
     args->req = req;
 
-    if (req) {
+    // Temporary fix for data space get that could cause a pthread deadlock
+    if (req && !aid->disable_async_dset_get) {
         H5VL_async_t *new_req;
         if ((new_req = H5VL_async_new_obj(NULL, parent_obj->under_vol_id)) == NULL) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
