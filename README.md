@@ -148,3 +148,7 @@ This is due to the default Argobots thread stack size being too small (16384), a
     export ABT_THREAD_STACKSIZE=100000
 
 Setting the above environment variable could also fix an issue when an async application hangs.
+
+When an application calls H5Dget_space_async, and uses the dataspace ID immediately, a deadlock may occur occationally. This can be resovled by setting the following environement variable to disable the asynchronous execution of H5Dget_space_async:
+
+    export HDF5_ASYNC_DISABLE_DSET_GET=1
