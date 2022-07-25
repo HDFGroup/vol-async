@@ -2,7 +2,7 @@
 
 [**Full documentation**](https://hdf5-vol-async.readthedocs.io)
 
-Asynchronous I/O is becoming increasingly popular with the large amount of data access required by scientific applications. They can take advantage of an asynchronous interface by scheduling I/O as early as possible and overlap computation or communication with I/O operations, which hides the cost associated with I/O and improves the overall performance.
+Asynchronous I/O is becoming increasingly popular with the large amount of data access required by scientific applications. They can take advantage of an asynchronous interface by scheduling I/O as early as possible and overlap computation or communication with I/O operations, which hides the cost associated with I/O and improves the overall performance. This work is part of the [ECP-ExaIO](https://www.exascaleproject.org/research-project/exaio) project.
 
 [<img src="https://lh3.googleusercontent.com/pw/AM-JKLX033FP6RFe5CqYx7vQY_YF834O4SOfFr53xzUdB-TOGIVnG-jNn0fp-8aHbgqZtogRlgSNHJxQqI8gAG0sZo3HNOhmf3k8GZpFyvz2sCBEl2lekbOh8ne3TJyAjbP0XbVZ79JczoDe3pqSIjbfJa-M=w3090-h613-no?authuser=0">](overview)
 
