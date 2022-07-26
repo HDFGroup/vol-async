@@ -34,14 +34,16 @@ We have tested async VOL compiled with GNU(gcc 6.4+), Intel, and Cray compilers 
 
     cd $HDF5_DIR
     ./autogen.sh  (may skip this step if the configure file exists)
-    ./configure --prefix=$HDF5_DIR/install --enable-parallel --enable-threadsafe --enable-unsupported #(may need to add CC=cc or CC=mpicc)
+    ./configure --prefix=$HDF5_DIR/install --enable-parallel --enable-threadsafe --enable-unsupported 
+    # may need to add CC=cc or CC=mpicc to the above configure command
     make && make install
 
 2.1.2 Compile Argobots
 
     cd $ABT_DIR
     ./autogen.sh  (may skip this step if the configure file exists)
-    ./configure --prefix=$ABT_DIR/install #(may need to add CC=cc or CC=mpicc)
+    ./configure --prefix=$ABT_DIR/install
+    # may need to add CC=cc or CC=mpicc to the above configure command
     make && make install
     # Note: using mpixlC on Summit may result in Argobots runtime error, use xlC or gcc instead.
 
