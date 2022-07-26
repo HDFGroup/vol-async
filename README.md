@@ -29,14 +29,15 @@ We have tested async VOL compiled with GNU(gcc 6.4+), Intel, and Cray compilers 
 
 ## 2. Installation
 
-2.1 Compile HDF5
+### 2.1 Installation with Makefile
+2.1.1 Compile HDF5
 
     cd $HDF5_DIR
     ./autogen.sh  (may skip this step if the configure file exists)
     ./configure --prefix=$HDF5_DIR/install --enable-parallel --enable-threadsafe --enable-unsupported #(may need to add CC=cc or CC=mpicc)
     make && make install
 
-2.2 Compile Argobots
+2.1.2 Compile Argobots
 
     cd $ABT_DIR
     ./autogen.sh  (may skip this step if the configure file exists)
@@ -44,7 +45,7 @@ We have tested async VOL compiled with GNU(gcc 6.4+), Intel, and Cray compilers 
     make && make install
     # Note: using mpixlC on Summit may result in Argobots runtime error, use xlC or gcc instead.
 
-2.3 Compile Asynchronous VOL connector
+2.1.3 Compile Asynchronous VOL connector
 
     cd $VOL_DIR/src
     # Edit "Makefile" or use a template Makefile for existing systems: e.g. "cp Makefile.summit Makefile"
@@ -52,6 +53,13 @@ We have tested async VOL compiled with GNU(gcc 6.4+), Intel, and Cray compilers 
     # (Optional) update the compiler flag macros: DEBUG, CFLAGS, LIBS, ARFLAGS
     # (Optional) comment/uncomment the correct DYNLDFLAGS & DYNLIB macros
     make
+    
+### 2.2 Installation with Spack
+[Spack](https://spack.io) is a flexible package manager that supports multiple versions, configurations, platforms, and compilers. 
+Async VOL and its dependent libraries (MPI, HDF5, Argobots) can be installed with the following spack command:
+
+    spack install hdf5-vol-async
+
 
 ## 3. Set Environment Variables
 
