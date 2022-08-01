@@ -1,0 +1,4 @@
+slurmstepd: error: *** STEP 59946429.0 ON nid01168 CANCELLED AT 2022-06-07T15:10:06 DUE TO TIME LIMIT ***
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
+srun: got SIGCONT
+srun: forcing job termination
