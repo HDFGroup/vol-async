@@ -352,11 +352,11 @@ main (int argc, char **argv)
                 status = H5Dwrite_async (dataset_array[j], H5T_NATIVE_INT, memspace, dataspace, data_transfer_propertylist, data,es_id); 
             
             }
-            status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
+            /* status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
                 if (status < 0) {
                     fprintf(stderr, "Error with H5ESwait\n");
                     
-                }
+                } */
         }
         
         /* offset[0] = 0;

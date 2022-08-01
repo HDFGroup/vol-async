@@ -8861,10 +8861,11 @@ async_dataset_write_fn(void *foo)
     assert(task->async_obj);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     fprintf(stderr,"task is_merge=%d\n",task->is_merge);
+    pool_ptr = task->async_obj->pool_ptr;
     if (task->is_merge == 1)
         goto done;
 
-    pool_ptr = task->async_obj->pool_ptr;
+    
 
     func_log(__func__, "trying to aquire global lock");
 
