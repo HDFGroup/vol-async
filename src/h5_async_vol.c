@@ -10111,10 +10111,7 @@ static herr_t
 async_dataset_write_merge(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type_id,
                           hid_t mem_space_id, hid_t file_space_id, hid_t plist_id, const void *buf)
 {
-<<<<<<< HEAD
-    int test;  //test chages
-=======
->>>>>>> 2d93b967649d36b6568aed140cdeb93ebf7b6f6e
+
     int                         ndim;
     int                         num_elements;
     hsize_t                     nblocks;
