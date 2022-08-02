@@ -50,7 +50,7 @@ jobs:
           export HDF5_LIBTOOL=/usr/bin/libtoolize
           ./autogen.sh
           ./configure --prefix=$HDF5_DIR --enable-parallel --enable-threadsafe --enable-unsupported \
-          --disable-tests --disable-hl --disable-fortran 
+          --disable-tests --disable-hl --disable-fortran --disable-tools --disable-hltools
           make && make install
           
           # Compile Argobots
@@ -88,16 +88,21 @@ jobs:
           
           date
           # Run serial and parallel tests
+          export ABT_THREAD_STACKSIZE=100000
           make check
           date
           
           # Test with async VOL double buffering
-          # cd ../src
-          # sed -i "s/CFLAGS =/CFLAGS = -DENABLE_WRITE_MEMCPY/g" ./Makefile
-          # make clean
-          # make
-          # cd ../test
+          cd ../src
+          sed -i "s/CFLAGS =/CFLAGS = -DENABLE_WRITE_MEMCPY=1 /g" ./Makefile
+          cat Makefile
+          make clean
+          make
+          cd ../test
 
-          # date
+          date
+          make clean
+          make
+          export ABT_THREAD_STACKSIZE=100000
           # make check
-          # date
+          date
