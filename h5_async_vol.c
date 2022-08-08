@@ -8860,7 +8860,7 @@ async_dataset_write_fn(void *foo)
     assert(task);
     assert(task->async_obj);
     assert(task->async_obj->magic == ASYNC_MAGIC);
-    //fprintf(stderr,"task is_merge=%d\n",task->is_merge);
+    fprintf(stderr,"task is_merge=%d\n",task->is_merge);
     pool_ptr = task->async_obj->pool_ptr;
     if (task->is_merge == 1)
         goto done;
@@ -9182,7 +9182,92 @@ print_dataspace(hid_t mem_space_id)
 
     return 1;
 }
+static int size = 0;
+hsize_t *  start_contiguous;
+hsize_t *  count_contiguous;
+int
+push_contiguous(int ndim, hsize_t *start, hsize_t *count)
+{
+    hsize_t *start_temp;
+    hsize_t *count_temp;
+    int      i;
+    if (size == 0) {
+        start_contiguous = malloc(ndim * sizeof(hsize_t));
+        count_contiguous = malloc(ndim * sizeof(hsize_t));
+    }
+    else {
+        start_temp = malloc(ndim * size * sizeof(hsize_t));
+        count_temp = malloc(ndim * size * sizeof(hsize_t));
+        for (i = 0; i < size; i++) {
 
+            start_temp[i] = start_contiguous[i];
+            count_temp[i] = count_contiguous[i];
+        }
+        start_contiguous = malloc(ndim * (size + 1) * sizeof(hsize_t));
+        count_contiguous = malloc(ndim * (size + 1) * sizeof(hsize_t));
+        for (i = 0; i < size; i++) {
+
+            start_contiguous[i] = start_temp[i];
+            count_contiguous[i] = count_temp[i];
+        }
+        // start_contiguous[size]=start[0];
+        // count_contiguous[size]=count[0];
+    }
+    if (ndim == 1) {
+        start_contiguous[size] = start[0];
+        count_contiguous[size] = count[0];
+    }
+    else if (ndim == 2) {
+
+        start_contiguous[size - 1] = start[0];
+        start_contiguous[size]     = start[1];
+        count_contiguous[size - 1] = count[0];
+        count_contiguous[size]     = count[1];
+    }
+    else if (ndim == 3) {
+        start_contiguous[size - 2] = start[0];
+        start_contiguous[size - 1] = start[1];
+        start_contiguous[size]     = start[2];
+        count_contiguous[size - 2] = count[0];
+        count_contiguous[size - 1] = count[1];
+        count_contiguous[size]     = count[2];
+    }
+
+    // fprintf(stderr,"size =%d\n",size);
+
+    size++;
+    return 0;
+}
+int
+check_contiguous_overlap(int ndim, hsize_t *start, hsize_t *count)
+{
+    int i, j;
+    /*  for(i=0;i<size;i++)
+     {
+         fprintf(stderr,"\n  start contiguous=%llu   count
+     contiguous=%llu\n",start_contiguous[i],count_contiguous[i]);
+
+     }  */
+
+    for (i = 0; i < size; i++) {
+        for (j = i + 1; j < size; j++)
+
+            if (start_contiguous[j] == start_contiguous[i] + count_contiguous[i]) {
+
+                start[0] = start_contiguous[i];
+                count[0] = count_contiguous[i] + count_contiguous[j];
+                return 1;
+            }
+            else if (start_contiguous[i] == start_contiguous[j] + count_contiguous[j]) {
+
+                start[0] = start_contiguous[j];
+                count[0] = count_contiguous[i] + count_contiguous[j];
+                return 1;
+            }
+    }
+
+    return 0;
+}
 int
 check_contiguous(hid_t current_task_space_id, hid_t task_iterator_file_space_id, hsize_t *start,
                  hsize_t *count)
@@ -9467,7 +9552,7 @@ foreach_iteration(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_typ
                     // if(check_contiguous(file_space_id,iter_args->file_space_id,start,count))
                     {    
                         return_val = 1;
-                        //fprintf(stderr, "\n-------#### contiguous####---------\n");
+                        fprintf(stderr, "\n-------#### contiguous####---------\n");
                          
                         
                         /* if(prev_task!=NULL){
@@ -9477,10 +9562,10 @@ foreach_iteration(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_typ
                             prev_task->is_merge = 1;
                         return_task_val = task_iter;
                        
-                       // fprintf(stderr, "\n-------#### 2 contiguous####---------\n");
+                        fprintf(stderr, "\n-------#### 2 contiguous####---------\n");
                         if (ndim == 1) { // push_contiguous(ndim,start,count);
 
-                            //fprintf(stderr, "\n        start=%llu count=%llu\n", start[0], count[0]);
+                            fprintf(stderr, "\n        start=%llu count=%llu\n", start[0], count[0]);
                             // H5Sclose(iter_args->file_space_id);// close the file space
 
                             /*  if(H5Smodify_select(file_space_id,H5S_SELECT_SET,iter_args->file_space_id)< 0)
@@ -9497,10 +9582,10 @@ foreach_iteration(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_typ
 
                             // fprintf(stderr,"\nmem_start=%lld mem_count=%lld file_start=%lld file_count=%lld
                             // element_size=%lld\n",mem_start[0],mem_count[0],file_start[0],file_count[0],element_size);
-                            //fprintf(stderr, "\n mem_start=%lld file_start=%lld ", mem_start[0],
-                             //       file_start[0]);
-                            //fprintf(stderr, "\n mem_count=%lld file_count=%lld \n", mem_count[0],
-                             //       file_count[0]);
+                            fprintf(stderr, "\n mem_start=%lld file_start=%lld ", mem_start[0],
+                                    file_start[0]);
+                            fprintf(stderr, "\n mem_count=%lld file_count=%lld \n", mem_count[0],
+                                    file_count[0]);
                             status = H5Sget_regular_hyperslab(iter_args->mem_space_id, iter_mem_start, NULL,
                                                               iter_mem_count, NULL);
                             /* fprintf(stderr,"%d\n",status);
@@ -9510,10 +9595,10 @@ foreach_iteration(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_typ
                             status = H5Sget_regular_hyperslab(iter_args->file_space_id, iter_file_start, NULL,
                                                               iter_file_count, NULL);
                             // fprintf(stderr,"%d\n",status);
-                            //fprintf(stderr, "\n iter_mem_start=%lld iter_file_start=%lld ", iter_mem_start[0],
-                             //       iter_file_start[0]);
-                            //fprintf(stderr, "\n iter_mem_count=%lld iter_file_count=%lld \n",
-                             //       iter_mem_count[0], iter_file_count[0]);
+                            fprintf(stderr, "\n iter_mem_start=%lld iter_file_start=%lld ", iter_mem_start[0],
+                                    iter_file_start[0]);
+                            fprintf(stderr, "\n iter_mem_count=%lld iter_file_count=%lld \n",
+                                    iter_mem_count[0], iter_file_count[0]);
                             if (file_start[0] >= iter_file_start[0]) {
                                 // fprintf(stderr,"file_start[0]>=iter_file_start[0]\n");
                                 memcpy(new_buffer, buf + iter_file_start[0] * element_size,
@@ -9999,7 +10084,7 @@ foreach_iteration(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_typ
 
                     else {
                         // iter_args->buf=buf;
-                        //fprintf(stderr, "-------- Not contiguous---------\n");
+                        fprintf(stderr, "-------- Not contiguous---------\n");
                     }
                     free(dimsm);
                     free(start);
@@ -10026,7 +10111,6 @@ static herr_t
 async_dataset_write_merge(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type_id,
                           hid_t mem_space_id, hid_t file_space_id, hid_t plist_id, const void *buf)
 {
-
     int                         ndim;
     int                         num_elements;
     hsize_t                     nblocks;
@@ -24670,4 +24754,3 @@ H5VL_async_optional(void *obj, H5VL_optional_args_t *args, hid_t dxpl_id, void *
 
     return ret_value;
 } /* end H5VL_async_optional() */
-
