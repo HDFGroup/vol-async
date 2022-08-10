@@ -131,7 +131,7 @@ typedef struct async_task_t {
     ABT_eventual          eventual;
     int                   in_abt_pool;
     int                   is_done;
-    int                   is_merge;
+    int                   is_merge; 
     ABT_thread            abt_thread;
     hid_t                 err_stack;
     int                   n_dep;
