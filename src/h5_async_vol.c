@@ -1,5 +1,5 @@
 /*******************************************************************************
-Asynchronous I/O VOL Connector (AsyncVOL) Copyright (c) 2021, The
+Asynchronous I/O VOL kamal Connector (AsyncVOL) Copyright (c) 2021, The
 Regents of the University of California, through Lawrence Berkeley
 National Laboratory (subject to receipt of any required approvals from
 the U.S. Dept. of Energy).  All rights reserved.
@@ -65,7 +65,7 @@ works, and perform publicly and display publicly, and to permit others to do so.
 /* Whether to display log messge when callback is invoked */
 /* (Uncomment to enable) */
 /* #define ENABLE_DBG_MSG 1 */
-/* #define PRINT_ERROR_STACK           1 */
+ #define PRINT_ERROR_STACK           1 
 /* #define ENABLE_ASYNC_LOGGING */
 
 #define ASYNC_DBG_MSG_RANK 0
@@ -131,6 +131,7 @@ typedef struct async_task_t {
     ABT_eventual          eventual;
     int                   in_abt_pool;
     int                   is_done;
+    int                   is_merge;
     ABT_thread            abt_thread;
     hid_t                 err_stack;
     int                   n_dep;
@@ -196,17 +197,16 @@ typedef struct async_instance_t {
     int           nfopen;
     int           mpi_size;
     int           mpi_rank;
-    bool          ex_delay;               /* Delay background thread execution */
-    bool          ex_fclose;              /* Delay background thread execution until file close */
-    bool          ex_gclose;              /* Delay background thread execution until group close */
-    bool          ex_dclose;              /* Delay background thread execution until dset close */
-    bool          start_abt_push;         /* Start pushing tasks to Argobots pool */
-    bool          prev_push_state;        /* Previous state of start_abt_push before a change*/
-    bool          pause;                  /* Pause background thread execution */
-    bool          disable_implicit_file;  /* Disable implicit async execution globally */
-    bool          disable_implicit;       /* Disable implicit async execution for dxpl */
-    bool          delay_time_env;         /* Flag that indicates the delay time is set by env variable */
-    bool          disable_async_dset_get; /* Disable async execution for dataset get */
+    bool          ex_delay;              /* Delay background thread execution */
+    bool          ex_fclose;             /* Delay background thread execution until file close */
+    bool          ex_gclose;             /* Delay background thread execution until group close */
+    bool          ex_dclose;             /* Delay background thread execution until dset close */
+    bool          start_abt_push;        /* Start pushing tasks to Argobots pool */
+    bool          prev_push_state;       /* Previous state of start_abt_push before a change*/
+    bool          pause;                 /* Pause background thread execution */
+    bool          disable_implicit_file; /* Disable implicit async execution globally */
+    bool          disable_implicit;      /* Disable implicit async execution for dxpl */
+    bool          delay_time_env;        /* Flag that indicates the delay time is set by env variable */
     uint64_t      delay_time; /* Sleep time before background thread trying to acquire global mutex */
     int           sleep_time; /* Sleep time between checking the global mutex attemp count */
 #ifdef ENABLE_WRITE_MEMCPY
@@ -256,8 +256,9 @@ typedef struct async_attr_write_args_t {
     void * buf;
     hid_t  dxpl_id;
     void **req;
-#ifdef ENABLE_WRITE_MEMCPY
+
     bool    free_buf;
+#ifdef ENABLE_WRITE_MEMCPY
     hsize_t data_size;
 #endif
 } async_attr_write_args_t;
@@ -331,8 +332,9 @@ typedef struct async_dataset_write_args_t {
     hid_t  plist_id;
     void * buf;
     void **req;
-#ifdef ENABLE_WRITE_MEMCPY
+
     bool    free_buf;
+#ifdef ENABLE_WRITE_MEMCPY
     hsize_t data_size;
 #endif
 } async_dataset_write_args_t;
@@ -1284,21 +1286,20 @@ async_instance_init(int backing_thread_count)
         } // end for
     }     // end else
 
-    aid->pool                   = pool;
-    aid->xstreams               = progress_xstreams;
-    aid->num_xstreams           = backing_thread_count;
-    aid->progress_scheds        = progress_scheds;
-    aid->nfopen                 = 0;
-    aid->ex_delay               = false;
-    aid->ex_fclose              = false;
-    aid->ex_gclose              = false;
-    aid->ex_dclose              = false;
-    aid->pause                  = false;
-    aid->start_abt_push         = false;
-    aid->disable_implicit       = false;
-    aid->disable_implicit_file  = false;
-    aid->delay_time_env         = false;
-    aid->disable_async_dset_get = true;
+    aid->pool                  = pool;
+    aid->xstreams              = progress_xstreams;
+    aid->num_xstreams          = backing_thread_count;
+    aid->progress_scheds       = progress_scheds;
+    aid->nfopen                = 0;
+    aid->ex_delay              = false;
+    aid->ex_fclose             = false;
+    aid->ex_gclose             = false;
+    aid->ex_dclose             = false;
+    aid->pause                 = false;
+    aid->start_abt_push        = false;
+    aid->disable_implicit      = false;
+    aid->disable_implicit_file = false;
+    aid->delay_time_env        = false;
 
     // Check for delaying operations to file / group / dataset close operations
     env_var = getenv("HDF5_ASYNC_EXE_FCLOSE");
@@ -1320,10 +1321,6 @@ async_instance_init(int backing_thread_count)
     /* Set "delay execution" convenience flag, if any of the others are set */
     if (aid->ex_fclose || aid->ex_gclose || aid->ex_dclose)
         aid->ex_delay = true;
-
-    env_var = getenv("HDF5_ASYNC_DISABLE_DSET_GET");
-    if (env_var && *env_var && atoi(env_var) <= 0)
-        aid->disable_async_dset_get = false;
 
 #ifdef ENABLE_WRITE_MEMCPY
     // Get max memory allowed for async memcpy
@@ -8863,8 +8860,12 @@ async_dataset_write_fn(void *foo)
     assert(task);
     assert(task->async_obj);
     assert(task->async_obj->magic == ASYNC_MAGIC);
-
+    //fprintf(stderr,"task is_merge=%d\n",task->is_merge);
     pool_ptr = task->async_obj->pool_ptr;
+    if (task->is_merge == 1)
+        goto done;
+
+    
 
     func_log(__func__, "trying to aquire global lock");
 
@@ -8939,7 +8940,7 @@ async_dataset_write_fn(void *foo)
         usleep(1000);
         count++;
     }
-
+    //fprintf(stderr," args  mem_type_id=%llu\n",args->mem_type_id);
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY
     {
@@ -8967,8 +8968,8 @@ done:
         fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
-    if (args->mem_type_id > 0)
-        H5Tclose(args->mem_type_id);
+    //if (args->mem_type_id > 0)
+      //  H5Tclose(args->mem_type_id);
     if (args->mem_space_id > 0)
         H5Sclose(args->mem_space_id);
     if (args->file_space_id > 0)
@@ -8993,17 +8994,19 @@ done:
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
 
-#ifdef ENABLE_WRITE_MEMCPY
+
     if (args->free_buf && args->buf) {
         free(args->buf);
+#ifdef ENABLE_WRITE_MEMCPY
         async_instance_g->used_mem -= args->data_size;
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
             fprintf(fout_g, "  [ASYNC ABT DBG] %s released dset memcpy\n", __func__);
 #endif
+  #endif
     }
-#endif
+
 
 #ifdef ENABLE_TIMING
     task->end_time = clock();
@@ -9043,6 +9046,1084 @@ is_contig_memspace(hid_t memspace)
 }
 #endif
 
+int
+print_dataspace(hid_t mem_space_id)
+{
+    int      ndim;
+    int      num_elements;
+    hsize_t  nblocks;
+    int      N1 = 20;
+    hsize_t  dimsm[1];
+    hsize_t *buffer;
+
+    H5S_sel_type                type;
+    herr_t                      slected_block;
+    hssize_t                    numblocks;
+    async_dataset_write_args_t *args = NULL;
+
+    hsize_t *start_out, *stride_out, *count_out, *block_out;
+
+    herr_t             status;
+    async_task_t *     task_iter;
+    async_task_list_t *task_list_iter;
+
+    if (mem_space_id == H5S_SEL_ALL)
+        fprintf(stderr, "-----H5S_SEL_ALL----\n");
+    else if (mem_space_id == H5S_SEL_NONE) {
+        fprintf(stderr, "-----H5S_SEL_NONE----\n");
+        return 0;
+    }
+
+    type = H5Sget_select_type(mem_space_id);
+
+    /*  if(type==H5S_SEL_ERROR)
+            fprintf(stderr,"-----Error----\n");
+        else if(type==H5S_SEL_NONE)
+            fprintf(stderr,"-----Empty selection-----\n");
+        else if(type==H5S_SEL_POINTS)
+            fprintf(stderr,"-----Set of points-----\n");
+        else if(type==H5S_SEL_HYPERSLABS)
+            fprintf(stderr,"-----Hyperslab-----\n");
+
+        else if(type==H5S_SEL_ALL)
+            fprintf(stderr,"-----Everything-----\n");
+        else if(type==H5S_SEL_N)
+            fprintf(stderr,"-----Sentinel-----cd\n");
+                */
+
+    // fprintf(stderr,"this is after H5Sget_select_type %d\n",type);
+    if (type == H5S_SEL_POINTS) {
+        return 0;
+    }
+    else if (type == H5S_SEL_HYPERSLABS) {
+        ndim = H5Sget_simple_extent_ndims(mem_space_id);
+        // fprintf(stderr, "ndim=%d\n",ndim);
+        // if (ndim != 1)
+        //  return 0;
+
+        if (H5Sis_regular_hyperslab(mem_space_id)) {
+            start_out  = malloc(ndim * sizeof(hsize_t));
+            stride_out = malloc(ndim * sizeof(hsize_t));
+            count_out  = malloc(ndim * sizeof(hsize_t));
+            block_out  = malloc(ndim * sizeof(hsize_t));
+
+            status = H5Sget_regular_hyperslab(mem_space_id, start_out, stride_out, count_out, block_out);
+            if (ndim == 1) {
+
+                fprintf(stderr, "         start  = [%llu] \n", (unsigned long long)start_out[0]);
+                // fprintf(stderr, "         stride = [%llu] \n", (unsigned long long)stride_out[0]);
+                fprintf(stderr, "         count  = [%llu] \n", (unsigned long long)count_out[0]);
+                // fprintf(stderr, "         block  = [%llu] \n", (unsigned long long)block_out[0]);
+                // fprintf(stderr, "Hyperslab operation on dataspace using start=%llu and
+                // count=%llu\n",start_out[0],count_out[0]); fflush(stdout);
+            }
+            else if (ndim == 2) {
+
+                fprintf(stderr, "         start  = [%llu, %llu] \n", (unsigned long long)start_out[0],
+                        (unsigned long long)start_out[1]);
+                // fprintf(stderr, "         stride = [%llu, %llu] \n", (unsigned long long)stride_out[0],
+                // (unsigned long long)stride_out[1]);
+                fprintf(stderr, "         count  = [%llu, %llu] \n", (unsigned long long)count_out[0],
+                        (unsigned long long)count_out[1]);
+                // fprintf(stderr, "         block  = [%llu, %llu] \n", (unsigned long long)block_out[0],
+                // (unsigned long long)block_out[1]);
+            }
+            else if (ndim == 3) {
+
+                fprintf(stderr, "         start  = [%llu, %llu, %llu] \n", (unsigned long long)start_out[0],
+                        (unsigned long long)start_out[1], (unsigned long long)start_out[2]);
+                // fprintf(stderr, "         stride = [%llu, %llu, %llu] \n", (unsigned long
+                // long)stride_out[0], (unsigned long long)stride_out[1], (unsigned long long)stride_out[2]);
+                fprintf(stderr, "         count  = [%llu, %llu, %llu] \n", (unsigned long long)count_out[0],
+                        (unsigned long long)count_out[1], (unsigned long long)count_out[2]);
+                // fprintf(stderr, "         block  = [%llu, %llu, %llu] \n", (unsigned long
+                // long)block_out[0], (unsigned long long)block_out[1], (unsigned long long)block_out[2]);
+            }
+
+            free(start_out);
+            free(stride_out);
+            free(count_out);
+            free(block_out);
+        }
+        else {
+
+            nblocks      = H5Sget_select_hyper_nblocks(mem_space_id);
+            num_elements = nblocks * ndim * 2;
+            buffer       = (hsize_t *)malloc(num_elements * sizeof(hsize_t));
+
+            slected_block = H5Sget_select_hyper_blocklist(mem_space_id, (hsize_t)0, nblocks, buffer);
+            if (ndim == 1) {
+                // for(int i=0;i<num_elements;i++)
+                //  fprintf(stderr,"buffer[%d]= %llu\n",i,buffer[i]);
+                fprintf(stderr, "Hyperslab operation on dataspace using offset=%llu and count=%llu\n",
+                        buffer[0], buffer[num_elements - 1] - buffer[0] + 1);
+            }
+
+            else if (ndim == 2) {
+                // for(int i=0;i<num_elements;i++)
+                //  fprintf(stderr,"buffer[%d]= %llu\n",i,buffer[i]);
+                fprintf(stderr,
+                        "Hyperslab operation on dataspace using offset=%llux%llu and count=%llux%llu\n",
+                        buffer[0], buffer[1], buffer[num_elements - 2] - buffer[0] + 1,
+                        buffer[num_elements - 1] - buffer[1] + 1);
+            }
+            else if (ndim == 3) {
+                // for(int i=0;i<num_elements;i++)
+                //    fprintf(stderr,"buffer[%d]= %llu\n",i,buffer[i]);
+                fprintf(
+                    stderr,
+                    "Hyperslab operation on dataspace using offset=%llux%llux%llu and count=%llux%llux%llu\n",
+                    buffer[0], buffer[1], buffer[2], buffer[num_elements - 3] - buffer[0] + 1,
+                    buffer[num_elements - 2] - buffer[1] + 1, buffer[num_elements - 1] - buffer[2] + 1);
+            }
+            free(buffer);
+        }
+    }
+
+    return 1;
+}
+
+int
+check_contiguous(hid_t current_task_space_id, hid_t task_iterator_file_space_id, hsize_t *start,
+                 hsize_t *count)
+{
+
+    int                         ndim;
+    int                         num_elements;
+    hsize_t                     nblocks;
+    int                         N1 = 20;
+    hsize_t                     dimsm[1];
+    hsize_t *                   buffer;
+    hid_t                       memspace, dataspace;
+    H5S_sel_type                type;
+    herr_t                      slected_block;
+    hssize_t                    numblocks;
+    async_dataset_write_args_t *args      = NULL;
+    async_dataset_write_args_t *iter_args = NULL;
+
+    hsize_t *current_task_start_out, *current_task_stride_out, *current_task_count_out,
+        *current_task_block_out;
+    hsize_t *iterator_task_start_out, *iterator_task_stride_out, *iterator_task_count_out,
+        *iterator_task_block_out;
+    herr_t status;
+
+    H5S_sel_type current_task_type, iterator_task_type;
+
+    current_task_type  = H5Sget_select_type(current_task_space_id);
+    iterator_task_type = H5Sget_select_type(task_iterator_file_space_id);
+
+    if (current_task_type == H5S_SEL_HYPERSLABS) {
+        ndim = H5Sget_simple_extent_ndims(current_task_space_id);
+
+        if (H5Sis_regular_hyperslab(current_task_space_id)) {
+            current_task_start_out  = malloc(ndim * sizeof(hsize_t));
+            current_task_stride_out = malloc(ndim * sizeof(hsize_t));
+            current_task_count_out  = malloc(ndim * sizeof(hsize_t));
+            current_task_block_out  = malloc(ndim * sizeof(hsize_t));
+
+            iterator_task_start_out  = malloc(ndim * sizeof(hsize_t));
+            iterator_task_stride_out = malloc(ndim * sizeof(hsize_t));
+            iterator_task_count_out  = malloc(ndim * sizeof(hsize_t));
+            iterator_task_block_out  = malloc(ndim * sizeof(hsize_t));
+
+            status = H5Sget_regular_hyperslab(current_task_space_id, current_task_start_out,
+                                              current_task_stride_out, current_task_count_out,
+                                              current_task_block_out);
+            status = H5Sget_regular_hyperslab(task_iterator_file_space_id, iterator_task_start_out,
+                                              iterator_task_stride_out, iterator_task_count_out,
+                                              iterator_task_block_out);
+            if (ndim == 1) {
+
+                /*  fprintf(stderr, "         current_task_start  = [%llu] \n", (unsigned long
+                 long)current_task_start_out[0]); fprintf(stderr, "         current_task_stride = [%llu] \n",
+                 (unsigned long long)current_task_stride_out[0]); fprintf(stderr, "         current_task_count
+                 = [%llu] \n", (unsigned long long)current_task_count_out[0]); fprintf(stderr, "
+                 current_task_block  = [%llu] \n", (unsigned long long)current_task_block_out[0]);
+
+                 fprintf(stderr, "         iterator_task_start  = [%llu] \n", (unsigned long
+                 long)iterator_task_start_out[0]); fprintf(stderr, "         iterator_task_stride = [%llu]
+                 \n", (unsigned long long)iterator_task_stride_out[0]); fprintf(stderr, " iterator_task_count
+                 = [%llu] \n", (unsigned long long)iterator_task_count_out[0]); fprintf(stderr, "
+                 iterator_task_block  = [%llu] \n", (unsigned long long)iterator_task_block_out[0]);
+                  */
+
+                if (current_task_start_out[0] == iterator_task_start_out[0] + iterator_task_count_out[0])
+                // fprintf(stderr,"current task start index [%lld] is  contagious to iterator task
+                // start=[%lld] and count=[%lld] are
+                // contagious",current_task_start_out[0],iterator_task_start_out[0],iterator_task_count_out[0]);
+                {
+                    start[0] = iterator_task_start_out[0];
+                    count[0] = current_task_count_out[0] + iterator_task_count_out[0];
+                    // fprintf(stderr,"start=%llu and
+                    // count=%llu\n",iterator_task_start_out[0],current_task_start_out[0]+current_task_count_out[0]);
+
+                    return 1;
+                }
+                else
+                    return 0;
+            }
+            else if (ndim == 2) {
+
+                /*  fprintf(stderr, "         current_task_start  = [%llux%llu] \n", (unsigned long
+                 long)current_task_start_out[0],(unsigned long long)current_task_start_out[1]);
+                 fprintf(stderr, "         current_task_stride = [%llux%llu] \n", (unsigned long
+                 long)current_task_stride_out[0],(unsigned long long)current_task_stride_out[1]);
+                 fprintf(stderr, "         current_task_count  = [%llux%llu] \n", (unsigned long
+                 long)current_task_count_out[0],(unsigned long long)current_task_count_out[1]);
+                 fprintf(stderr, "         current_task_block  = [%llux%llu] \n", (unsigned long
+                 long)current_task_block_out[0],(unsigned long long)current_task_block_out[1]);
+
+                 fprintf(stderr, "         iterator_task_start  = [%llux%llu] \n", (unsigned long
+                 long)iterator_task_start_out[0],(unsigned long long)iterator_task_start_out[1]);
+                 fprintf(stderr, "         iterator_task_stride = [%llux%llu] \n", (unsigned long
+                 long)iterator_task_stride_out[0],(unsigned long long)iterator_task_stride_out[1]);
+                 fprintf(stderr, "         iterator_task_count  = [%llux%llu] \n", (unsigned long
+                 long)iterator_task_count_out[0],(unsigned long long)iterator_task_count_out[1]);
+                 fprintf(stderr, "         iterator_task_block  = [%llux%llu] \n", (unsigned long
+                 long)iterator_task_block_out[0],(unsigned long long)iterator_task_block_out[1]);
+                  */
+                if (current_task_start_out[0] == iterator_task_start_out[0]) {
+                    if ((current_task_start_out[1] ==
+                         iterator_task_start_out[1] + iterator_task_count_out[1]) &&
+                        (current_task_count_out[0] == iterator_task_count_out[0]))
+                    // fprintf(stderr,"current task start index [%lld] is  contagious to iterator task
+                    // start=[%lld] and count=[%lld] are
+                    // contagious",current_task_start_out[0],iterator_task_start_out[0],iterator_task_count_out[0]);
+                    {
+                        start[0] = iterator_task_start_out[0];
+                        start[1] = iterator_task_start_out[1];
+                        count[0] = iterator_task_count_out[0];
+                        count[1] = current_task_count_out[1] + iterator_task_count_out[1];
+                        // fprintf(stderr,"in func start=%llux%llu and
+                        // count=%llux%llu\n",iterator_task_start_out[0],iterator_task_start_out[1],iterator_task_count_out[0],current_task_count_out[1]+iterator_task_count_out[1]);
+
+                        return 1;
+                    }
+                    else
+                        return 0;
+                }
+                else if (current_task_start_out[1] == iterator_task_start_out[1]) {
+                    if ((current_task_start_out[0] ==
+                         iterator_task_start_out[0] + iterator_task_count_out[0]) &&
+                        (current_task_count_out[1] == iterator_task_count_out[1])) {
+                        start[0] = iterator_task_start_out[0];
+                        start[1] = iterator_task_start_out[1];
+                        count[0] = current_task_count_out[0] + iterator_task_count_out[0];
+                        count[1] = iterator_task_count_out[1];
+                        // fprintf(stderr,"in func start=%llux%llu and
+                        // count=%llux%llu\n",iterator_task_start_out[0],iterator_task_start_out[1],current_task_count_out[0]+iterator_task_count_out[0],iterator_task_count_out[1]);
+
+                        return 1;
+                    }
+                    else
+                        return 0;
+                }
+                else {
+                    return 0;
+                }
+            }
+            else if (ndim == 3) {
+
+                /*  fprintf(stderr, "         current_task_start  = [%llux%llu] \n", (unsigned long
+                 long)current_task_start_out[0],(unsigned long long)current_task_start_out[1]);
+                 fprintf(stderr, "         current_task_stride = [%llux%llu] \n", (unsigned long
+                 long)current_task_stride_out[0],(unsigned long long)current_task_stride_out[1]);
+                 fprintf(stderr, "         current_task_count  = [%llux%llu] \n", (unsigned long
+                 long)current_task_count_out[0],(unsigned long long)current_task_count_out[1]);
+                 fprintf(stderr, "         current_task_block  = [%llux%llu] \n", (unsigned long
+                 long)current_task_block_out[0],(unsigned long long)current_task_block_out[1]);
+
+                 fprintf(stderr, "         iterator_task_start  = [%llux%llu] \n", (unsigned long
+                 long)iterator_task_start_out[0],(unsigned long long)iterator_task_start_out[1]);
+                 fprintf(stderr, "         iterator_task_stride = [%llux%llu] \n", (unsigned long
+                 long)iterator_task_stride_out[0],(unsigned long long)iterator_task_stride_out[1]);
+                 fprintf(stderr, "         iterator_task_count  = [%llux%llu] \n", (unsigned long
+                 long)iterator_task_count_out[0],(unsigned long long)iterator_task_count_out[1]);
+                 fprintf(stderr, "         iterator_task_block  = [%llux%llu] \n", (unsigned long
+                 long)iterator_task_block_out[0],(unsigned long long)iterator_task_block_out[1]);
+                  */
+                if (current_task_start_out[1] == iterator_task_start_out[1]) {
+                    if ((current_task_start_out[2] ==
+                         iterator_task_start_out[2] + iterator_task_count_out[2]) &&
+                        (current_task_count_out[1] == iterator_task_count_out[1]) &&
+                        (current_task_count_out[0] == iterator_task_count_out[0]) &&
+                        (current_task_start_out[0] == iterator_task_start_out[0]))
+                    // fprintf(stderr,"current task start index [%lld] is  contagious to iterator task
+                    // start=[%lld] and count=[%lld] are
+                    // contagious",current_task_start_out[0],iterator_task_start_out[0],iterator_task_count_out[0]);
+                    {
+                        start[0] = iterator_task_start_out[0];
+                        start[1] = iterator_task_start_out[1];
+                        start[2] = iterator_task_start_out[2];
+                        count[0] = iterator_task_count_out[0];
+                        count[1] = iterator_task_count_out[1];
+                        count[2] = current_task_count_out[2] + iterator_task_count_out[2];
+                        // fprintf(stderr,"start=%llux%llux%llu and
+                        // count=%llux%llux%llu\n",iterator_task_start_out[0],iterator_task_start_out[1],iterator_task_start_out[2],iterator_task_count_out[0],current_task_count_out[1]+iterator_task_count_out[1],iterator_task_count_out[2]);
+
+                        return 1;
+                    }
+                    else
+                        return 0;
+                }
+                else if ((current_task_start_out[2] == iterator_task_start_out[2])) {
+                    if ((current_task_start_out[1] ==
+                         iterator_task_start_out[1] + iterator_task_count_out[1]) &&
+                        (current_task_count_out[2] == iterator_task_count_out[2]) &&
+                        (current_task_count_out[0] == iterator_task_count_out[0]) &&
+                        (current_task_start_out[0] == iterator_task_start_out[0]))
+                    // fprintf(stderr,"current task start index [%lld] is  contagious to iterator task
+                    // start=[%lld] and count=[%lld] are
+                    // contagious",current_task_start_out[0],iterator_task_start_out[0],iterator_task_count_out[0]);
+                    {
+                        start[0] = iterator_task_start_out[0];
+                        start[1] = iterator_task_start_out[1];
+                        start[2] = iterator_task_start_out[2];
+                        count[0] = iterator_task_count_out[0];
+                        count[1] = current_task_count_out[1] + iterator_task_count_out[1];
+                        count[2] = iterator_task_count_out[2];
+                        // fprintf(stderr,"start=%llux%llux%llu and
+                        // count=%llux%llux%llu\n",iterator_task_start_out[0],iterator_task_start_out[1],iterator_task_start_out[2],current_task_count_out[0]+iterator_task_count_out[0],iterator_task_count_out[1],iterator_task_count_out[2]);
+
+                        return 1;
+                    }
+                    else
+                        return 0;
+                }
+                else {
+                    return 0;
+                }
+            }
+        }
+    }
+    return 0;
+}
+static async_task_t *
+// static herr_t
+foreach_iteration(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type_id, hid_t mem_space_id,
+                  hid_t file_space_id, hid_t plist_id, const void *buf, async_task_t *prev_task)
+{
+    int                         ndim;
+    int                         num_elements;
+    hsize_t                     nblocks;
+    int                         N1 = 20;
+    hsize_t *                   dimsm;
+    void *                      buffer, *new_buffer;
+    hid_t                       memspace, dataspace;
+    H5S_sel_type                type;
+    herr_t                      slected_block;
+    hssize_t                    numblocks;
+    async_dataset_write_args_t *args      = NULL;
+    async_dataset_write_args_t *iter_args = NULL;
+
+    hsize_t *start_out, *stride_out, *count_out, *block_out;
+    hsize_t *start, *count, *mem_start, *mem_count, *file_start, *file_count, *iter_mem_start,
+        *iter_mem_count, *iter_file_start, *iter_file_count, element_size;
+
+    herr_t             status, return_val = 0;
+    async_task_t *     task_iter;
+    async_task_t *     return_task_val = NULL;
+    async_task_list_t *task_list_iter;
+    int                buffer_count, feed_buf_count;
+
+    DL_FOREACH(async_instance_g->qhead.queue, task_list_iter)
+    {
+        DL_FOREACH(task_list_iter->task_list, task_iter)
+        {    
+            if (task_iter->func == async_dataset_write_fn) {
+                // checking whether the iterator task is dataset write  operation
+                if (task_iter->parent_obj == parent_obj && task_iter->is_done != 1) {
+                    // checking whether the iterator task is operating on the same dataset of the current task
+                    
+                    iter_args = task_iter->args;
+
+                    // fprintf(stderr,"%lld   %lld
+                    // %lld\n",task_iter->async_obj->under_object,iter_args->mem_space_id,iter_args->file_space_id);
+                    /* fprintf(stderr,"For iterator task file space:\n");
+                    print_dataspace(iter_args->file_space_id);
+                    fprintf(stderr,"For current task file space:\n");
+                    print_dataspace(file_space_id);   */
+
+                    hid_t new_memspace;
+
+                    ndim            = H5Sget_simple_extent_ndims(file_space_id);
+                    dimsm           = malloc(ndim * sizeof(hsize_t));
+                    start           = malloc(ndim * sizeof(hsize_t));
+                    count           = malloc(ndim * sizeof(hsize_t));
+                    mem_start       = malloc(ndim * sizeof(hsize_t));
+                    mem_count       = malloc(ndim * sizeof(hsize_t));
+                    file_start      = malloc(ndim * sizeof(hsize_t));
+                    file_count      = malloc(ndim * sizeof(hsize_t));
+                    iter_mem_start  = malloc(ndim * sizeof(hsize_t));
+                    iter_mem_count  = malloc(ndim * sizeof(hsize_t));
+                    iter_file_start = malloc(ndim * sizeof(hsize_t));
+                    iter_file_count = malloc(ndim * sizeof(hsize_t));
+
+
+                   
+                    
+                    if (check_contiguous(file_space_id, iter_args->file_space_id, start, count) ||
+                        check_contiguous(iter_args->file_space_id, file_space_id, start, count))
+                    // if(check_contiguous(file_space_id,iter_args->file_space_id,start,count))
+                    {    
+                        return_val = 1;
+                       // fprintf(stderr, "\n-------#### contiguous####---------\n");
+                         
+                        
+                        /* if(prev_task!=NULL){
+                                continue;
+                            } */  
+                        if (prev_task != NULL)
+                            prev_task->is_merge = 1;
+                        return_task_val = task_iter;
+                       
+                       // fprintf(stderr, "\n-------#### 2 contiguous####---------\n");
+                        if (ndim == 1) { // push_contiguous(ndim,start,count);
+
+                            //fprintf(stderr, "\n        start=%llu count=%llu\n", start[0], count[0]);
+                            // H5Sclose(iter_args->file_space_id);// close the file space
+
+                            /*  if(H5Smodify_select(file_space_id,H5S_SELECT_SET,iter_args->file_space_id)< 0)
+                                 {fprintf(stderr,"Error in H5Smodify_select");} */
+
+                            // H5Sclose(iter_args->file_space_id);
+                            new_memspace = H5Screate_simple(ndim, count, NULL);
+                            element_size = H5Tget_size(mem_type_id);
+                            fprintf(stderr,"size of new_buffer= %lld \n",count[0]*element_size);
+
+                            new_buffer   = malloc(count[0] * element_size);
+
+
+                            
+                            /* int *buf_temp        = buf;
+                            int *new_buffer_temp = new_buffer; */
+
+                            status = H5Sget_regular_hyperslab(mem_space_id, mem_start, NULL, mem_count, NULL);
+                            status =
+                                H5Sget_regular_hyperslab(file_space_id, file_start, NULL, file_count, NULL);
+
+                            //fprintf(stderr,"\nmem_start=%lld mem_count=%lld file_start=%lld file_count=%lld element_size=%lld\n",mem_start[0],mem_count[0],file_start[0],file_count[0],element_size);
+                            fprintf(stderr, "\n mem_start=%lld file_start=%lld ", mem_start[0], \
+                                   file_start[0]);
+                            fprintf(stderr, "\n mem_count=%lld file_count=%lld \n", mem_count[0], \
+                                   file_count[0]);
+                            status = H5Sget_regular_hyperslab(iter_args->mem_space_id, iter_mem_start, NULL,
+                                                              iter_mem_count, NULL);
+                            /* fprintf(stderr,"%d\n",status);
+                            if (H5Sis_regular_hyperslab(iter_args->mem_space_id)) {
+                                fprintf(stderr,"regular hyperslab\n");
+                            }  */
+                            status = H5Sget_regular_hyperslab(iter_args->file_space_id, iter_file_start, NULL,
+                                                              iter_file_count, NULL);
+                            // fprintf(stderr,"%d\n",status);
+                            //fprintf(stderr, "\n iter_mem_start=%lld iter_file_start=%lld ", iter_mem_start[0],
+                             //       iter_file_start[0]);
+                            //fprintf(stderr, "\n iter_mem_count=%lld iter_file_count=%lld \n",
+                             //       iter_mem_count[0], iter_file_count[0]);
+                            if (file_start[0] >= iter_file_start[0]) {
+                                // fprintf(stderr,"file_start[0]>=iter_file_start[0]\n");
+                                memcpy(new_buffer, buf + iter_file_start[0] * element_size,
+                                       iter_file_count[0] * element_size);
+                                memcpy(new_buffer + iter_file_count[0] * element_size,
+                                       buf + file_start[0] * element_size, file_count[0] * element_size);
+                            }
+                            else {
+                                // fprintf(stderr,"not file_start[0]>=iter_file_start[0]\n");
+
+                                memcpy(new_buffer, buf + (file_start[0] * element_size),
+                                       file_count[0] * element_size);
+                                memcpy(new_buffer + file_count[0] * element_size,
+                                       buf + (iter_file_start[0] * element_size),
+                                       iter_file_count[0] * element_size);
+                            }
+
+                            // memcpy(new_buffer+(file_start[0]*element_size),buf+(mem_start[0]*element_size),mem_count[0]*element_size);
+                            // memcpy(new_buffer,buf,count[0]*element_size);
+
+                            /*allocate new_buffer
+                              get the start and count value from memspace
+                              based on the start and count copy the data from buf to new buffer
+                              need to be corect locations
+                              do the same thing for iter_args->buf and iter_args->memspace.
+                           */
+
+                            H5Sclose(iter_args->mem_space_id);
+                            // H5Sclose(iter_args->file_space_id);
+
+                            iter_args->mem_space_id = new_memspace;
+                            // iter_args->file_space_id=new_memspace;
+                            
+                            if (iter_args->free_buf == 1)
+                                free(iter_args->buf);
+
+                            iter_args->buf = new_buffer;
+                            iter_args->free_buf=1;
+                     
+                            /* if(check_contiguous_overlap(ndim,start,count))
+                              {fprintf(stderr, "\ncontiguous overlap\n");
+
+                              fprintf(stderr,"\n after contiguous overlap start=%llu
+                              count=%llu\n",start[0],count[0]);
+                              }  */
+                            status =
+                                H5Sselect_hyperslab(file_space_id, H5S_SELECT_SET, start, NULL, count, NULL);
+
+                            status = H5Sselect_hyperslab(iter_args->file_space_id, H5S_SELECT_SET, start,
+                                                         NULL, count, NULL);
+
+                            start[0] = 0;
+                            // fprintf(stderr,"\n iter mem space mem_start=%lld mem_count=%lld file_start=%lld
+                            // file_count=%lld
+                            // element_size=%lld\n",start[0],count[0],start[0],count[0],element_size);
+
+                            status = H5Sselect_hyperslab(iter_args->mem_space_id, H5S_SELECT_SET, start, NULL,
+                                                         count, NULL);
+                            /* for (int i = 0; i < 16; i++)
+                                fprintf(stderr, " buf[%d]=%d ", i, buf_temp[i]);
+                            fprintf(stderr, "\n");
+
+                            for (int i = 0; i < 16; i++)
+                                fprintf(stderr, " new_buffer[%d]=%d ", i, new_buffer_temp[i]);
+                            fprintf(stderr, "\n"); */ 
+                            //free(new_buffer);
+                        }
+                        else if (ndim == 2) {
+                            
+                            fprintf(stderr, "        start=%llux%llu count=%llux%llu\n", start[0], start[1],
+                                    count[0], count[1]);
+                            new_memspace = H5Screate_simple(ndim, count, NULL);
+                            element_size = H5Tget_size(mem_type_id);
+                            new_buffer   = malloc(count[0] * count[1] * element_size);
+                            int *buf_temp        = buf;
+                            int *new_buffer_temp = new_buffer;
+
+                            status = H5Sget_regular_hyperslab(mem_space_id, mem_start, NULL, mem_count, NULL);
+                            status =
+                                H5Sget_regular_hyperslab(file_space_id, file_start, NULL, file_count, NULL);
+
+                            // fprintf(stderr,"\nmem_start=%lld mem_count=%lld file_start=%lld file_count=%lld
+                            // element_size=%lld\n",mem_start[0],mem_count[0],file_start[0],file_count[0],element_size);
+                            fprintf(stderr, "\n mem_start=%lldx%lld file_start=%lldx%lld ", mem_start[0],
+                                    mem_start[1], file_start[0], file_start[1]);
+                            fprintf(stderr, "\n mem_count=%lldx%lld file_count=%lldx%lld \n", mem_count[0],
+                                    mem_count[1], file_count[0], file_count[1]);
+                            status = H5Sget_regular_hyperslab(iter_args->mem_space_id, iter_mem_start, NULL,
+                                                              iter_mem_count, NULL);
+                            
+                            status = H5Sget_regular_hyperslab(iter_args->file_space_id, iter_file_start, NULL,
+                                                              iter_file_count, NULL);
+                            // fprintf(stderr,"%d\n",status);
+                            fprintf(stderr, "\n iter_mem_start=%lldx%lld iter_file_start=%lldx%lld ",
+                                    iter_mem_start[0], iter_mem_start[1], iter_file_start[0],
+                                    iter_file_start[1]);
+                            fprintf(stderr, "\n iter_mem_count=%lldx%lld iter_file_count=%lldx%lld \n",
+                                    iter_mem_count[0], iter_mem_count[1], iter_file_count[0],
+                                    iter_file_count[1]);
+
+                            H5Sget_simple_extent_dims(file_space_id, dimsm, NULL);
+                            //fprintf(stderr, "\n  dimensions=%lldx%lld \n", dimsm[0], dimsm[1]);
+
+                            buffer_count   = 0;
+                            feed_buf_count = 0;
+                             if (file_start[0] == iter_file_start[0]) {
+                                if (file_start[1] >= iter_file_start[1]) {
+                                    if (file_count[0] == iter_file_count[0]) {
+                                        feed_buf_count = dimsm[1] * iter_file_start[0];
+                                        for (int i = 0; i < iter_file_count[0]; i++) {
+                                            memcpy(new_buffer + (buffer_count * element_size),
+                                                   buf + (feed_buf_count + iter_file_start[1]) * element_size,
+                                                   iter_file_count[1] * element_size);
+                                            // fprintf(stderr,"element size=%lld\n",element_size);
+                                            buffer_count += iter_file_count[1];
+                                            memcpy(new_buffer + (buffer_count * element_size),
+                                                   buf + (feed_buf_count + file_start[1]) * element_size,
+                                                   file_count[1] * element_size);
+                                            // fprintf(stderr,"element size=%lld\n",element_size);
+                                            buffer_count += file_count[1];
+                                            feed_buf_count += dimsm[1];
+                                             fprintf(stderr,"buffer_count=%d \
+                                             feed_buf_count=%d\n",buffer_count,feed_buf_count);
+                                        }
+                                    }
+                                }
+                                else {
+
+                                    if (file_count[0] == iter_file_count[0]) {
+                                        feed_buf_count = dimsm[1] * file_start[0];
+                                        for (int i = 0; i < file_count[0]; i++) {
+
+                                            memcpy(new_buffer + (buffer_count * element_size),
+                                                   buf + (feed_buf_count + file_start[1]) * element_size,
+                                                   file_count[1] * element_size);
+                                            // fprintf(stderr,"element size=%lld\n",element_size);
+                                            buffer_count += file_count[1];
+                                            memcpy(new_buffer + (buffer_count * element_size),
+                                                   buf + (feed_buf_count + iter_file_start[1]) * element_size,
+                                                   iter_file_count[1] * element_size);
+                                            // fprintf(stderr,"element size=%lld\n",element_size);
+                                            buffer_count += iter_file_count[1];
+                                            feed_buf_count += dimsm[1];
+                                            fprintf(stderr,"buffer_count=%d feed_buf_count=%d\n",buffer_count,feed_buf_count);
+                                        }
+                                    }
+                                }
+                            }
+                            else if (file_start[1] == iter_file_start[1]) {
+                                if (file_start[0] >= iter_file_start[0]) {
+                                    if (file_count[1] == iter_file_count[1]) {
+                                        feed_buf_count = dimsm[1] * iter_file_start[0];
+                                        for (int i = 0; i < iter_file_count[0]; i++) {
+                                            memcpy(new_buffer + (buffer_count * element_size),
+                                                   buf + (feed_buf_count + iter_file_start[1]) * element_size,
+                                                   iter_file_count[1] * element_size);
+                                            // fprintf(stderr,"element size=%lld\n",element_size);
+                                            buffer_count += iter_file_count[1];
+                                            feed_buf_count += dimsm[1];
+                                            // fprintf(stderr,"buffer_count=%d
+                                            // feed_buf_count=%d\n",buffer_count,feed_buf_count);
+                                        }
+                                        for (int i = 0; i < file_count[0]; i++) {
+                                            memcpy(new_buffer + (buffer_count * element_size),
+                                                   buf + (feed_buf_count + file_start[1]) * element_size,
+                                                   file_count[1] * element_size);
+                                            // fprintf(stderr,"element size=%lld\n",element_size);
+                                            buffer_count += file_count[1];
+                                            feed_buf_count += dimsm[1];
+                                            // fprintf(stderr,"buffer_count=%d
+                                            // feed_buf_count=%d\n",buffer_count,feed_buf_count);
+                                        }
+                                    }
+                                }
+                                else {
+                                    if (file_count[1] == iter_file_count[1]) {
+                                        feed_buf_count = dimsm[1] * file_start[0];
+
+                                        for (int i = 0; i < file_count[0]; i++) {
+                                            memcpy(new_buffer + (buffer_count * element_size),
+                                                   buf + (feed_buf_count + file_start[1]) * element_size,
+                                                   file_count[1] * element_size);
+                                            // fprintf(stderr,"element size=%lld\n",element_size);
+                                            buffer_count += file_count[1];
+                                            feed_buf_count += dimsm[1];
+                                             fprintf(stderr,"buffer_count=%d \
+                                            // feed_buf_count=%d\n",buffer_count,feed_buf_count);
+                                        }
+                                        for (int i = 0; i < iter_file_count[0]; i++) {
+                                            memcpy(new_buffer + (buffer_count * element_size),
+                                                   buf + (feed_buf_count + iter_file_start[1]) * element_size,
+                                                   iter_file_count[1] * element_size);
+                                            // fprintf(stderr,"element size=%lld\n",element_size);
+                                            buffer_count += iter_file_count[1];
+                                            feed_buf_count += dimsm[1];
+                                             fprintf(stderr,"buffer_count=%d \
+                                             feed_buf_count=%d\n",buffer_count,feed_buf_count);
+                                        }
+                                    }
+                                }
+                            } 
+
+                            // memcpy(new_buffer+(file_start[0]*element_size),buf+(mem_start[0]*element_size),mem_count[0]*element_size);
+                            // memcpy(new_buffer,buf,count[0]*element_size);
+
+                         
+                            // for (int i = 0; i < 16; i++)
+                             //   fprintf(stderr, " buf[%d]=%d ", i, buf_temp[i]);
+                           // fprintf(stderr, "\n");
+
+                           // for (int i = 0; i < 16; i++)
+                            //    fprintf(stderr, " new_buffer[%d]=%d ", i, new_buffer_temp[i]);
+                            //fprintf(stderr, "\n"); 
+
+
+                            H5Sclose(iter_args->mem_space_id);
+                            //H5Sclose(iter_args->file_space_id);
+
+                            iter_args->mem_space_id = new_memspace;
+                            // iter_args->file_space_id=new_memspace;
+
+                            iter_args->buf = new_buffer;
+                            iter_args->free_buf=1;
+                             int *iter_buf= iter_args->buf;
+                            for (int i = 0; i < 16; i++)
+                                fprintf(stderr, " iter_args new_buffer[%d]=%d ", i, iter_buf[i]);
+                            fprintf(stderr, "\n");  
+
+                           // if(check_contiguous_overlap(ndim,start,count))
+                             // {fprintf(stderr, "\ncontiguous overlap\n");
+
+                              //fprintf(stderr,"\n after contiguous overlap start=%llu
+                              //count=%llu\n",start[0],count[0]);
+                              //}  
+                            status =
+                                H5Sselect_hyperslab(file_space_id, H5S_SELECT_SET, start, NULL, count, NULL);
+
+                            status = H5Sselect_hyperslab(iter_args->file_space_id, H5S_SELECT_SET, start,
+                                                         NULL, count, NULL);
+
+                            start[0] = 0;
+                            start[1] = 0;
+                            // fprintf(stderr,"\n iter mem space mem_start=%lld mem_count=%lld file_start=%lld
+                            // file_count=%lld
+                            // element_size=%lld\n",start[0],count[0],start[0],count[0],element_size);
+
+                            status = H5Sselect_hyperslab(iter_args->mem_space_id, H5S_SELECT_SET, start, NULL,
+                                                         count, NULL);
+                            //free(new_buffer);  */           
+                        }
+                        else if (ndim == 3) {
+                            //fprintf(stderr," foreach iterator mem_type_id=%llu\n",iter_args->mem_type_id);
+                            fprintf(stderr, "        start=%llux%llux%llu count=%llux%llux%llu\n", start[0],
+                                    start[1], start[2], count[0], count[1], count[2]);
+
+                            new_memspace = H5Screate_simple(ndim, count, NULL);
+                            element_size = H5Tget_size(mem_type_id);
+                            new_buffer   = malloc(count[0] * count[1] * count[2] * element_size);
+                             
+                            status = H5Sget_regular_hyperslab(mem_space_id, mem_start, NULL, mem_count, NULL);
+                            status =
+                                H5Sget_regular_hyperslab(file_space_id, file_start, NULL, file_count, NULL);
+
+                             /* fprintf(stderr,"\nmem_start=%lld mem_count=%lld file_start=%lld file_count=%lld \
+                             element_size=%lld\n",mem_start[0],mem_count[0],file_start[0],file_count[0],element_size);
+                            */ 
+                            /*  fprintf(stderr,"\n mem_start=%lldx%lldx%lld file_start=%lldx%lldx%lld
+                             ",mem_start[0],mem_start[1],mem_start[2],file_start[0],file_start[1],file_start[2]);
+                             fprintf(stderr,"\n mem_count=%lldx%lldx%lld file_count=%lldx%lldx%lld
+                             \n",mem_count[0],mem_count[1],mem_count[2],file_count[0],file_count[1],file_count[2]); */
+                            status = H5Sget_regular_hyperslab(iter_args->mem_space_id, iter_mem_start, NULL,
+                                                              iter_mem_count, NULL);
+                            /* fprintf(stderr,"%d\n",status);
+                            if (H5Sis_regular_hyperslab(iter_args->mem_space_id)) {
+                                fprintf(stderr,"regular hyperslab\n");
+                            }  */
+                            status = H5Sget_regular_hyperslab(iter_args->file_space_id, iter_file_start, NULL,
+                                                              iter_file_count, NULL);
+                            // fprintf(stderr,"%d\n",status);
+                            fprintf(stderr, "\n  file_start=%lldx%lldx%lld iter_file_start=%lldx%lldx%lld ",
+                                    file_start[0], file_start[1], file_start[2], iter_file_start[0],
+                                    iter_file_start[1], iter_file_start[2]);
+                            fprintf(stderr, "\n file_count=%lldx%lldx%lld  iter_file_count=%lldx%lldx%lld \n",
+                                    file_count[0], file_count[1], file_count[2], iter_file_count[0],
+                                    iter_file_count[1], iter_file_count[2]);
+                            H5Sget_simple_extent_dims(file_space_id, dimsm, NULL);
+                            //fprintf(stderr, "\n  dimensions=%lldx%lldx%lld \n", dimsm[0], dimsm[1], dimsm[2]);
+                            int dim_elements     = dimsm[1] * dimsm[2];
+                            buffer_count         = 0;
+                            feed_buf_count       = 0;
+                            buffer_count         = 0;
+                            feed_buf_count       = 0;
+                            int *buf_temp        = buf;
+                            int *new_buffer_temp = new_buffer;
+                            
+
+                            if (file_start[1] == iter_file_start[1]) {
+                                if (file_start[2] >= iter_file_start[2]) {
+                                    if (file_count[1] == iter_file_count[1]) {
+                                        if (file_count[0] == iter_file_count[0]) {
+                                            for (int d = 0; d < file_count[0]; d++) {
+                                                
+                                                feed_buf_count =
+                                                    file_start[0]*dim_elements+dim_elements * d + dimsm[2] * iter_file_start[1];
+
+                                                for (int i = 0; i < iter_file_count[1]; i++) {
+                                                   memcpy(new_buffer + (buffer_count * element_size),
+                                                           buf + (feed_buf_count + iter_file_start[2]) *
+                                                                     element_size,
+                                                           iter_file_count[2] * element_size); 
+                                                    // fprintf(stderr,"element size=%lld\n",element_size);
+                                                    buffer_count += iter_file_count[2];
+                                                     memcpy(new_buffer + (buffer_count * element_size),
+                                                           buf + (feed_buf_count + file_start[2]) *
+                                                                     element_size,
+                                                           file_count[2] * element_size); 
+                                                    // fprintf(stderr,"element size=%lld\n",element_size);
+                                                    buffer_count += file_count[2];
+                                                    feed_buf_count += dimsm[2];
+                                                   // fprintf(stderr,"buffer_count=%d \
+                                                     //feed_buf_count=%d\n",buffer_count,feed_buf_count);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                else {
+
+                                    if (file_count[1] == iter_file_count[1]) {
+                                        if (file_count[0] == iter_file_count[0]) {
+                                            for (int d = 0; d < file_count[0]; d++) {
+
+                                                feed_buf_count = file_start[0]*dim_elements+dim_elements * d + dimsm[2] * file_start[1];
+                                                // feed_buf_count=dimsm[2]*file_start[1];
+                                                for (int i = 0; i < file_count[1]; i++) {
+
+                                                     memcpy(new_buffer + (buffer_count * element_size),
+                                                           buf + (feed_buf_count + file_start[2]) *
+                                                                     element_size,
+                                                           file_count[2] * element_size); 
+                                                    // fprintf(stderr,"element size=%lld\n",element_size);
+                                                    buffer_count += file_count[2];
+                                                     memcpy(new_buffer + (buffer_count * element_size),
+                                                           buf + (feed_buf_count + iter_file_start[2]) *
+                                                                     element_size,
+                                                           iter_file_count[2] * element_size); 
+                                                    // fprintf(stderr,"element size=%lld\n",element_size);
+                                                    buffer_count += iter_file_count[2];
+                                                    feed_buf_count += dimsm[2];
+                                                    //fprintf(stderr,"buffer_count=%d \
+                                                    // feed_buf_count=%d\n",buffer_count,feed_buf_count);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            else if (file_start[2] == iter_file_start[2]) {
+                                if (file_start[1] >= iter_file_start[1]) {
+                                    if (file_count[2] == iter_file_count[2]) {
+                                        if (file_count[0] == iter_file_count[0]) {
+                                            for (int d = 0; d < file_count[0]; d++) {
+
+                                                feed_buf_count =
+                                                    file_start[0]*dim_elements+dim_elements * d + dimsm[2] * iter_file_start[1];
+
+                                                // feed_buf_count=dimsm[2]*iter_file_start[1];
+                                                for (int i = 0; i < iter_file_count[1]; i++) {
+                                                     memcpy(new_buffer + (buffer_count * element_size),
+                                                           buf + (feed_buf_count + iter_file_start[2]) *
+                                                                     element_size,
+                                                           iter_file_count[2] * element_size); 
+                                                    // fprintf(stderr,"element size=%lld\n",element_size);
+                                                    buffer_count += iter_file_count[2];
+                                                    feed_buf_count += dimsm[2];
+                                                    //fprintf(stderr, "buffer_count=%d feed_buf_count=%d\n",
+                                                       //     buffer_count, feed_buf_count);
+                                                }
+                                                for (int i = 0; i < file_count[1]; i++) {
+                                                     memcpy(new_buffer + (buffer_count * element_size),
+                                                           buf + (feed_buf_count + file_start[2]) *
+                                                                     element_size,
+                                                           file_count[2] * element_size); 
+                                                    // fprintf(stderr,"element size=%lld\n",element_size);
+                                                    buffer_count += file_count[2];
+                                                    feed_buf_count += dimsm[2];
+                                                    //fprintf(stderr,"buffer_count=%d \
+                                                    // feed_buf_count=%d\n",buffer_count,feed_buf_count);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                else {
+                                    if (file_count[2] == iter_file_count[2]) {
+                                        if (file_count[0] == iter_file_count[0]) {
+                                            for (int d = 0; d < file_count[0]; d++) {
+
+                                                feed_buf_count = file_start[0]*dim_elements+dim_elements * d + dimsm[2] * file_start[1];
+
+                                                // feed_buf_count=dimsm[2]*file_start[1];
+
+                                                for (int i = 0; i < file_count[1]; i++) {
+                                                     memcpy(new_buffer + (buffer_count * element_size),
+                                                           buf + (feed_buf_count + file_start[2]) *
+                                                                     element_size,
+                                                           file_count[2] * element_size); 
+                                                    // fprintf(stderr,"element size=%lld\n",element_size);
+                                                    buffer_count += file_count[2];
+                                                    feed_buf_count += dimsm[2];
+                                                   // fprintf(stderr,"buffer_count=%d \
+                                                    // feed_buf_count=%d\n",buffer_count,feed_buf_count);
+                                                }
+                                                for (int i = 0; i < iter_file_count[1]; i++) {
+                                                     memcpy(new_buffer + (buffer_count * element_size),
+                                                           buf + (feed_buf_count + iter_file_start[2]) *
+                                                                     element_size,
+                                                           iter_file_count[2] * element_size);
+                                                    // fprintf(stderr,"element size=%lld\n",element_size);
+                                                    buffer_count += iter_file_count[2];
+                                                    feed_buf_count += dimsm[2];
+                                                    // fprintf(stderr,"buffer_count=%d \
+                                                   //  feed_buf_count=%d\n",buffer_count,feed_buf_count);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // memcpy(new_buffer+(file_start[0]*element_size),buf+(mem_start[0]*element_size),mem_count[0]*element_size);
+                            // memcpy(new_buffer,buf,count[0]*element_size);
+
+                            /*allocate new_buffer
+                              get the start and count value from memspace
+                              based on the start and count copy the data from buf to new buffer
+                              need to be corect locations
+                              do the same thing for iter_args->buf and iter_args->memspace.
+                           */
+
+                            /* for (int i = 0; i < 16; i++)
+                                fprintf(stderr, " buf[%d]=%d ", i, buf_temp[i]);
+                            fprintf(stderr, "\n");
+
+                            for (int i = 0; i < 16; i++)
+                                fprintf(stderr, " new_buffer[%d]=%d ", i, new_buffer_temp[i]);
+                            fprintf(stderr, "\n"); */
+
+                            H5Sclose(iter_args->mem_space_id);
+                            // H5Sclose(iter_args->file_space_id);
+
+                            iter_args->mem_space_id = new_memspace;
+                            // iter_args->file_space_id=new_memspace;
+
+                            iter_args->buf = new_buffer;
+                            iter_args->free_buf=1;
+                            
+                             /* int *iter_buf= iter_args->buf;
+                            for (int i = 0; i < 16; i++)
+                                fprintf(stderr, " iter_args new_buffer[%d]=%d ", i, iter_buf[i]);
+                            fprintf(stderr, "\n");  */
+
+                            
+
+                            /* if(check_contiguous_overlap(ndim,start,count))
+                              {fprintf(stderr, "\ncontiguous overlap\n");
+
+                              fprintf(stderr,"\n after contiguous overlap start=%llu
+                              count=%llu\n",start[0],count[0]);
+                              }  */
+                            status =
+                                H5Sselect_hyperslab(file_space_id, H5S_SELECT_SET, start, NULL, count, NULL);
+
+                            status = H5Sselect_hyperslab(iter_args->file_space_id, H5S_SELECT_SET, start,
+                                                         NULL, count, NULL);
+
+                            start[0] = 0;
+                            start[1] = 0;
+                            start[2] = 0;
+                            // fprintf(stderr,"\n iter mem space mem_start=%lld mem_count=%lld file_start=%lld
+                            // file_count=%lld
+                            // element_size=%lld\n",start[0],count[0],start[0],count[0],element_size);
+
+                            status = H5Sselect_hyperslab(iter_args->mem_space_id, H5S_SELECT_SET, start, NULL,
+                                                         count, NULL);
+                            //fprintf(stderr," end of foreach iterator mem_type_id=%llu\n",iter_args->mem_type_id);
+                            
+                          
+                        }
+                        // return 1;
+                        
+                    }
+
+                    else {
+                        //free(new_buffer);
+                        // iter_args->buf=buf;
+                       // fprintf(stderr, "-------- Not contiguous---------\n");
+                    }
+                    free(dimsm);
+                    free(start);
+                    free(count);
+                    free(mem_start);
+                    free(mem_count);
+                    free(file_start);
+                    free(file_count);
+                    free(iter_mem_start);
+                    free(iter_mem_count);
+                    free(iter_file_start);
+                    free(iter_file_count);
+                    
+                }
+            }
+        }
+    }
+    //free(new_buffer);
+    //free(buf);
+    // return  return_val;
+    return return_task_val;
+}
+static herr_t
+async_dataset_write_merge(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type_id,
+                          hid_t mem_space_id, hid_t file_space_id, hid_t plist_id, const void *buf)
+{
+
+    int                         ndim;
+    int                         num_elements;
+    hsize_t                     nblocks;
+    int                         N1 = 20;
+    hsize_t *                   dimsm;
+    void *                      buffer, *new_buffer;
+    hid_t                       memspace, dataspace;
+    H5S_sel_type                type;
+    herr_t                      slected_block;
+    hssize_t                    numblocks;
+    async_dataset_write_args_t *args      = NULL;
+    async_dataset_write_args_t *iter_args = NULL;
+
+    hsize_t *start_out, *stride_out, *count_out, *block_out;
+    hsize_t *start, *count, *mem_start, *mem_count, *file_start, *file_count, *iter_mem_start,
+        *iter_mem_count, *iter_file_start, *iter_file_count, element_size;
+
+    herr_t             status, return_val = 0;
+    async_task_t *     task_iter;
+    async_task_t *     return_task_val;
+    async_task_list_t *task_list_iter;
+    int                buffer_count, feed_buf_count;
+    double time1, time2,duration;
+    double time11,time12,duration1;
+    double time21,time22,duration2;
+
+    assert(aid);
+    assert(parent_obj);
+    assert(parent_obj->magic == ASYNC_MAGIC);
+    assert(mem_space_id);
+
+    // fprintf(stderr,"this is before H5Sget_select_type\n");
+
+    // print_dataspace(mem_space_id);
+    // print_dataspace(file_space_id);
+    /*if(type==H5S_SEL_HYPERSLABS)
+        fprintf(stderr,"A hyperslab or compound hyperslab is selected\n");
+    else if(type==H5S_SEL_POINTS)
+        fprintf(stderr,"A sequence of points is selected\n");
+    else if(type==H5S_SEL_ALL)
+        fprintf(stderr,"The entire dataset is selected\n");
+    else if(type==H5S_SEL_NONE)
+         fprintf(stderr,"No selection is defined\n");
+         */
+    //fprintf(stderr," merged func mem_type_id=%llu\n",mem_type_id);
+    time1 = MPI_Wtime();
+    time11=MPI_Wtime();
+
+    return_task_val =
+        foreach_iteration(aid, parent_obj, mem_type_id, mem_space_id, file_space_id, plist_id, buf, NULL);
+    // return_val=foreach_iteration(aid,parent_obj,mem_type_id,mem_space_id,file_space_id,plist_id,buf,NULL);
+    time12 = MPI_Wtime();
+    duration1 = time12 - time11;
+    fprintf(stderr,"1st Foreach iter Runtime is  %f \n", duration1);
+    if (return_task_val == NULL)
+        return_val = 0;
+    else
+        return_val = 1;
+    
+   for (int i = 0; return_task_val != NULL; i++)
+        {   time21=MPI_Wtime();
+            
+            return_task_val = foreach_iteration(aid, parent_obj, mem_type_id, mem_space_id, file_space_id,
+                                            plist_id, buf, return_task_val);  
+            time22=MPI_Wtime();  
+
+            duration2 = time22 - time21;
+            fprintf(stderr,"in the for loop Runtime is i=%d %f \n", i, duration1);                                
+                                            }   
+    
+    time2 = MPI_Wtime();
+    duration = time2 - time1;
+        
+        
+        
+    fprintf(stderr,"Foreach Runtime is  %f \n", duration);
+        
+    return return_val;
+}
+
 static herr_t
 async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type_id, hid_t mem_space_id,
                     hid_t file_space_id, hid_t plist_id, const void *buf, void **req)
@@ -9053,13 +10134,20 @@ async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_t
     bool                        is_blocking = false;
     hbool_t                     acquired    = false;
     unsigned int                mutex_count = 1;
+    herr_t                      return_val;
 
     func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+    //fprintf(stderr,"mem_type_id=%llu\n",mem_type_id);
 
+    return_val =
+        async_dataset_write_merge(aid, parent_obj, mem_type_id, mem_space_id, file_space_id, plist_id, buf);
+
+    if (return_val == 1)
+        goto done; 
     async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_dataset_write_args_t *)calloc(1, sizeof(async_dataset_write_args_t))) == NULL) {
@@ -9470,8 +10558,7 @@ async_dataset_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
         args->dxpl_id = H5Pcopy(dxpl_id);
     args->req = req;
 
-    // Temporary fix for data space get that could cause a pthread deadlock
-    if (req && !aid->disable_async_dset_get) {
+    if (req) {
         H5VL_async_t *new_req;
         if ((new_req = H5VL_async_new_obj(NULL, parent_obj->under_vol_id)) == NULL) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
@@ -20515,15 +21602,9 @@ H5VL_async_str_to_info(const char *str, void **_info)
 
     /* Retrieve the underlying VOL connector value and info */
     sscanf(str, "under_vol=%u;", &under_vol_value);
-    under_vol_id = H5VLregister_connector_by_value((H5VL_class_value_t)under_vol_value, H5P_DEFAULT);
-    if (strstr(str, "[") && strstr(str, "]")) {
-        under_vol_info_start = strchr(str, '[');
-        under_vol_info_end   = strrchr(str, ']');
-    }
-    else {
-        under_vol_info_start = strchr(str, '{');
-        under_vol_info_end   = strrchr(str, '}');
-    }
+    under_vol_id         = H5VLregister_connector_by_value((H5VL_class_value_t)under_vol_value, H5P_DEFAULT);
+    under_vol_info_start = strchr(str, '{');
+    under_vol_info_end   = strrchr(str, '}');
     assert(under_vol_info_end > under_vol_info_start);
     if (under_vol_info_end != (under_vol_info_start + 1)) {
         char *under_vol_info_str;
