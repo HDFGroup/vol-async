@@ -1,6 +1,6 @@
 /************************************************************
 
-  This example shows how to write and read a hyperslab.  It
+  This  example shows how to write and read a hyperslab.  It
   is derived from the h5_read.c and h5_write.c examples in
   the "Introduction to HDF5". It works on the 3 dimensional data.
 
