@@ -106,7 +106,7 @@ main(int argc, char **argv)
     dimsm[0]  = X1;
     memspace  = H5Screate_simple(RANK_OUT, dimsm, NULL); // RANK_OUT=3
     dataset   = H5Dcreate_async(file, DATASETNAME, H5T_STD_I32BE, dataspace, H5P_DEFAULT, H5P_DEFAULT,
-                                H5P_DEFAULT, es_id);
+                              H5P_DEFAULT, es_id);
 
     int array[][4][2] = {{{0, 5},
                           {5, 3},
