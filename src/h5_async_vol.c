@@ -1,5 +1,5 @@
 /*******************************************************************************
-Asynchronous I/O VOL  Connector (AsyncVOL) Copyright (c) 2021, The
+Asynchronous I/O VOL Connector (AsyncVOL) Copyright (c) 2021, The
 Regents of the University of California, through Lawrence Berkeley
 National Laboratory (subject to receipt of any required approvals from
 the U.S. Dept. of Energy).  All rights reserved.
@@ -65,7 +65,7 @@ works, and perform publicly and display publicly, and to permit others to do so.
 /* Whether to display log messge when callback is invoked */
 /* (Uncomment to enable) */
 /* #define ENABLE_DBG_MSG 1 */
- #define PRINT_ERROR_STACK           1 
+ #define PRINT_ERROR_STACK 1 
 /* #define ENABLE_ASYNC_LOGGING */
 
 #define ASYNC_DBG_MSG_RANK 0
@@ -206,6 +206,7 @@ typedef struct async_instance_t {
     bool          pause;                 /* Pause background thread execution */
     bool          disable_implicit_file; /* Disable implicit async execution globally */
     bool          disable_implicit;      /* Disable implicit async execution for dxpl */
+    bool          disable_async_dset_get; /* Disable async execution for dataset get */
     bool          delay_time_env;        /* Flag that indicates the delay time is set by env variable */
     uint64_t      delay_time; /* Sleep time before background thread trying to acquire global mutex */
     int           sleep_time; /* Sleep time between checking the global mutex attemp count */
@@ -256,7 +257,6 @@ typedef struct async_attr_write_args_t {
     void * buf;
     hid_t  dxpl_id;
     void **req;
-
     bool    free_buf;
 #ifdef ENABLE_WRITE_MEMCPY
     hsize_t data_size;
@@ -332,7 +332,6 @@ typedef struct async_dataset_write_args_t {
     hid_t  plist_id;
     void * buf;
     void **req;
-
     bool    free_buf;
 #ifdef ENABLE_WRITE_MEMCPY
     hsize_t data_size;
@@ -1300,7 +1299,7 @@ async_instance_init(int backing_thread_count)
     aid->disable_implicit      = false;
     aid->disable_implicit_file = false;
     aid->delay_time_env        = false;
-
+    aid->disable_async_dset_get = true;
     // Check for delaying operations to file / group / dataset close operations
     env_var = getenv("HDF5_ASYNC_EXE_FCLOSE");
     if (env_var && *env_var && atoi(env_var) > 0)
@@ -1321,6 +1320,10 @@ async_instance_init(int backing_thread_count)
     /* Set "delay execution" convenience flag, if any of the others are set */
     if (aid->ex_fclose || aid->ex_gclose || aid->ex_dclose)
         aid->ex_delay = true;
+    
+    env_var = getenv("HDF5_ASYNC_DISABLE_DSET_GET");
+    if (env_var && *env_var && atoi(env_var) <= 0)
+        aid->disable_async_dset_get = false;
 
 #ifdef ENABLE_WRITE_MEMCPY
     // Get max memory allowed for async memcpy
@@ -8860,7 +8863,7 @@ async_dataset_write_fn(void *foo)
     assert(task);
     assert(task->async_obj);
     assert(task->async_obj->magic == ASYNC_MAGIC);
-    //fprintf(stderr,"task is_merge=%d\n",task->is_merge);
+    
     pool_ptr = task->async_obj->pool_ptr;
     if (task->is_merge == 1)
         goto done;
@@ -8969,8 +8972,8 @@ done:
         fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
-    //if (args->mem_type_id > 0)
-      //  H5Tclose(args->mem_type_id);
+    if (args->mem_type_id > 0)
+        H5Tclose(args->mem_type_id);
     if (args->mem_space_id > 0)
         H5Sclose(args->mem_space_id);
     if (args->file_space_id > 0)
