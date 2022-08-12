@@ -206,8 +206,8 @@ typedef struct async_instance_t {
     bool          pause;                  /* Pause background thread execution */
     bool          disable_implicit_file;  /* Disable implicit async execution globally */
     bool          disable_implicit;       /* Disable implicit async execution for dxpl */
-    bool          disable_async_dset_get; /* Disable async execution for dataset get */
     bool          delay_time_env;         /* Flag that indicates the delay time is set by env variable */
+    bool          disable_async_dset_get; /* Disable async execution for dataset get */
     uint64_t      delay_time; /* Sleep time before background thread trying to acquire global mutex */
     int           sleep_time; /* Sleep time between checking the global mutex attemp count */
 #ifdef ENABLE_WRITE_MEMCPY

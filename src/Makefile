@@ -15,7 +15,7 @@ ABT_LIBDIR =  $(shell if [ -d $$ABT_DIR/lib ]; then echo "lib"; else echo "lib64
 
 # These lines may need to be adjusted for your compiler environment:
 DEBUG = -g -O0 
-CFLAGS = $(DEBUG) -fPIC -I$(ABT_DIR)/include -I$(HDF5_DIR)/include -Wall
+CFLAGS = $(DEBUG) -fPIC -I$(ABT_DIR)/include -I$(HDF5_DIR)/include -Wall -DENABLE_WRITE_MERGE
 LIBS = -L$(HDF5_DIR)/$(HDF5_LIBDIR) -L$(ABT_DIR)/$(ABT_LIBDIR) -labt -lhdf5 -lz
 ARFLAGS = rs
 
