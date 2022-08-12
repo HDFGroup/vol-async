@@ -8943,7 +8943,7 @@ async_dataset_write_fn(void *foo)
         usleep(1000);
         count++;
     }
-    //fprintf(stderr," args  mem_type_id=%llu\n",args->mem_type_id);
+    
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY
     {
@@ -9056,20 +9056,15 @@ print_dataspace(hid_t mem_space_id)
     int      ndim;
     int      num_elements;
     hsize_t  nblocks;
-    int      N1 = 20;
-    hsize_t  dimsm[1];
     hsize_t *buffer;
 
     H5S_sel_type                type;
     herr_t                      slected_block;
     hssize_t                    numblocks;
     async_dataset_write_args_t *args = NULL;
-
     hsize_t *start_out, *stride_out, *count_out, *block_out;
-
     herr_t             status;
-    async_task_t *     task_iter;
-    async_task_list_t *task_list_iter;
+   
 
     if (mem_space_id == H5S_SEL_ALL)
         fprintf(stderr, "-----H5S_SEL_ALL----\n");
@@ -9167,23 +9162,13 @@ check_contiguous(hid_t current_task_space_id, hid_t task_iterator_file_space_id,
 {
 
     int                         ndim;
-    int                         num_elements;
-    hsize_t                     nblocks;
-    int                         N1 = 20;
-    hsize_t                     dimsm[1];
-    hsize_t *                   buffer;
-    hid_t                       memspace, dataspace;
-    H5S_sel_type                type;
-    herr_t                      slected_block;
-    hssize_t                    numblocks;
-    async_dataset_write_args_t *args      = NULL;
-    async_dataset_write_args_t *iter_args = NULL;
+    
 
     hsize_t *current_task_start_out, *current_task_stride_out, *current_task_count_out,
         *current_task_block_out;
     hsize_t *iterator_task_start_out, *iterator_task_stride_out, *iterator_task_count_out,
         *iterator_task_block_out;
-    herr_t status;
+    herr_t status; 
 
     H5S_sel_type current_task_type, iterator_task_type;
 
@@ -9324,30 +9309,35 @@ foreach_iteration(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_typ
                   hid_t file_space_id, hid_t plist_id, const void *buf, async_task_t *prev_task)
 {
     int                         ndim;
-    int                         num_elements;
-    hsize_t                     nblocks;
-    int                         N1 = 20;
     hsize_t *                   dimsm;
     void *                      buffer, *new_buffer;
-    hid_t                       memspace, dataspace;
-    H5S_sel_type                type;
-    herr_t                      slected_block;
-    hssize_t                    numblocks;
-    async_dataset_write_args_t *args      = NULL;
-    async_dataset_write_args_t *iter_args = NULL;
+    async_dataset_write_args_t *iter_args = NULL; 
 
     hsize_t *start_out, *stride_out, *count_out, *block_out;
     hsize_t *start, *count, *mem_start, *mem_count, *file_start, *file_count, *iter_mem_start,
         *iter_mem_count, *iter_file_start, *iter_file_count, element_size;
+    hid_t new_memspace;
 
     herr_t             status, return_val = 0;
     async_task_t *     task_iter;
     async_task_t *     return_task_val = NULL;
     async_task_list_t *task_list_iter;
     int                buffer_count, feed_buf_count;
-    double time_foreach1,time_foreach2,duration_foreach,time_before_contiguous_check, time_after_contiguous_check,duration_contiguous_check;
-    double  duration_in_contiguous_check,time_in_contiguous1,time_in_contiguous2,duration_memcopy,time_memcopy1,time_memcopy2;
-
+    //These variables are for testing the run time 
+    //double time_foreach1,time_foreach2,duration_foreach,time_before_contiguous_check, time_after_contiguous_check,duration_contiguous_check;
+    //double  duration_in_contiguous_check,time_in_contiguous1,time_in_contiguous2,duration_memcopy,time_memcopy1,time_memcopy2;
+    ndim            = H5Sget_simple_extent_ndims(file_space_id);
+    dimsm           = malloc(ndim * sizeof(hsize_t));
+    start           = malloc(ndim * sizeof(hsize_t));
+    count           = malloc(ndim * sizeof(hsize_t));
+    mem_start       = malloc(ndim * sizeof(hsize_t));
+    mem_count       = malloc(ndim * sizeof(hsize_t));
+    file_start      = malloc(ndim * sizeof(hsize_t));
+    file_count      = malloc(ndim * sizeof(hsize_t));
+    iter_mem_start  = malloc(ndim * sizeof(hsize_t));
+    iter_mem_count  = malloc(ndim * sizeof(hsize_t));
+    iter_file_start = malloc(ndim * sizeof(hsize_t));
+    iter_file_count = malloc(ndim * sizeof(hsize_t));
     
     //time_foreach1 = MPI_Wtime();
     DL_FOREACH(async_instance_g->qhead.queue, task_list_iter)
@@ -9360,50 +9350,21 @@ foreach_iteration(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_typ
                     // checking whether the iterator task is operating on the same dataset of the current task
                     
                     iter_args = task_iter->args;
-
-                    
-
-                    hid_t new_memspace;
-
-                    ndim            = H5Sget_simple_extent_ndims(file_space_id);
-                    dimsm           = malloc(ndim * sizeof(hsize_t));
-                    start           = malloc(ndim * sizeof(hsize_t));
-                    count           = malloc(ndim * sizeof(hsize_t));
-                    mem_start       = malloc(ndim * sizeof(hsize_t));
-                    mem_count       = malloc(ndim * sizeof(hsize_t));
-                    file_start      = malloc(ndim * sizeof(hsize_t));
-                    file_count      = malloc(ndim * sizeof(hsize_t));
-                    iter_mem_start  = malloc(ndim * sizeof(hsize_t));
-                    iter_mem_count  = malloc(ndim * sizeof(hsize_t));
-                    iter_file_start = malloc(ndim * sizeof(hsize_t));
-                    iter_file_count = malloc(ndim * sizeof(hsize_t));
-
-
-                   
                     //time_before_contiguous_check = MPI_Wtime();
                     if (check_contiguous(file_space_id, iter_args->file_space_id, start, count) ||
                         check_contiguous(iter_args->file_space_id, file_space_id, start, count))
                     
                     {    
-                        time_in_contiguous1 = MPI_Wtime();
+                        //time_in_contiguous1 = MPI_Wtime();
                         return_val = 1;
-                       //fprintf(stderr, "\n-------#### contiguous####---------\n");
-                         
-                        
-                          
+                       //fprintf(stderr, "\n-------#### contiguous####---------\n");  
                         if (prev_task != NULL)
                             prev_task->is_merge = 1;
                         return_task_val = task_iter;
-                       
-                       
                         if (ndim == 1) { 
-                            
-                            
                             new_memspace = H5Screate_simple(ndim, count, NULL);
                             element_size = H5Tget_size(mem_type_id);
                             //fprintf(stderr,"size of new_buffer= %lld \n",count[0]*element_size);
-
-
                             status = H5Sget_regular_hyperslab(mem_space_id, mem_start, NULL, mem_count, NULL);
                             status =
                                 H5Sget_regular_hyperslab(file_space_id, file_start, NULL, file_count, NULL);
@@ -9458,23 +9419,15 @@ foreach_iteration(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_typ
                                 }
                                 iter_args->free_buf=1;
                             }
-                            //if (iter_args->free_buf == 1)
-                              //  free(iter_args->buf); 
-                             time_memcopy2 = MPI_Wtime(); 
-                             duration_memcopy=time_memcopy2-time_memcopy1;
+                            
+                             //time_memcopy2 = MPI_Wtime(); 
+                             //duration_memcopy=time_memcopy2-time_memcopy1;
 
                              
 
                             H5Sclose(iter_args->mem_space_id);
-                            
 
                             iter_args->mem_space_id = new_memspace;
-                            
-                            
-
-                            
-                     
-                           
                             status =
                                 H5Sselect_hyperslab(file_space_id, H5S_SELECT_SET, start, NULL, count, NULL);
 
@@ -9858,22 +9811,24 @@ foreach_iteration(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_typ
                     //duration_contiguous_check= time_after_contiguous_check - time_before_contiguous_check;
                    // fprintf(stderr," Duration contiguous Runtime is  %f \n", duration_contiguous_check);
 
-                    free(dimsm);
-                    free(start);
-                    free(count);
-                    free(mem_start);
-                    free(mem_count);
-                    free(file_start);
-                    free(file_count);
-                    free(iter_mem_start);
-                    free(iter_mem_count);
-                    free(iter_file_start);
-                    free(iter_file_count);
+                    
                     
                 }
             }
         }
     }
+
+    free(dimsm);
+    free(start);
+    free(count);
+    free(mem_start);
+    free(mem_count);
+    free(file_start);
+    free(file_count);
+    free(iter_mem_start);
+    free(iter_mem_count);
+    free(iter_file_start);
+    free(iter_file_count);
     //time_foreach2 = MPI_Wtime();
 
     //duration_foreach = time_foreach2 - time_foreach1;
@@ -9886,31 +9841,14 @@ async_dataset_write_merge(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t
                           hid_t mem_space_id, hid_t file_space_id, hid_t plist_id, const void *buf)
 {
 
-    int                         ndim;
-    int                         num_elements;
-    hsize_t                     nblocks;
-    int                         N1 = 20;
-    hsize_t *                   dimsm;
-    void *                      buffer, *new_buffer;
-    hid_t                       memspace, dataspace;
-    H5S_sel_type                type;
-    herr_t                      slected_block;
-    hssize_t                    numblocks;
-    async_dataset_write_args_t *args      = NULL;
-    async_dataset_write_args_t *iter_args = NULL;
-
-    hsize_t *start_out, *stride_out, *count_out, *block_out;
-    hsize_t *start, *count, *mem_start, *mem_count, *file_start, *file_count, *iter_mem_start,
-        *iter_mem_count, *iter_file_start, *iter_file_count, element_size;
-
     herr_t             status, return_val = 0;
     async_task_t *     task_iter;
     async_task_t *     return_task_val;
     async_task_list_t *task_list_iter;
     int                buffer_count, feed_buf_count;
-    double time1, time2,duration;
-    double time11,time12,duration1;
-    double time21,time22,duration2;
+    //double time1, time2,duration;
+    //double time11,time12,duration1;
+    //double time21,time22,duration2;
 
     assert(aid);
     assert(parent_obj);
@@ -9971,13 +9909,14 @@ async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_t
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
-    
+    #ifdef ENABLE_WRITE_MERGE
+        return_val =
+            async_dataset_write_merge(aid, parent_obj, mem_type_id, mem_space_id, file_space_id, plist_id, buf);
 
-    return_val =
-        async_dataset_write_merge(aid, parent_obj, mem_type_id, mem_space_id, file_space_id, plist_id, buf);
+        if (return_val == 1)
+            goto done; 
+    #endif
 
-    if (return_val == 1)
-        goto done; 
     async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_dataset_write_args_t *)calloc(1, sizeof(async_dataset_write_args_t))) == NULL) {
