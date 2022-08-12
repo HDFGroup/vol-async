@@ -143,7 +143,6 @@ main(int argc, char **argv)
 
     memspace = H5Screate_simple(RANK_OUT, dimsm, NULL); // RANK_OUT=3
 
-    
     int array[][4][6] = {
 
         {{0, 0, 0, 1, 2, 2},
@@ -246,8 +245,7 @@ main(int argc, char **argv)
 
                 } */
         }
-
-        
+    }
 
     status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
     if (status < 0) {
@@ -331,4 +329,3 @@ main(int argc, char **argv)
 
     return 0;
 }
- 

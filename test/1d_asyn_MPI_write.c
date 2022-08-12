@@ -106,7 +106,7 @@ main(int argc, char **argv)
     dimsm[0]  = X1;
     memspace  = H5Screate_simple(RANK_OUT, dimsm, NULL); // RANK_OUT=3
     dataset   = H5Dcreate_async(file, DATASETNAME, H5T_STD_I32BE, dataspace, H5P_DEFAULT, H5P_DEFAULT,
-                              H5P_DEFAULT, es_id);
+                                H5P_DEFAULT, es_id);
 
     int array[][4][2] = {{{0, 5},
                           {5, 3},
@@ -136,20 +136,13 @@ main(int argc, char **argv)
                           {11, 10}, // testcase 7
                           {5, 3},
                           {8, 3}}};
-    /* int array[][4][2]={
-               {{0,5},
-                 {5,3},
-                 {8,2},   //testcase 1
-                 {10,10}
-               }
-   };  */
 
     int testcases = (int)sizeof(array) / sizeof(array[0]);
     // fprintf(stderr, "%d",testcases);
     // testcases=7;
     hid_t dataset_array[testcases];
     char  datasetname[testcases][12];
-    // int arr[4][2];
+    // int arr[4][2]; 
 
     for (int j = 0; j < testcases; j++) {
 
@@ -188,8 +181,6 @@ main(int argc, char **argv)
                                         data_transfer_propertylist, data, es_id);
             }
         }
-
-       
     }
     if (mpi_rank == 1) {
 
@@ -230,8 +221,6 @@ main(int argc, char **argv)
         // data_out2,es_id);
         status = H5Dwrite_async(dataset, H5T_NATIVE_INT, memspace, dataspace, data_transfer_propertylist,
                                 data, es_id);
-
-        
     }
 
     if (print_dbg_msg)
