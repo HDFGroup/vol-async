@@ -10326,8 +10326,9 @@ async_dataset_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
     if (dxpl_id > 0)
         args->dxpl_id = H5Pcopy(dxpl_id);
     args->req = req;
-
-    if (req) {
+    
+    // Temporary fix for data space get that could cause a pthread deadlock
+    if (req && !aid->disable_async_dset_get) {
         H5VL_async_t *new_req;
         if ((new_req = H5VL_async_new_obj(NULL, parent_obj->under_vol_id)) == NULL) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
@@ -21371,9 +21372,15 @@ H5VL_async_str_to_info(const char *str, void **_info)
 
     /* Retrieve the underlying VOL connector value and info */
     sscanf(str, "under_vol=%u;", &under_vol_value);
-    under_vol_id         = H5VLregister_connector_by_value((H5VL_class_value_t)under_vol_value, H5P_DEFAULT);
-    under_vol_info_start = strchr(str, '{');
-    under_vol_info_end   = strrchr(str, '}');
+    under_vol_id = H5VLregister_connector_by_value((H5VL_class_value_t)under_vol_value, H5P_DEFAULT);
+    if (strstr(str, "[") && strstr(str, "]")) {
+        under_vol_info_start = strchr(str, '[');
+        under_vol_info_end   = strrchr(str, ']');
+    }
+    else {
+        under_vol_info_start = strchr(str, '{');
+        under_vol_info_end   = strrchr(str, '}');
+    }
     assert(under_vol_info_end > under_vol_info_start);
     if (under_vol_info_end != (under_vol_info_start + 1)) {
         char *under_vol_info_str;
