@@ -23132,7 +23132,7 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
         return ret_value;
     }
 
-    if (timeout > 0) {
+    if (timeout > 0 && task->is_done == 0) {
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__);
 #ifdef ENABLE_DBG_MSG
