@@ -2,6 +2,8 @@
 
 [**Full documentation**](https://hdf5-vol-async.readthedocs.io)
 
+## 1. Background
+
 Asynchronous I/O is becoming increasingly popular with the large amount of data access required by scientific applications. They can take advantage of an asynchronous interface by scheduling I/O as early as possible and overlap computation or communication with I/O operations, which hides the cost associated with I/O and improves the overall performance. This work is part of the [ECP-ExaIO](https://www.exascaleproject.org/research-project/exaio) project.
 
 [<img src="https://lh3.googleusercontent.com/pw/AM-JKLX033FP6RFe5CqYx7vQY_YF834O4SOfFr53xzUdB-TOGIVnG-jNn0fp-8aHbgqZtogRlgSNHJxQqI8gAG0sZo3HNOhmf3k8GZpFyvz2sCBEl2lekbOh8ne3TJyAjbP0XbVZ79JczoDe3pqSIjbfJa-M=w3090-h613-no?authuser=0">](overview)
@@ -16,21 +18,19 @@ Some configuration parameters used in the instructions:
         
 We have tested async VOL compiled with GNU(gcc 6.4+), Intel, and Cray compilers on Summit, Cori, and Theta supercomputers.
 
-## 1. Preparation
-
-1.1 Download the Asynchronous I/O VOL connector code (this repository) with Argobots git submodule 
-
-    git clone --recursive https://github.com/hpc-io/vol-async.git
-    # Latest Argobots can also be downloaded separately from https://github.com/pmodels/argobots
-
-1.2 Download the HDF5 source code
-
-    git clone https://github.com/HDFGroup/hdf5.git
-
 ## 2. Installation
+    
+### 2.1 Installation with Spack
+[Spack](https://spack.io) is a flexible package manager that supports multiple versions, configurations, platforms, and compilers. 
+Async VOL and its dependent libraries (MPI, HDF5, Argobots) can all be installed with the following spack command:
 
-### 2.1 Installation with Makefile
-2.1.1 Compile HDF5
+    spack install hdf5-vol-async
+    
+### 2.2 Installation with Makefile
+
+2.2.1 Download and Compile HDF5
+
+Async VOL requires HDF5 1.13+, which can be downloaded from [THG](https://portal.hdfgroup.org/display/support/Downloads) or [GitHub](https://github.com/HDFGroup/hdf5.git)
 
     cd $HDF5_DIR
     ./autogen.sh  (may skip this step if the configure file exists)
@@ -38,8 +38,10 @@ We have tested async VOL compiled with GNU(gcc 6.4+), Intel, and Cray compilers 
     # may need to add CC=cc or CC=mpicc to the above configure command
     make && make install
 
-2.1.2 Compile Argobots
+2.2.2 Download and Compile Argobots
 
+The latest Argobots can also be downloaded from [GitHub](https://github.com/pmodels/argobots) or as a submodule from the async VOL git repo (see next step).
+    
     cd $ABT_DIR
     ./autogen.sh  (may skip this step if the configure file exists)
     ./configure --prefix=$ABT_DIR/install
@@ -47,20 +49,15 @@ We have tested async VOL compiled with GNU(gcc 6.4+), Intel, and Cray compilers 
     make && make install
     # Note: using mpixlC on Summit may result in Argobots runtime error, use xlC or gcc instead.
 
-2.1.3 Compile Asynchronous VOL connector
+2.2.3 Download and Compile Async VOL connector
 
+    git clone --recursive https://github.com/hpc-io/vol-async.git
     cd $VOL_DIR/src
     # Edit "Makefile" or use a template Makefile for existing systems: e.g. "cp Makefile.summit Makefile"
     # Change the path of HDF5_DIR and ABT_DIR to $HDF5_DIR/install and $ABT_DIR/install
     # (Optional) update the compiler flag macros: DEBUG, CFLAGS, LIBS, ARFLAGS
     # (Optional) comment/uncomment the correct DYNLDFLAGS & DYNLIB macros
     make
-    
-### 2.2 Installation with Spack
-[Spack](https://spack.io) is a flexible package manager that supports multiple versions, configurations, platforms, and compilers. 
-Async VOL and its dependent libraries (MPI, HDF5, Argobots) can be installed with the following spack command:
-
-    spack install hdf5-vol-async
 
 
 ## 3. Set Environment Variables
@@ -72,7 +69,8 @@ for Linux:
     export LD_LIBRARY_PATH=$VOL_DIR/src:$HDF5_DIR/install/lib:$ABT_DIR/install/lib:$LD_LIBRARY_PATH
     export HDF5_PLUGIN_PATH="$VOL_DIR/src"
     export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
-    # (optional) export MPICH_MAX_THREAD_SAFETY=multiple # Some systems like Cori@NERSC need this to support MPI_THREAD_MULTIPLE 
+    # (optional) Some systems like Cori@NERSC need the following to enable MPI_THREAD_MULTIPLE 
+    export MPICH_MAX_THREAD_SAFETY=multiple # 
 
 MacOS:
 
