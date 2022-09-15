@@ -145,6 +145,18 @@ thus we require to initialize MPI with MPI_THREAD_MULTIPLE support. Change MPI_I
     # Set environment variables: HDF5_PLUGIN_PATH and HDF5_VOL_CONNECTOR
     Run your application
 
+## Best Practices
+By default, async VOL detects whether the application is busy issuing HDF5 I/O calls or has moved on to computation. If it finds no HDF5 function is called within a short wait period (600 ms by default), it will start executing the asynchronous tasks. However, some applications may have larger time gaps between HDF5 calls than the default wait period, which could lead to effectively synchronous I/O. To avoid this, one can set the following environment variable to disable the "wait and check" mechnism and inform async VOL when to start the async execution, this is especially useful when writing checkpointing data, e.g. [AMReX HDF5 output](https://github.com/AMReX-Codes/amrex/tree/development/Tests/HDF5Benchmark).
+
+```
+// Start async execution at file close time
+export HDF5_ASYNC_EXE_FCLOSE=1
+// Start async execution at group close time
+export HDF5_ASYNC_EXE_GCLOSE=1
+// Start async execution at dataset close time
+export HDF5_ASYNC_EXE_DCLOSE=1
+```
+
 ## Know Issues
 When an application has a large number of HDF5 function calls, an error like the following may occur:
 
