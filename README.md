@@ -1,3 +1,4 @@
+[![linux](https://github.com/hpc-io/vol-async/actions/workflows/linux.yml/badge.svg?branch=develop)](https://github.com/hpc-io/vol-async/actions/workflows/linux.yml)
 # HDF5 Asynchronous I/O VOL Connector
 
 [**Full documentation**](https://hdf5-vol-async.readthedocs.io)
