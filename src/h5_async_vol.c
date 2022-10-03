@@ -748,7 +748,11 @@ static herr_t H5VL_async_object_optional(void *obj, const H5VL_loc_params_t *loc
 /* Container/connector introspection callbacks */
 static herr_t H5VL_async_introspect_get_conn_cls(void *obj, H5VL_get_conn_lvl_t lvl,
                                                  const H5VL_class_t **conn_cls);
+#if H5_VERSION_GE(1,13,3)
+static herr_t H5VL_async_introspect_get_cap_flags(const void *info, uint64_t *cap_flags);
+#else
 static herr_t H5VL_async_introspect_get_cap_flags(const void *info, unsigned *cap_flags);
+#endif
 static herr_t H5VL_async_introspect_opt_query(void *obj, H5VL_subclass_t cls, int opt_type, uint64_t *flags);
 
 /* Async request callbacks */
@@ -21735,7 +21739,11 @@ H5VL_async_file_create(const char *name, unsigned flags, hid_t fcpl_id, hid_t fa
  */
 #ifdef MPI_VERSION
     {
+#if H5_VERSION_GE(1,13,3)
+        uint64_t cap_flags = 0;
+#else
         unsigned cap_flags = 0;
+#endif
 
         /* Query the capability flags for the underlying VOL connector */
         if (H5VLintrospect_get_cap_flags(info->under_vol_info, info->under_vol_id, &cap_flags) < 0)
@@ -21834,7 +21842,11 @@ H5VL_async_file_open(const char *name, unsigned flags, hid_t fapl_id, hid_t dxpl
  */
 #ifdef MPI_VERSION
     {
+#if H5_VERSION_GE(1,13,3)
+        uint64_t cap_flags = 0;
+#else
         unsigned cap_flags = 0;
+#endif
 
         /* Query the capability flags for the underlying VOL connector */
         if (H5VLintrospect_get_cap_flags(info->under_vol_info, info->under_vol_id, &cap_flags) < 0)
@@ -23026,7 +23038,11 @@ H5VL_async_introspect_get_conn_cls(void *obj, H5VL_get_conn_lvl_t lvl, const H5V
  *-------------------------------------------------------------------------
  */
 herr_t
+#if H5_VERSION_GE(1,13,3)
+H5VL_async_introspect_get_cap_flags(const void *_info, uint64_t *cap_flags)
+#else
 H5VL_async_introspect_get_cap_flags(const void *_info, unsigned *cap_flags)
+#endif
 {
     const H5VL_async_info_t *info = (const H5VL_async_info_t *)_info;
     herr_t                   ret_value;
