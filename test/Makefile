@@ -37,7 +37,8 @@ SRC = async_test_serial.c async_test_serial2.c \
     async_test_parallel.c async_test_parallel2.c async_test_parallel3.c \
     async_test_parallel4.c async_test_parallel5.c \
     async_test_serial_event_set.c async_test_serial_error_stack.c \
-    async_test_serial_event_set_error_stack.c
+    async_test_serial_event_set_error_stack.c 1d_asyn_MPI_write.c 2d_asyn_MPI_write.c \    
+    3d_asyn_MPI_write.c 1d_async_write_performance.c
 
 #async_test_no_fclose.c
 OBJ = $(SRC:.c=.o)

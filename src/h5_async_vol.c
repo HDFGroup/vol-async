@@ -65,7 +65,7 @@ works, and perform publicly and display publicly, and to permit others to do so.
 /* Whether to display log messge when callback is invoked */
 /* (Uncomment to enable) */
 /* #define ENABLE_DBG_MSG 1 */
-/* #define PRINT_ERROR_STACK           1 */
+/* #define PRINT_ERROR_STACK 1 */
 /* #define ENABLE_ASYNC_LOGGING */
 
 #define ASYNC_DBG_MSG_RANK 0
@@ -105,7 +105,7 @@ FILE *fout_g;
 /* The async VOL wrapper context */
 typedef struct H5VL_async_wrap_ctx_t {
     hid_t                under_vol_id;   /* VOL ID for under VOL */
-    void *               under_wrap_ctx; /* Object wrapping context for under VOL */
+    void                *under_wrap_ctx; /* Object wrapping context for under VOL */
     struct H5VL_async_t *file_async_obj;
 } H5VL_async_wrap_ctx_t;
 
@@ -123,14 +123,15 @@ typedef struct async_task_t {
     hid_t     under_vol_id;
     int       magic;
     ABT_mutex task_mutex;
-    void *    h5_state;
+    void     *h5_state;
     void (*func)(void *);
-    void *                args;
+    void                 *args;
     obj_op_type           op;
-    struct H5VL_async_t * async_obj;
+    struct H5VL_async_t  *async_obj;
     ABT_eventual          eventual;
     int                   in_abt_pool;
     int                   is_done;
+    int                   is_merge;
     ABT_thread            abt_thread;
     hid_t                 err_stack;
     int                   n_dep;
@@ -154,19 +155,19 @@ typedef struct async_task_t {
 
 typedef struct H5VL_async_t {
     hid_t                under_vol_id;
-    void *               under_object;
+    void                *under_object;
     int                  magic;
     int                  is_obj_valid;
-    async_task_t *       create_task; /* task that creates the object */
-    async_task_t *       close_task;
-    async_task_t *       my_task; /* for request */
-    async_task_t *       file_task_list_head;
+    async_task_t        *create_task; /* task that creates the object */
+    async_task_t        *close_task;
+    async_task_t        *my_task; /* for request */
+    async_task_t        *file_task_list_head;
     ABT_mutex            file_task_list_mutex;
     struct H5VL_async_t *file_async_obj;
     int                  task_cnt;
     int                  attempt_check_cnt;
     ABT_mutex            obj_mutex;
-    ABT_pool *           pool_ptr;
+    ABT_pool            *pool_ptr;
     hbool_t              is_col_meta;
 #ifdef ENABLE_WRITE_MEMCPY
     hsize_t data_size;
@@ -175,7 +176,7 @@ typedef struct H5VL_async_t {
 
 typedef struct async_task_list_t {
     task_list_qtype type;
-    async_task_t *  task_list;
+    async_task_t   *task_list;
 
     struct async_task_list_t *prev;
     struct async_task_list_t *next;
@@ -190,9 +191,9 @@ typedef struct async_instance_t {
     async_qhead_t qhead;
     ABT_pool      pool;
     int           num_xstreams;
-    ABT_xstream * xstreams;
-    ABT_xstream * scheds;
-    ABT_sched *   progress_scheds;
+    ABT_xstream  *xstreams;
+    ABT_xstream  *scheds;
+    ABT_sched    *progress_scheds;
     int           nfopen;
     int           mpi_size;
     int           mpi_rank;
@@ -222,186 +223,186 @@ typedef struct async_future_obj_t {
 } async_future_obj_t;
 
 typedef struct async_attr_create_args_t {
-    void *             obj;
+    void              *obj;
     H5VL_loc_params_t *loc_params;
-    char *             name;
+    char              *name;
     hid_t              type_id;
     hid_t              space_id;
     hid_t              acpl_id;
     hid_t              aapl_id;
     hid_t              dxpl_id;
-    void **            req;
+    void             **req;
 } async_attr_create_args_t;
 
 typedef struct async_attr_open_args_t {
-    void *             obj;
+    void              *obj;
     H5VL_loc_params_t *loc_params;
-    char *             name;
+    char              *name;
     hid_t              aapl_id;
     hid_t              dxpl_id;
-    void **            req;
+    void             **req;
 } async_attr_open_args_t;
 
 typedef struct async_attr_read_args_t {
-    void * attr;
+    void  *attr;
     hid_t  mem_type_id;
-    void * buf;
+    void  *buf;
     hid_t  dxpl_id;
     void **req;
 } async_attr_read_args_t;
 
 typedef struct async_attr_write_args_t {
-    void * attr;
+    void  *attr;
     hid_t  mem_type_id;
-    void * buf;
+    void  *buf;
     hid_t  dxpl_id;
     void **req;
+    bool   free_buf;
 #ifdef ENABLE_WRITE_MEMCPY
-    bool    free_buf;
     hsize_t data_size;
 #endif
 } async_attr_write_args_t;
 
 typedef struct async_attr_get_args_t {
-    void *               obj;
+    void                *obj;
     H5VL_attr_get_args_t args;
     hid_t                dxpl_id;
-    void **              req;
+    void               **req;
 } async_attr_get_args_t;
 
 typedef struct async_attr_specific_args_t {
-    void *                    obj;
-    H5VL_loc_params_t *       loc_params;
+    void                     *obj;
+    H5VL_loc_params_t        *loc_params;
     H5VL_attr_specific_args_t args;
     hid_t                     dxpl_id;
-    void **                   req;
+    void                    **req;
 } async_attr_specific_args_t;
 
 typedef struct async_attr_optional_args_t {
-    void *                           obj;
+    void                            *obj;
     H5VL_optional_args_t             args;
     H5VL_native_attr_optional_args_t opt_args;
     hid_t                            dxpl_id;
-    void **                          req;
+    void                           **req;
 } async_attr_optional_args_t;
 
 typedef struct async_attr_close_args_t {
-    void * attr;
+    void  *attr;
     hid_t  dxpl_id;
     void **req;
 } async_attr_close_args_t;
 
 typedef struct async_dataset_create_args_t {
-    void *             obj;
+    void              *obj;
     H5VL_loc_params_t *loc_params;
-    char *             name;
+    char              *name;
     hid_t              lcpl_id;
     hid_t              type_id;
     hid_t              space_id;
     hid_t              dcpl_id;
     hid_t              dapl_id;
     hid_t              dxpl_id;
-    void **            req;
+    void             **req;
 } async_dataset_create_args_t;
 
 typedef struct async_dataset_open_args_t {
-    void *             obj;
+    void              *obj;
     H5VL_loc_params_t *loc_params;
-    char *             name;
+    char              *name;
     hid_t              dapl_id;
     hid_t              dxpl_id;
-    void **            req;
+    void             **req;
 } async_dataset_open_args_t;
 
 typedef struct async_dataset_read_args_t {
-    void * dset;
+    void  *dset;
     hid_t  mem_type_id;
     hid_t  mem_space_id;
     hid_t  file_space_id;
     hid_t  plist_id;
-    void * buf;
+    void  *buf;
     void **req;
 } async_dataset_read_args_t;
 
 typedef struct async_dataset_write_args_t {
-    void * dset;
+    void  *dset;
     hid_t  mem_type_id;
     hid_t  mem_space_id;
     hid_t  file_space_id;
     hid_t  plist_id;
-    void * buf;
+    void  *buf;
     void **req;
+    bool   free_buf;
 #ifdef ENABLE_WRITE_MEMCPY
-    bool    free_buf;
     hsize_t data_size;
 #endif
 } async_dataset_write_args_t;
 
 typedef struct async_dataset_get_args_t {
-    void *                  dset;
+    void                   *dset;
     H5VL_dataset_get_args_t args;
     hid_t                   dxpl_id;
-    void **                 req;
+    void                  **req;
 } async_dataset_get_args_t;
 
 typedef struct async_dataset_specific_args_t {
-    void *                       obj;
+    void                        *obj;
     H5VL_dataset_specific_args_t args;
     hid_t                        dxpl_id;
-    void **                      req;
+    void                       **req;
 } async_dataset_specific_args_t;
 
 typedef struct async_dataset_optional_args_t {
-    void *                              obj;
+    void                               *obj;
     H5VL_optional_args_t                args;
     H5VL_native_dataset_optional_args_t opt_args;
     hid_t                               dxpl_id;
-    void **                             req;
+    void                              **req;
 } async_dataset_optional_args_t;
 
 typedef struct async_dataset_close_args_t {
-    void * dset;
+    void  *dset;
     hid_t  dxpl_id;
     void **req;
 } async_dataset_close_args_t;
 
 typedef struct async_datatype_commit_args_t {
-    void *             obj;
+    void              *obj;
     H5VL_loc_params_t *loc_params;
-    char *             name;
+    char              *name;
     hid_t              type_id;
     hid_t              lcpl_id;
     hid_t              tcpl_id;
     hid_t              tapl_id;
     hid_t              dxpl_id;
-    void **            req;
+    void             **req;
 } async_datatype_commit_args_t;
 
 typedef struct async_datatype_open_args_t {
-    void *             obj;
+    void              *obj;
     H5VL_loc_params_t *loc_params;
-    char *             name;
+    char              *name;
     hid_t              tapl_id;
     hid_t              dxpl_id;
-    void **            req;
+    void             **req;
 } async_datatype_open_args_t;
 
 typedef struct async_datatype_get_args_t {
-    void *                   dt;
+    void                    *dt;
     H5VL_datatype_get_args_t args;
     hid_t                    dxpl_id;
-    void **                  req;
+    void                   **req;
 } async_datatype_get_args_t;
 
 typedef struct async_datatype_specific_args_t {
-    void *                        obj;
+    void                         *obj;
     H5VL_datatype_specific_args_t args;
     hid_t                         dxpl_id;
-    void **                       req;
+    void                        **req;
 } async_datatype_specific_args_t;
 
 typedef struct async_datatype_optional_args_t {
-    void *               obj;
+    void                *obj;
     H5VL_optional_args_t args;
 #ifdef NOT_YET
     H5VL_native_datatype_optional_args_t opt_args;
@@ -411,157 +412,157 @@ typedef struct async_datatype_optional_args_t {
 } async_datatype_optional_args_t;
 
 typedef struct async_datatype_close_args_t {
-    void * dt;
+    void  *dt;
     hid_t  dxpl_id;
     void **req;
 } async_datatype_close_args_t;
 
 typedef struct async_file_create_args_t {
-    char *   name;
+    char    *name;
     unsigned flags;
     hid_t    fcpl_id;
     hid_t    fapl_id;
     hid_t    dxpl_id;
-    void **  req;
+    void   **req;
 } async_file_create_args_t;
 
 typedef struct async_file_open_args_t {
-    char *   name;
+    char    *name;
     unsigned flags;
     hid_t    fapl_id;
     hid_t    dxpl_id;
-    void **  req;
+    void   **req;
 } async_file_open_args_t;
 
 typedef struct async_file_get_args_t {
-    void *               file;
+    void                *file;
     H5VL_file_get_args_t args;
     hid_t                dxpl_id;
-    void **              req;
+    void               **req;
 } async_file_get_args_t;
 
 typedef struct async_file_specific_args_t {
-    void *                    file;
+    void                     *file;
     H5VL_file_specific_args_t args;
     hid_t                     dxpl_id;
-    void **                   req;
+    void                    **req;
 } async_file_specific_args_t;
 
 typedef struct async_file_optional_args_t {
-    void *                           file;
+    void                            *file;
     H5VL_optional_args_t             args;
     H5VL_native_file_optional_args_t opt_args;
     hid_t                            dxpl_id;
-    void **                          req;
+    void                           **req;
 } async_file_optional_args_t;
 
 typedef struct async_file_close_args_t {
-    void * file;
+    void  *file;
     hid_t  dxpl_id;
     void **req;
     bool   is_reopen;
 } async_file_close_args_t;
 
 typedef struct async_group_create_args_t {
-    void *             obj;
+    void              *obj;
     H5VL_loc_params_t *loc_params;
-    char *             name;
+    char              *name;
     hid_t              lcpl_id;
     hid_t              gcpl_id;
     hid_t              gapl_id;
     hid_t              dxpl_id;
-    void **            req;
+    void             **req;
 } async_group_create_args_t;
 
 typedef struct async_group_open_args_t {
-    void *             obj;
+    void              *obj;
     H5VL_loc_params_t *loc_params;
-    char *             name;
+    char              *name;
     hid_t              gapl_id;
     hid_t              dxpl_id;
-    void **            req;
+    void             **req;
 } async_group_open_args_t;
 
 typedef struct async_group_get_args_t {
-    void *                obj;
+    void                 *obj;
     H5VL_group_get_args_t args;
     hid_t                 dxpl_id;
-    void **               req;
+    void                **req;
 } async_group_get_args_t;
 
 typedef struct async_group_specific_args_t {
-    void *                     obj;
+    void                      *obj;
     H5VL_group_specific_args_t args;
     hid_t                      dxpl_id;
-    void **                    req;
+    void                     **req;
 } async_group_specific_args_t;
 
 typedef struct async_group_optional_args_t {
-    void *                            obj;
+    void                             *obj;
     H5VL_optional_args_t              args;
     H5VL_native_group_optional_args_t opt_args;
     hid_t                             dxpl_id;
-    void **                           req;
+    void                            **req;
 } async_group_optional_args_t;
 
 typedef struct async_group_close_args_t {
-    void * grp;
+    void  *grp;
     hid_t  dxpl_id;
     void **req;
 } async_group_close_args_t;
 
 typedef struct async_link_create_args_t {
     H5VL_link_create_args_t args;
-    void *                  obj;
-    H5VL_loc_params_t *     loc_params;
+    void                   *obj;
+    H5VL_loc_params_t      *loc_params;
     hid_t                   lcpl_id;
     hid_t                   lapl_id;
     hid_t                   dxpl_id;
-    void **                 req;
+    void                  **req;
     va_list                 arguments;
 } async_link_create_args_t;
 
 typedef struct async_link_copy_args_t {
-    void *             src_obj;
+    void              *src_obj;
     H5VL_loc_params_t *loc_params1;
-    void *             dst_obj;
+    void              *dst_obj;
     H5VL_loc_params_t *loc_params2;
     hid_t              lcpl_id;
     hid_t              lapl_id;
     hid_t              dxpl_id;
-    void **            req;
+    void             **req;
 } async_link_copy_args_t;
 
 typedef struct async_link_move_args_t {
-    void *             src_obj;
+    void              *src_obj;
     H5VL_loc_params_t *loc_params1;
-    void *             dst_obj;
+    void              *dst_obj;
     H5VL_loc_params_t *loc_params2;
     hid_t              lcpl_id;
     hid_t              lapl_id;
     hid_t              dxpl_id;
-    void **            req;
+    void             **req;
 } async_link_move_args_t;
 
 typedef struct async_link_get_args_t {
-    void *               obj;
-    H5VL_loc_params_t *  loc_params;
+    void                *obj;
+    H5VL_loc_params_t   *loc_params;
     H5VL_link_get_args_t args;
     hid_t                dxpl_id;
-    void **              req;
+    void               **req;
 } async_link_get_args_t;
 
 typedef struct async_link_specific_args_t {
-    void *                    obj;
-    H5VL_loc_params_t *       loc_params;
+    void                     *obj;
+    H5VL_loc_params_t        *loc_params;
     H5VL_link_specific_args_t args;
     hid_t                     dxpl_id;
-    void **                   req;
+    void                    **req;
 } async_link_specific_args_t;
 
 typedef struct async_link_optional_args_t {
-    void *               obj;
-    H5VL_loc_params_t *  loc_params;
+    void                *obj;
+    H5VL_loc_params_t   *loc_params;
     H5VL_optional_args_t args;
 #ifdef NOT_YET
     H5VL_native_link_optional_args_t opt_args;
@@ -571,49 +572,49 @@ typedef struct async_link_optional_args_t {
 } async_link_optional_args_t;
 
 typedef struct async_object_open_args_t {
-    void *             obj;
+    void              *obj;
     H5VL_loc_params_t *loc_params;
-    H5I_type_t *       opened_type;
+    H5I_type_t        *opened_type;
     hid_t              dxpl_id;
-    void **            req;
+    void             **req;
 } async_object_open_args_t;
 
 typedef struct async_object_copy_args_t {
-    void *             src_obj;
+    void              *src_obj;
     H5VL_loc_params_t *src_loc_params;
-    char *             src_name;
-    void *             dst_obj;
+    char              *src_name;
+    void              *dst_obj;
     H5VL_loc_params_t *dst_loc_params;
-    char *             dst_name;
+    char              *dst_name;
     hid_t              ocpypl_id;
     hid_t              lcpl_id;
     hid_t              dxpl_id;
-    void **            req;
+    void             **req;
 } async_object_copy_args_t;
 
 typedef struct async_object_get_args_t {
-    void *                 obj;
-    H5VL_loc_params_t *    loc_params;
+    void                  *obj;
+    H5VL_loc_params_t     *loc_params;
     H5VL_object_get_args_t args;
     hid_t                  dxpl_id;
-    void **                req;
+    void                 **req;
 } async_object_get_args_t;
 
 typedef struct async_object_specific_args_t {
-    void *                      obj;
-    H5VL_loc_params_t *         loc_params;
+    void                       *obj;
+    H5VL_loc_params_t          *loc_params;
     H5VL_object_specific_args_t args;
     hid_t                       dxpl_id;
-    void **                     req;
+    void                      **req;
 } async_object_specific_args_t;
 
 typedef struct async_object_optional_args_t {
-    void *                             obj;
-    H5VL_loc_params_t *                loc_params;
+    void                              *obj;
+    H5VL_loc_params_t                 *loc_params;
     H5VL_optional_args_t               args;
     H5VL_native_object_optional_args_t opt_args;
     hid_t                              dxpl_id;
-    void **                            req;
+    void                             **req;
 } async_object_optional_args_t;
 
 /*******************/
@@ -637,24 +638,24 @@ static herr_t H5VL_async_init(hid_t vipl_id);
 static herr_t H5VL_async_term(void);
 
 /* VOL info callbacks */
-static void * H5VL_async_info_copy(const void *info);
+static void  *H5VL_async_info_copy(const void *info);
 static herr_t H5VL_async_info_cmp(int *cmp_value, const void *info1, const void *info2);
 static herr_t H5VL_async_info_free(void *info);
 static herr_t H5VL_async_info_to_str(const void *info, char **str);
 static herr_t H5VL_async_str_to_info(const char *str, void **info);
 
 /* VOL object wrap / retrieval callbacks */
-static void * H5VL_async_get_object(const void *obj);
+static void  *H5VL_async_get_object(const void *obj);
 static herr_t H5VL_async_get_wrap_ctx(const void *obj, void **wrap_ctx);
-static void * H5VL_async_wrap_object(void *obj, H5I_type_t obj_type, void *wrap_ctx);
-static void * H5VL_async_unwrap_object(void *obj);
+static void  *H5VL_async_wrap_object(void *obj, H5I_type_t obj_type, void *wrap_ctx);
+static void  *H5VL_async_unwrap_object(void *obj);
 static herr_t H5VL_async_free_wrap_ctx(void *obj);
 
 /* Attribute callbacks */
-static void * H5VL_async_attr_create(void *obj, const H5VL_loc_params_t *loc_params, const char *name,
+static void  *H5VL_async_attr_create(void *obj, const H5VL_loc_params_t *loc_params, const char *name,
                                      hid_t type_id, hid_t space_id, hid_t acpl_id, hid_t aapl_id,
                                      hid_t dxpl_id, void **req);
-static void * H5VL_async_attr_open(void *obj, const H5VL_loc_params_t *loc_params, const char *name,
+static void  *H5VL_async_attr_open(void *obj, const H5VL_loc_params_t *loc_params, const char *name,
                                    hid_t aapl_id, hid_t dxpl_id, void **req);
 static herr_t H5VL_async_attr_read(void *attr, hid_t mem_type_id, void *buf, hid_t dxpl_id, void **req);
 static herr_t H5VL_async_attr_write(void *attr, hid_t mem_type_id, const void *buf, hid_t dxpl_id,
@@ -666,10 +667,10 @@ static herr_t H5VL_async_attr_optional(void *obj, H5VL_optional_args_t *args, hi
 static herr_t H5VL_async_attr_close(void *attr, hid_t dxpl_id, void **req);
 
 /* Dataset callbacks */
-static void * H5VL_async_dataset_create(void *obj, const H5VL_loc_params_t *loc_params, const char *name,
+static void  *H5VL_async_dataset_create(void *obj, const H5VL_loc_params_t *loc_params, const char *name,
                                         hid_t lcpl_id, hid_t type_id, hid_t space_id, hid_t dcpl_id,
                                         hid_t dapl_id, hid_t dxpl_id, void **req);
-static void * H5VL_async_dataset_open(void *obj, const H5VL_loc_params_t *loc_params, const char *name,
+static void  *H5VL_async_dataset_open(void *obj, const H5VL_loc_params_t *loc_params, const char *name,
                                       hid_t dapl_id, hid_t dxpl_id, void **req);
 static herr_t H5VL_async_dataset_read(void *dset, hid_t mem_type_id, hid_t mem_space_id, hid_t file_space_id,
                                       hid_t plist_id, void *buf, void **req);
@@ -682,10 +683,10 @@ static herr_t H5VL_async_dataset_optional(void *obj, H5VL_optional_args_t *args,
 static herr_t H5VL_async_dataset_close(void *dset, hid_t dxpl_id, void **req);
 
 /* Datatype callbacks */
-static void * H5VL_async_datatype_commit(void *obj, const H5VL_loc_params_t *loc_params, const char *name,
+static void  *H5VL_async_datatype_commit(void *obj, const H5VL_loc_params_t *loc_params, const char *name,
                                          hid_t type_id, hid_t lcpl_id, hid_t tcpl_id, hid_t tapl_id,
                                          hid_t dxpl_id, void **req);
-static void * H5VL_async_datatype_open(void *obj, const H5VL_loc_params_t *loc_params, const char *name,
+static void  *H5VL_async_datatype_open(void *obj, const H5VL_loc_params_t *loc_params, const char *name,
                                        hid_t tapl_id, hid_t dxpl_id, void **req);
 static herr_t H5VL_async_datatype_get(void *dt, H5VL_datatype_get_args_t *args, hid_t dxpl_id, void **req);
 static herr_t H5VL_async_datatype_specific(void *obj, H5VL_datatype_specific_args_t *args, hid_t dxpl_id,
@@ -704,9 +705,9 @@ static herr_t H5VL_async_file_optional(void *file, H5VL_optional_args_t *args, h
 static herr_t H5VL_async_file_close(void *file, hid_t dxpl_id, void **req);
 
 /* Group callbacks */
-static void * H5VL_async_group_create(void *obj, const H5VL_loc_params_t *loc_params, const char *name,
+static void  *H5VL_async_group_create(void *obj, const H5VL_loc_params_t *loc_params, const char *name,
                                       hid_t lcpl_id, hid_t gcpl_id, hid_t gapl_id, hid_t dxpl_id, void **req);
-static void * H5VL_async_group_open(void *obj, const H5VL_loc_params_t *loc_params, const char *name,
+static void  *H5VL_async_group_open(void *obj, const H5VL_loc_params_t *loc_params, const char *name,
                                     hid_t gapl_id, hid_t dxpl_id, void **req);
 static herr_t H5VL_async_group_get(void *obj, H5VL_group_get_args_t *args, hid_t dxpl_id, void **req);
 static herr_t H5VL_async_group_specific(void *obj, H5VL_group_specific_args_t *args, hid_t dxpl_id,
@@ -732,7 +733,7 @@ static herr_t H5VL_async_link_optional(void *obj, const H5VL_loc_params_t *loc_p
                                        H5VL_optional_args_t *args, hid_t dxpl_id, void **req);
 
 /* Object callbacks */
-static void * H5VL_async_object_open(void *obj, const H5VL_loc_params_t *loc_params, H5I_type_t *opened_type,
+static void  *H5VL_async_object_open(void *obj, const H5VL_loc_params_t *loc_params, H5I_type_t *opened_type,
                                      hid_t dxpl_id, void **req);
 static herr_t H5VL_async_object_copy(void *src_obj, const H5VL_loc_params_t *src_loc_params,
                                      const char *src_name, void *dst_obj,
@@ -1187,10 +1188,10 @@ async_instance_init(int backing_thread_count)
     async_instance_t *aid;
     ABT_pool          pool;
     ABT_xstream       self_xstream;
-    ABT_xstream *     progress_xstreams = NULL;
-    ABT_sched *       progress_scheds   = NULL;
+    ABT_xstream      *progress_xstreams = NULL;
+    ABT_sched        *progress_scheds   = NULL;
     int               abt_ret, i;
-    const char *      env_var;
+    const char       *env_var;
 
     if (backing_thread_count < 0)
         return -1;
@@ -1633,7 +1634,8 @@ H5VL_async_dxpl_set_pause(hid_t dxpl)
  *          VOL documentation.
  *
  */
-static herr_t H5VL_async_init(hid_t __attribute__((unused)) vipl_id)
+static herr_t
+H5VL_async_init(hid_t __attribute__((unused)) vipl_id)
 {
     /* Initialize the Argobots I/O instance */
     if (NULL == async_instance_g) {
@@ -2108,7 +2110,7 @@ get_n_running_task_in_queue(async_task_t *task, const char *call_func)
 {
     size_t           pool_size = 0;
     ABT_thread_state thread_state;
-    async_task_t *   task_elt;
+    async_task_t    *task_elt;
     ABT_thread       self_thread;
     ABT_bool         is_equal;
 
@@ -2160,7 +2162,7 @@ get_n_running_task_in_queue_obj(H5VL_async_t *async_obj, const char *call_func)
 {
     size_t           pool_size = 0;
     ABT_thread_state thread_state;
-    async_task_t *   task_elt;
+    async_task_t    *task_elt;
     ABT_thread       self_thread;
     ABT_bool         is_equal;
 
@@ -2263,7 +2265,7 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool, const char *call_func
 {
     int                i, is_dep_done = 1, ntask;
     ABT_thread_state   thread_state;
-    async_task_t *     task_elt, *task_tmp;
+    async_task_t      *task_elt, *task_tmp;
     async_task_list_t *task_list_tmp, *task_list_elt;
 
     assert(qhead);
@@ -2471,7 +2473,7 @@ add_task_to_queue(async_qhead_t *qhead, async_task_t *task, task_list_qtype task
     int is_end, is_end2;
     /* int is_dep = 0; */
     async_task_list_t *tail_list, *task_list_elt;
-    async_task_t *     task_elt, *tail_task;
+    async_task_t      *task_elt, *tail_task;
 
     assert(qhead);
     assert(task);
@@ -3523,7 +3525,7 @@ free_loc_param(H5VL_loc_params_t *loc_params)
 static int
 dup_attr_get_args(H5VL_attr_get_args_t *dst_args, H5VL_attr_get_args_t *src_args, async_task_t *task)
 {
-    hid_t *    future_id_ptr  = NULL;      /* Pointer to ID for future ID */
+    hid_t     *future_id_ptr  = NULL;      /* Pointer to ID for future ID */
     H5I_type_t future_id_type = H5I_BADID; /* Type ("class") of future ID */
     hbool_t    need_future_id = false;     /* Whether an operation needs a future ID */
 
@@ -3782,7 +3784,7 @@ free_native_attr_optional_args(async_attr_optional_args_t *args)
 static int
 dup_dataset_get_args(H5VL_dataset_get_args_t *dst_args, H5VL_dataset_get_args_t *src_args, async_task_t *task)
 {
-    hid_t *    future_id_ptr  = NULL;      /* Pointer to ID for future ID */
+    hid_t     *future_id_ptr  = NULL;      /* Pointer to ID for future ID */
     H5I_type_t future_id_type = H5I_BADID; /* Type ("class") of future ID */
     hbool_t    need_future_id = false;     /* Whether an operation needs a future ID */
 
@@ -3969,7 +3971,7 @@ free_dataset_spec_args(H5VL_dataset_specific_args_t *args)
 
 static void
 dup_native_dataset_optional_args(async_dataset_optional_args_t *dst_args,
-                                 const H5VL_optional_args_t *   src_args)
+                                 const H5VL_optional_args_t    *src_args)
 {
     assert(dst_args);
     assert(src_args);
@@ -4061,7 +4063,7 @@ static int
 dup_datatype_get_args(H5VL_datatype_get_args_t *dst_args, H5VL_datatype_get_args_t *src_args,
                       async_task_t *task)
 {
-    hid_t *    future_id_ptr  = NULL;      /* Pointer to ID for future ID */
+    hid_t     *future_id_ptr  = NULL;      /* Pointer to ID for future ID */
     H5I_type_t future_id_type = H5I_BADID; /* Type ("class") of future ID */
     hbool_t    need_future_id = false;     /* Whether an operation needs a future ID */
 
@@ -4198,7 +4200,7 @@ free_datatype_spec_args(H5VL_datatype_specific_args_t *args)
 
 static void
 dup_native_datatype_optional_args(async_datatype_optional_args_t *dst_args,
-                                  const H5VL_optional_args_t *    src_args)
+                                  const H5VL_optional_args_t     *src_args)
 {
     assert(dst_args);
     assert(src_args);
@@ -4243,7 +4245,7 @@ free_native_datatype_optional_args(async_datatype_optional_args_t *args)
 static int
 dup_file_get_args(H5VL_file_get_args_t *dst_args, H5VL_file_get_args_t *src_args, async_task_t *task)
 {
-    hid_t *    future_id_ptr  = NULL;      /* Pointer to ID for future ID */
+    hid_t     *future_id_ptr  = NULL;      /* Pointer to ID for future ID */
     H5I_type_t future_id_type = H5I_BADID; /* Type ("class") of future ID */
     hbool_t    need_future_id = false;     /* Whether an operation needs a future ID */
 
@@ -4555,7 +4557,7 @@ free_native_file_optional_args(async_file_optional_args_t *args)
 static int
 dup_group_get_args(H5VL_group_get_args_t *dst_args, H5VL_group_get_args_t *src_args, async_task_t *task)
 {
-    hid_t *    future_id_ptr  = NULL;      /* Pointer to ID for future ID */
+    hid_t     *future_id_ptr  = NULL;      /* Pointer to ID for future ID */
     H5I_type_t future_id_type = H5I_BADID; /* Type ("class") of future ID */
     hbool_t    need_future_id = false;     /* Whether an operation needs a future ID */
 
@@ -5119,14 +5121,14 @@ free_native_object_optional_args(async_object_optional_args_t *args)
 static void
 async_attr_create_fn(void *foo)
 {
-    void *                    obj;
+    void                     *obj;
     hbool_t                   acquired              = false;
     unsigned int              mutex_count           = 1;
     int                       attempt_count         = 0;
     int                       is_lock               = 0;
     hbool_t                   is_lib_state_restored = false;
-    ABT_pool *                pool_ptr;
-    async_task_t *            task = (async_task_t *)foo;
+    ABT_pool                 *pool_ptr;
+    async_task_t             *task = (async_task_t *)foo;
     async_attr_create_args_t *args = (async_attr_create_args_t *)(task->args);
 
 #ifdef ENABLE_TIMING
@@ -5209,7 +5211,6 @@ async_attr_create_fn(void *foo)
         usleep(1000);
     }
     is_lock = 1;
-
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY
     {
@@ -5281,8 +5282,8 @@ async_attr_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_lo
                   const char *name, hid_t type_id, hid_t space_id, hid_t acpl_id, hid_t aapl_id,
                   hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *            async_obj   = NULL;
-    async_task_t *            async_task  = NULL;
+    H5VL_async_t             *async_obj   = NULL;
+    async_task_t             *async_task  = NULL;
     async_attr_create_args_t *args        = NULL;
     bool                      lock_parent = false;
     bool                      is_blocking = false;
@@ -5494,14 +5495,14 @@ error:
 static void
 async_attr_open_fn(void *foo)
 {
-    void *                  obj;
+    void                   *obj;
     hbool_t                 acquired              = false;
     unsigned int            mutex_count           = 1;
     int                     attempt_count         = 0;
     int                     is_lock               = 0;
     hbool_t                 is_lib_state_restored = false;
-    ABT_pool *              pool_ptr;
-    async_task_t *          task = (async_task_t *)foo;
+    ABT_pool               *pool_ptr;
+    async_task_t           *task = (async_task_t *)foo;
     async_attr_open_args_t *args = (async_attr_open_args_t *)(task->args);
 
 #ifdef ENABLE_TIMING
@@ -5648,8 +5649,8 @@ static H5VL_async_t *
 async_attr_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params,
                 const char *name, hid_t aapl_id, hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *          async_obj   = NULL;
-    async_task_t *          async_task  = NULL;
+    H5VL_async_t           *async_obj   = NULL;
+    async_task_t           *async_task  = NULL;
     async_attr_open_args_t *args        = NULL;
     bool                    lock_parent = false;
     bool                    is_blocking = false;
@@ -5846,8 +5847,8 @@ async_attr_read_fn(void *foo)
     int                     attempt_count         = 0;
     int                     is_lock               = 0;
     hbool_t                 is_lib_state_restored = false;
-    ABT_pool *              pool_ptr;
-    async_task_t *          task = (async_task_t *)foo;
+    ABT_pool               *pool_ptr;
+    async_task_t           *task = (async_task_t *)foo;
     async_attr_read_args_t *args = (async_attr_read_args_t *)(task->args);
     herr_t                  status;
 
@@ -5990,7 +5991,7 @@ async_attr_read(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type_
 {
     // For implicit mode (env var), make all read to be blocking
     assert(async_instance_g);
-    async_task_t *          async_task  = NULL;
+    async_task_t           *async_task  = NULL;
     async_attr_read_args_t *args        = NULL;
     bool                    lock_parent = false;
     bool                    is_blocking = false;
@@ -6164,8 +6165,8 @@ async_attr_write_fn(void *foo)
     int                      attempt_count         = 0;
     int                      is_lock               = 0;
     hbool_t                  is_lib_state_restored = false;
-    ABT_pool *               pool_ptr;
-    async_task_t *           task = (async_task_t *)foo;
+    ABT_pool                *pool_ptr;
+    async_task_t            *task = (async_task_t *)foo;
     async_attr_write_args_t *args = (async_attr_write_args_t *)(task->args);
     herr_t                   status;
 
@@ -6314,7 +6315,7 @@ static herr_t
 async_attr_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type_id, const void *buf,
                  hid_t dxpl_id, void **req)
 {
-    async_task_t *           async_task  = NULL;
+    async_task_t            *async_task  = NULL;
     async_attr_write_args_t *args        = NULL;
     bool                     lock_parent = false;
     bool                     is_blocking = false;
@@ -6508,8 +6509,8 @@ async_attr_get_fn(void *foo)
     int                    attempt_count         = 0;
     int                    is_lock               = 0;
     hbool_t                is_lib_state_restored = false;
-    ABT_pool *             pool_ptr;
-    async_task_t *         task = (async_task_t *)foo;
+    ABT_pool              *pool_ptr;
+    async_task_t          *task = (async_task_t *)foo;
     async_attr_get_args_t *args = (async_attr_get_args_t *)(task->args);
     herr_t                 status;
 
@@ -6648,7 +6649,7 @@ static herr_t
 async_attr_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                H5VL_attr_get_args_t *get_args, hid_t dxpl_id, void **req)
 {
-    async_task_t *         async_task  = NULL;
+    async_task_t          *async_task  = NULL;
     async_attr_get_args_t *args        = NULL;
     bool                   lock_parent = false;
     bool                   is_blocking = false;
@@ -6823,8 +6824,8 @@ async_attr_specific_fn(void *foo)
     int                         attempt_count         = 0;
     int                         is_lock               = 0;
     hbool_t                     is_lib_state_restored = false;
-    ABT_pool *                  pool_ptr;
-    async_task_t *              task = (async_task_t *)foo;
+    ABT_pool                   *pool_ptr;
+    async_task_t               *task = (async_task_t *)foo;
     async_attr_specific_args_t *args = (async_attr_specific_args_t *)(task->args);
     herr_t                      status;
 
@@ -6968,7 +6969,7 @@ async_attr_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
                     const H5VL_loc_params_t *loc_params, H5VL_attr_specific_args_t *spec_args, hid_t dxpl_id,
                     void **req)
 {
-    async_task_t *              async_task  = NULL;
+    async_task_t               *async_task  = NULL;
     async_attr_specific_args_t *args        = NULL;
     bool                        lock_parent = false;
     bool                        is_blocking = false;
@@ -7156,8 +7157,8 @@ async_attr_optional_fn(void *foo)
     int                         attempt_count         = 0;
     int                         is_lock               = 0;
     hbool_t                     is_lib_state_restored = false;
-    ABT_pool *                  pool_ptr;
-    async_task_t *              task = (async_task_t *)foo;
+    ABT_pool                   *pool_ptr;
+    async_task_t               *task = (async_task_t *)foo;
     async_attr_optional_args_t *args = (async_attr_optional_args_t *)(task->args);
     herr_t                      status;
 
@@ -7296,7 +7297,7 @@ static herr_t
 async_attr_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                     H5VL_optional_args_t *opt_args, hid_t dxpl_id, void **req)
 {
-    async_task_t *              async_task  = NULL;
+    async_task_t               *async_task  = NULL;
     async_attr_optional_args_t *args        = NULL;
     bool                        lock_parent = false;
     bool                        is_blocking = false;
@@ -7468,8 +7469,8 @@ async_attr_close_fn(void *foo)
     int                      attempt_count         = 0;
     int                      is_lock               = 0;
     hbool_t                  is_lib_state_restored = false;
-    ABT_pool *               pool_ptr;
-    async_task_t *           task = (async_task_t *)foo;
+    ABT_pool                *pool_ptr;
+    async_task_t            *task = (async_task_t *)foo;
     async_attr_close_args_t *args = (async_attr_close_args_t *)(task->args);
     herr_t                   status;
 
@@ -7607,7 +7608,7 @@ static herr_t
 async_attr_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj, hid_t dxpl_id,
                  void **req)
 {
-    async_task_t *           async_task  = NULL;
+    async_task_t            *async_task  = NULL;
     async_attr_close_args_t *args        = NULL;
     bool                     lock_parent = false;
     bool                     is_blocking = false;
@@ -7783,14 +7784,14 @@ error:
 static void
 async_dataset_create_fn(void *foo)
 {
-    void *                       obj;
+    void                        *obj;
     hbool_t                      acquired              = false;
     unsigned int                 mutex_count           = 1;
     int                          attempt_count         = 0;
     int                          is_lock               = 0;
     hbool_t                      is_lib_state_restored = false;
-    ABT_pool *                   pool_ptr;
-    async_task_t *               task = (async_task_t *)foo;
+    ABT_pool                    *pool_ptr;
+    async_task_t                *task = (async_task_t *)foo;
     async_dataset_create_args_t *args = (async_dataset_create_args_t *)(task->args);
 
 #ifdef ENABLE_TIMING
@@ -7947,8 +7948,8 @@ async_dataset_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL
                      const char *name, hid_t lcpl_id, hid_t type_id, hid_t space_id, hid_t dcpl_id,
                      hid_t dapl_id, hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *               async_obj   = NULL;
-    async_task_t *               async_task  = NULL;
+    H5VL_async_t                *async_obj   = NULL;
+    async_task_t                *async_task  = NULL;
     async_dataset_create_args_t *args        = NULL;
     bool                         lock_parent = false;
     bool                         is_blocking = false;
@@ -8165,14 +8166,14 @@ error:
 static void
 async_dataset_open_fn(void *foo)
 {
-    void *                     obj;
+    void                      *obj;
     hbool_t                    acquired              = false;
     unsigned int               mutex_count           = 1;
     int                        attempt_count         = 0;
     int                        is_lock               = 0;
     hbool_t                    is_lib_state_restored = false;
-    ABT_pool *                 pool_ptr;
-    async_task_t *             task = (async_task_t *)foo;
+    ABT_pool                  *pool_ptr;
+    async_task_t              *task = (async_task_t *)foo;
     async_dataset_open_args_t *args = (async_dataset_open_args_t *)(task->args);
 
 #ifdef ENABLE_TIMING
@@ -8325,8 +8326,8 @@ async_dataset_open(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *p
                    const H5VL_loc_params_t *loc_params, const char *name, hid_t dapl_id, hid_t dxpl_id,
                    void **req)
 {
-    H5VL_async_t *             async_obj   = NULL;
-    async_task_t *             async_task  = NULL;
+    H5VL_async_t              *async_obj   = NULL;
+    async_task_t              *async_task  = NULL;
     async_dataset_open_args_t *args        = NULL;
     bool                       lock_parent = false;
     bool                       is_blocking = false;
@@ -8525,8 +8526,8 @@ async_dataset_read_fn(void *foo)
     int                        attempt_count         = 0;
     int                        is_lock               = 0;
     hbool_t                    is_lib_state_restored = false;
-    ABT_pool *                 pool_ptr;
-    async_task_t *             task = (async_task_t *)foo;
+    ABT_pool                  *pool_ptr;
+    async_task_t              *task = (async_task_t *)foo;
     async_dataset_read_args_t *args = (async_dataset_read_args_t *)(task->args);
     herr_t                     status;
 
@@ -8673,7 +8674,7 @@ async_dataset_read(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_ty
 {
     // For implicit mode (env var), make all read to be blocking
     assert(async_instance_g);
-    async_task_t *             async_task  = NULL;
+    async_task_t              *async_task  = NULL;
     async_dataset_read_args_t *args        = NULL;
     bool                       lock_parent = false;
     bool                       is_blocking = false;
@@ -8852,8 +8853,8 @@ async_dataset_write_fn(void *foo)
     int                         attempt_count = 0;
     int                         is_lock = 0, count = 0;
     hbool_t                     is_lib_state_restored = false;
-    ABT_pool *                  pool_ptr;
-    async_task_t *              task = (async_task_t *)foo;
+    ABT_pool                   *pool_ptr;
+    async_task_t               *task = (async_task_t *)foo;
     async_dataset_write_args_t *args = (async_dataset_write_args_t *)(task->args);
     herr_t                      status;
 
@@ -8869,6 +8870,8 @@ async_dataset_write_fn(void *foo)
     assert(task->async_obj->magic == ASYNC_MAGIC);
 
     pool_ptr = task->async_obj->pool_ptr;
+    if (task->is_merge == 1)
+        goto done;
 
     func_log(__func__, "trying to aquire global lock");
 
@@ -8964,6 +8967,9 @@ async_dataset_write_fn(void *foo)
 
     func_log(__func__, "execute success");
 
+    if (args->free_buf && args->buf) {
+        free(args->buf);
+    }
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
         fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
@@ -8997,17 +9003,17 @@ done:
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
 
-#ifdef ENABLE_WRITE_MEMCPY
     if (args->free_buf && args->buf) {
-        free(args->buf);
+        // free(args->buf);
+#ifdef ENABLE_WRITE_MEMCPY
         async_instance_g->used_mem -= args->data_size;
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
             fprintf(fout_g, "  [ASYNC ABT DBG] %s released dset memcpy\n", __func__);
 #endif
-    }
 #endif
+    }
 
 #ifdef ENABLE_TIMING
     task->end_time = clock();
@@ -9047,22 +9053,835 @@ is_contig_memspace(hid_t memspace)
 }
 #endif
 
+int
+print_dataspace(hid_t mem_space_id)
+{
+    int      ndim;
+    int      num_elements;
+    hsize_t  nblocks;
+    hsize_t *buffer;
+
+    H5S_sel_type                type;
+    herr_t                      slected_block;
+    hssize_t                    numblocks;
+    async_dataset_write_args_t *args = NULL;
+    hsize_t                    *start_out, *stride_out, *count_out, *block_out;
+    herr_t                      status;
+
+    if (mem_space_id == H5S_SEL_ALL)
+        fprintf(stderr, "-----H5S_SEL_ALL----\n");
+    else if (mem_space_id == H5S_SEL_NONE) {
+        fprintf(stderr, "-----H5S_SEL_NONE----\n");
+        return 0;
+    }
+
+    type = H5Sget_select_type(mem_space_id);
+
+    if (type == H5S_SEL_POINTS) {
+        return 0;
+    }
+    else if (type == H5S_SEL_HYPERSLABS) {
+        ndim = H5Sget_simple_extent_ndims(mem_space_id);
+
+        if (H5Sis_regular_hyperslab(mem_space_id)) {
+            start_out  = malloc(ndim * sizeof(hsize_t));
+            stride_out = malloc(ndim * sizeof(hsize_t));
+            count_out  = malloc(ndim * sizeof(hsize_t));
+            block_out  = malloc(ndim * sizeof(hsize_t));
+
+            status = H5Sget_regular_hyperslab(mem_space_id, start_out, stride_out, count_out, block_out);
+            if (ndim == 1) {
+
+                fprintf(stderr, "         start  = [%llu] \n", (unsigned long long)start_out[0]);
+                // fprintf(stderr, "         stride = [%llu] \n", (unsigned long long)stride_out[0]);
+                fprintf(stderr, "         count  = [%llu] \n", (unsigned long long)count_out[0]);
+            }
+            else if (ndim == 2) {
+
+                fprintf(stderr, "         start  = [%llu, %llu] \n", (unsigned long long)start_out[0],
+                        (unsigned long long)start_out[1]);
+
+                fprintf(stderr, "         count  = [%llu, %llu] \n", (unsigned long long)count_out[0],
+                        (unsigned long long)count_out[1]);
+            }
+            else if (ndim == 3) {
+
+                fprintf(stderr, "         start  = [%llu, %llu, %llu] \n", (unsigned long long)start_out[0],
+                        (unsigned long long)start_out[1], (unsigned long long)start_out[2]);
+
+                fprintf(stderr, "         count  = [%llu, %llu, %llu] \n", (unsigned long long)count_out[0],
+                        (unsigned long long)count_out[1], (unsigned long long)count_out[2]);
+            }
+
+            free(start_out);
+            free(stride_out);
+            free(count_out);
+            free(block_out);
+        }
+        else {
+
+            nblocks      = H5Sget_select_hyper_nblocks(mem_space_id);
+            num_elements = nblocks * ndim * 2;
+            buffer       = (hsize_t *)malloc(num_elements * sizeof(hsize_t));
+
+            slected_block = H5Sget_select_hyper_blocklist(mem_space_id, (hsize_t)0, nblocks, buffer);
+            if (ndim == 1) {
+
+                fprintf(stderr, "Hyperslab operation on dataspace using offset=%llu and count=%llu\n",
+                        buffer[0], buffer[num_elements - 1] - buffer[0] + 1);
+            }
+
+            else if (ndim == 2) {
+
+                fprintf(stderr,
+                        "Hyperslab operation on dataspace using offset=%llux%llu and count=%llux%llu\n",
+                        buffer[0], buffer[1], buffer[num_elements - 2] - buffer[0] + 1,
+                        buffer[num_elements - 1] - buffer[1] + 1);
+            }
+            else if (ndim == 3) {
+
+                fprintf(
+                    stderr,
+                    "Hyperslab operation on dataspace using offset=%llux%llux%llu and count=%llux%llux%llu\n",
+                    buffer[0], buffer[1], buffer[2], buffer[num_elements - 3] - buffer[0] + 1,
+                    buffer[num_elements - 2] - buffer[1] + 1, buffer[num_elements - 1] - buffer[2] + 1);
+            }
+            free(buffer);
+        }
+    }
+
+    return 1;
+}
+
+int
+check_contiguous(hid_t current_task_space_id, hid_t task_iterator_file_space_id, hsize_t *start,
+                 hsize_t *count)
+{
+
+    int ndim;
+
+    hsize_t *current_task_start_out, *current_task_stride_out, *current_task_count_out,
+        *current_task_block_out;
+    hsize_t *iterator_task_start_out, *iterator_task_stride_out, *iterator_task_count_out,
+        *iterator_task_block_out;
+    herr_t status;
+
+    H5S_sel_type current_task_type, iterator_task_type;
+
+    current_task_type  = H5Sget_select_type(current_task_space_id);
+    iterator_task_type = H5Sget_select_type(task_iterator_file_space_id);
+
+    if (current_task_type == H5S_SEL_HYPERSLABS) {
+        ndim = H5Sget_simple_extent_ndims(current_task_space_id);
+
+        if (H5Sis_regular_hyperslab(current_task_space_id)) {
+            current_task_start_out  = malloc(ndim * sizeof(hsize_t));
+            current_task_stride_out = malloc(ndim * sizeof(hsize_t));
+            current_task_count_out  = malloc(ndim * sizeof(hsize_t));
+            current_task_block_out  = malloc(ndim * sizeof(hsize_t));
+
+            iterator_task_start_out  = malloc(ndim * sizeof(hsize_t));
+            iterator_task_stride_out = malloc(ndim * sizeof(hsize_t));
+            iterator_task_count_out  = malloc(ndim * sizeof(hsize_t));
+            iterator_task_block_out  = malloc(ndim * sizeof(hsize_t));
+
+            status = H5Sget_regular_hyperslab(current_task_space_id, current_task_start_out,
+                                              current_task_stride_out, current_task_count_out,
+                                              current_task_block_out);
+            status = H5Sget_regular_hyperslab(task_iterator_file_space_id, iterator_task_start_out,
+                                              iterator_task_stride_out, iterator_task_count_out,
+                                              iterator_task_block_out);
+            if (ndim == 1) {
+
+                if (current_task_start_out[0] == iterator_task_start_out[0] + iterator_task_count_out[0]) {
+                    start[0] = iterator_task_start_out[0];
+                    count[0] = current_task_count_out[0] + iterator_task_count_out[0];
+                    // fprintf(stderr,"start=%llu and
+                    // count=%llu\n",iterator_task_start_out[0],current_task_start_out[0]+current_task_count_out[0]);
+
+                    return 1;
+                }
+                else
+                    return 0;
+            }
+            else if (ndim == 2) {
+
+                if (current_task_start_out[0] == iterator_task_start_out[0]) {
+                    if ((current_task_start_out[1] ==
+                         iterator_task_start_out[1] + iterator_task_count_out[1]) &&
+                        (current_task_count_out[0] == iterator_task_count_out[0]))
+
+                    {
+                        start[0] = iterator_task_start_out[0];
+                        start[1] = iterator_task_start_out[1];
+                        count[0] = iterator_task_count_out[0];
+                        count[1] = current_task_count_out[1] + iterator_task_count_out[1];
+                        // fprintf(stderr,"in func start=%llux%llu and
+                        // count=%llux%llu\n",iterator_task_start_out[0],iterator_task_start_out[1],iterator_task_count_out[0],current_task_count_out[1]+iterator_task_count_out[1]);
+
+                        return 1;
+                    }
+                    else
+                        return 0;
+                }
+                else if (current_task_start_out[1] == iterator_task_start_out[1]) {
+                    if ((current_task_start_out[0] ==
+                         iterator_task_start_out[0] + iterator_task_count_out[0]) &&
+                        (current_task_count_out[1] == iterator_task_count_out[1])) {
+                        start[0] = iterator_task_start_out[0];
+                        start[1] = iterator_task_start_out[1];
+                        count[0] = current_task_count_out[0] + iterator_task_count_out[0];
+                        count[1] = iterator_task_count_out[1];
+                        // fprintf(stderr,"in func start=%llux%llu and
+                        // count=%llux%llu\n",iterator_task_start_out[0],iterator_task_start_out[1],current_task_count_out[0]+iterator_task_count_out[0],iterator_task_count_out[1]);
+
+                        return 1;
+                    }
+                    else
+                        return 0;
+                }
+                else {
+                    return 0;
+                }
+            }
+            else if (ndim == 3) {
+
+                if (current_task_start_out[1] == iterator_task_start_out[1]) {
+                    if ((current_task_start_out[2] ==
+                         iterator_task_start_out[2] + iterator_task_count_out[2]) &&
+                        (current_task_count_out[1] == iterator_task_count_out[1]) &&
+                        (current_task_count_out[0] == iterator_task_count_out[0]) &&
+                        (current_task_start_out[0] == iterator_task_start_out[0])) {
+                        start[0] = iterator_task_start_out[0];
+                        start[1] = iterator_task_start_out[1];
+                        start[2] = iterator_task_start_out[2];
+                        count[0] = iterator_task_count_out[0];
+                        count[1] = iterator_task_count_out[1];
+                        count[2] = current_task_count_out[2] + iterator_task_count_out[2];
+                        // fprintf(stderr,"start=%llux%llux%llu and
+                        // count=%llux%llux%llu\n",iterator_task_start_out[0],iterator_task_start_out[1],iterator_task_start_out[2],iterator_task_count_out[0],current_task_count_out[1]+iterator_task_count_out[1],iterator_task_count_out[2]);
+
+                        return 1;
+                    }
+                    else
+                        return 0;
+                }
+                else if ((current_task_start_out[2] == iterator_task_start_out[2])) {
+                    if ((current_task_start_out[1] ==
+                         iterator_task_start_out[1] + iterator_task_count_out[1]) &&
+                        (current_task_count_out[2] == iterator_task_count_out[2]) &&
+                        (current_task_count_out[0] == iterator_task_count_out[0]) &&
+                        (current_task_start_out[0] == iterator_task_start_out[0]))
+
+                    {
+                        start[0] = iterator_task_start_out[0];
+                        start[1] = iterator_task_start_out[1];
+                        start[2] = iterator_task_start_out[2];
+                        count[0] = iterator_task_count_out[0];
+                        count[1] = current_task_count_out[1] + iterator_task_count_out[1];
+                        count[2] = iterator_task_count_out[2];
+                        // fprintf(stderr,"start=%llux%llux%llu and
+                        // count=%llux%llux%llu\n",iterator_task_start_out[0],iterator_task_start_out[1],iterator_task_start_out[2],current_task_count_out[0]+iterator_task_count_out[0],iterator_task_count_out[1],iterator_task_count_out[2]);
+
+                        return 1;
+                    }
+                    else
+                        return 0;
+                }
+                else {
+                    return 0;
+                }
+            }
+        }
+    }
+    return 0;
+}
+static async_task_t *
+// static herr_t
+foreach_iteration(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type_id, hid_t mem_space_id,
+                  hid_t file_space_id, hid_t plist_id, const void *buf, async_task_t *prev_task)
+{
+    int                         ndim;
+    hsize_t                    *dimsm;
+    void                       *buffer, *new_buffer;
+    async_dataset_write_args_t *iter_args = NULL;
+
+    hsize_t *start_out, *stride_out, *count_out, *block_out;
+    hsize_t *start, *count, *mem_start, *mem_count, *file_start, *file_count, *iter_mem_start,
+        *iter_mem_count, *iter_file_start, *iter_file_count, element_size;
+    hid_t new_memspace;
+
+    herr_t             status, return_val = 0;
+    async_task_t      *task_iter;
+    async_task_t      *return_task_val = NULL;
+    async_task_list_t *task_list_iter;
+    int                buffer_count, feed_buf_count;
+    // These variables are for testing the run time
+    // double time_foreach1,time_foreach2,duration_foreach,time_before_contiguous_check,
+    // time_after_contiguous_check,duration_contiguous_check; double
+    // duration_in_contiguous_check,time_in_contiguous1,time_in_contiguous2,duration_memcopy,time_memcopy1,time_memcopy2;
+    ndim            = H5Sget_simple_extent_ndims(file_space_id);
+    dimsm           = malloc(ndim * sizeof(hsize_t));
+    start           = malloc(ndim * sizeof(hsize_t));
+    count           = malloc(ndim * sizeof(hsize_t));
+    mem_start       = malloc(ndim * sizeof(hsize_t));
+    mem_count       = malloc(ndim * sizeof(hsize_t));
+    file_start      = malloc(ndim * sizeof(hsize_t));
+    file_count      = malloc(ndim * sizeof(hsize_t));
+    iter_mem_start  = malloc(ndim * sizeof(hsize_t));
+    iter_mem_count  = malloc(ndim * sizeof(hsize_t));
+    iter_file_start = malloc(ndim * sizeof(hsize_t));
+    iter_file_count = malloc(ndim * sizeof(hsize_t));
+
+    // time_foreach1 = MPI_Wtime();
+    DL_FOREACH(async_instance_g->qhead.queue, task_list_iter)
+    {
+        DL_FOREACH(task_list_iter->task_list, task_iter)
+        {
+            if (task_iter->func == async_dataset_write_fn) {
+                // checking whether the iterator task is dataset write  operation
+                if (task_iter->parent_obj == parent_obj && task_iter->is_done != 1) {
+                    // checking whether the iterator task is operating on the same dataset of the current task
+
+                    iter_args = task_iter->args;
+                    // time_before_contiguous_check = MPI_Wtime();
+                    if (check_contiguous(file_space_id, iter_args->file_space_id, start, count) ||
+                        check_contiguous(iter_args->file_space_id, file_space_id, start, count))
+
+                    {
+                        // time_in_contiguous1 = MPI_Wtime();
+                        return_val = 1;
+                        // fprintf(stderr, "\n-------#### contiguous####---------\n");
+                        if (prev_task != NULL)
+                            prev_task->is_merge = 1;
+                        return_task_val = task_iter;
+                        if (ndim == 1) {
+                            new_memspace = H5Screate_simple(ndim, count, NULL);
+                            element_size = H5Tget_size(mem_type_id);
+                            // fprintf(stderr,"size of new_buffer= %lld \n",count[0]*element_size);
+                            status = H5Sget_regular_hyperslab(mem_space_id, mem_start, NULL, mem_count, NULL);
+                            status =
+                                H5Sget_regular_hyperslab(file_space_id, file_start, NULL, file_count, NULL);
+
+                            status = H5Sget_regular_hyperslab(iter_args->mem_space_id, iter_mem_start, NULL,
+                                                              iter_mem_count, NULL);
+
+                            status = H5Sget_regular_hyperslab(iter_args->file_space_id, iter_file_start, NULL,
+                                                              iter_file_count, NULL);
+
+                            // time_memcopy1 = MPI_Wtime();
+                            if (iter_args->free_buf == 0) {
+                                new_buffer = malloc(count[0] * element_size);
+
+                                if (file_start[0] >= iter_file_start[0]) {
+
+                                    memcpy(new_buffer, buf + iter_file_start[0] * element_size,
+                                           iter_file_count[0] * element_size);
+                                    memcpy(new_buffer + iter_file_count[0] * element_size,
+                                           buf + file_start[0] * element_size, file_count[0] * element_size);
+                                }
+                                else {
+
+                                    memcpy(new_buffer, buf + (file_start[0] * element_size),
+                                           file_count[0] * element_size);
+                                    memcpy(new_buffer + file_count[0] * element_size,
+                                           buf + (iter_file_start[0] * element_size),
+                                           iter_file_count[0] * element_size);
+                                }
+                                iter_args->buf      = new_buffer;
+                                iter_args->free_buf = 1;
+                            }
+                            else {
+                                iter_args->buf = realloc(iter_args->buf, count[0] * element_size);
+                                if (file_start[0] >= iter_file_start[0]) {
+
+                                    memcpy(iter_args->buf + iter_file_count[0] * element_size,
+                                           buf + file_start[0] * element_size, file_count[0] * element_size);
+                                }
+                                else {
+
+                                    memcpy(iter_args->buf + file_count[0] * element_size,
+                                           buf + (iter_file_start[0] * element_size),
+                                           iter_file_count[0] * element_size);
+                                }
+                                iter_args->free_buf = 1;
+                            }
+
+                            // time_memcopy2 = MPI_Wtime();
+                            // duration_memcopy=time_memcopy2-time_memcopy1;
+
+                            H5Sclose(iter_args->mem_space_id);
+
+                            iter_args->mem_space_id = new_memspace;
+                            status =
+                                H5Sselect_hyperslab(file_space_id, H5S_SELECT_SET, start, NULL, count, NULL);
+
+                            status = H5Sselect_hyperslab(iter_args->file_space_id, H5S_SELECT_SET, start,
+                                                         NULL, count, NULL);
+
+                            start[0] = 0;
+
+                            status = H5Sselect_hyperslab(iter_args->mem_space_id, H5S_SELECT_SET, start, NULL,
+                                                         count, NULL);
+                        }
+                        else if (ndim == 2) {
+
+                            fprintf(stderr, "        start=%llux%llu count=%llux%llu\n", start[0], start[1],
+                                    count[0], count[1]);
+                            new_memspace = H5Screate_simple(ndim, count, NULL);
+                            element_size = H5Tget_size(mem_type_id);
+                            new_buffer   = malloc(count[0] * count[1] * element_size);
+
+                            status = H5Sget_regular_hyperslab(mem_space_id, mem_start, NULL, mem_count, NULL);
+                            status =
+                                H5Sget_regular_hyperslab(file_space_id, file_start, NULL, file_count, NULL);
+
+                            fprintf(stderr, "\n mem_start=%lldx%lld file_start=%lldx%lld ", mem_start[0],
+                                    mem_start[1], file_start[0], file_start[1]);
+                            fprintf(stderr, "\n mem_count=%lldx%lld file_count=%lldx%lld \n", mem_count[0],
+                                    mem_count[1], file_count[0], file_count[1]);
+                            status = H5Sget_regular_hyperslab(iter_args->mem_space_id, iter_mem_start, NULL,
+                                                              iter_mem_count, NULL);
+
+                            status = H5Sget_regular_hyperslab(iter_args->file_space_id, iter_file_start, NULL,
+                                                              iter_file_count, NULL);
+
+                            fprintf(stderr, "\n iter_mem_start=%lldx%lld iter_file_start=%lldx%lld ",
+                                    iter_mem_start[0], iter_mem_start[1], iter_file_start[0],
+                                    iter_file_start[1]);
+                            fprintf(stderr, "\n iter_mem_count=%lldx%lld iter_file_count=%lldx%lld \n",
+                                    iter_mem_count[0], iter_mem_count[1], iter_file_count[0],
+                                    iter_file_count[1]);
+
+                            H5Sget_simple_extent_dims(file_space_id, dimsm, NULL);
+
+                            buffer_count   = 0;
+                            feed_buf_count = 0;
+                            if (file_start[0] == iter_file_start[0]) {
+                                if (file_start[1] >= iter_file_start[1]) {
+                                    if (file_count[0] == iter_file_count[0]) {
+                                        feed_buf_count = dimsm[1] * iter_file_start[0];
+                                        for (int i = 0; i < iter_file_count[0]; i++) {
+                                            memcpy(new_buffer + (buffer_count * element_size),
+                                                   buf + (feed_buf_count + iter_file_start[1]) * element_size,
+                                                   iter_file_count[1] * element_size);
+
+                                            buffer_count += iter_file_count[1];
+                                            memcpy(new_buffer + (buffer_count * element_size),
+                                                   buf + (feed_buf_count + file_start[1]) * element_size,
+                                                   file_count[1] * element_size);
+
+                                            buffer_count += file_count[1];
+                                            feed_buf_count += dimsm[1];
+                                            fprintf(stderr, "buffer_count=%d \
+                                             feed_buf_count=%d\n",
+                                                    buffer_count, feed_buf_count);
+                                        }
+                                    }
+                                }
+                                else {
+
+                                    if (file_count[0] == iter_file_count[0]) {
+                                        feed_buf_count = dimsm[1] * file_start[0];
+                                        for (int i = 0; i < file_count[0]; i++) {
+
+                                            memcpy(new_buffer + (buffer_count * element_size),
+                                                   buf + (feed_buf_count + file_start[1]) * element_size,
+                                                   file_count[1] * element_size);
+
+                                            buffer_count += file_count[1];
+                                            memcpy(new_buffer + (buffer_count * element_size),
+                                                   buf + (feed_buf_count + iter_file_start[1]) * element_size,
+                                                   iter_file_count[1] * element_size);
+
+                                            buffer_count += iter_file_count[1];
+                                            feed_buf_count += dimsm[1];
+                                            fprintf(stderr, "buffer_count=%d feed_buf_count=%d\n",
+                                                    buffer_count, feed_buf_count);
+                                        }
+                                    }
+                                }
+                            }
+                            else if (file_start[1] == iter_file_start[1]) {
+                                if (file_start[0] >= iter_file_start[0]) {
+                                    if (file_count[1] == iter_file_count[1]) {
+                                        feed_buf_count = dimsm[1] * iter_file_start[0];
+                                        for (int i = 0; i < iter_file_count[0]; i++) {
+                                            memcpy(new_buffer + (buffer_count * element_size),
+                                                   buf + (feed_buf_count + iter_file_start[1]) * element_size,
+                                                   iter_file_count[1] * element_size);
+
+                                            buffer_count += iter_file_count[1];
+                                            feed_buf_count += dimsm[1];
+                                        }
+                                        for (int i = 0; i < file_count[0]; i++) {
+                                            memcpy(new_buffer + (buffer_count * element_size),
+                                                   buf + (feed_buf_count + file_start[1]) * element_size,
+                                                   file_count[1] * element_size);
+
+                                            buffer_count += file_count[1];
+                                            feed_buf_count += dimsm[1];
+                                        }
+                                    }
+                                }
+                                else {
+                                    if (file_count[1] == iter_file_count[1]) {
+                                        feed_buf_count = dimsm[1] * file_start[0];
+
+                                        for (int i = 0; i < file_count[0]; i++) {
+                                            memcpy(new_buffer + (buffer_count * element_size),
+                                                   buf + (feed_buf_count + file_start[1]) * element_size,
+                                                   file_count[1] * element_size);
+
+                                            buffer_count += file_count[1];
+                                            feed_buf_count += dimsm[1];
+                                            fprintf(stderr, "buffer_count=%d \
+                                            // feed_buf_count=%d\n",
+                                                    buffer_count, feed_buf_count);
+                                        }
+                                        for (int i = 0; i < iter_file_count[0]; i++) {
+                                            memcpy(new_buffer + (buffer_count * element_size),
+                                                   buf + (feed_buf_count + iter_file_start[1]) * element_size,
+                                                   iter_file_count[1] * element_size);
+
+                                            buffer_count += iter_file_count[1];
+                                            feed_buf_count += dimsm[1];
+                                            fprintf(stderr, "buffer_count=%d \
+                                             feed_buf_count=%d\n",
+                                                    buffer_count, feed_buf_count);
+                                        }
+                                    }
+                                }
+                            }
+
+                            H5Sclose(iter_args->mem_space_id);
+
+                            iter_args->mem_space_id = new_memspace;
+
+                            iter_args->buf      = new_buffer;
+                            iter_args->free_buf = 1;
+                            int *iter_buf       = iter_args->buf;
+                            for (int i = 0; i < 16; i++)
+                                fprintf(stderr, " iter_args new_buffer[%d]=%d ", i, iter_buf[i]);
+                            fprintf(stderr, "\n");
+
+                            status =
+                                H5Sselect_hyperslab(file_space_id, H5S_SELECT_SET, start, NULL, count, NULL);
+
+                            status = H5Sselect_hyperslab(iter_args->file_space_id, H5S_SELECT_SET, start,
+                                                         NULL, count, NULL);
+
+                            start[0] = 0;
+                            start[1] = 0;
+
+                            status = H5Sselect_hyperslab(iter_args->mem_space_id, H5S_SELECT_SET, start, NULL,
+                                                         count, NULL);
+                        }
+                        else if (ndim == 3) {
+
+                            fprintf(stderr, "        start=%llux%llux%llu count=%llux%llux%llu\n", start[0],
+                                    start[1], start[2], count[0], count[1], count[2]);
+
+                            new_memspace = H5Screate_simple(ndim, count, NULL);
+                            element_size = H5Tget_size(mem_type_id);
+                            new_buffer   = malloc(count[0] * count[1] * count[2] * element_size);
+
+                            status = H5Sget_regular_hyperslab(mem_space_id, mem_start, NULL, mem_count, NULL);
+                            status =
+                                H5Sget_regular_hyperslab(file_space_id, file_start, NULL, file_count, NULL);
+
+                            status = H5Sget_regular_hyperslab(iter_args->mem_space_id, iter_mem_start, NULL,
+                                                              iter_mem_count, NULL);
+
+                            status = H5Sget_regular_hyperslab(iter_args->file_space_id, iter_file_start, NULL,
+                                                              iter_file_count, NULL);
+
+                            fprintf(stderr, "\n  file_start=%lldx%lldx%lld iter_file_start=%lldx%lldx%lld ",
+                                    file_start[0], file_start[1], file_start[2], iter_file_start[0],
+                                    iter_file_start[1], iter_file_start[2]);
+                            fprintf(stderr, "\n file_count=%lldx%lldx%lld  iter_file_count=%lldx%lldx%lld \n",
+                                    file_count[0], file_count[1], file_count[2], iter_file_count[0],
+                                    iter_file_count[1], iter_file_count[2]);
+                            H5Sget_simple_extent_dims(file_space_id, dimsm, NULL);
+
+                            int dim_elements = dimsm[1] * dimsm[2];
+                            buffer_count     = 0;
+                            feed_buf_count   = 0;
+                            buffer_count     = 0;
+                            feed_buf_count   = 0;
+
+                            if (file_start[1] == iter_file_start[1]) {
+                                if (file_start[2] >= iter_file_start[2]) {
+                                    if (file_count[1] == iter_file_count[1]) {
+                                        if (file_count[0] == iter_file_count[0]) {
+                                            for (int d = 0; d < file_count[0]; d++) {
+
+                                                feed_buf_count = file_start[0] * dim_elements +
+                                                                 dim_elements * d +
+                                                                 dimsm[2] * iter_file_start[1];
+
+                                                for (int i = 0; i < iter_file_count[1]; i++) {
+                                                    memcpy(new_buffer + (buffer_count * element_size),
+                                                           buf + (feed_buf_count + iter_file_start[2]) *
+                                                                     element_size,
+                                                           iter_file_count[2] * element_size);
+
+                                                    buffer_count += iter_file_count[2];
+                                                    memcpy(new_buffer + (buffer_count * element_size),
+                                                           buf + (feed_buf_count + file_start[2]) *
+                                                                     element_size,
+                                                           file_count[2] * element_size);
+
+                                                    buffer_count += file_count[2];
+                                                    feed_buf_count += dimsm[2];
+                                                    // fprintf(stderr,"buffer_count=%d \
+                                                     //feed_buf_count=%d\n",buffer_count,feed_buf_count);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                else {
+
+                                    if (file_count[1] == iter_file_count[1]) {
+                                        if (file_count[0] == iter_file_count[0]) {
+                                            for (int d = 0; d < file_count[0]; d++) {
+
+                                                feed_buf_count = file_start[0] * dim_elements +
+                                                                 dim_elements * d + dimsm[2] * file_start[1];
+
+                                                for (int i = 0; i < file_count[1]; i++) {
+
+                                                    memcpy(new_buffer + (buffer_count * element_size),
+                                                           buf + (feed_buf_count + file_start[2]) *
+                                                                     element_size,
+                                                           file_count[2] * element_size);
+
+                                                    buffer_count += file_count[2];
+                                                    memcpy(new_buffer + (buffer_count * element_size),
+                                                           buf + (feed_buf_count + iter_file_start[2]) *
+                                                                     element_size,
+                                                           iter_file_count[2] * element_size);
+
+                                                    buffer_count += iter_file_count[2];
+                                                    feed_buf_count += dimsm[2];
+                                                    //fprintf(stderr,"buffer_count=%d \
+                                                    // feed_buf_count=%d\n",buffer_count,feed_buf_count);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            else if (file_start[2] == iter_file_start[2]) {
+                                if (file_start[1] >= iter_file_start[1]) {
+                                    if (file_count[2] == iter_file_count[2]) {
+                                        if (file_count[0] == iter_file_count[0]) {
+                                            for (int d = 0; d < file_count[0]; d++) {
+
+                                                feed_buf_count = file_start[0] * dim_elements +
+                                                                 dim_elements * d +
+                                                                 dimsm[2] * iter_file_start[1];
+
+                                                for (int i = 0; i < iter_file_count[1]; i++) {
+                                                    memcpy(new_buffer + (buffer_count * element_size),
+                                                           buf + (feed_buf_count + iter_file_start[2]) *
+                                                                     element_size,
+                                                           iter_file_count[2] * element_size);
+
+                                                    buffer_count += iter_file_count[2];
+                                                    feed_buf_count += dimsm[2];
+                                                    // fprintf(stderr, "buffer_count=%d feed_buf_count=%d\n",
+                                                    //      buffer_count, feed_buf_count);
+                                                }
+                                                for (int i = 0; i < file_count[1]; i++) {
+                                                    memcpy(new_buffer + (buffer_count * element_size),
+                                                           buf + (feed_buf_count + file_start[2]) *
+                                                                     element_size,
+                                                           file_count[2] * element_size);
+
+                                                    buffer_count += file_count[2];
+                                                    feed_buf_count += dimsm[2];
+                                                    //fprintf(stderr,"buffer_count=%d \
+                                                    // feed_buf_count=%d\n",buffer_count,feed_buf_count);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                else {
+                                    if (file_count[2] == iter_file_count[2]) {
+                                        if (file_count[0] == iter_file_count[0]) {
+                                            for (int d = 0; d < file_count[0]; d++) {
+
+                                                feed_buf_count = file_start[0] * dim_elements +
+                                                                 dim_elements * d + dimsm[2] * file_start[1];
+
+                                                for (int i = 0; i < file_count[1]; i++) {
+                                                    memcpy(new_buffer + (buffer_count * element_size),
+                                                           buf + (feed_buf_count + file_start[2]) *
+                                                                     element_size,
+                                                           file_count[2] * element_size);
+
+                                                    buffer_count += file_count[2];
+                                                    feed_buf_count += dimsm[2];
+                                                    // fprintf(stderr,"buffer_count=%d \
+                                                    // feed_buf_count=%d\n",buffer_count,feed_buf_count);
+                                                }
+                                                for (int i = 0; i < iter_file_count[1]; i++) {
+                                                    memcpy(new_buffer + (buffer_count * element_size),
+                                                           buf + (feed_buf_count + iter_file_start[2]) *
+                                                                     element_size,
+                                                           iter_file_count[2] * element_size);
+
+                                                    buffer_count += iter_file_count[2];
+                                                    feed_buf_count += dimsm[2];
+                                                    // fprintf(stderr,"buffer_count=%d \
+                                                   //  feed_buf_count=%d\n",buffer_count,feed_buf_count);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            H5Sclose(iter_args->mem_space_id);
+                            iter_args->mem_space_id = new_memspace;
+
+                            iter_args->buf      = new_buffer;
+                            iter_args->free_buf = 1;
+
+                            status =
+                                H5Sselect_hyperslab(file_space_id, H5S_SELECT_SET, start, NULL, count, NULL);
+
+                            status = H5Sselect_hyperslab(iter_args->file_space_id, H5S_SELECT_SET, start,
+                                                         NULL, count, NULL);
+
+                            start[0] = 0;
+                            start[1] = 0;
+                            start[2] = 0;
+                            // fprintf(stderr,"\n iter mem space mem_start=%lld mem_count=%lld file_start=%lld
+                            // file_count=%lld
+                            // element_size=%lld\n",start[0],count[0],start[0],count[0],element_size);
+
+                            status = H5Sselect_hyperslab(iter_args->mem_space_id, H5S_SELECT_SET, start, NULL,
+                                                         count, NULL);
+                            // fprintf(stderr," end of foreach iterator
+                            // mem_type_id=%llu\n",iter_args->mem_type_id);
+                        }
+
+                        // time_in_contiguous2= MPI_Wtime();
+                        // duration_in_contiguous_check= time_in_contiguous2 - time_in_contiguous1;
+                        // fprintf(stderr," Duration in contiguous Runtime is  %f \n",
+                        // duration_contiguous_check);
+                    }
+
+                    else {
+
+                        // fprintf(stderr, "-------- Not contiguous---------\n");
+                    }
+                    // time_after_contiguous_check = MPI_Wtime();
+                    // duration_contiguous_check= time_after_contiguous_check - time_before_contiguous_check;
+                    // fprintf(stderr," Duration contiguous Runtime is  %f \n", duration_contiguous_check);
+                }
+            }
+        }
+    }
+
+    free(dimsm);
+    free(start);
+    free(count);
+    free(mem_start);
+    free(mem_count);
+    free(file_start);
+    free(file_count);
+    free(iter_mem_start);
+    free(iter_mem_count);
+    free(iter_file_start);
+    free(iter_file_count);
+    // time_foreach2 = MPI_Wtime();
+
+    // duration_foreach = time_foreach2 - time_foreach1;
+    // fprintf(stderr,"Foreach Duration  Runtime is  %f \n", duration_foreach);
+
+    return return_task_val;
+}
+static herr_t
+async_dataset_write_merge(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type_id,
+                          hid_t mem_space_id, hid_t file_space_id, hid_t plist_id, const void *buf)
+{
+
+    herr_t             status, return_val = 0;
+    async_task_t      *task_iter;
+    async_task_t      *return_task_val;
+    async_task_list_t *task_list_iter;
+    int                buffer_count, feed_buf_count;
+    // double time1, time2,duration;
+    // double time11,time12,duration1;
+    // double time21,time22,duration2;
+
+    assert(aid);
+    assert(parent_obj);
+    assert(parent_obj->magic == ASYNC_MAGIC);
+    assert(mem_space_id);
+
+    // fprintf(stderr,"################# \n");
+    // time1 = MPI_Wtime();
+    // time11=MPI_Wtime();
+
+    return_task_val =
+        foreach_iteration(aid, parent_obj, mem_type_id, mem_space_id, file_space_id, plist_id, buf, NULL);
+    // return_val=foreach_iteration(aid,parent_obj,mem_type_id,mem_space_id,file_space_id,plist_id,buf,NULL);
+    // time12 = MPI_Wtime();
+    // duration1 = time12 - time11;
+    // fprintf(stderr,"\t1st Foreach iter Runtime is  %f \n", duration1);
+    if (return_task_val == NULL)
+        return_val = 0;
+    else
+        return_val = 1;
+
+    for (int i = 0; return_task_val != NULL; i++) { // time21=MPI_Wtime();
+
+        return_task_val = foreach_iteration(aid, parent_obj, mem_type_id, mem_space_id, file_space_id,
+                                            plist_id, buf, return_task_val);
+        // time22=MPI_Wtime();
+
+        // duration2 = time22 - time21;
+        // fprintf(stderr,"\t\tin the for loop Runtime is i=%d %f \n", i, duration1);
+    }
+
+    // time2 = MPI_Wtime();
+    // duration = time2 - time1;
+
+    // fprintf(stderr,"Foreach Runtime is  %f \n", duration);
+
+    return return_val;
+}
+
 static herr_t
 async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type_id, hid_t mem_space_id,
                     hid_t file_space_id, hid_t plist_id, const void *buf, void **req)
 {
-    async_task_t *              async_task  = NULL;
+    async_task_t               *async_task  = NULL;
     async_dataset_write_args_t *args        = NULL;
     bool                        lock_parent = false;
     bool                        is_blocking = false;
     hbool_t                     acquired    = false;
     unsigned int                mutex_count = 1;
+    herr_t                      return_val;
 
     func_enter(__func__, NULL);
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+#ifdef ENABLE_WRITE_MERGE
+    return_val =
+        async_dataset_write_merge(aid, parent_obj, mem_type_id, mem_space_id, file_space_id, plist_id, buf);
+
+    if (return_val == 1)
+        goto done;
+#endif
 
     async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
@@ -9292,8 +10111,8 @@ async_dataset_get_fn(void *foo)
     int                       attempt_count         = 0;
     int                       is_lock               = 0;
     hbool_t                   is_lib_state_restored = false;
-    ABT_pool *                pool_ptr;
-    async_task_t *            task = (async_task_t *)foo;
+    ABT_pool                 *pool_ptr;
+    async_task_t             *task = (async_task_t *)foo;
     async_dataset_get_args_t *args = (async_dataset_get_args_t *)(task->args);
     herr_t                    status;
 
@@ -9432,7 +10251,7 @@ static herr_t
 async_dataset_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                   H5VL_dataset_get_args_t *get_args, hid_t dxpl_id, void **req)
 {
-    async_task_t *            async_task  = NULL;
+    async_task_t             *async_task  = NULL;
     async_dataset_get_args_t *args        = NULL;
     bool                      lock_parent = false;
     bool                      is_blocking = false;
@@ -9613,8 +10432,8 @@ async_dataset_specific_fn(void *foo)
     int                            attempt_count         = 0;
     int                            is_lock               = 0;
     hbool_t                        is_lib_state_restored = false;
-    ABT_pool *                     pool_ptr;
-    async_task_t *                 task = (async_task_t *)foo;
+    ABT_pool                      *pool_ptr;
+    async_task_t                  *task = (async_task_t *)foo;
     async_dataset_specific_args_t *args = (async_dataset_specific_args_t *)(task->args);
     herr_t                         status;
 
@@ -9753,7 +10572,7 @@ static herr_t
 async_dataset_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                        H5VL_dataset_specific_args_t *spec_args, hid_t dxpl_id, void **req)
 {
-    async_task_t *                 async_task  = NULL;
+    async_task_t                  *async_task  = NULL;
     async_dataset_specific_args_t *args        = NULL;
     bool                           lock_parent = false;
     bool                           is_blocking = false;
@@ -9930,8 +10749,8 @@ async_dataset_optional_fn(void *foo)
     int                            attempt_count         = 0;
     int                            is_lock               = 0;
     hbool_t                        is_lib_state_restored = false;
-    ABT_pool *                     pool_ptr;
-    async_task_t *                 task = (async_task_t *)foo;
+    ABT_pool                      *pool_ptr;
+    async_task_t                  *task = (async_task_t *)foo;
     async_dataset_optional_args_t *args = (async_dataset_optional_args_t *)(task->args);
     herr_t                         status;
 
@@ -10070,7 +10889,7 @@ static herr_t
 async_dataset_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                        H5VL_optional_args_t *opt_args, hid_t dxpl_id, void **req)
 {
-    async_task_t *                 async_task  = NULL;
+    async_task_t                  *async_task  = NULL;
     async_dataset_optional_args_t *args        = NULL;
     bool                           lock_parent = false;
     bool                           is_blocking = false;
@@ -10242,8 +11061,8 @@ async_dataset_close_fn(void *foo)
     int                         attempt_count         = 0;
     int                         is_lock               = 0;
     hbool_t                     is_lib_state_restored = false;
-    ABT_pool *                  pool_ptr;
-    async_task_t *              task = (async_task_t *)foo;
+    ABT_pool                   *pool_ptr;
+    async_task_t               *task = (async_task_t *)foo;
     async_dataset_close_args_t *args = (async_dataset_close_args_t *)(task->args);
     herr_t                      status;
 
@@ -10382,7 +11201,7 @@ static herr_t
 async_dataset_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj, hid_t dxpl_id,
                     void **req)
 {
-    async_task_t *              async_task  = NULL;
+    async_task_t               *async_task  = NULL;
     async_dataset_close_args_t *args        = NULL;
     bool                        lock_parent = false;
     bool                        is_blocking = false;
@@ -10569,10 +11388,10 @@ async_datatype_commit_fn(void *foo)
     int                           attempt_count         = 0;
     int                           is_lock               = 0;
     hbool_t                       is_lib_state_restored = false;
-    ABT_pool *                    pool_ptr;
-    async_task_t *                task = (async_task_t *)foo;
+    ABT_pool                     *pool_ptr;
+    async_task_t                 *task = (async_task_t *)foo;
     async_datatype_commit_args_t *args = (async_datatype_commit_args_t *)(task->args);
-    void *                        under_obj;
+    void                         *under_obj;
 
 #ifdef ENABLE_TIMING
     task->start_time = clock();
@@ -10723,8 +11542,8 @@ async_datatype_commit(async_instance_t *aid, H5VL_async_t *parent_obj, const H5V
                       const char *name, hid_t type_id, hid_t lcpl_id, hid_t tcpl_id, hid_t tapl_id,
                       hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *                async_obj   = NULL;
-    async_task_t *                async_task  = NULL;
+    H5VL_async_t                 *async_obj   = NULL;
+    async_task_t                 *async_task  = NULL;
     async_datatype_commit_args_t *args        = NULL;
     bool                          lock_parent = false;
     bool                          is_blocking = false;
@@ -10924,14 +11743,14 @@ error:
 static void
 async_datatype_open_fn(void *foo)
 {
-    void *                      obj;
+    void                       *obj;
     hbool_t                     acquired              = false;
     unsigned int                mutex_count           = 1;
     int                         attempt_count         = 0;
     int                         is_lock               = 0;
     hbool_t                     is_lib_state_restored = false;
-    ABT_pool *                  pool_ptr;
-    async_task_t *              task = (async_task_t *)foo;
+    ABT_pool                   *pool_ptr;
+    async_task_t               *task = (async_task_t *)foo;
     async_datatype_open_args_t *args = (async_datatype_open_args_t *)(task->args);
 
 #ifdef ENABLE_TIMING
@@ -11078,8 +11897,8 @@ static H5VL_async_t *
 async_datatype_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params,
                     const char *name, hid_t tapl_id, hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *              async_obj   = NULL;
-    async_task_t *              async_task  = NULL;
+    H5VL_async_t               *async_obj   = NULL;
+    async_task_t               *async_task  = NULL;
     async_datatype_open_args_t *args        = NULL;
     bool                        lock_parent = false;
     bool                        is_blocking = false;
@@ -11276,8 +12095,8 @@ async_datatype_get_fn(void *foo)
     int                        attempt_count         = 0;
     int                        is_lock               = 0;
     hbool_t                    is_lib_state_restored = false;
-    ABT_pool *                 pool_ptr;
-    async_task_t *             task = (async_task_t *)foo;
+    ABT_pool                  *pool_ptr;
+    async_task_t              *task = (async_task_t *)foo;
     async_datatype_get_args_t *args = (async_datatype_get_args_t *)(task->args);
     herr_t                     status;
 
@@ -11416,7 +12235,7 @@ static herr_t
 async_datatype_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                    H5VL_datatype_get_args_t *get_args, hid_t dxpl_id, void **req)
 {
-    async_task_t *             async_task  = NULL;
+    async_task_t              *async_task  = NULL;
     async_datatype_get_args_t *args        = NULL;
     bool                       lock_parent = false;
     bool                       is_blocking = false;
@@ -11591,8 +12410,8 @@ async_datatype_specific_fn(void *foo)
     int                             attempt_count         = 0;
     int                             is_lock               = 0;
     hbool_t                         is_lib_state_restored = false;
-    ABT_pool *                      pool_ptr;
-    async_task_t *                  task = (async_task_t *)foo;
+    ABT_pool                       *pool_ptr;
+    async_task_t                   *task = (async_task_t *)foo;
     async_datatype_specific_args_t *args = (async_datatype_specific_args_t *)(task->args);
     herr_t                          status;
 
@@ -11731,7 +12550,7 @@ static herr_t
 async_datatype_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                         H5VL_datatype_specific_args_t *spec_args, hid_t dxpl_id, void **req)
 {
-    async_task_t *                  async_task  = NULL;
+    async_task_t                   *async_task  = NULL;
     async_datatype_specific_args_t *args        = NULL;
     bool                            lock_parent = false;
     bool                            is_blocking = false;
@@ -11904,8 +12723,8 @@ async_datatype_optional_fn(void *foo)
     int                             attempt_count         = 0;
     int                             is_lock               = 0;
     hbool_t                         is_lib_state_restored = false;
-    ABT_pool *                      pool_ptr;
-    async_task_t *                  task = (async_task_t *)foo;
+    ABT_pool                       *pool_ptr;
+    async_task_t                   *task = (async_task_t *)foo;
     async_datatype_optional_args_t *args = (async_datatype_optional_args_t *)(task->args);
     herr_t                          status;
 
@@ -12044,7 +12863,7 @@ static herr_t
 async_datatype_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                         H5VL_optional_args_t *opt_args, hid_t dxpl_id, void **req)
 {
-    async_task_t *                  async_task  = NULL;
+    async_task_t                   *async_task  = NULL;
     async_datatype_optional_args_t *args        = NULL;
     bool                            lock_parent = false;
     bool                            is_blocking = false;
@@ -12217,8 +13036,8 @@ async_datatype_close_fn(void *foo)
     int                          attempt_count         = 0;
     int                          is_lock               = 0;
     hbool_t                      is_lib_state_restored = false;
-    ABT_pool *                   pool_ptr;
-    async_task_t *               task = (async_task_t *)foo;
+    ABT_pool                    *pool_ptr;
+    async_task_t                *task = (async_task_t *)foo;
     async_datatype_close_args_t *args = (async_datatype_close_args_t *)(task->args);
     herr_t                       status;
 
@@ -12356,7 +13175,7 @@ static herr_t
 async_datatype_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj, hid_t dxpl_id,
                      void **req)
 {
-    async_task_t *               async_task  = NULL;
+    async_task_t                *async_task  = NULL;
     async_datatype_close_args_t *args        = NULL;
     bool                         lock_parent = false;
     bool                         is_blocking = false;
@@ -12528,15 +13347,15 @@ error:
 static void
 async_file_create_fn(void *foo)
 {
-    void *                    obj;
+    void                     *obj;
     hbool_t                   acquired              = false;
     unsigned int              mutex_count           = 1;
     int                       attempt_count         = 0;
     int                       is_lock               = 0;
     hbool_t                   is_lib_state_restored = false;
-    ABT_pool *                pool_ptr;
-    H5VL_async_info_t *       info = NULL;
-    async_task_t *            task = (async_task_t *)foo;
+    ABT_pool                 *pool_ptr;
+    H5VL_async_info_t        *info = NULL;
+    async_task_t             *task = (async_task_t *)foo;
     async_file_create_args_t *args = (async_file_create_args_t *)(task->args);
     /* herr_t status; */
     hid_t under_vol_id;
@@ -12696,8 +13515,8 @@ async_file_create(async_instance_t *aid, const char *name, unsigned flags, hid_t
                   hid_t dxpl_id, void **req)
 {
     hid_t                     under_vol_id;
-    H5VL_async_t *            async_obj   = NULL;
-    async_task_t *            async_task  = NULL;
+    H5VL_async_t             *async_obj   = NULL;
+    async_task_t             *async_task  = NULL;
     async_file_create_args_t *args        = NULL;
     bool                      lock_self   = false;
     bool                      is_blocking = false;
@@ -12877,15 +13696,15 @@ error:
 static void
 async_file_open_fn(void *foo)
 {
-    void *                  obj;
+    void                   *obj;
     hbool_t                 acquired              = false;
     unsigned int            mutex_count           = 1;
     int                     attempt_count         = 0;
     int                     is_lock               = 0;
     hbool_t                 is_lib_state_restored = false;
-    ABT_pool *              pool_ptr;
-    H5VL_async_info_t *     info = NULL;
-    async_task_t *          task = (async_task_t *)foo;
+    ABT_pool               *pool_ptr;
+    H5VL_async_info_t      *info = NULL;
+    async_task_t           *task = (async_task_t *)foo;
     async_file_open_args_t *args = (async_file_open_args_t *)(task->args);
     /* herr_t status; */
     hid_t under_vol_id;
@@ -13047,8 +13866,8 @@ async_file_open(task_list_qtype qtype, async_instance_t *aid, const char *name, 
                 hid_t dxpl_id, void **req)
 {
     hid_t                   under_vol_id;
-    H5VL_async_t *          async_obj   = NULL;
-    async_task_t *          async_task  = NULL;
+    H5VL_async_t           *async_obj   = NULL;
+    async_task_t           *async_task  = NULL;
     async_file_open_args_t *args        = NULL;
     bool                    lock_self   = false;
     bool                    is_blocking = false;
@@ -13231,8 +14050,8 @@ async_file_get_fn(void *foo)
     int                    attempt_count         = 0;
     int                    is_lock               = 0;
     hbool_t                is_lib_state_restored = false;
-    ABT_pool *             pool_ptr;
-    async_task_t *         task = (async_task_t *)foo;
+    ABT_pool              *pool_ptr;
+    async_task_t          *task = (async_task_t *)foo;
     async_file_get_args_t *args = (async_file_get_args_t *)(task->args);
     herr_t                 status;
 
@@ -13371,7 +14190,7 @@ static herr_t
 async_file_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                H5VL_file_get_args_t *get_args, hid_t dxpl_id, void **req)
 {
-    async_task_t *         async_task  = NULL;
+    async_task_t          *async_task  = NULL;
     async_file_get_args_t *args        = NULL;
     bool                   lock_parent = false;
     bool                   is_blocking = false;
@@ -13546,8 +14365,8 @@ async_file_specific_fn(void *foo)
     int                         attempt_count         = 0;
     int                         is_lock               = 0;
     hbool_t                     is_lib_state_restored = false;
-    ABT_pool *                  pool_ptr;
-    async_task_t *              task = (async_task_t *)foo;
+    ABT_pool                   *pool_ptr;
+    async_task_t               *task = (async_task_t *)foo;
     async_file_specific_args_t *args = (async_file_specific_args_t *)(task->args);
     herr_t                      status;
 
@@ -13686,7 +14505,7 @@ static herr_t
 async_file_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                     H5VL_file_specific_args_t *spec_args, hid_t dxpl_id, void **req)
 {
-    async_task_t *              async_task  = NULL;
+    async_task_t               *async_task  = NULL;
     async_file_specific_args_t *args        = NULL;
     bool                        lock_parent = false;
     bool                        is_blocking = false;
@@ -13867,8 +14686,8 @@ async_file_optional_fn(void *foo)
     int                         attempt_count         = 0;
     int                         is_lock               = 0;
     hbool_t                     is_lib_state_restored = false;
-    ABT_pool *                  pool_ptr;
-    async_task_t *              task = (async_task_t *)foo;
+    ABT_pool                   *pool_ptr;
+    async_task_t               *task = (async_task_t *)foo;
     async_file_optional_args_t *args = (async_file_optional_args_t *)(task->args);
     herr_t                      status;
 
@@ -14026,7 +14845,7 @@ static herr_t
 async_file_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                     H5VL_optional_args_t *opt_args, hid_t dxpl_id, void **req)
 {
-    async_task_t *              async_task  = NULL;
+    async_task_t               *async_task  = NULL;
     async_file_optional_args_t *args        = NULL;
     bool                        lock_parent = false;
     bool                        is_blocking = false;
@@ -14201,8 +15020,8 @@ async_file_close_fn(void *foo)
     int                      attempt_count         = 0;
     int                      is_lock               = 0;
     hbool_t                  is_lib_state_restored = false;
-    ABT_pool *               pool_ptr;
-    async_task_t *           task = (async_task_t *)foo;
+    ABT_pool                *pool_ptr;
+    async_task_t            *task = (async_task_t *)foo;
     async_file_close_args_t *args = (async_file_close_args_t *)(task->args);
     herr_t                   status;
 
@@ -14360,7 +15179,7 @@ static herr_t
 async_file_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj, hid_t dxpl_id,
                  void **req)
 {
-    async_task_t *           async_task  = NULL;
+    async_task_t            *async_task  = NULL;
     async_file_close_args_t *args        = NULL;
     bool                     lock_parent = false;
     bool                     is_blocking = false;
@@ -14559,14 +15378,14 @@ error:
 static void
 async_group_create_fn(void *foo)
 {
-    void *                     obj;
+    void                      *obj;
     hbool_t                    acquired              = false;
     unsigned int               mutex_count           = 1;
     int                        attempt_count         = 0;
     int                        is_lock               = 0;
     hbool_t                    is_lib_state_restored = false;
-    ABT_pool *                 pool_ptr;
-    async_task_t *             task = (async_task_t *)foo;
+    ABT_pool                  *pool_ptr;
+    async_task_t              *task = (async_task_t *)foo;
     async_group_create_args_t *args = (async_group_create_args_t *)(task->args);
 
 #ifdef ENABLE_TIMING
@@ -14719,8 +15538,8 @@ static H5VL_async_t *
 async_group_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params,
                    const char *name, hid_t lcpl_id, hid_t gcpl_id, hid_t gapl_id, hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *             async_obj   = NULL;
-    async_task_t *             async_task  = NULL;
+    H5VL_async_t              *async_obj   = NULL;
+    async_task_t              *async_task  = NULL;
     async_group_create_args_t *args        = NULL;
     bool                       lock_parent = false;
     bool                       is_blocking = false;
@@ -14926,14 +15745,14 @@ error:
 static void
 async_group_open_fn(void *foo)
 {
-    void *                   obj;
+    void                    *obj;
     hbool_t                  acquired              = false;
     unsigned int             mutex_count           = 1;
     int                      attempt_count         = 0;
     int                      is_lock               = 0;
     hbool_t                  is_lib_state_restored = false;
-    ABT_pool *               pool_ptr;
-    async_task_t *           task = (async_task_t *)foo;
+    ABT_pool                *pool_ptr;
+    async_task_t            *task = (async_task_t *)foo;
     async_group_open_args_t *args = (async_group_open_args_t *)(task->args);
 
 #ifdef ENABLE_TIMING
@@ -15080,8 +15899,8 @@ static H5VL_async_t *
 async_group_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params,
                  const char *name, hid_t gapl_id, hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *           async_obj   = NULL;
-    async_task_t *           async_task  = NULL;
+    H5VL_async_t            *async_obj   = NULL;
+    async_task_t            *async_task  = NULL;
     async_group_open_args_t *args        = NULL;
     bool                     lock_parent = false;
     bool                     is_blocking = false;
@@ -15278,8 +16097,8 @@ async_group_get_fn(void *foo)
     int                     attempt_count         = 0;
     int                     is_lock               = 0;
     hbool_t                 is_lib_state_restored = false;
-    ABT_pool *              pool_ptr;
-    async_task_t *          task = (async_task_t *)foo;
+    ABT_pool               *pool_ptr;
+    async_task_t           *task = (async_task_t *)foo;
     async_group_get_args_t *args = (async_group_get_args_t *)(task->args);
     herr_t                  status;
 
@@ -15418,7 +16237,7 @@ static herr_t
 async_group_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                 H5VL_group_get_args_t *get_args, hid_t dxpl_id, void **req)
 {
-    async_task_t *          async_task  = NULL;
+    async_task_t           *async_task  = NULL;
     async_group_get_args_t *args        = NULL;
     bool                    lock_parent = false;
     bool                    is_blocking = false;
@@ -15598,8 +16417,8 @@ async_group_specific_fn(void *foo)
     int                          attempt_count         = 0;
     int                          is_lock               = 0;
     hbool_t                      is_lib_state_restored = false;
-    ABT_pool *                   pool_ptr;
-    async_task_t *               task = (async_task_t *)foo;
+    ABT_pool                    *pool_ptr;
+    async_task_t                *task = (async_task_t *)foo;
     async_group_specific_args_t *args = (async_group_specific_args_t *)(task->args);
     herr_t                       status;
 
@@ -15738,7 +16557,7 @@ static herr_t
 async_group_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                      H5VL_group_specific_args_t *spec_args, hid_t dxpl_id, void **req)
 {
-    async_task_t *               async_task  = NULL;
+    async_task_t                *async_task  = NULL;
     async_group_specific_args_t *args        = NULL;
     bool                         lock_parent = false;
     bool                         is_blocking = false;
@@ -15910,8 +16729,8 @@ async_group_optional_fn(void *foo)
     int                          attempt_count         = 0;
     int                          is_lock               = 0;
     hbool_t                      is_lib_state_restored = false;
-    ABT_pool *                   pool_ptr;
-    async_task_t *               task = (async_task_t *)foo;
+    ABT_pool                    *pool_ptr;
+    async_task_t                *task = (async_task_t *)foo;
     async_group_optional_args_t *args = (async_group_optional_args_t *)(task->args);
     herr_t                       status;
 
@@ -16050,7 +16869,7 @@ static herr_t
 async_group_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                      H5VL_optional_args_t *opt_args, hid_t dxpl_id, void **req)
 {
-    async_task_t *               async_task  = NULL;
+    async_task_t                *async_task  = NULL;
     async_group_optional_args_t *args        = NULL;
     bool                         lock_parent = false;
     bool                         is_blocking = false;
@@ -16222,8 +17041,8 @@ async_group_close_fn(void *foo)
     int                       attempt_count         = 0;
     int                       is_lock               = 0;
     hbool_t                   is_lib_state_restored = false;
-    ABT_pool *                pool_ptr;
-    async_task_t *            task = (async_task_t *)foo;
+    ABT_pool                 *pool_ptr;
+    async_task_t             *task = (async_task_t *)foo;
     async_group_close_args_t *args = (async_group_close_args_t *)(task->args);
     herr_t                    status;
 
@@ -16365,7 +17184,7 @@ static herr_t
 async_group_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj, hid_t dxpl_id,
                   void **req)
 {
-    async_task_t *            async_task  = NULL;
+    async_task_t             *async_task  = NULL;
     async_group_close_args_t *args        = NULL;
     bool                      lock_parent = false;
     bool                      is_blocking = false;
@@ -16556,8 +17375,8 @@ async_link_create_fn(void *foo)
     int                       attempt_count         = 0;
     int                       is_lock               = 0;
     hbool_t                   is_lib_state_restored = false;
-    ABT_pool *                pool_ptr;
-    async_task_t *            task = (async_task_t *)foo;
+    ABT_pool                 *pool_ptr;
+    async_task_t             *task = (async_task_t *)foo;
     async_link_create_args_t *args = (async_link_create_args_t *)(task->args);
     herr_t                    status;
 
@@ -16706,8 +17525,8 @@ async_link_create(task_list_qtype qtype, async_instance_t *aid, H5VL_link_create
                   H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, hid_t lcpl_id, hid_t lapl_id,
                   hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *            async_obj   = NULL;
-    async_task_t *            async_task  = NULL;
+    H5VL_async_t             *async_obj   = NULL;
+    async_task_t             *async_task  = NULL;
     async_link_create_args_t *args        = NULL;
     bool                      lock_parent = false;
     bool                      is_blocking = false;
@@ -16906,8 +17725,8 @@ async_link_copy_fn(void *foo)
     int                     attempt_count         = 0;
     int                     is_lock               = 0;
     hbool_t                 is_lib_state_restored = false;
-    ABT_pool *              pool_ptr;
-    async_task_t *          task = (async_task_t *)foo;
+    ABT_pool               *pool_ptr;
+    async_task_t           *task = (async_task_t *)foo;
     async_link_copy_args_t *args = (async_link_copy_args_t *)(task->args);
     herr_t                  status;
 
@@ -17054,13 +17873,13 @@ async_link_copy(async_instance_t *aid, H5VL_async_t *parent_obj1, const H5VL_loc
                 H5VL_async_t *parent_obj2, const H5VL_loc_params_t *loc_params2, hid_t lcpl_id, hid_t lapl_id,
                 hid_t dxpl_id, void **req)
 {
-    async_task_t *          async_task  = NULL;
+    async_task_t           *async_task  = NULL;
     async_link_copy_args_t *args        = NULL;
     bool                    lock_parent = false;
     bool                    is_blocking = false;
     hbool_t                 acquired    = false;
     unsigned int            mutex_count = 1;
-    H5VL_async_t *          parent_obj  = parent_obj1 ? parent_obj1 : parent_obj2;
+    H5VL_async_t           *parent_obj  = parent_obj1 ? parent_obj1 : parent_obj2;
 
     func_enter(__func__, NULL);
 
@@ -17254,8 +18073,8 @@ async_link_move_fn(void *foo)
     int                     attempt_count         = 0;
     int                     is_lock               = 0;
     hbool_t                 is_lib_state_restored = false;
-    ABT_pool *              pool_ptr;
-    async_task_t *          task = (async_task_t *)foo;
+    ABT_pool               *pool_ptr;
+    async_task_t           *task = (async_task_t *)foo;
     async_link_move_args_t *args = (async_link_move_args_t *)(task->args);
     herr_t                  status;
 
@@ -17402,13 +18221,13 @@ async_link_move(async_instance_t *aid, H5VL_async_t *parent_obj1, const H5VL_loc
                 H5VL_async_t *parent_obj2, const H5VL_loc_params_t *loc_params2, hid_t lcpl_id, hid_t lapl_id,
                 hid_t dxpl_id, void **req)
 {
-    async_task_t *          async_task  = NULL;
+    async_task_t           *async_task  = NULL;
     async_link_move_args_t *args        = NULL;
     bool                    lock_parent = false;
     bool                    is_blocking = false;
     hbool_t                 acquired    = false;
     unsigned int            mutex_count = 1;
-    H5VL_async_t *          parent_obj  = parent_obj1 ? parent_obj1 : parent_obj2;
+    H5VL_async_t           *parent_obj  = parent_obj1 ? parent_obj1 : parent_obj2;
 
     func_enter(__func__, NULL);
 
@@ -17603,8 +18422,8 @@ async_link_get_fn(void *foo)
     int                    attempt_count         = 0;
     int                    is_lock               = 0;
     hbool_t                is_lib_state_restored = false;
-    ABT_pool *             pool_ptr;
-    async_task_t *         task = (async_task_t *)foo;
+    ABT_pool              *pool_ptr;
+    async_task_t          *task = (async_task_t *)foo;
     async_link_get_args_t *args = (async_link_get_args_t *)(task->args);
     herr_t                 status;
 
@@ -17745,7 +18564,7 @@ static herr_t
 async_link_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                const H5VL_loc_params_t *loc_params, H5VL_link_get_args_t *get_args, hid_t dxpl_id, void **req)
 {
-    async_task_t *         async_task  = NULL;
+    async_task_t          *async_task  = NULL;
     async_link_get_args_t *args        = NULL;
     bool                   lock_parent = false;
     bool                   is_blocking = false;
@@ -17927,8 +18746,8 @@ async_link_specific_fn(void *foo)
     int                         attempt_count         = 0;
     int                         is_lock               = 0;
     hbool_t                     is_lib_state_restored = false;
-    ABT_pool *                  pool_ptr;
-    async_task_t *              task = (async_task_t *)foo;
+    ABT_pool                   *pool_ptr;
+    async_task_t               *task = (async_task_t *)foo;
     async_link_specific_args_t *args = (async_link_specific_args_t *)(task->args);
     herr_t                      status;
 
@@ -18073,7 +18892,7 @@ async_link_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
                     const H5VL_loc_params_t *loc_params, H5VL_link_specific_args_t *spec_args, hid_t dxpl_id,
                     void **req)
 {
-    async_task_t *              async_task  = NULL;
+    async_task_t               *async_task  = NULL;
     async_link_specific_args_t *args        = NULL;
     bool                        lock_parent = false;
     bool                        is_blocking = false;
@@ -18255,8 +19074,8 @@ async_link_optional_fn(void *foo)
     int                         attempt_count         = 0;
     int                         is_lock               = 0;
     hbool_t                     is_lib_state_restored = false;
-    ABT_pool *                  pool_ptr;
-    async_task_t *              task = (async_task_t *)foo;
+    ABT_pool                   *pool_ptr;
+    async_task_t               *task = (async_task_t *)foo;
     async_link_optional_args_t *args = (async_link_optional_args_t *)(task->args);
     herr_t                      status;
 
@@ -18398,7 +19217,7 @@ async_link_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
                     const H5VL_loc_params_t *loc_params, H5VL_optional_args_t *opt_args, hid_t dxpl_id,
                     void **req)
 {
-    async_task_t *              async_task  = NULL;
+    async_task_t               *async_task  = NULL;
     async_link_optional_args_t *args        = NULL;
     bool                        lock_parent = false;
     bool                        is_blocking = false;
@@ -18580,10 +19399,10 @@ async_object_open_fn(void *foo)
     int                       attempt_count         = 0;
     int                       is_lock               = 0;
     hbool_t                   is_lib_state_restored = false;
-    ABT_pool *                pool_ptr;
-    async_task_t *            task = (async_task_t *)foo;
+    ABT_pool                 *pool_ptr;
+    async_task_t             *task = (async_task_t *)foo;
     async_object_open_args_t *args = (async_object_open_args_t *)(task->args);
-    void *                    obj;
+    void                     *obj;
 
 #ifdef ENABLE_TIMING
     task->start_time = clock();
@@ -18725,8 +19544,8 @@ static H5VL_async_t *
 async_object_open(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                   const H5VL_loc_params_t *loc_params, H5I_type_t *opened_type, hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *            async_obj   = NULL;
-    async_task_t *            async_task  = NULL;
+    H5VL_async_t             *async_obj   = NULL;
+    async_task_t             *async_task  = NULL;
     async_object_open_args_t *args        = NULL;
     bool                      lock_parent = false;
     bool                      is_blocking = false;
@@ -18925,8 +19744,8 @@ async_object_copy_fn(void *foo)
     int                       attempt_count         = 0;
     int                       is_lock               = 0;
     hbool_t                   is_lib_state_restored = false;
-    ABT_pool *                pool_ptr;
-    async_task_t *            task = (async_task_t *)foo;
+    ABT_pool                 *pool_ptr;
+    async_task_t             *task = (async_task_t *)foo;
     async_object_copy_args_t *args = (async_object_copy_args_t *)(task->args);
     herr_t                    status;
 
@@ -19084,13 +19903,13 @@ async_object_copy(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
                   const H5VL_loc_params_t *dst_loc_params, const char *dst_name, hid_t ocpypl_id,
                   hid_t lcpl_id, hid_t dxpl_id, void **req)
 {
-    async_task_t *            async_task  = NULL;
+    async_task_t             *async_task  = NULL;
     async_object_copy_args_t *args        = NULL;
     bool                      lock_parent = false;
     bool                      is_blocking = false;
     hbool_t                   acquired    = false;
     unsigned int              mutex_count = 1;
-    H5VL_async_t *            parent_obj  = parent_obj1 ? parent_obj1 : parent_obj2;
+    H5VL_async_t             *parent_obj  = parent_obj1 ? parent_obj1 : parent_obj2;
 
     func_enter(__func__, NULL);
 
@@ -19279,8 +20098,8 @@ async_object_get_fn(void *foo)
     int                      attempt_count         = 0;
     int                      is_lock               = 0;
     hbool_t                  is_lib_state_restored = false;
-    ABT_pool *               pool_ptr;
-    async_task_t *           task = (async_task_t *)foo;
+    ABT_pool                *pool_ptr;
+    async_task_t            *task = (async_task_t *)foo;
     async_object_get_args_t *args = (async_object_get_args_t *)(task->args);
     herr_t                   status;
 
@@ -19425,7 +20244,7 @@ async_object_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
                  const H5VL_loc_params_t *loc_params, H5VL_object_get_args_t *get_args, hid_t dxpl_id,
                  void **req)
 {
-    async_task_t *           async_task  = NULL;
+    async_task_t            *async_task  = NULL;
     async_object_get_args_t *args        = NULL;
     bool                     lock_parent = false;
     bool                     is_blocking = false;
@@ -19612,8 +20431,8 @@ async_object_specific_fn(void *foo)
     int                           attempt_count         = 0;
     int                           is_lock               = 0;
     hbool_t                       is_lib_state_restored = false;
-    ABT_pool *                    pool_ptr;
-    async_task_t *                task = (async_task_t *)foo;
+    ABT_pool                     *pool_ptr;
+    async_task_t                 *task = (async_task_t *)foo;
     async_object_specific_args_t *args = (async_object_specific_args_t *)(task->args);
     herr_t                        status;
 
@@ -19757,7 +20576,7 @@ async_object_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t
                       const H5VL_loc_params_t *loc_params, H5VL_object_specific_args_t *spec_args,
                       hid_t dxpl_id, void **req)
 {
-    async_task_t *                async_task  = NULL;
+    async_task_t                 *async_task  = NULL;
     async_object_specific_args_t *args        = NULL;
     bool                          lock_parent = false;
     bool                          is_blocking = false;
@@ -19945,8 +20764,8 @@ async_object_optional_fn(void *foo)
     int                           attempt_count         = 0;
     int                           is_lock               = 0;
     hbool_t                       is_lib_state_restored = false;
-    ABT_pool *                    pool_ptr;
-    async_task_t *                task = (async_task_t *)foo;
+    ABT_pool                     *pool_ptr;
+    async_task_t                 *task = (async_task_t *)foo;
     async_object_optional_args_t *args = (async_object_optional_args_t *)(task->args);
     herr_t                        status;
 
@@ -20088,7 +20907,7 @@ async_object_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t
                       const H5VL_loc_params_t *loc_params, H5VL_optional_args_t *opt_args, hid_t dxpl_id,
                       void **req)
 {
-    async_task_t *                async_task  = NULL;
+    async_task_t                 *async_task  = NULL;
     async_object_optional_args_t *args        = NULL;
     bool                          lock_parent = false;
     bool                          is_blocking = false;
@@ -20352,7 +21171,7 @@ static void *
 H5VL_async_info_copy(const void *_info)
 {
     const H5VL_async_info_t *info = (const H5VL_async_info_t *)_info;
-    H5VL_async_info_t *      new_info;
+    H5VL_async_info_t       *new_info;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL INFO Copy\n");
@@ -20464,7 +21283,7 @@ H5VL_async_info_to_str(const void *_info, char **str)
 {
     const H5VL_async_info_t *info              = (const H5VL_async_info_t *)_info;
     H5VL_class_value_t       under_value       = (H5VL_class_value_t)-1;
-    char *                   under_vol_string  = NULL;
+    char                    *under_vol_string  = NULL;
     size_t                   under_vol_str_len = 0;
 
 #ifdef ENABLE_ASYNC_LOGGING
@@ -20509,9 +21328,9 @@ H5VL_async_str_to_info(const char *str, void **_info)
 {
     H5VL_async_info_t *info;
     unsigned           under_vol_value;
-    const char *       under_vol_info_start, *under_vol_info_end;
+    const char        *under_vol_info_start, *under_vol_info_end;
     hid_t              under_vol_id;
-    void *             under_vol_info = NULL;
+    void              *under_vol_info = NULL;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL INFO String To Info\n");
@@ -20588,9 +21407,9 @@ H5VL_async_get_object(const void *obj)
 static herr_t
 H5VL_async_get_wrap_ctx(const void *obj, void **wrap_ctx)
 {
-    const H5VL_async_t *   o_async      = (const H5VL_async_t *)obj;
+    const H5VL_async_t    *o_async      = (const H5VL_async_t *)obj;
     hid_t                  under_vol_id = 0;
-    void *                 under_object = NULL;
+    void                  *under_object = NULL;
     H5VL_async_wrap_ctx_t *new_wrap_ctx;
 
 #ifdef ENABLE_ASYNC_LOGGING
@@ -20643,8 +21462,8 @@ static void *
 H5VL_async_wrap_object(void *obj, H5I_type_t obj_type, void *_wrap_ctx)
 {
     H5VL_async_wrap_ctx_t *wrap_ctx = (H5VL_async_wrap_ctx_t *)_wrap_ctx;
-    H5VL_async_t *         new_obj;
-    void *                 under;
+    H5VL_async_t          *new_obj;
+    void                  *under;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL WRAP Object\n");
@@ -20677,7 +21496,7 @@ static void *
 H5VL_async_unwrap_object(void *obj)
 {
     H5VL_async_t *o = (H5VL_async_t *)obj;
-    void *        under;
+    void         *under;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL UNWRAP Object\n");
@@ -20746,7 +21565,7 @@ H5VL_async_attr_create(void *obj, const H5VL_loc_params_t *loc_params, const cha
 {
     H5VL_async_t *attr;
     H5VL_async_t *o = (H5VL_async_t *)obj;
-    void *        under;
+    void         *under;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL ATTRIBUTE Create\n");
@@ -20790,7 +21609,7 @@ H5VL_async_attr_open(void *obj, const H5VL_loc_params_t *loc_params, const char 
 {
     H5VL_async_t *attr;
     H5VL_async_t *o = (H5VL_async_t *)obj;
-    void *        under;
+    void         *under;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL ATTRIBUTE Open\n");
@@ -20905,7 +21724,7 @@ H5VL_async_attr_write(void *attr, hid_t mem_type_id, const void *buf, hid_t dxpl
 static herr_t
 H5VL_async_attr_get(void *obj, H5VL_attr_get_args_t *args, hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *  o = (H5VL_async_t *)obj;
+    H5VL_async_t   *o = (H5VL_async_t *)obj;
     herr_t          ret_value;
     task_list_qtype qtype = ISOLATED;
 
@@ -20944,7 +21763,7 @@ static herr_t
 H5VL_async_attr_specific(void *obj, const H5VL_loc_params_t *loc_params, H5VL_attr_specific_args_t *args,
                          hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *  o = (H5VL_async_t *)obj;
+    H5VL_async_t   *o = (H5VL_async_t *)obj;
     herr_t          ret_value;
     task_list_qtype qtype = ISOLATED;
 
@@ -20985,7 +21804,7 @@ H5VL_async_attr_specific(void *obj, const H5VL_loc_params_t *loc_params, H5VL_at
 static herr_t
 H5VL_async_attr_optional(void *obj, H5VL_optional_args_t *args, hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *  o = (H5VL_async_t *)obj;
+    H5VL_async_t   *o = (H5VL_async_t *)obj;
     herr_t          ret_value;
     task_list_qtype qtype = ISOLATED;
 
@@ -21029,7 +21848,7 @@ H5VL_async_attr_optional(void *obj, H5VL_optional_args_t *args, hid_t dxpl_id, v
 static herr_t
 H5VL_async_attr_close(void *attr, hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *  o = (H5VL_async_t *)attr;
+    H5VL_async_t   *o = (H5VL_async_t *)attr;
     herr_t          ret_value;
     hbool_t         is_term;
     task_list_qtype qtype = DEPENDENT;
@@ -21083,7 +21902,7 @@ H5VL_async_dataset_create(void *obj, const H5VL_loc_params_t *loc_params, const 
 {
     H5VL_async_t *dset;
     H5VL_async_t *o = (H5VL_async_t *)obj;
-    void *        under;
+    void         *under;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATASET Create\n");
@@ -21131,10 +21950,10 @@ static void *
 H5VL_async_dataset_open(void *obj, const H5VL_loc_params_t *loc_params, const char *name, hid_t dapl_id,
                         hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *  dset;
-    H5VL_async_t *  o     = (H5VL_async_t *)obj;
+    H5VL_async_t   *dset;
+    H5VL_async_t   *o     = (H5VL_async_t *)obj;
     task_list_qtype qtype = REGULAR;
-    void *          under;
+    void           *under;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATASET Open\n");
@@ -21258,7 +22077,7 @@ H5VL_async_dataset_write(void *dset, hid_t mem_type_id, hid_t mem_space_id, hid_
 static herr_t
 H5VL_async_dataset_get(void *dset, H5VL_dataset_get_args_t *args, hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *  o = (H5VL_async_t *)dset;
+    H5VL_async_t   *o = (H5VL_async_t *)dset;
     herr_t          ret_value;
     task_list_qtype qtype = ISOLATED;
 
@@ -21296,7 +22115,7 @@ H5VL_async_dataset_get(void *dset, H5VL_dataset_get_args_t *args, hid_t dxpl_id,
 static herr_t
 H5VL_async_dataset_specific(void *obj, H5VL_dataset_specific_args_t *args, hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *  o = (H5VL_async_t *)obj;
+    H5VL_async_t   *o = (H5VL_async_t *)obj;
     hid_t           under_vol_id;
     herr_t          ret_value;
     task_list_qtype qtype = ISOLATED;
@@ -21342,7 +22161,7 @@ H5VL_async_dataset_specific(void *obj, H5VL_dataset_specific_args_t *args, hid_t
 static herr_t
 H5VL_async_dataset_optional(void *obj, H5VL_optional_args_t *args, hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *  o = (H5VL_async_t *)obj;
+    H5VL_async_t   *o = (H5VL_async_t *)obj;
     herr_t          ret_value;
     task_list_qtype qtype = ISOLATED;
 
@@ -21400,7 +22219,7 @@ H5VL_async_dataset_optional(void *obj, H5VL_optional_args_t *args, hid_t dxpl_id
 static herr_t
 H5VL_async_dataset_close(void *dset, hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *  o = (H5VL_async_t *)dset;
+    H5VL_async_t   *o = (H5VL_async_t *)dset;
     herr_t          ret_value;
     hbool_t         is_term;
     task_list_qtype qtype = REGULAR;
@@ -21457,7 +22276,7 @@ H5VL_async_datatype_commit(void *obj, const H5VL_loc_params_t *loc_params, const
 {
     H5VL_async_t *dt;
     H5VL_async_t *o = (H5VL_async_t *)obj;
-    void *        under;
+    void         *under;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATATYPE Commit\n");
@@ -21502,7 +22321,7 @@ H5VL_async_datatype_open(void *obj, const H5VL_loc_params_t *loc_params, const c
 {
     H5VL_async_t *dt;
     H5VL_async_t *o = (H5VL_async_t *)obj;
-    void *        under;
+    void         *under;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATATYPE Open\n");
@@ -21542,7 +22361,7 @@ H5VL_async_datatype_open(void *obj, const H5VL_loc_params_t *loc_params, const c
 static herr_t
 H5VL_async_datatype_get(void *dt, H5VL_datatype_get_args_t *args, hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *  o = (H5VL_async_t *)dt;
+    H5VL_async_t   *o = (H5VL_async_t *)dt;
     herr_t          ret_value;
     task_list_qtype qtype = ISOLATED;
 
@@ -21580,7 +22399,7 @@ H5VL_async_datatype_get(void *dt, H5VL_datatype_get_args_t *args, hid_t dxpl_id,
 static herr_t
 H5VL_async_datatype_specific(void *obj, H5VL_datatype_specific_args_t *args, hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *  o = (H5VL_async_t *)obj;
+    H5VL_async_t   *o = (H5VL_async_t *)obj;
     herr_t          ret_value;
     task_list_qtype qtype = ISOLATED;
     hid_t           under_vol_id;
@@ -21623,7 +22442,7 @@ H5VL_async_datatype_specific(void *obj, H5VL_datatype_specific_args_t *args, hid
 static herr_t
 H5VL_async_datatype_optional(void *obj, H5VL_optional_args_t *args, hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *  o = (H5VL_async_t *)obj;
+    H5VL_async_t   *o = (H5VL_async_t *)obj;
     herr_t          ret_value;
     task_list_qtype qtype = ISOLATED;
 
@@ -21667,7 +22486,7 @@ H5VL_async_datatype_optional(void *obj, H5VL_optional_args_t *args, hid_t dxpl_i
 static herr_t
 H5VL_async_datatype_close(void *dt, hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *  o = (H5VL_async_t *)dt;
+    H5VL_async_t   *o = (H5VL_async_t *)dt;
     herr_t          ret_value;
     hbool_t         is_term;
     task_list_qtype qtype = DEPENDENT;
@@ -21721,9 +22540,9 @@ H5VL_async_file_create(const char *name, unsigned flags, hid_t fcpl_id, hid_t fa
                        void **req)
 {
     H5VL_async_info_t *info;
-    H5VL_async_t *     file;
+    H5VL_async_t      *file;
     hid_t              under_fapl_id;
-    void *             under;
+    void              *under;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL FILE Create\n");
@@ -21823,10 +22642,10 @@ static void *
 H5VL_async_file_open(const char *name, unsigned flags, hid_t fapl_id, hid_t dxpl_id, void **req)
 {
     H5VL_async_info_t *info;
-    H5VL_async_t *     file;
+    H5VL_async_t      *file;
     hid_t              under_fapl_id;
     task_list_qtype    qtype = REGULAR;
-    void *             under;
+    void              *under;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL FILE Open\n");
@@ -21926,7 +22745,7 @@ H5VL_async_file_open(const char *name, unsigned flags, hid_t fapl_id, hid_t dxpl
 static herr_t
 H5VL_async_file_get(void *file, H5VL_file_get_args_t *args, hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *  o = (H5VL_async_t *)file;
+    H5VL_async_t   *o = (H5VL_async_t *)file;
     herr_t          ret_value;
     task_list_qtype qtype = ISOLATED;
 
@@ -21964,7 +22783,7 @@ H5VL_async_file_get(void *file, H5VL_file_get_args_t *args, hid_t dxpl_id, void 
 static herr_t
 H5VL_async_file_specific(void *file, H5VL_file_specific_args_t *args, hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *  o = (H5VL_async_t *)file;
+    H5VL_async_t   *o = (H5VL_async_t *)file;
     herr_t          ret_value;
     task_list_qtype qtype = ISOLATED;
 
@@ -21983,7 +22802,7 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_args_t *args, hid_t dxpl
     /* Check for 'is accessible' operation */
     if (args->op_type == H5VL_FILE_IS_ACCESSIBLE || args->op_type == H5VL_FILE_DELETE) {
         H5VL_file_specific_args_t my_args;
-        H5VL_async_info_t *       info;
+        H5VL_async_info_t        *info;
         hid_t                     new_fapl_id;
 
         /* Don't currently support asynchronous execution of these operations */
@@ -22067,7 +22886,7 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_args_t *args, hid_t dxpl
 static herr_t
 H5VL_async_file_optional(void *file, H5VL_optional_args_t *args, hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *  o = (H5VL_async_t *)file;
+    H5VL_async_t   *o = (H5VL_async_t *)file;
     herr_t          ret_value;
     task_list_qtype qtype = REGULAR;
 
@@ -22125,7 +22944,7 @@ H5VL_async_file_optional(void *file, H5VL_optional_args_t *args, hid_t dxpl_id, 
 static herr_t
 H5VL_async_file_close(void *file, hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *  o = (H5VL_async_t *)file;
+    H5VL_async_t   *o = (H5VL_async_t *)file;
     herr_t          ret_value;
     hbool_t         is_term;
     task_list_qtype qtype = REGULAR;
@@ -22178,7 +22997,7 @@ H5VL_async_group_create(void *obj, const H5VL_loc_params_t *loc_params, const ch
 {
     H5VL_async_t *group;
     H5VL_async_t *o = (H5VL_async_t *)obj;
-    void *        under;
+    void         *under;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL GROUP Create\n");
@@ -22223,7 +23042,7 @@ H5VL_async_group_open(void *obj, const H5VL_loc_params_t *loc_params, const char
 {
     H5VL_async_t *group;
     H5VL_async_t *o = (H5VL_async_t *)obj;
-    void *        under;
+    void         *under;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL GROUP Open\n");
@@ -22263,7 +23082,7 @@ H5VL_async_group_open(void *obj, const H5VL_loc_params_t *loc_params, const char
 static herr_t
 H5VL_async_group_get(void *obj, H5VL_group_get_args_t *args, hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *  o = (H5VL_async_t *)obj;
+    H5VL_async_t   *o = (H5VL_async_t *)obj;
     herr_t          ret_value;
     task_list_qtype qtype = ISOLATED;
 
@@ -22304,7 +23123,7 @@ H5VL_async_group_get(void *obj, H5VL_group_get_args_t *args, hid_t dxpl_id, void
 static herr_t
 H5VL_async_group_specific(void *obj, H5VL_group_specific_args_t *args, hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *              o = (H5VL_async_t *)obj;
+    H5VL_async_t               *o = (H5VL_async_t *)obj;
     H5VL_group_specific_args_t  my_args;
     H5VL_group_specific_args_t *new_args;
     herr_t                      ret_value;
@@ -22364,7 +23183,7 @@ H5VL_async_group_specific(void *obj, H5VL_group_specific_args_t *args, hid_t dxp
 static herr_t
 H5VL_async_group_optional(void *obj, H5VL_optional_args_t *args, hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *  o = (H5VL_async_t *)obj;
+    H5VL_async_t   *o = (H5VL_async_t *)obj;
     herr_t          ret_value;
     task_list_qtype qtype = ISOLATED;
 
@@ -22408,7 +23227,7 @@ H5VL_async_group_optional(void *obj, H5VL_optional_args_t *args, hid_t dxpl_id, 
 static herr_t
 H5VL_async_group_close(void *grp, hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *  o = (H5VL_async_t *)grp;
+    H5VL_async_t   *o = (H5VL_async_t *)grp;
     herr_t          ret_value;
     hbool_t         is_term;
     task_list_qtype qtype = REGULAR;
@@ -22459,7 +23278,7 @@ static herr_t
 H5VL_async_link_create(H5VL_link_create_args_t *args, void *obj, const H5VL_loc_params_t *loc_params,
                        hid_t lcpl_id, hid_t lapl_id, hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *  o = (H5VL_async_t *)obj;
+    H5VL_async_t   *o = (H5VL_async_t *)obj;
     herr_t          ret_value;
     task_list_qtype qtype = ISOLATED;
 
@@ -22673,7 +23492,7 @@ static herr_t
 H5VL_async_link_get(void *obj, const H5VL_loc_params_t *loc_params, H5VL_link_get_args_t *args, hid_t dxpl_id,
                     void **req)
 {
-    H5VL_async_t *  o = (H5VL_async_t *)obj;
+    H5VL_async_t   *o = (H5VL_async_t *)obj;
     herr_t          ret_value;
     task_list_qtype qtype = ISOLATED;
 
@@ -22712,7 +23531,7 @@ static herr_t
 H5VL_async_link_specific(void *obj, const H5VL_loc_params_t *loc_params, H5VL_link_specific_args_t *args,
                          hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *  o = (H5VL_async_t *)obj;
+    H5VL_async_t   *o = (H5VL_async_t *)obj;
     herr_t          ret_value;
     task_list_qtype qtype = ISOLATED;
 
@@ -22751,7 +23570,7 @@ static herr_t
 H5VL_async_link_optional(void *obj, const H5VL_loc_params_t *loc_params, H5VL_optional_args_t *args,
                          hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *  o = (H5VL_async_t *)obj;
+    H5VL_async_t   *o = (H5VL_async_t *)obj;
     herr_t          ret_value;
     task_list_qtype qtype = ISOLATED;
 
@@ -22796,10 +23615,10 @@ static void *
 H5VL_async_object_open(void *obj, const H5VL_loc_params_t *loc_params, H5I_type_t *opened_type, hid_t dxpl_id,
                        void **req)
 {
-    H5VL_async_t *  new_obj;
-    H5VL_async_t *  o     = (H5VL_async_t *)obj;
+    H5VL_async_t   *new_obj;
+    H5VL_async_t   *o     = (H5VL_async_t *)obj;
     task_list_qtype qtype = BLOCKING;
-    void *          under;
+    void           *under;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL OBJECT Open\n");
@@ -22843,8 +23662,8 @@ H5VL_async_object_copy(void *src_obj, const H5VL_loc_params_t *src_loc_params, c
                        void *dst_obj, const H5VL_loc_params_t *dst_loc_params, const char *dst_name,
                        hid_t ocpypl_id, hid_t lcpl_id, hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *  o_src = (H5VL_async_t *)src_obj;
-    H5VL_async_t *  o_dst = (H5VL_async_t *)dst_obj;
+    H5VL_async_t   *o_src = (H5VL_async_t *)src_obj;
+    H5VL_async_t   *o_dst = (H5VL_async_t *)dst_obj;
     herr_t          ret_value;
     task_list_qtype qtype = ISOLATED;
 
@@ -22886,7 +23705,7 @@ static herr_t
 H5VL_async_object_get(void *obj, const H5VL_loc_params_t *loc_params, H5VL_object_get_args_t *args,
                       hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *  o = (H5VL_async_t *)obj;
+    H5VL_async_t   *o = (H5VL_async_t *)obj;
     herr_t          ret_value;
     task_list_qtype qtype = ISOLATED;
 
@@ -22925,7 +23744,7 @@ static herr_t
 H5VL_async_object_specific(void *obj, const H5VL_loc_params_t *loc_params, H5VL_object_specific_args_t *args,
                            hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *  o = (H5VL_async_t *)obj;
+    H5VL_async_t   *o = (H5VL_async_t *)obj;
     herr_t          ret_value;
     task_list_qtype qtype = ISOLATED;
     hid_t           under_vol_id;
@@ -22971,7 +23790,7 @@ static herr_t
 H5VL_async_object_optional(void *obj, const H5VL_loc_params_t *loc_params, H5VL_optional_args_t *args,
                            hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *  o = (H5VL_async_t *)obj;
+    H5VL_async_t   *o = (H5VL_async_t *)obj;
     herr_t          ret_value;
     task_list_qtype qtype = ISOLATED;
 
@@ -23119,8 +23938,8 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
     herr_t           ret_value = 0;
     clock_t          start_time, now_time;
     double           elapsed, trigger;
-    H5VL_async_t *   request;
-    async_task_t *   task;
+    H5VL_async_t    *request;
+    async_task_t    *task;
     ABT_thread_state state;
     hbool_t          acquired    = false;
     unsigned int     mutex_count = 1;
