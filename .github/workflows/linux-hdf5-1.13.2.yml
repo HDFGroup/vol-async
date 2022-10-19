@@ -47,6 +47,7 @@ jobs:
           mkdir $HDF5_DIR
           # Compile HDF5
           cd hdf5
+          git checkout hdf5-1_13_2
           export HDF5_LIBTOOL=/usr/bin/libtoolize
           ./autogen.sh
           ./configure --prefix=$HDF5_DIR --enable-parallel --enable-threadsafe --enable-unsupported \
