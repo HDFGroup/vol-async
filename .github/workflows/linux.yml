@@ -27,7 +27,7 @@ jobs:
       - name: Checkout HDF5 1.13.2
         uses: actions/checkout@v3
         with:
-          repository: https://github.com/HDFGroup/hdf5.git
+          repository: HDFGroup/hdf5
           ref: hdf5-1_13_2
           path: hdf5
       
