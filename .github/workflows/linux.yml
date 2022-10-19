@@ -14,7 +14,7 @@ on:
   # Allows to run this workflow manually from the Actions tab
   workflow_dispatch:
 jobs:
-  vol-async:
+  vol-async-hdf5-1_13_2:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -47,7 +47,7 @@ jobs:
           mkdir $HDF5_DIR
           # Compile HDF5
           cd hdf5
-          git checkout hdf5-1_13_2
+          git checkout 270765f
           export HDF5_LIBTOOL=/usr/bin/libtoolize
           ./autogen.sh
           ./configure --prefix=$HDF5_DIR --enable-parallel --enable-threadsafe --enable-unsupported \
