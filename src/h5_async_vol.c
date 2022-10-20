@@ -688,16 +688,16 @@ static herr_t H5VL_async_attr_optional(void *obj, H5VL_optional_args_t *args, hi
 static herr_t H5VL_async_attr_close(void *attr, hid_t dxpl_id, void **req);
 
 /* Dataset callbacks */
-static void * H5VL_async_dataset_create(void *obj, const H5VL_loc_params_t *loc_params, const char *name,
-                                        hid_t lcpl_id, hid_t type_id, hid_t space_id, hid_t dcpl_id,
-                                        hid_t dapl_id, hid_t dxpl_id, void **req);
-static void * H5VL_async_dataset_open(void *obj, const H5VL_loc_params_t *loc_params, const char *name,
-                                      hid_t dapl_id, hid_t dxpl_id, void **req);
+static void *H5VL_async_dataset_create(void *obj, const H5VL_loc_params_t *loc_params, const char *name,
+                                       hid_t lcpl_id, hid_t type_id, hid_t space_id, hid_t dcpl_id,
+                                       hid_t dapl_id, hid_t dxpl_id, void **req);
+static void *H5VL_async_dataset_open(void *obj, const H5VL_loc_params_t *loc_params, const char *name,
+                                     hid_t dapl_id, hid_t dxpl_id, void **req);
 #if H5_VERSION_GE(1, 13, 3)
-static herr_t H5VL_async_dataset_read(size_t count, void *dset[], hid_t mem_type_id[], hid_t mem_space_id[], 
+static herr_t H5VL_async_dataset_read(size_t count, void *dset[], hid_t mem_type_id[], hid_t mem_space_id[],
                                       hid_t file_space_id[], hid_t plist_id, void *buf[], void **req);
-static herr_t H5VL_async_dataset_write(size_t count, void *dset[], hid_t mem_type_id[], hid_t mem_space_id[], 
-                                      hid_t file_space_id[], hid_t plist_id, const void *buf[], void **req);
+static herr_t H5VL_async_dataset_write(size_t count, void *dset[], hid_t mem_type_id[], hid_t mem_space_id[],
+                                       hid_t file_space_id[], hid_t plist_id, const void *buf[], void **req);
 #else
 static herr_t H5VL_async_dataset_read(void *dset, hid_t mem_type_id, hid_t mem_space_id, hid_t file_space_id,
                                       hid_t plist_id, void *buf, void **req);
@@ -8644,8 +8644,8 @@ async_dataset_read_fn(void *foo)
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY
     {
-        status = H5VLdataset_read(args->count, args->dset, task->under_vol_id, args->mem_type_id, args->mem_space_id,
-                                  args->file_space_id, args->plist_id, args->buf, NULL);
+        status = H5VLdataset_read(args->count, args->dset, task->under_vol_id, args->mem_type_id,
+                                  args->mem_space_id, args->file_space_id, args->plist_id, args->buf, NULL);
         check_app_wait(attempt_count + 4, __func__);
     }
     H5E_END_TRY
@@ -8705,7 +8705,7 @@ done:
 } // End async_dataset_read_fn
 
 static herr_t
-async_dataset_read(async_instance_t *aid, size_t count, H5VL_async_t **parent_obj, hid_t mem_type_id[], 
+async_dataset_read(async_instance_t *aid, size_t count, H5VL_async_t **parent_obj, hid_t mem_type_id[],
                    hid_t mem_space_id[], hid_t file_space_id[], hid_t plist_id, void *buf[], void **req)
 {
     // For implicit mode (env var), make all read to be blocking
@@ -8738,10 +8738,10 @@ async_dataset_read(async_instance_t *aid, size_t count, H5VL_async_t **parent_ob
 #ifdef ENABLE_TIMING
     async_task->create_time = clock();
 #endif
-    args->dset = (void **)calloc(count, sizeof(void*));
-    args->buf  = (void **)calloc(count, sizeof(void*));
-    args->mem_type_id = (hid_t *)calloc(count, sizeof(hid_t));
-    args->mem_space_id = (hid_t *)calloc(count, sizeof(hid_t));
+    args->dset          = (void **)calloc(count, sizeof(void *));
+    args->buf           = (void **)calloc(count, sizeof(void *));
+    args->mem_type_id   = (hid_t *)calloc(count, sizeof(hid_t));
+    args->mem_space_id  = (hid_t *)calloc(count, sizeof(hid_t));
     args->file_space_id = (hid_t *)calloc(count, sizeof(hid_t));
     for (size_t i = 0; i < count; i++) {
         args->dset[i] = parent_obj[i]->under_object;
@@ -8755,7 +8755,7 @@ async_dataset_read(async_instance_t *aid, size_t count, H5VL_async_t **parent_ob
     }
     if (plist_id > 0)
         args->plist_id = H5Pcopy(plist_id);
-    args->req = req;
+    args->req   = req;
     args->count = count;
 
     if (req) {
@@ -8892,15 +8892,15 @@ error:
 static void
 async_dataset_read_fn(void *foo)
 {
-    hbool_t                    acquired              = false;
-    unsigned int               mutex_count           = 1;
-    int                        attempt_count         = 0;
-    int                        is_lock               = 0;
-    hbool_t                    is_lib_state_restored = false;
-    ABT_pool *                 pool_ptr;
-    async_task_t *             task = (async_task_t *)foo;
+    hbool_t acquired = false;
+    unsigned int mutex_count = 1;
+    int attempt_count = 0;
+    int is_lock = 0;
+    hbool_t is_lib_state_restored = false;
+    ABT_pool *pool_ptr;
+    async_task_t *task = (async_task_t *)foo;
     async_dataset_read_args_t *args = (async_dataset_read_args_t *)(task->args);
-    herr_t                     status;
+    herr_t status;
 
 #ifdef ENABLE_TIMING
     task->start_time = clock();
@@ -9022,7 +9022,7 @@ done:
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
-    task->is_done     = 1;
+    task->is_done = 1;
 
     func_log(__func__, "release global lock");
 
@@ -9040,17 +9040,17 @@ done:
 } // End async_dataset_read_fn
 
 static herr_t
-async_dataset_read(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type_id, 
-                   hid_t mem_space_id, hid_t file_space_id, hid_t plist_id, void *buf, void **req)
+async_dataset_read(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type_id, hid_t mem_space_id,
+                   hid_t file_space_id, hid_t plist_id, void *buf, void **req)
 {
     // For implicit mode (env var), make all read to be blocking
     assert(async_instance_g);
-    async_task_t *             async_task  = NULL;
-    async_dataset_read_args_t *args        = NULL;
-    bool                       lock_parent = false;
-    bool                       is_blocking = false;
-    hbool_t                    acquired    = false;
-    unsigned int               mutex_count = 1;
+    async_task_t *async_task = NULL;
+    async_dataset_read_args_t *args = NULL;
+    bool lock_parent = false;
+    bool is_blocking = false;
+    hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
     func_enter(__func__, NULL);
 
@@ -9094,10 +9094,10 @@ async_dataset_read(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_ty
         new_req->my_task = async_task;
         /* new_req->under_object = new_req; */
         new_req->file_async_obj = parent_obj->file_async_obj;
-        *req                    = (void *)new_req;
+        *req = (void *)new_req;
     }
     else {
-        is_blocking                      = true;
+        is_blocking = true;
         async_instance_g->start_abt_push = true;
     }
 
@@ -9107,12 +9107,12 @@ async_dataset_read(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_ty
         goto done;
     }
 
-    async_task->func         = async_dataset_read_fn;
-    async_task->args         = args;
-    async_task->op           = READ;
+    async_task->func = async_dataset_read_fn;
+    async_task->args = args;
+    async_task->op = READ;
     async_task->under_vol_id = parent_obj->under_vol_id;
-    async_task->async_obj    = parent_obj;
-    async_task->parent_obj   = parent_obj;
+    async_task->async_obj = parent_obj;
+    async_task->parent_obj = parent_obj;
 
     /* Lock parent_obj */
     while (1) {
@@ -9354,8 +9354,9 @@ async_dataset_write_fn(void *foo)
     /* Try executing operation, without default error stack handling */
     H5E_BEGIN_TRY
     {
-        status = H5VLdataset_write(args->count, args->dset, task->under_vol_id, args->mem_type_id, args->mem_space_id,
-                                   args->file_space_id, args->plist_id, (const void**)args->buf, NULL);
+        status = H5VLdataset_write(args->count, args->dset, task->under_vol_id, args->mem_type_id,
+                                   args->mem_space_id, args->file_space_id, args->plist_id,
+                                   (const void **)args->buf, NULL);
         check_app_wait(attempt_count + 4, __func__);
     }
     H5E_END_TRY
@@ -9435,7 +9436,7 @@ done:
 
 // GE 1.13.3
 static herr_t
-async_dataset_write(async_instance_t *aid, size_t count, H5VL_async_t **parent_obj, hid_t mem_type_id[], 
+async_dataset_write(async_instance_t *aid, size_t count, H5VL_async_t **parent_obj, hid_t mem_type_id[],
                     hid_t mem_space_id[], hid_t file_space_id[], hid_t plist_id, const void **buf, void **req)
 {
     async_task_t *              async_task  = NULL;
@@ -9466,24 +9467,24 @@ async_dataset_write(async_instance_t *aid, size_t count, H5VL_async_t **parent_o
 #ifdef ENABLE_TIMING
     async_task->create_time = clock();
 #endif
-    args->dset = (void **)calloc(count, sizeof(void*));
-    args->buf  = (void **)calloc(count, sizeof(void*));
+    args->dset          = (void **)calloc(count, sizeof(void *));
+    args->buf           = (void **)calloc(count, sizeof(void *));
     args->mem_type_id   = (hid_t *)calloc(count, sizeof(hid_t));
     args->mem_space_id  = (hid_t *)calloc(count, sizeof(hid_t));
     args->file_space_id = (hid_t *)calloc(count, sizeof(hid_t));
     for (size_t i = 0; i < count; i++) {
         args->dset[i] = parent_obj[i]->under_object;
         if (mem_type_id[i] > 0)
-            args->mem_type_id[i]   = H5Tcopy(mem_type_id[i]);
+            args->mem_type_id[i] = H5Tcopy(mem_type_id[i]);
         if (mem_space_id[i] > 0)
-            args->mem_space_id[i]  = H5Scopy(mem_space_id[i]);
+            args->mem_space_id[i] = H5Scopy(mem_space_id[i]);
         if (file_space_id[i] > 0)
             args->file_space_id[i] = H5Scopy(file_space_id[i]);
         args->buf[i] = (void *)buf[i];
     }
     if (plist_id > 0)
         args->plist_id = H5Pcopy(plist_id);
-    args->req = req;
+    args->req   = req;
     args->count = count;
 
 #ifdef ENABLE_WRITE_MEMCPY
@@ -9495,8 +9496,8 @@ async_dataset_write(async_instance_t *aid, size_t count, H5VL_async_t **parent_o
         else {
             buf_size = H5Tget_size(mem_type_id[i]) * H5Sget_select_npoints(mem_space_id[i]);
 #ifdef ENABLE_DBG_MSG
-        if (buf_size == 0)
-            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with getting dataset size\n", __func__);
+            if (buf_size == 0)
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s with getting dataset size\n", __func__);
 #endif
         }
 
@@ -9525,7 +9526,7 @@ async_dataset_write(async_instance_t *aid, size_t count, H5VL_async_t **parent_o
                 goto done;
             }
             async_instance_g->used_mem += buf_size;
-            args->free_buf  = true;
+            args->free_buf = true;
             args->data_size += buf_size;
 
             // If is contiguous space, no need to go through gather process as it can be costly
@@ -9674,9 +9675,12 @@ error:
     }
     if (NULL != async_task->args) {
         if (args) {
-            if (args->mem_type_id  ) free(mem_type_id);
-            if (args->mem_space_id ) free(mem_space_id);
-            if (args->file_space_id) free(file_space_id);
+            if (args->mem_type_id)
+                free(mem_type_id);
+            if (args->mem_space_id)
+                free(mem_space_id);
+            if (args->file_space_id)
+                free(file_space_id);
             free(args);
         }
         async_task->args = NULL;
@@ -9687,15 +9691,15 @@ error:
 static void
 async_dataset_write_fn(void *foo)
 {
-    hbool_t                     acquired      = false;
-    unsigned int                mutex_count   = 1;
-    int                         attempt_count = 0;
-    int                         is_lock = 0, count = 0;
-    hbool_t                     is_lib_state_restored = false;
-    ABT_pool *                  pool_ptr;
-    async_task_t *              task = (async_task_t *)foo;
+    hbool_t acquired = false;
+    unsigned int mutex_count = 1;
+    int attempt_count = 0;
+    int is_lock = 0, count = 0;
+    hbool_t is_lib_state_restored = false;
+    ABT_pool *pool_ptr;
+    async_task_t *task = (async_task_t *)foo;
     async_dataset_write_args_t *args = (async_dataset_write_args_t *)(task->args);
-    herr_t                      status;
+    herr_t status;
 
 #ifdef ENABLE_TIMING
     task->start_time = clock();
@@ -9788,7 +9792,7 @@ async_dataset_write_fn(void *foo)
     H5E_BEGIN_TRY
     {
         status = H5VLdataset_write(args->dset, task->under_vol_id, args->mem_type_id, args->mem_space_id,
-                                   args->file_space_id, args->plist_id, (const void*)args->buf, NULL);
+                                   args->file_space_id, args->plist_id, (const void *)args->buf, NULL);
         check_app_wait(attempt_count + 4, __func__);
     }
     H5E_END_TRY
@@ -9827,7 +9831,7 @@ done:
 
     ABT_eventual_set(task->eventual, NULL, 0);
     task->in_abt_pool = 0;
-    task->is_done     = 1;
+    task->is_done = 1;
 
     func_log(__func__, "release global lock");
 
@@ -9861,12 +9865,12 @@ static herr_t
 async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type_id, hid_t mem_space_id,
                     hid_t file_space_id, hid_t plist_id, const void *buf, void **req)
 {
-    async_task_t *              async_task  = NULL;
-    async_dataset_write_args_t *args        = NULL;
-    bool                        lock_parent = false;
-    bool                        is_blocking = false;
-    hbool_t                     acquired    = false;
-    unsigned int                mutex_count = 1;
+    async_task_t *async_task = NULL;
+    async_dataset_write_args_t *args = NULL;
+    bool lock_parent = false;
+    bool is_blocking = false;
+    hbool_t acquired = false;
+    unsigned int mutex_count = 1;
 
     func_enter(__func__, NULL);
 
@@ -9921,7 +9925,7 @@ async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_t
 
     if (async_instance_g->used_mem + buf_size > async_instance_g->max_mem) {
         is_blocking = true;
-        args->buf   = (void *)buf;
+        args->buf = (void *)buf;
         fprintf(fout_g,
                 "  [ASYNC ABT INFO] %d write size %lu larger than async memory limit %lu, switch to "
                 "synchronous write\n",
@@ -9929,7 +9933,7 @@ async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_t
     }
     else if (buf_size > avail_mem) {
         is_blocking = true;
-        args->buf   = (void *)buf;
+        args->buf = (void *)buf;
         fprintf(fout_g,
                 "  [ASYNC ABT INFO] %d write size %lu larger than available memory %lu, switch to "
                 "synchronous write\n",
@@ -9941,7 +9945,7 @@ async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_t
             goto done;
         }
         async_instance_g->used_mem += buf_size;
-        args->free_buf  = true;
+        args->free_buf = true;
         args->data_size = buf_size;
 
         // If is contiguous space, no need to go through gather process as it can be costly
@@ -9971,10 +9975,10 @@ async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_t
         new_req->my_task = async_task;
         /* new_req->under_object = new_req; */
         new_req->file_async_obj = parent_obj->file_async_obj;
-        *req                    = (void *)new_req;
+        *req = (void *)new_req;
     }
     else {
-        is_blocking                      = true;
+        is_blocking = true;
         async_instance_g->start_abt_push = true;
     }
 
@@ -9984,12 +9988,12 @@ async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_t
         goto done;
     }
 
-    async_task->func         = async_dataset_write_fn;
-    async_task->args         = args;
-    async_task->op           = WRITE;
+    async_task->func = async_dataset_write_fn;
+    async_task->args = args;
+    async_task->op = WRITE;
     async_task->under_vol_id = parent_obj->under_vol_id;
-    async_task->async_obj    = parent_obj;
-    async_task->parent_obj   = parent_obj;
+    async_task->async_obj = parent_obj;
+    async_task->parent_obj = parent_obj;
 
     /* Lock parent_obj */
     while (1) {
@@ -21984,13 +21988,13 @@ H5VL_async_dataset_open(void *obj, const H5VL_loc_params_t *loc_params, const ch
  */
 static herr_t
 #if H5_VERSION_GE(1, 13, 3)
-H5VL_async_dataset_read(size_t count, void *dset[], hid_t mem_type_id[], hid_t mem_space_id[], hid_t file_space_id[],
-                        hid_t plist_id, void *buf[], void **req)
+H5VL_async_dataset_read(size_t count, void *dset[], hid_t mem_type_id[], hid_t mem_space_id[],
+                        hid_t file_space_id[], hid_t plist_id, void *buf[], void **req)
 {
     H5VL_async_t **o = (H5VL_async_t **)dset;
-    void          *obj_local;               /* Local buffer for obj */
-    void         **obj = &obj_local;        /* Array of object pointers */
-    size_t         i;                       /* Local index variable */
+    void *         obj_local;        /* Local buffer for obj */
+    void **        obj = &obj_local; /* Array of object pointers */
+    size_t         i;                /* Local index variable */
     herr_t         ret_value;
 
 #ifdef ENABLE_ASYNC_LOGGING
@@ -22003,9 +22007,9 @@ H5VL_async_dataset_read(size_t count, void *dset[], hid_t mem_type_id[], hid_t m
     if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         /* Allocate obj array if necessary */
         if (count > 1) {
-	    if (NULL == (obj = (void **)calloc(count, sizeof(void *))))
+            if (NULL == (obj = (void **)calloc(count, sizeof(void *))))
                 return -1;
-	}
+        }
 
         /* Build obj array */
         for (i = 0; i < count; i++) {
@@ -22013,12 +22017,12 @@ H5VL_async_dataset_read(size_t count, void *dset[], hid_t mem_type_id[], hid_t m
             obj[i] = o[i]->under_object;
 
             /* Make sure the class matches */
-            if (((H5VL_async_t*)dset[i])->under_vol_id != ((H5VL_async_t *)dset[0])->under_vol_id)
+            if (((H5VL_async_t *)dset[i])->under_vol_id != ((H5VL_async_t *)dset[0])->under_vol_id)
                 return -1;
         }
 
-	ret_value = H5VLdataset_read(count, obj, o[0]->under_vol_id, mem_type_id, mem_space_id,
-					 file_space_id, plist_id, buf, req);
+        ret_value = H5VLdataset_read(count, obj, o[0]->under_vol_id, mem_type_id, mem_space_id, file_space_id,
+                                     plist_id, buf, req);
         /* Check for async request */
         if (req && *req)
             *req = H5VL_async_new_obj(*req, o[0]->under_vol_id);
@@ -22027,8 +22031,8 @@ H5VL_async_dataset_read(size_t count, void *dset[], hid_t mem_type_id[], hid_t m
             free(obj);
     }
     else {
-        if ((ret_value = async_dataset_read(async_instance_g, count, o, mem_type_id, mem_space_id, file_space_id,
-                                            plist_id, buf, req)) < 0) {
+        if ((ret_value = async_dataset_read(async_instance_g, count, o, mem_type_id, mem_space_id,
+                                            file_space_id, plist_id, buf, req)) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] with async_dataset_read\n");
         }
     }
@@ -22040,7 +22044,7 @@ H5VL_async_dataset_read(void *dset, hid_t mem_type_id, hid_t mem_space_id, hid_t
                         hid_t plist_id, void *buf, void **req)
 {
     H5VL_async_t *o = (H5VL_async_t *)dset;
-    herr_t        ret_value;
+    herr_t ret_value;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATASET Read\n");
@@ -22079,12 +22083,12 @@ H5VL_async_dataset_read(void *dset, hid_t mem_type_id, hid_t mem_space_id, hid_t
  */
 #if H5_VERSION_GE(1, 13, 3)
 static herr_t
-H5VL_async_dataset_write(size_t count, void *dset[], hid_t mem_type_id[], hid_t mem_space_id[], hid_t file_space_id[],
-                         hid_t plist_id, const void *buf[], void **req)
+H5VL_async_dataset_write(size_t count, void *dset[], hid_t mem_type_id[], hid_t mem_space_id[],
+                         hid_t file_space_id[], hid_t plist_id, const void *buf[], void **req)
 {
     H5VL_async_t **o = (H5VL_async_t **)dset;
-    void          *obj_local;               /* Local buffer for obj */
-    void         **obj = &obj_local;        /* Array of object pointers */
+    void *         obj_local;        /* Local buffer for obj */
+    void **        obj = &obj_local; /* Array of object pointers */
     size_t         i;
     herr_t         ret_value;
 
@@ -22098,9 +22102,9 @@ H5VL_async_dataset_write(size_t count, void *dset[], hid_t mem_type_id[], hid_t 
     if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
         /* Allocate obj array if necessary */
         if (count > 1) {
-	    if (NULL == (obj = (void **)calloc(count, sizeof(void *))))
+            if (NULL == (obj = (void **)calloc(count, sizeof(void *))))
                 return -1;
-	}
+        }
 
         /* Build obj array */
         for (i = 0; i < count; i++) {
@@ -22108,7 +22112,7 @@ H5VL_async_dataset_write(size_t count, void *dset[], hid_t mem_type_id[], hid_t 
             obj[i] = o[i]->under_object;
 
             /* Make sure the class matches */
-            if (((H5VL_async_t*)dset[i])->under_vol_id != ((H5VL_async_t *)dset[0])->under_vol_id)
+            if (((H5VL_async_t *)dset[i])->under_vol_id != ((H5VL_async_t *)dset[0])->under_vol_id)
                 return -1;
         }
 
@@ -22123,8 +22127,8 @@ H5VL_async_dataset_write(size_t count, void *dset[], hid_t mem_type_id[], hid_t 
             free(obj);
     }
     else {
-        if ((ret_value = async_dataset_write(async_instance_g, count, o, mem_type_id, mem_space_id, file_space_id,
-                                             plist_id, buf, req)) < 0) {
+        if ((ret_value = async_dataset_write(async_instance_g, count, o, mem_type_id, mem_space_id,
+                                             file_space_id, plist_id, buf, req)) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] with async_dataset_write\n");
         }
     }
@@ -22137,7 +22141,7 @@ H5VL_async_dataset_write(void *dset, hid_t mem_type_id, hid_t mem_space_id, hid_
                          hid_t plist_id, const void *buf, void **req)
 {
     H5VL_async_t *o = (H5VL_async_t *)dset;
-    herr_t        ret_value;
+    herr_t ret_value;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATASET Write\n");
