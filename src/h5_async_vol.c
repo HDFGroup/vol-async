@@ -9961,7 +9961,7 @@ async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_t
             args->mem_space_id = H5Screate_simple(1, &n_elem, NULL);
         }
         else {
-            memcpy(args->buf[i], buf[i], buf_size);
+            memcpy(args->buf, buf, buf_size);
         }
     }
 #endif
