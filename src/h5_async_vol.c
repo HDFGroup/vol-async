@@ -9386,7 +9386,6 @@ done:
         if (args->file_space_id[i] > 0)
             H5Sclose(args->file_space_id[i]);
     }
-    free(args->buf);
     free(args->dset);
     free(args->mem_type_id);
     free(args->mem_space_id);
@@ -9422,6 +9421,7 @@ done:
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
             fprintf(fout_g, "  [ASYNC ABT DBG] %s released dset memcpy\n", __func__);
 #endif
+        free(args->buf);
     }
 #endif
 
@@ -9489,7 +9489,7 @@ async_dataset_write(async_instance_t *aid, size_t count, H5VL_async_t **parent_o
 #ifdef ENABLE_WRITE_MEMCPY
     hsize_t buf_size = 0;
     for (size_t i = 0; i < count; i++) {
-        if (parent_obj->data_size[i] > 0 && args->file_space_id[i] == H5S_ALL) {
+        if (parent_obj[0]->data_size > 0 && args->file_space_id[i] == H5S_ALL) {
             buf_size = parent_obj[i]->data_size;
         }
         else {
