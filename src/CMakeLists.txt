@@ -3,6 +3,16 @@ set(HDF5_VOL_ASYNC_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/h5_async_vol.h
 )
 
+if(ENABLE_WRITE_MEMCPY)
+    add_definitions(-DENABLE_WRITE_MEMCPY=1)
+endif()
+if(ENABLE_DBG_MSG)
+    add_definitions(-DENABLE_DBG_MSG=1)
+endif()
+if(PRINT_ERROR_STACK)
+    add_definitions(-DPRINT_ERROR_STACK=1)
+endif()
+
 add_library(h5async
     SHARED
     ${CMAKE_CURRENT_SOURCE_DIR}/h5_async_vol.c

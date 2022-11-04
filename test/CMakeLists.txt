@@ -12,6 +12,16 @@ else()
     message("HDF5_VOL_CONNECTOR is set to $ENV{HDF5_VOL_CONNECTOR}.")
 endif()
 
+if(ENABLE_WRITE_MEMCPY)
+    add_definitions(-DENABLE_WRITE_MEMCPY=1)
+endif()
+if(ENABLE_DBG_MSG)
+    add_definitions(-DENABLE_DBG_MSG=1)
+endif()
+if(PRINT_ERROR_STACK)
+    add_definitions(-DPRINT_ERROR_STACK=1)
+endif()
+
 set(tests
     async_test_multifile
     async_test_serial 

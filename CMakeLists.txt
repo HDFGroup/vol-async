@@ -43,21 +43,8 @@ set(HDF5_VOL_ASYNC_PACKAGE_VENDOR "HPC IO")
 #-----------------------------------------------------------------------------
 option(ENABLE_WRITE_MEMCPY 
        "Make a copy of write buffer automatically, user's buffer can be safely reused or freed immediately." OFF)
-if(ENABLE_WRITE_MEMCPY)
-  set(ENABLE_WRITE_MEMCPY 1)
-endif()
-
 option(ENABLE_DBG_MSG "Enable debug message." OFF)
-if(ENABLE_DBG_MSG)
-  set(ENABLE_DBG_MSG 1)
-endif()
-
 option(PRINT_ERROR_STACK "Enable HDF5 error stack print out." OFF)
-if(PRINT_ERROR_STACK)
-  set(PRINT_ERROR_STACK 1)
-endif()
-
-
 
 message(STATUS "Configuring ${HDF5_VOL_ASYNC_PACKAGE} ${PROJECT_VERSION}")
 
