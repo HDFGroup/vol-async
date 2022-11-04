@@ -39,7 +39,6 @@ SRC = async_test_serial.c async_test_serial2.c \
     async_test_serial_event_set.c async_test_serial_error_stack.c \
     async_test_serial_event_set_error_stack.c async_test_serial_mdset.c
 
-#async_test_no_fclose.c
 OBJ = $(SRC:.c=.o)
 EXE = $(SRC:.c=.exe)
 DBG = $(SRC:.c=.exe.dSYM)
