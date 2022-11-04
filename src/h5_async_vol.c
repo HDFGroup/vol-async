@@ -9289,7 +9289,6 @@ async_dataset_write_fn(void *foo)
     for (size_t i = 0; i < args->count; i++) {
         if (NULL == args->dset[i]) {
             if (NULL != task->parent_obj->under_object) {
-                // TODO: this may be problematic with multi-dset
                 args->dset[i] = task->parent_obj->under_object;
             }
             else {

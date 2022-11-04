@@ -1,9 +1,9 @@
 ifndef HDF5_DIR
-    HDF5_DIR = /global/u1/h/houhun/hdf5/develop_gnu/hdf5
+    HDF5_DIR = /global/u1/h/houhun/hdf5/develop_gnu_cmake/install
 endif
 
 ifndef ABT_DIR
-    ABT_DIR = /global/u1/h/houhun/cori/argobots/install
+    ABT_DIR = /global/u1/h/houhun/cori/argobots/install_gnu
 endif
 
 ifndef ASYNC_DIR
@@ -37,7 +37,7 @@ SRC = async_test_serial.c async_test_serial2.c \
     async_test_parallel.c async_test_parallel2.c async_test_parallel3.c \
     async_test_parallel4.c async_test_parallel5.c \
     async_test_serial_event_set.c async_test_serial_error_stack.c \
-    async_test_serial_event_set_error_stack.c
+    async_test_serial_event_set_error_stack.c async_test_serial_mdset.c
 
 #async_test_no_fclose.c
 OBJ = $(SRC:.c=.o)
