@@ -9489,7 +9489,7 @@ async_dataset_write(async_instance_t *aid, size_t count, H5VL_async_t **parent_o
 #ifdef ENABLE_WRITE_MEMCPY
     hsize_t buf_size = 0;
     for (size_t i = 0; i < count; i++) {
-        if (parent_obj[0]->data_size > 0 && args->file_space_id[i] == H5S_ALL) {
+        if (parent_obj[i]->data_size > 0 && (args->file_space_id[i] == H5S_ALL||args->mem_space_id[i] == H5S_ALL)) {
             buf_size = parent_obj[i]->data_size;
         }
         else {
