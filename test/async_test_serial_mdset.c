@@ -86,18 +86,6 @@ main(int argc, char *argv[])
     if (print_dbg_msg)
         fprintf(stderr, "H5Dcreate 1 done\n");
 
-    if (print_dbg_msg)
-        fprintf(stderr, "H5ESwait start\n");
-
-    status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
-    if (status < 0) {
-        fprintf(stderr, "Error with H5ESwait\n");
-        ret = -1;
-        goto done;
-    }
-    if (print_dbg_msg)
-        fprintf(stderr, "H5ESwait done %lu %d\n", num_in_progress, (int)op_failed);
-
 #if H5_VERSION_GE(1, 13, 3)
     if (print_dbg_msg)
         fprintf(stderr, "H5Dwrite multi start\n");

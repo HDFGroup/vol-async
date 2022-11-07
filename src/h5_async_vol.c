@@ -138,6 +138,9 @@ typedef struct async_task_t {
     struct async_task_t **dep_tasks;
 
     struct H5VL_async_t *parent_obj; /* pointer back to the parent async object */
+#if H5_VERSION_GE(1, 13, 3)
+    struct H5VL_async_t **parent_objs; /* pointer back to the parent async object when multi-dset is used*/
+#endif
 
     clock_t create_time;
     clock_t start_time;
@@ -1975,6 +1978,11 @@ free_async_task(async_task_t *task)
 
     if (task->abt_thread)
         ABT_thread_free(&task->abt_thread);
+
+#if H5_VERSION_GE(1, 13, 3)
+    if (task->parent_objs)
+        free(task->parent_objs);
+#endif
 
     memset(task, 0, sizeof(async_task_t));
     free(task);
@@ -8583,34 +8591,36 @@ async_dataset_read_fn(void *foo)
                 mutex_count);
 #endif
 
-    /* Update the dependent parent object if it is NULL */
-    if (NULL == args->dset) {
-        if (NULL != task->parent_obj->under_object) {
-            args->dset = task->parent_obj->under_object;
-        }
-        else {
-            if (check_parent_task(task->parent_obj) != 0) {
-                task->err_stack = H5Ecreate_stack();
-                H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
-                H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g, H5E_VOL,
-                        H5E_CANTCREATE, "Parent task failed");
+    for (size_t i = 0; i < args->count; i++) {
+        /* Update the dependent parent object if it is NULL */
+        if (NULL == args->dset[i]) {
+            if (NULL != task->parent_objs[i]->under_object) {
+                args->dset[i] = task->parent_objs[i]->under_object;
+            }
+            else {
+                if (check_parent_task(task->parent_obj) != 0) {
+                    task->err_stack = H5Ecreate_stack();
+                    H5Eappend_stack(task->err_stack, task->parent_obj->create_task->err_stack, false);
+                    H5Epush(task->err_stack, __FILE__, __func__, __LINE__, async_error_class_g, H5E_VOL,
+                            H5E_CANTCREATE, "Parent task failed");
 
 #ifdef PRINT_ERROR_STACK
-                H5Eprint2(task->err_stack, stderr);
+                    H5Eprint2(task->err_stack, stderr);
 #endif
+
+                    goto done;
+                }
+
+                func_log(__func__, "parent object is NULL, re-insert to pool");
+
+                if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
+                                      &task->abt_thread) != ABT_SUCCESS) {
+                    fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                            task->func);
+                }
 
                 goto done;
             }
-
-            func_log(__func__, "parent object is NULL, re-insert to pool");
-
-            if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
-                                  &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
-                        task->func);
-            }
-
-            goto done;
         }
     }
 
@@ -8786,6 +8796,9 @@ async_dataset_read(async_instance_t *aid, size_t count, H5VL_async_t **parent_ob
     async_task->under_vol_id = parent_obj[0]->under_vol_id;
     async_task->async_obj    = parent_obj[0];
     async_task->parent_obj   = parent_obj[0];
+    async_task->parent_objs  = (struct H5VL_async_t**)calloc(count, sizeof(struct H5VL_async_t*));
+    for (size_t i = 0; i < count; i++)
+        async_task->parent_objs[i] = parent_obj[i];
 
     /* Lock parent_obj */
     while (1) {
@@ -9289,7 +9302,7 @@ async_dataset_write_fn(void *foo)
     for (size_t i = 0; i < args->count; i++) {
         if (NULL == args->dset[i]) {
             if (NULL != task->parent_obj->under_object) {
-                args->dset[i] = task->parent_obj->under_object;
+                args->dset[i] = task->parent_objs[i]->under_object;
             }
             else {
                 if (check_parent_task(task->parent_obj) != 0) {
@@ -9575,6 +9588,9 @@ async_dataset_write(async_instance_t *aid, size_t count, H5VL_async_t **parent_o
     async_task->under_vol_id = parent_obj[0]->under_vol_id;
     async_task->async_obj    = parent_obj[0];
     async_task->parent_obj   = parent_obj[0];
+    async_task->parent_objs  = (struct H5VL_async_t**)calloc(count, sizeof(struct H5VL_async_t*));
+    for (size_t i = 0; i < count; i++)
+        async_task->parent_objs[i] = parent_obj[i];
 
     /* Lock parent_obj */
     while (1) {
