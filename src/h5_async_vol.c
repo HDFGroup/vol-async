@@ -8796,7 +8796,7 @@ async_dataset_read(async_instance_t *aid, size_t count, H5VL_async_t **parent_ob
     async_task->under_vol_id = parent_obj[0]->under_vol_id;
     async_task->async_obj    = parent_obj[0];
     async_task->parent_obj   = parent_obj[0];
-    async_task->parent_objs  = (struct H5VL_async_t**)calloc(count, sizeof(struct H5VL_async_t*));
+    async_task->parent_objs  = (struct H5VL_async_t **)calloc(count, sizeof(struct H5VL_async_t *));
     for (size_t i = 0; i < count; i++)
         async_task->parent_objs[i] = parent_obj[i];
 
@@ -9589,7 +9589,7 @@ async_dataset_write(async_instance_t *aid, size_t count, H5VL_async_t **parent_o
     async_task->under_vol_id = parent_obj[0]->under_vol_id;
     async_task->async_obj    = parent_obj[0];
     async_task->parent_obj   = parent_obj[0];
-    async_task->parent_objs  = (struct H5VL_async_t**)calloc(count, sizeof(struct H5VL_async_t*));
+    async_task->parent_objs  = (struct H5VL_async_t **)calloc(count, sizeof(struct H5VL_async_t *));
     for (size_t i = 0; i < count; i++)
         async_task->parent_objs[i] = parent_obj[i];
 
