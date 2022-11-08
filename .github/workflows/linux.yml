@@ -252,7 +252,7 @@ jobs:
         run: |
           # Compile vol-async tests
           mydir="$PWD"
-          cd $mydir/vol-async/build
+          echo $PWD
 
           # Set Environmental Variables
           export VOL_DIR=$mydir/vol-async/install
@@ -262,10 +262,10 @@ jobs:
           export HDF5_PLUGIN_PATH="$VOL_DIR/lib"
           export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}"
           export ABT_THREAD_STACKSIZE=100000
+          export LD_PRELOAD=$mydir/argobots/lib/libabt.so
 
           date
           # Run serial and parallel tests
-          export LD_PRELOAD=$mydir/argobots/lib/libabt.so
           ctest
           date
           
