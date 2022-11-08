@@ -14,7 +14,7 @@ on:
   # Allows to run this workflow manually from the Actions tab
   workflow_dispatch:
 jobs:
-  vol-async-hdf5-1_13_2:
+  vol-async-hdf5-1_13_2-Makefile:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -106,7 +106,7 @@ jobs:
           # make check
           date
 
-  vol-async-hdf5-develop:
+  vol-async-hdf5-develop-Makefile:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -195,4 +195,87 @@ jobs:
           make
           export ABT_THREAD_STACKSIZE=100000
           # make check
+          date
+
+  vol-async-hdf5-develop-cmake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout submodule Argobots
+        uses: actions/checkout@v3
+        with:
+          submodules: 'true'
+        
+      - name: Checkout HDF5 latest
+        uses: actions/checkout@v3
+        with:
+          repository: HDFGroup/hdf5
+          path: hdf5
+      
+      - name: Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install libtool libopenmpi-dev zlib1g-dev python3 cmake
+          
+      - name: Installation
+        run: |
+          mydir="$PWD"
+          export HDF5_DIR=$mydir/hdf5/install
+          export ABT_DIR=$mydir/argobots
+          export VOL_DIR=$mydir/vol-async/install
+          
+          mkdir $HDF5_DIR
+          # Compile HDF5
+          cd hdf5
+          mkdir build
+          cd build
+          cmake -DCMAKE_INSTALL_PREFIX=$HDF5_DIR -DHDF5_ENABLE_PARALLEL=ON -DHDF5_ENABLE_THREADSAFE=ON \
+            -DALLOW_UNSUPPORTED=ON -DBUILD_TESTING=OFF -DHDF5_BUILD_HL_LIB=OFF -DHDF5_BUILD_HL_TOOLS=OFF \
+            -DHDF5_BUILD_EXAMPLES=OFF -DHDF5_BUILD_FORTRAN=OFF -DCMAKE_C_COMPILER=mpicc ..
+          make -j && make install
+          
+          # Compile Argobots
+          cd $ABT_DIR
+          ./autogen.sh
+          ./configure --prefix=$ABT_DIR
+          make && make install
+          
+          # Compile Asynchronous VOL connector
+          cd $VOL_DIR
+          mkdir build
+          cd build
+          cmake -DCMAKE_INSTALL_PREFIX=$VOL_DIR -DCMAKE_C_COMPILER=mpicc ..
+          make && make install
+          
+      - name: Compile and Test Vol-Async
+        run: |
+          # Compile vol-async tests
+          mydir="$PWD"
+          cd $mydir/build
+
+          # Set Environmental Variables
+          export H5_DIR=$mydir/hdf5
+          export VOL_DIR=$mydir/vol-async/install
+          export ABT_DIR=$mydir/argobots
+          export ASYNC_DIR=$mydir/src
+          export HDF5_DIR=$mydir/hdf5/install
+          export LD_LIBRARY_PATH=$VOL_DIR/lib:$H5_DIR/install/lib:$ABT_DIR/lib:$LD_LIBRARY_PATH
+          export HDF5_PLUGIN_PATH="$VOL_DIR/lib"
+          export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}"
+          export ABT_THREAD_STACKSIZE=100000
+
+          date
+          # Run serial and parallel tests
+          export LD_PRELOAD=$mydir/argobots/lib/libabt.so
+          ctest
+          date
+          
+          # Test with async VOL double buffering
+          cd ../build
+          cmake -DCMAKE_INSTALL_PREFIX=$VOL_DIR -DCMAKE_C_COMPILER=mpicc -DENABLE_WRITE_MEMCPY=ON ..
+          make clean
+          make && make install
+
+          ctest
           date
