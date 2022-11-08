@@ -116,7 +116,7 @@ jobs:
         with:
           submodules: 'true'
         
-      - name: Checkout HDF5 1.13.2
+      - name: Checkout HDF5 latest
         uses: actions/checkout@v3
         with:
           repository: HDFGroup/hdf5
