@@ -254,6 +254,7 @@ jobs:
           # Compile vol-async tests
           mydir="$PWD"
           echo $PWD
+          cd build
 
           # Set Environmental Variables
           export VOL_DIR=$mydir/vol-async/install
