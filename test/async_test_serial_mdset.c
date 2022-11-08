@@ -110,8 +110,6 @@ main(int argc, char *argv[])
     }
     if (print_dbg_msg)
         fprintf(stderr, "H5Dread multi done\n");
-#endif
-
     if (print_dbg_msg)
         fprintf(stderr, "H5ESwait start\n");
 
@@ -135,6 +133,7 @@ main(int argc, char *argv[])
 
     if (ret != -1)
         fprintf(stderr, "Finished verification\n");
+#endif
 
     H5ESclose(es_id);
     H5Sclose(fspace_id[0]);
