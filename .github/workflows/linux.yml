@@ -242,6 +242,8 @@ jobs:
           make && make install
           
           # Compile Asynchronous VOL connector
+          pwd
+          echo "$mydir/vol-async"
           cd $mydir/vol-async
           mkdir build
           cd build
