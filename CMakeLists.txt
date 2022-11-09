@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.12)
 
+include(CheckSymbolExists)
+
 project(HDF5_VOL_ASYNC VERSION 0.0.1 LANGUAGES C)
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
@@ -30,6 +32,16 @@ if(NOT HDF5_VOL_ASYNC_INSTALL_DATA_DIR)
 endif()
 if(NOT HDF5_VOL_ASYNC_INSTALL_TEST_DIR)
   set(HDF5_VOL_ASYNC_INSTALL_TEST_DIR ${CMAKE_INSTALL_PREFIX}/test)
+endif()
+
+check_symbol_exists(H5_HAVE_PARALLEL "H5pubconf.h" HDF5_HAVE_PARALLEL)
+if(NOT HDF5_HAVE_PARALLEL)
+  message(FATAL_ERROR "HDF5 library needs to build with enable parallel")
+endif()
+
+check_symbol_exists(H5_HAVE_THREADSAFE "H5pubconf.h" HDF5_HAVE_THREADSAFE)
+if(NOT HDF5_HAVE_THREADSAFE)
+  message(FATAL_ERROR "HDF5 library needs to build with enable threadsafe")
 endif()
 
 set(HDF5_VOL_ASYNC_PACKAGE "hdf5_vol_async")
