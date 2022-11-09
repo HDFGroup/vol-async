@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
 
-include(CheckSymbolExists)
-
 project(HDF5_VOL_ASYNC VERSION 0.0.1 LANGUAGES C)
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
@@ -33,6 +31,8 @@ endif()
 if(NOT HDF5_VOL_ASYNC_INSTALL_TEST_DIR)
   set(HDF5_VOL_ASYNC_INSTALL_TEST_DIR ${CMAKE_INSTALL_PREFIX}/test)
 endif()
+
+include(CheckSymbolExists)
 
 check_symbol_exists(H5_HAVE_PARALLEL "H5pubconf.h" HDF5_HAVE_PARALLEL)
 if(NOT HDF5_HAVE_PARALLEL)
