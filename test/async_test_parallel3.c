@@ -35,7 +35,7 @@ main(int argc, char *argv[])
     hid_t       async_fapl;
     int         proc_num, my_rank, ret = 0;
     int         mpi_thread_lvl_provided = -1;
-    hid_t       es_id = -1;
+    hid_t       es_id                   = -1;
     hbool_t     op_failed;
     size_t      num_in_progress;
 
@@ -95,14 +95,16 @@ main(int argc, char *argv[])
     mspace_id = H5Screate_simple(2, my_size, NULL);
     fspace_id = H5Screate_simple(2, ds_size, NULL);
 
-    dset0_id = H5Dcreate_async(grp_id, "dset0", H5T_NATIVE_INT, fspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
+    dset0_id = H5Dcreate_async(grp_id, "dset0", H5T_NATIVE_INT, fspace_id, H5P_DEFAULT, H5P_DEFAULT,
+                               H5P_DEFAULT, es_id);
     if (dset0_id < 0) {
         fprintf(stderr, "Error with dset0 create\n");
         ret = -1;
         goto done;
     }
 
-    dset1_id = H5Dcreate_async(grp_id, "dset1", H5T_NATIVE_INT, fspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
+    dset1_id = H5Dcreate_async(grp_id, "dset1", H5T_NATIVE_INT, fspace_id, H5P_DEFAULT, H5P_DEFAULT,
+                               H5P_DEFAULT, es_id);
     if (dset1_id < 0) {
         fprintf(stderr, "Error with dset1 create\n");
         ret = -1;
