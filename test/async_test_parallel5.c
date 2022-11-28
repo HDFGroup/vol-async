@@ -3,7 +3,6 @@
 #include <assert.h>
 #include "hdf5.h"
 #include "mpi.h"
-#include "h5_async_lib.h"
 
 /* #define DIMLEN 1024 */
 #define DIMLEN 100
@@ -39,6 +38,9 @@ main(int argc, char *argv[])
     hid_t       async_fapl;
     int         proc_num, my_rank, ret = 0;
     int         mpi_thread_lvl_provided = -1;
+    hid_t       es_id = -1;
+    hbool_t     op_failed;
+    size_t      num_in_progress;
 
     MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &mpi_thread_lvl_provided);
     assert(MPI_THREAD_MULTIPLE == mpi_thread_lvl_provided);
@@ -52,19 +54,25 @@ main(int argc, char *argv[])
             my_size[0] += DIMLEN % proc_num;
     }
 
+    es_id = H5EScreate();
+    if (es_id < 0) {
+        fprintf(stderr, "Error with first event set create\n");
+        ret = -1;
+        goto done;
+    }
+
     async_fapl = H5Pcreate(H5P_FILE_ACCESS);
 
-    /* H5Pset_vol_async(async_fapl); */
     H5Pset_fapl_mpio(async_fapl, MPI_COMM_WORLD, MPI_INFO_NULL);
 
-    file_id = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, async_fapl);
+    file_id = H5Fcreate_async(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, async_fapl, es_id);
     if (file_id < 0) {
         fprintf(stderr, "Error with file create\n");
         ret = -1;
         goto done;
     }
 
-    grp_id = H5Gcreate(file_id, grp_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    grp_id = H5Gcreate_async(file_id, grp_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
     if (grp_id < 0) {
         fprintf(stderr, "Error with group create\n");
         ret = -1;
@@ -89,14 +97,14 @@ main(int argc, char *argv[])
     mspace_id = H5Screate_simple(2, my_size, NULL);
     fspace_id = H5Screate_simple(2, ds_size, NULL);
 
-    dset0_id = H5Dcreate(grp_id, "dset0", H5T_NATIVE_INT, fspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    dset0_id = H5Dcreate_async(grp_id, "dset0", H5T_NATIVE_INT, fspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
     if (dset0_id < 0) {
         fprintf(stderr, "Error with dset0 create\n");
         ret = -1;
         goto done;
     }
 
-    dset1_id = H5Dcreate(grp_id, "dset1", H5T_NATIVE_INT, fspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    dset1_id = H5Dcreate_async(grp_id, "dset1", H5T_NATIVE_INT, fspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
     if (dset1_id < 0) {
         fprintf(stderr, "Error with dset1 create\n");
         ret = -1;
@@ -110,7 +118,7 @@ main(int argc, char *argv[])
     // W0, CR0, W1, CR1, W1', W0', R0', R1'
 
     // W0
-    status = H5Dwrite(dset0_id, H5T_NATIVE_INT, mspace_id, fspace_id, dxpl_ind_id, data0_write);
+    status = H5Dwrite_async(dset0_id, H5T_NATIVE_INT, mspace_id, fspace_id, dxpl_ind_id, data0_write, es_id);
     if (status < 0) {
         fprintf(stderr, "Error with W0\n");
         ret = -1;
@@ -120,7 +128,7 @@ main(int argc, char *argv[])
         printf("Succeed with W0\n");
 
     // CR0
-    status = H5Dread(dset0_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl_col_id, data0_read);
+    status = H5Dread_async(dset0_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl_col_id, data0_read, es_id);
     if (status < 0) {
         fprintf(stderr, "Error with R0 read\n");
         ret = -1;
@@ -129,9 +137,9 @@ main(int argc, char *argv[])
     else
         printf("Succeed with CR0\n");
 
-    status = H5Dwait(dset0_id, H5P_DEFAULT);
+    status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
     if (status < 0) {
-        fprintf(stderr, "Error with W1\n");
+        fprintf(stderr, "Error with H5ESwait\n");
         ret = -1;
         goto done;
     }
@@ -143,7 +151,7 @@ main(int argc, char *argv[])
     }
 
     // W1
-    status = H5Dwrite(dset1_id, H5T_NATIVE_INT, mspace_id, fspace_id, dxpl_ind_id, data1_write);
+    status = H5Dwrite_async(dset1_id, H5T_NATIVE_INT, mspace_id, fspace_id, dxpl_ind_id, data1_write, es_id);
     if (status < 0) {
         fprintf(stderr, "Error with W1\n");
         ret = -1;
@@ -153,7 +161,7 @@ main(int argc, char *argv[])
         printf("Succeed with W1\n");
 
     // CR1
-    status = H5Dread(dset1_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl_col_id, data1_read);
+    status = H5Dread_async(dset1_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl_col_id, data1_read, es_id);
     if (status < 0) {
         fprintf(stderr, "Error with dset 1 read\n");
         ret = -1;
@@ -162,15 +170,22 @@ main(int argc, char *argv[])
     else
         printf("Succeed with CR1\n");
 
-    status = H5Dwait(dset1_id, H5P_DEFAULT);
+    status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
     if (status < 0) {
-        fprintf(stderr, "Error with W1\n");
+        fprintf(stderr, "Error with H5ESwait\n");
         ret = -1;
         goto done;
     }
     // Verify read data
     if (verify(data1_read, DIMLEN * DIMLEN, 2, "R1") != 1) {
         fprintf(stderr, "Error with dset 1 read %d/%d\n", data1_read[i], i);
+        ret = -1;
+        goto done;
+    }
+
+    status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
+    if (status < 0) {
+        fprintf(stderr, "Error with H5ESwait\n");
         ret = -1;
         goto done;
     }
@@ -182,7 +197,7 @@ main(int argc, char *argv[])
     }
 
     // W1'
-    status = H5Dwrite(dset1_id, H5T_NATIVE_INT, mspace_id, fspace_id, dxpl_ind_id, data1_write);
+    status = H5Dwrite_async(dset1_id, H5T_NATIVE_INT, mspace_id, fspace_id, dxpl_ind_id, data1_write, es_id);
     if (status < 0) {
         fprintf(stderr, "Error with W1\n");
         ret = -1;
@@ -192,7 +207,7 @@ main(int argc, char *argv[])
         printf("Succeed with W1'\n");
 
     // W0'
-    status = H5Dwrite(dset0_id, H5T_NATIVE_INT, mspace_id, fspace_id, dxpl_ind_id, data0_write);
+    status = H5Dwrite_async(dset0_id, H5T_NATIVE_INT, mspace_id, fspace_id, dxpl_ind_id, data0_write, es_id);
     if (status < 0) {
         fprintf(stderr, "Error with W0\n");
         ret = -1;
@@ -201,10 +216,10 @@ main(int argc, char *argv[])
     else
         printf("Succeed with W0'\n");
 
-    H5Fflush(file_id, H5F_SCOPE_GLOBAL);
+    H5Fflush_async(file_id, H5F_SCOPE_GLOBAL, es_id);
 
     // R0'
-    status = H5Dread(dset0_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl_ind_id, data0_read);
+    status = H5Dread_async(dset0_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl_ind_id, data0_read, es_id);
     if (status < 0) {
         fprintf(stderr, "Error with dset 0 read\n");
         ret = -1;
@@ -213,9 +228,9 @@ main(int argc, char *argv[])
     else
         printf("Succeed with R0'\n");
 
-    status = H5Dwait(dset0_id, H5P_DEFAULT);
+    status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
     if (status < 0) {
-        fprintf(stderr, "Error with W1\n");
+        fprintf(stderr, "Error with H5ESwait\n");
         ret = -1;
         goto done;
     }
@@ -227,7 +242,7 @@ main(int argc, char *argv[])
     }
 
     // R1'
-    status = H5Dread(dset1_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl_ind_id, data1_read);
+    status = H5Dread_async(dset1_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl_ind_id, data1_read, es_id);
     if (status < 0) {
         fprintf(stderr, "Error with dset 1 read\n");
         ret = -1;
@@ -235,9 +250,9 @@ main(int argc, char *argv[])
     }
     else
         printf("Succeed with R1'\n");
-    status = H5Dwait(dset1_id, H5P_DEFAULT);
+    status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
     if (status < 0) {
-        fprintf(stderr, "Error with W1\n");
+        fprintf(stderr, "Error with H5ESwait\n");
         ret = -1;
         goto done;
     }
@@ -248,13 +263,24 @@ main(int argc, char *argv[])
         goto done;
     }
 
-done:
     H5Pclose(async_fapl);
     H5Sclose(mspace_id);
-    H5Dclose(dset0_id);
-    H5Dclose(dset1_id);
-    H5Gclose(grp_id);
-    H5Fclose(file_id);
+    H5Dclose_async(dset0_id, es_id);
+    H5Dclose_async(dset1_id, es_id);
+    H5Gclose_async(grp_id, es_id);
+done:
+    H5Fclose_async(file_id, es_id);
+    status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
+    if (status < 0) {
+        fprintf(stderr, "Error with H5ESwait\n");
+        ret = -1;
+    }
+
+    status = H5ESclose(es_id);
+    if (status < 0) {
+        fprintf(stderr, "Can't close second event set\n");
+        ret = -1;
+    }
 
     if (data0_write != NULL)
         free(data0_write);

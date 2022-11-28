@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include "hdf5.h"
 #include "mpi.h"
-#include "h5_async_lib.h"
 
 #define DIMLEN 10
 /* #define DIMLEN 1024 */
@@ -23,6 +22,9 @@ main(int argc, char *argv[])
     hid_t       async_fapl;
     int         proc_num, my_rank, ret = 0;
     int         mpi_thread_lvl_provided = -1;
+    hid_t       es_id = -1;
+    hbool_t     op_failed;
+    size_t      num_in_progress;
 
     MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &mpi_thread_lvl_provided);
     assert(MPI_THREAD_MULTIPLE == mpi_thread_lvl_provided);
@@ -36,21 +38,26 @@ main(int argc, char *argv[])
             my_size[0] += DIMLEN % proc_num;
     }
 
+    es_id = H5EScreate();
+    if (es_id < 0) {
+        fprintf(stderr, "Error with first event set create\n");
+        ret = -1;
+        goto done;
+    }
+
     async_fapl = H5Pcreate(H5P_FILE_ACCESS);
 
-    /* status = H5Pset_vol_async(async_fapl); */
-    /* assert(status >= 0); */
     status = H5Pset_fapl_mpio(async_fapl, MPI_COMM_WORLD, MPI_INFO_NULL);
     assert(status >= 0);
 
-    file_id = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, async_fapl);
+    file_id = H5Fcreate_async(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, async_fapl, es_id);
     if (file_id < 0) {
         fprintf(stderr, "Error with file create\n");
         ret = -1;
         goto done;
     }
 
-    grp_id = H5Gcreate(file_id, grp_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    grp_id = H5Gcreate_async(file_id, grp_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
     if (grp_id < 0) {
         fprintf(stderr, "Error with group create\n");
         ret = -1;
@@ -73,14 +80,14 @@ main(int argc, char *argv[])
     mspace_id = H5Screate_simple(2, my_size, NULL);
     fspace_id = H5Screate_simple(2, ds_size, NULL);
 
-    dset0_id = H5Dcreate(grp_id, "dset0", H5T_NATIVE_INT, fspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    dset0_id = H5Dcreate_async(grp_id, "dset0", H5T_NATIVE_INT, fspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
     if (dset0_id < 0) {
         fprintf(stderr, "Error with dset0 create\n");
         ret = -1;
         goto done;
     }
 
-    dset1_id = H5Dcreate(grp_id, "dset1", H5T_NATIVE_INT, fspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    dset1_id = H5Dcreate_async(grp_id, "dset1", H5T_NATIVE_INT, fspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
     if (dset1_id < 0) {
         fprintf(stderr, "Error with dset1 create\n");
         goto done;
@@ -94,7 +101,7 @@ main(int argc, char *argv[])
      * my_size[1]); */
 
     // W0, R0, W1, R1, W1', W0'
-    status = H5Dwrite(dset0_id, H5T_NATIVE_INT, mspace_id, fspace_id, dxpl_id, data0_write);
+    status = H5Dwrite_async(dset0_id, H5T_NATIVE_INT, mspace_id, fspace_id, dxpl_id, data0_write, es_id);
     if (status < 0) {
         fprintf(stderr, "Error with dset 0 write\n");
         ret = -1;
@@ -103,7 +110,7 @@ main(int argc, char *argv[])
     else
         fprintf(stderr, "Succeed with dset 0 write\n");
 
-    status = H5Dread(dset0_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl_id, data0_read);
+    status = H5Dread_async(dset0_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl_id, data0_read, es_id);
     if (status < 0) {
         fprintf(stderr, "Error with dset 0 read\n");
         ret = -1;
@@ -111,7 +118,13 @@ main(int argc, char *argv[])
     }
 
     // Verify read data
-    H5Dwait(dset0_id, H5P_DEFAULT);
+    status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
+    if (status < 0) {
+        fprintf(stderr, "Error with H5ESwait\n");
+        ret = -1;
+        goto done;
+    }
+
     is_verified = 1;
     for (i = 0; i < DIMLEN * DIMLEN; ++i) {
         if (data0_read[i] != i) {
@@ -124,7 +137,7 @@ main(int argc, char *argv[])
     if (is_verified == 1)
         fprintf(stderr, "Succeed with dset 0 read: %d \n", data0_read[0]);
 
-    status = H5Dwrite(dset1_id, H5T_NATIVE_INT, mspace_id, fspace_id, dxpl_id, data1_write);
+    status = H5Dwrite_async(dset1_id, H5T_NATIVE_INT, mspace_id, fspace_id, dxpl_id, data1_write, es_id);
     if (status < 0) {
         fprintf(stderr, "Error with dset 1 write\n");
         ret = -1;
@@ -133,7 +146,7 @@ main(int argc, char *argv[])
     else
         fprintf(stderr, "Succeed with dset 1 write\n");
 
-    status = H5Dread(dset1_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl_id, data1_read);
+    status = H5Dread_async(dset1_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl_id, data1_read, es_id);
     if (status < 0) {
         fprintf(stderr, "Error with dset 1 read\n");
         ret = -1;
@@ -141,7 +154,12 @@ main(int argc, char *argv[])
     }
 
     // Verify read data
-    H5Dwait(dset1_id, H5P_DEFAULT);
+    status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
+    if (status < 0) {
+        fprintf(stderr, "Error with H5ESwait\n");
+        ret = -1;
+        goto done;
+    }
     is_verified = 1;
     for (i = 0; i < DIMLEN * DIMLEN; ++i) {
         if (data1_read[i] != 2 * i) {
@@ -160,7 +178,7 @@ main(int argc, char *argv[])
         data1_write[i] *= -1;
     }
 
-    status = H5Dwrite(dset1_id, H5T_NATIVE_INT, mspace_id, fspace_id, dxpl_id, data1_write);
+    status = H5Dwrite_async(dset1_id, H5T_NATIVE_INT, mspace_id, fspace_id, dxpl_id, data1_write, es_id);
     if (status < 0) {
         fprintf(stderr, "Error with dset 1 write\n");
         ret = -1;
@@ -169,7 +187,7 @@ main(int argc, char *argv[])
     else
         fprintf(stderr, "Succeed with dset 1 write\n");
 
-    status = H5Dwrite(dset0_id, H5T_NATIVE_INT, mspace_id, fspace_id, H5P_DEFAULT, data0_write);
+    status = H5Dwrite_async(dset0_id, H5T_NATIVE_INT, mspace_id, fspace_id, H5P_DEFAULT, data0_write, es_id);
     if (status < 0) {
         fprintf(stderr, "Error with dset 0 write\n");
         ret = -1;
@@ -178,7 +196,7 @@ main(int argc, char *argv[])
     else
         fprintf(stderr, "Succeed with dset 0 write\n");
 
-    status = H5Dread(dset0_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl_id, data0_read);
+    status = H5Dread_async(dset0_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl_id, data0_read, es_id);
     if (status < 0) {
         fprintf(stderr, "Error with dset 0 read\n");
         ret = -1;
@@ -186,7 +204,12 @@ main(int argc, char *argv[])
     }
 
     // Verify read data
-    H5Dwait(dset0_id, H5P_DEFAULT);
+    status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
+    if (status < 0) {
+        fprintf(stderr, "Error with H5ESwait\n");
+        ret = -1;
+        goto done;
+    }
     is_verified = 1;
     for (i = 0; i < DIMLEN * DIMLEN; ++i) {
         if (data0_read[i] != -i) {
@@ -199,13 +222,19 @@ main(int argc, char *argv[])
     if (is_verified == 1)
         fprintf(stderr, "Succeed with dset 0 read: %d\n", data0_read[0]);
 
-    status = H5Dread(dset1_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl_id, data1_read);
+    status = H5Dread_async(dset1_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl_id, data1_read, es_id);
     if (status < 0) {
         fprintf(stderr, "Error with dset 1 read\n");
         ret = -1;
         goto done;
     }
-    H5Dwait(dset1_id, H5P_DEFAULT);
+
+    status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
+    if (status < 0) {
+        fprintf(stderr, "Error with H5ESwait\n");
+        ret = -1;
+        goto done;
+    }
     // Verify read data
     is_verified = 1;
     for (i = 0; i < DIMLEN * DIMLEN; ++i) {
@@ -221,13 +250,23 @@ main(int argc, char *argv[])
 
     H5Pclose(async_fapl);
     H5Sclose(mspace_id);
-    H5Dclose(dset0_id);
-    H5Dclose(dset1_id);
-    H5Gclose(grp_id);
+    H5Dclose_async(dset0_id, es_id);
+    H5Dclose_async(dset1_id, es_id);
+    H5Gclose_async(grp_id, es_id);
 
 done:
-    /* H5Fwait(file_id); */
-    H5Fclose(file_id);
+    H5Fclose_async(file_id, es_id);
+    status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
+    if (status < 0) {
+        fprintf(stderr, "Error with H5ESwait\n");
+        ret = -1;
+    }
+
+    status = H5ESclose(es_id);
+    if (status < 0) {
+        fprintf(stderr, "Can't close second event set\n");
+        ret = -1;
+    }
 
     if (data0_write != NULL)
         free(data0_write);
