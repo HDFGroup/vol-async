@@ -156,6 +156,9 @@ export HDF5_ASYNC_EXE_GCLOSE=1
 export HDF5_ASYNC_EXE_DCLOSE=1
 ```
 
+## Limitation
+Async VOL has additional overhead due to its internal management of asynchronous tasks and the background thread execution. If the application is metadata-intensive, e.g. create thousands of groups, datasets, or attributes, this overhead (~0.001s per operation) becomes comparable to the creation time, and could result in worse performance. There may also be additional overhead due to the ``wait and check'' mechnism (mentioned above) unless HDF5_ASYNC_EXE_* is set.
+
 ## Know Issues
 When an application has a large number of HDF5 function calls, an error like the following may occur:
 
