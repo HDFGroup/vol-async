@@ -3186,7 +3186,7 @@ check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *
 
     while (async_instance_g->pause) {
 #ifdef ENABLE_DBG_MSG
-	fprintf(fout_g, "  [ASYNC ABT INFO] async operations are paused\n");
+        fprintf(fout_g, "  [ASYNC ABT INFO] async operations are paused\n");
 #endif
         usleep(1000);
         wait_count++;
