@@ -1,6 +1,11 @@
 Known Issues
 ============
 
+## Know Issues
+Slow performance with metadata heavy workload
+---------------------------------------------
+Async VOL has additional overhead due to its internal management of asynchronous tasks and the background thread execution. If the application is metadata-intensive, e.g. create thousands of groups, datasets, or attributes, this overhead (~0.001s per operation) becomes comparable to the creation time, and could result in worse performance. There may also be additional overhead due to the *wait and check* mechnism  unless ``HDF5_ASYNC_EXE_*`` is set.
+
 ABT_thread_create SegFault
 --------------------------
 When an application has a large number of HDF5 function calls, an error like the following may occur:
@@ -21,10 +26,6 @@ This is due to the default Argobots thread stack size being too small, and can b
 .. code-block::
 
     export ABT_THREAD_STACKSIZE=100000
-
-Object Flush
-------------
-Currently due to an issue with the HDF5 library handling its internal object ID, asynchronous and synchronous flush operations will fail. 
 
 EventSet ID with Multiple Files
 -------------------------------

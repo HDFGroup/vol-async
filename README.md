@@ -16,17 +16,17 @@ Some configuration parameters used in the instructions:
     VOL_DIR :  directory of HDF5 Asynchronous I/O VOL connector repository
     ABT_DIR :  directory of Argobots source code
     HDF5_DIR:  directory of HDF5 source code
-        
+
 We have tested async VOL compiled with GNU(gcc 6.4+), Intel, and Cray compilers on Summit, Cori, and Theta supercomputers.
 
 ## 2. Installation
-    
+
 ### 2.1 Installation with Spack
 [Spack](https://spack.io) is a flexible package manager that supports multiple versions, configurations, platforms, and compilers. 
 Async VOL and its dependent libraries (MPI, HDF5, Argobots) can all be installed with the following spack command:
 
     spack install hdf5-vol-async
-    
+
 ### 2.2 Installation with Makefile
 
 2.2.1 Download and Compile HDF5
@@ -87,10 +87,10 @@ MacOS:
     # (Optional) update the compiler flag macros: DEBUG, CFLAGS, LIBS, ARFLAGS
     # (Optional) comment/uncomment the correct DYNLIB & LDFLAGS macro
     make
-    
+
 Running the automated tests requires Python3.
 (Optional) If the system is not using mpirun to launch MPI tasks, edit mpirun_cmd in pytest.py with the corresponding MPI launch command.
-    
+
 Run both the serial and parallel tests
 
     make check
@@ -118,7 +118,7 @@ The asynchronous tasks often involve MPI collecive operations from the HDF5 libr
 thus we require to initialize MPI with MPI_THREAD_MULTIPLE support. Change MPI_Init(argc, argv) in your application's code to the following:
 
     MPI_Init_thread(argc, argv, MPI_THREAD_MULTIPLE, &provided);
-        
+
 6.2 Use event set and new async API to manage asynchronous I/O operations
 
     es_id = H5EScreate();                        // Create event set for tracking async operations
@@ -156,7 +156,7 @@ export HDF5_ASYNC_EXE_GCLOSE=1
 export HDF5_ASYNC_EXE_DCLOSE=1
 ```
 
-## Limitation
+## Limitations
 Async VOL has additional overhead due to its internal management of asynchronous tasks and the background thread execution. If the application is metadata-intensive, e.g. create thousands of groups, datasets, or attributes, this overhead (~0.001s per operation) becomes comparable to the creation time, and could result in worse performance. There may also be additional overhead due to the ``wait and check'' mechnism (mentioned above) unless HDF5_ASYNC_EXE_* is set.
 
 ## Know Issues
