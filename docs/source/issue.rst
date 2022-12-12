@@ -1,7 +1,6 @@
 Known Issues
 ============
 
-## Know Issues
 Slow performance with metadata heavy workload
 ---------------------------------------------
 Async VOL has additional overhead due to its internal management of asynchronous tasks and the background thread execution. If the application is metadata-intensive, e.g. create thousands of groups, datasets, or attributes, this overhead (~0.001s per operation) becomes comparable to the creation time, and could result in worse performance. There may also be additional overhead due to the *wait and check* mechnism  unless ``HDF5_ASYNC_EXE_*`` is set.
