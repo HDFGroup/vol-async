@@ -1603,6 +1603,13 @@ H5VL_async_dxpl_set_pause(hid_t dxpl)
                     fprintf(fout_g, "  [ASYNC VOL DBG] set pause async execution to %d\n", is_pause);
 #endif
             }
+#ifdef ENABLE_DBG_MSG
+            else {
+                if (async_instance_g &&
+                    (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+                    fprintf(fout_g, "  [ASYNC VOL DBG] pause async execution unchanged %d\n", is_pause);
+            }
+#endif
         }
         else {
             if (async_instance_g->pause != is_pause) {
@@ -3178,6 +3185,9 @@ check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *
     }
 
     while (async_instance_g->pause) {
+#ifdef ENABLE_DBG_MSG
+	fprintf(fout_g, "  [ASYNC ABT INFO] async operations are paused\n");
+#endif
         usleep(1000);
         wait_count++;
         if (wait_count == 10000) {
@@ -24157,7 +24167,7 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
     async_task_t *   task;
     ABT_thread_state state;
     hbool_t          acquired    = false;
-    unsigned int     mutex_count = 1;
+    unsigned int     mutex_count = 0;
     hbool_t          tmp         = async_instance_g->start_abt_push;
 
     assert(obj);
@@ -24270,8 +24280,8 @@ done:
     async_instance_g->start_abt_push = tmp;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] %s reacquire global lock, reset ASYNC MODE to %d\n", __func__,
-                tmp);
+        fprintf(fout_g, "  [ASYNC VOL DBG] %s reacquire global lock %d, reset ASYNC MODE to %d\n", __func__,
+                mutex_count, tmp);
 #endif
 
     return ret_value;
