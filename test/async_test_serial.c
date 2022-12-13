@@ -420,6 +420,11 @@ main(int argc, char *argv[])
         ret = -1;
         goto done;
     }
+    if (nlink != 2) {
+        fprintf(stderr, "Error with link iteration\n");
+        ret = -1;
+        goto done;
+    }
     printf("Finished iteration\n");
 
     /* H5Fwait(file_id); */
