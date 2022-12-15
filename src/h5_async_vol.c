@@ -24219,12 +24219,17 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
             usleep(1000);
         }
     }
+    else if (timeout == 0) {
+        // timeout 0, start push all tasks in queue
+        func_log(__func__, "0 timeout, start push");
+        H5VL_async_start();
+        goto done;
+    }
 
     trigger    = (double)timeout;
     start_time = clock();
 
     do {
-        /* if (NULL == task->abt_thread) { */
         if (task->is_done == 1 || task->magic != TASK_MAGIC) {
             if (task->err_stack)
                 *status = H5VL_REQUEST_STATUS_FAIL;
@@ -24232,7 +24237,6 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
                 *status = H5VL_REQUEST_STATUS_SUCCEED;
             goto done;
         }
-        /* } */
 
         if (timeout == H5ES_WAIT_FOREVER && task->eventual) {
             ABT_eventual_wait(task->eventual, NULL);
@@ -24270,19 +24274,20 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
 #endif
 
 done:
+
     if (timeout > 0) {
         while (false == acquired && mutex_count > 0) {
             if (H5TSmutex_acquire(mutex_count, &acquired) < 0)
                 fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_acquire\n", __func__);
         }
-    }
 
-    async_instance_g->start_abt_push = tmp;
 #ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] %s reacquire global lock %d, reset ASYNC MODE to %d\n", __func__,
-                mutex_count, tmp);
+        if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s reacquire global lock %d, reset ASYNC MODE to %d\n", __func__,
+                    mutex_count, tmp);
 #endif
+        async_instance_g->start_abt_push = tmp;
+    }
 
     return ret_value;
 } /* end H5VL_async_request_wait() */
