@@ -24282,9 +24282,10 @@ done:
         }
 
 #ifdef ENABLE_DBG_MSG
-        if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s reacquire global lock %d, reset ASYNC MODE to %d\n", __func__,
-                    mutex_count, tmp);
+        if (async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] %s reacquire global lock %d, reset ASYNC MODE to %d\n",
+                    __func__, mutex_count, tmp);
 #endif
         async_instance_g->start_abt_push = tmp;
     }
