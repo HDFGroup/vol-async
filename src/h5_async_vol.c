@@ -23456,6 +23456,7 @@ H5VL_async_group_close(void *grp, hid_t dxpl_id, void **req)
     herr_t          ret_value;
     hbool_t         is_term;
     task_list_qtype qtype = REGULAR;
+    ABT_unit_id     abt_id = 0;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL H5Gclose\n");
@@ -23463,7 +23464,11 @@ H5VL_async_group_close(void *grp, hid_t dxpl_id, void **req)
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit) {
+    // Check if close comes from the background thread, if so, run in that (async) thread directly
+    if (ABT_SUCCESS != ABT_self_get_thread_id(&abt_id))
+        fprintf(fout_g, "  [ASYNC VOL ERROR] with ABT_self_get_thread_id\n");
+
+    if (async_instance_g->disable_implicit_file || async_instance_g->disable_implicit || abt_id > 0) {
         ret_value = H5VLgroup_close(o->under_object, o->under_vol_id, dxpl_id, req);
 
         /* Check for async request */
