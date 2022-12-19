@@ -23455,7 +23455,7 @@ H5VL_async_group_close(void *grp, hid_t dxpl_id, void **req)
     H5VL_async_t *  o = (H5VL_async_t *)grp;
     herr_t          ret_value;
     hbool_t         is_term;
-    task_list_qtype qtype = REGULAR;
+    task_list_qtype qtype  = REGULAR;
     ABT_unit_id     abt_id = 0;
 
 #ifdef ENABLE_ASYNC_LOGGING
