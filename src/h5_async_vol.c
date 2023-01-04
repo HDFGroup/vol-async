@@ -8709,9 +8709,9 @@ done:
     for (size_t i = 0; i < args->count; i++) {
         if (args->mem_type_id[i] > 0)
             H5Tclose(args->mem_type_id[i]);
-        if (args->mem_space_id[i] > 0)
+        if (args->mem_space_id[i] > H5S_PLIST && args->mem_space_id[i] < H5S_UNLIMITED)
             H5Sclose(args->mem_space_id[i]);
-        if (args->file_space_id[i] > 0)
+        if (args->file_space_id[i] > H5S_PLIST && args->file_space_id[i] < H5S_UNLIMITED)
             H5Sclose(args->file_space_id[i]);
     }
     free(args->mem_type_id);
@@ -8789,10 +8789,14 @@ async_dataset_read(async_instance_t *aid, size_t count, H5VL_async_t **parent_ob
         args->dset[i] = parent_obj[i]->under_object;
         if (mem_type_id[i] > 0)
             args->mem_type_id[i] = H5Tcopy(mem_type_id[i]);
-        if (mem_space_id[i] > 0)
+        if (mem_space_id[i] > H5S_PLIST && mem_space_id[i] < H5S_UNLIMITED)
             args->mem_space_id[i] = H5Scopy(mem_space_id[i]);
-        if (file_space_id[i] > 0)
+        else
+            args->mem_space_id[i] = mem_space_id[i];
+        if (file_space_id[i] > H5S_PLIST && file_space_id[i] < H5S_UNLIMITED)
             args->file_space_id[i] = H5Scopy(file_space_id[i]);
+        else
+            args->file_space_id[i] = file_space_id[i];
         args->buf[i] = buf[i];
     }
     if (plist_id > 0)
@@ -9055,9 +9059,9 @@ done:
 
     if (args->mem_type_id > 0)
         H5Tclose(args->mem_type_id);
-    if (args->mem_space_id > 0)
+    if (args->mem_space_id > H5S_PLIST && mem_space_id < H5S_UNLIMITED)
         H5Sclose(args->mem_space_id);
-    if (args->file_space_id > 0)
+    if (args->file_space_id > H5S_PLIST && file_space_id < H5S_UNLIMITED)
         H5Sclose(args->file_space_id);
     if (args->plist_id > 0)
         H5Pclose(args->plist_id);
@@ -9123,10 +9127,14 @@ async_dataset_read(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_ty
     args->dset = parent_obj->under_object;
     if (mem_type_id > 0)
         args->mem_type_id = H5Tcopy(mem_type_id);
-    if (mem_space_id > 0)
+    if (mem_space_id > H5S_PLIST && mem_space_id < H5S_UNLIMITED)
         args->mem_space_id = H5Scopy(mem_space_id);
-    if (file_space_id > 0)
+    else
+        args->mem_space_id = mem_space_id;
+    if (file_space_id > H5S_PLIST && file_space_id < H5S_UNLIMITED)
         args->file_space_id = H5Scopy(file_space_id);
+    else
+        args->file_space_id = file_space_id;
     if (plist_id > 0)
         args->plist_id = H5Pcopy(plist_id);
     args->buf = buf;
@@ -9430,9 +9438,9 @@ done:
     for (size_t i = 0; i < args->count; i++) {
         if (args->mem_type_id[i] > 0)
             H5Tclose(args->mem_type_id[i]);
-        if (args->mem_space_id[i] > 0)
+        if (args->mem_space_id[i] > H5S_PLIST && args->mem_space_id[i] < H5S_UNLIMITED)
             H5Sclose(args->mem_space_id[i]);
-        if (args->file_space_id[i] > 0)
+        if (args->file_space_id[i] > H5S_PLIST && args->file_space_id[i] < H5S_UNLIMITED)
             H5Sclose(args->file_space_id[i]);
     }
     free(args->dset);
@@ -9524,10 +9532,14 @@ async_dataset_write(async_instance_t *aid, size_t count, H5VL_async_t **parent_o
         args->dset[i] = parent_obj[i]->under_object;
         if (mem_type_id[i] > 0)
             args->mem_type_id[i] = H5Tcopy(mem_type_id[i]);
-        if (mem_space_id[i] > 0)
+        if (mem_space_id[i] > H5S_PLIST && mem_space_id[i] < H5S_UNLIMITED)
             args->mem_space_id[i] = H5Scopy(mem_space_id[i]);
-        if (file_space_id[i] > 0)
+        else
+            args->mem_space_id[i] = mem_space_id[i];
+        if (file_space_id[i] > H5S_PLIST && file_space_id[i] < H5S_UNLIMITED)
             args->file_space_id[i] = H5Scopy(file_space_id[i]);
+        else
+            args->file_space_id[i] = file_space_id[i];
         args->buf[i] = (void *)buf[i];
     }
     if (plist_id > 0)
@@ -9871,9 +9883,9 @@ done:
 
     if (args->mem_type_id > 0)
         H5Tclose(args->mem_type_id);
-    if (args->mem_space_id > 0)
+    if (args->mem_space_id > H5S_PLIST && mem_space_id < H5S_UNLIMITED)
         H5Sclose(args->mem_space_id);
-    if (args->file_space_id > 0)
+    if (args->file_space_id > H5S_PLIST && file_space_id < H5S_UNLIMITED)
         H5Sclose(args->file_space_id);
     if (args->plist_id > 0)
         H5Pclose(args->plist_id);
@@ -9950,10 +9962,14 @@ async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_t
     args->dset = parent_obj->under_object;
     if (mem_type_id > 0)
         args->mem_type_id = H5Tcopy(mem_type_id);
-    if (mem_space_id > 0)
+    if (mem_space_id > H5S_PLIST && mem_space_id < H5S_UNLIMITED)
         args->mem_space_id = H5Scopy(mem_space_id);
-    if (file_space_id > 0)
+    else
+        args->mem_space_id = mem_space_id;
+    if (file_space_id > H5S_PLIST && file_space_id < H5S_UNLIMITED)
         args->file_space_id = H5Scopy(file_space_id);
+    else
+        args->file_space_id = file_space_id;
     if (plist_id > 0)
         args->plist_id = H5Pcopy(plist_id);
     args->buf = (void *)buf;
