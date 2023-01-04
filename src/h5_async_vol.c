@@ -9059,9 +9059,9 @@ done:
 
     if (args->mem_type_id > 0)
         H5Tclose(args->mem_type_id);
-    if (args->mem_space_id > H5S_PLIST && mem_space_id < H5S_UNLIMITED)
+    if (args->mem_space_id > H5S_PLIST && args->mem_space_id < H5S_UNLIMITED)
         H5Sclose(args->mem_space_id);
-    if (args->file_space_id > H5S_PLIST && file_space_id < H5S_UNLIMITED)
+    if (args->file_space_id > H5S_PLIST && args->file_space_id < H5S_UNLIMITED)
         H5Sclose(args->file_space_id);
     if (args->plist_id > 0)
         H5Pclose(args->plist_id);
@@ -9883,9 +9883,9 @@ done:
 
     if (args->mem_type_id > 0)
         H5Tclose(args->mem_type_id);
-    if (args->mem_space_id > H5S_PLIST && mem_space_id < H5S_UNLIMITED)
+    if (args->mem_space_id > H5S_PLIST && args->mem_space_id < H5S_UNLIMITED)
         H5Sclose(args->mem_space_id);
-    if (args->file_space_id > H5S_PLIST && file_space_id < H5S_UNLIMITED)
+    if (args->file_space_id > H5S_PLIST && args->file_space_id < H5S_UNLIMITED)
         H5Sclose(args->file_space_id);
     if (args->plist_id > 0)
         H5Pclose(args->plist_id);
