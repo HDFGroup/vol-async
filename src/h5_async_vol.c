@@ -111,7 +111,7 @@ typedef struct H5VL_async_wrap_ctx_t {
 
 typedef enum { QTYPE_NONE, REGULAR, DEPENDENT, COLLECTIVE, BLOCKING, ISOLATED } task_list_qtype;
 typedef enum { OP_NONE, READ, WRITE } obj_op_type;
-typedef enum { FILE_OP, GROUP_OP, DSET_OP, ATTR_OP, DTYPE_OP, LINK_OP, OBJ_OP } hdf5_op_type;
+typedef enum { FILE_OP, GROUP_OP, DSET_OP, DSET_RW_OP, ATTR_OP, DTYPE_OP, LINK_OP, OBJ_OP } hdf5_op_type;
 const char *qtype_names_g[10] = {"QTYPE_NONE", "REGULAR", "DEPENDENT", "COLLECTIVE", "BLOCKING", "ISOLATED"};
 
 struct H5VL_async_t;
@@ -209,7 +209,7 @@ typedef struct async_instance_t {
     bool          pause;                    /* Pause background thread execution */
     bool          disable_implicit_file;    /* Disable implicit async execution globally */
     bool          disable_implicit;         /* Disable implicit async execution for dxpl */
-    bool          disable_implicit_nondset; /* Disable non-dataset implicit async execution globally */
+    bool          disable_implicit_nondrw;  /* Disable non-dataset read/write implicit async execution globally */
     bool          delay_time_env;           /* Flag that indicates the delay time is set by env variable */
     bool          disable_async_dset_get;   /* Disable async execution for dataset get */
     uint64_t      delay_time; /* Sleep time before background thread trying to acquire global mutex */
@@ -1337,7 +1337,7 @@ async_instance_init(int backing_thread_count)
     aid->disable_implicit_file    = false;
     aid->delay_time_env           = false;
     aid->disable_async_dset_get   = true;
-    aid->disable_implicit_nondset = false;
+    aid->disable_implicit_nondrw  = false;
 
     // Check for delaying operations to file / group / dataset close operations
     env_var = getenv("HDF5_ASYNC_EXE_FCLOSE");
@@ -1364,9 +1364,9 @@ async_instance_init(int backing_thread_count)
     if (env_var && *env_var && atoi(env_var) <= 0)
         aid->disable_async_dset_get = false;
 
-    env_var = getenv("HDF5_ASYNC_DISABLE_NONDSET_IMPLICIT");
+    env_var = getenv("HDF5_ASYNC_DISABLE_IMPLICIT_NON_DSET_RW");
     if (env_var && *env_var && atoi(env_var) > 0)
-        aid->disable_implicit_nondset = true;
+        aid->disable_implicit_nondrw  = true;
 
 #ifdef ENABLE_WRITE_MEMCPY
     // Get max memory allowed for async memcpy
@@ -21819,8 +21819,8 @@ H5VL_async_is_implicit_disabled(int op_type, const char *func_name)
         ret_value = 1;
     }
     // Need file ops to be implicit to init requried internal data structures
-    if (op_type != FILE_OP && op_type != DSET_OP && async_instance_g->disable_implicit_nondset) {
-        func_log(func_name, "implicit async disabled with disable_implicit_nondset");
+    if (op_type != FILE_OP && op_type != DSET_RW_OP && async_instance_g->disable_implicit_nondrw ) {
+        func_log(func_name, "implicit async disabled with disable_implicit_nondrw ");
         ret_value = 1;
     }
 
@@ -22292,7 +22292,7 @@ H5VL_async_dataset_read(size_t count, void *dset[], hid_t mem_type_id[], hid_t m
     H5VL_async_dxpl_set_disable_implicit(plist_id);
     H5VL_async_dxpl_set_pause(plist_id);
 
-    if (H5VL_async_is_implicit_disabled(DSET_OP, __func__)) {
+    if (H5VL_async_is_implicit_disabled(DSET_RW_OP, __func__)) {
         /* Allocate obj array if necessary */
         if (count > 1) {
             if (NULL == (obj = (void **)calloc(count, sizeof(void *))))
@@ -22341,7 +22341,7 @@ H5VL_async_dataset_read(void *dset, hid_t mem_type_id, hid_t mem_space_id, hid_t
     H5VL_async_dxpl_set_disable_implicit(plist_id);
     H5VL_async_dxpl_set_pause(plist_id);
 
-    if (H5VL_async_is_implicit_disabled(DSET_OP, __func__)) {
+    if (H5VL_async_is_implicit_disabled(DSET_RW_OP, __func__)) {
         ret_value = H5VLdataset_read(o->under_object, o->under_vol_id, mem_type_id, mem_space_id,
                                      file_space_id, plist_id, buf, req);
         /* Check for async request */
@@ -22387,7 +22387,7 @@ H5VL_async_dataset_write(size_t count, void *dset[], hid_t mem_type_id[], hid_t 
     H5VL_async_dxpl_set_disable_implicit(plist_id);
     H5VL_async_dxpl_set_pause(plist_id);
 
-    if (H5VL_async_is_implicit_disabled(DSET_OP, __func__)) {
+    if (H5VL_async_is_implicit_disabled(DSET_RW_OP, __func__)) {
         /* Allocate obj array if necessary */
         if (count > 1) {
             if (NULL == (obj = (void **)calloc(count, sizeof(void *))))
@@ -22438,7 +22438,7 @@ H5VL_async_dataset_write(void *dset, hid_t mem_type_id, hid_t mem_space_id, hid_
     H5VL_async_dxpl_set_disable_implicit(plist_id);
     H5VL_async_dxpl_set_pause(plist_id);
 
-    if (H5VL_async_is_implicit_disabled(DSET_OP, __func__)) {
+    if (H5VL_async_is_implicit_disabled(DSET_RW_OP, __func__)) {
         ret_value = H5VLdataset_write(o->under_object, o->under_vol_id, mem_type_id, mem_space_id,
                                       file_space_id, plist_id, buf, req);
 
