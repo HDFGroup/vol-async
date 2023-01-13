@@ -1808,8 +1808,8 @@ static herr_t H5VL_async_init(hid_t __attribute__((unused)) vipl_id)
 static void
 async_waitall(int is_implicit)
 {
-    int    sleeptime = 1000;
-    size_t size = 1;
+    int          sleeptime   = 1000;
+    size_t       size        = 1;
     unsigned int mutex_count = 1;
     hbool_t      acquired    = false;
     hbool_t      tmp         = async_instance_g->start_abt_push;
