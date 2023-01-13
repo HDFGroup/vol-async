@@ -1808,7 +1808,7 @@ static herr_t H5VL_async_init(hid_t __attribute__((unused)) vipl_id)
 static void
 async_waitall(int is_implicit)
 {
-    int    sleeptime = 100000;
+    int    sleeptime = 1000;
     size_t size = 1;
     unsigned int mutex_count = 1;
     hbool_t acquired = false;
@@ -1821,8 +1821,6 @@ async_waitall(int is_implicit)
 
     while (async_instance_g && async_instance_g->pool && (async_instance_g->nfopen > 0 || size > 0)) {
 
-        usleep(sleeptime);
-
         ABT_pool_get_size(async_instance_g->pool, &size);
         /* printf("H5VLasync_wailall: pool size is %lu\n", size); */
 
@@ -1832,13 +1830,15 @@ async_waitall(int is_implicit)
             if (async_instance_g->nfopen == 0)
                 break;
         }
+
+        usleep(sleeptime);
     }
 
     while (false == acquired && mutex_count > 0) {
         if (H5TSmutex_acquire(mutex_count, &acquired) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_acquire\n", __func__);
         if (false == acquired)
-            usleep(1000);
+            usleep(sleeptime);
     }
 
     async_instance_g->start_abt_push = tmp;
