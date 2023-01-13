@@ -111,7 +111,7 @@ typedef struct H5VL_async_wrap_ctx_t {
 
 typedef enum { QTYPE_NONE, REGULAR, DEPENDENT, COLLECTIVE, BLOCKING, ISOLATED } task_list_qtype;
 typedef enum { OP_NONE, READ, WRITE } obj_op_type;
-typedef enum { FILE_OP, GROUP_OP, DSET_OP, ATTR_OP, DTYPE_OP, LINK_OP, OBJ_OP} hdf5_op_type;
+typedef enum { FILE_OP, GROUP_OP, DSET_OP, ATTR_OP, DTYPE_OP, LINK_OP, OBJ_OP } hdf5_op_type;
 const char *qtype_names_g[10] = {"QTYPE_NONE", "REGULAR", "DEPENDENT", "COLLECTIVE", "BLOCKING", "ISOLATED"};
 
 struct H5VL_async_t;
@@ -200,18 +200,18 @@ typedef struct async_instance_t {
     int           nfopen;
     int           mpi_size;
     int           mpi_rank;
-    bool          ex_delay;               /* Delay background thread execution */
-    bool          ex_fclose;              /* Delay background thread execution until file close */
-    bool          ex_gclose;              /* Delay background thread execution until group close */
-    bool          ex_dclose;              /* Delay background thread execution until dset close */
-    bool          start_abt_push;         /* Start pushing tasks to Argobots pool */
-    bool          prev_push_state;        /* Previous state of start_abt_push before a change*/
-    bool          pause;                  /* Pause background thread execution */
-    bool          disable_implicit_file;  /* Disable implicit async execution globally */
-    bool          disable_implicit;       /* Disable implicit async execution for dxpl */
-    bool          disable_implicit_nondset;  /* Disable non-dataset implicit async execution globally */
-    bool          delay_time_env;         /* Flag that indicates the delay time is set by env variable */
-    bool          disable_async_dset_get; /* Disable async execution for dataset get */
+    bool          ex_delay;                 /* Delay background thread execution */
+    bool          ex_fclose;                /* Delay background thread execution until file close */
+    bool          ex_gclose;                /* Delay background thread execution until group close */
+    bool          ex_dclose;                /* Delay background thread execution until dset close */
+    bool          start_abt_push;           /* Start pushing tasks to Argobots pool */
+    bool          prev_push_state;          /* Previous state of start_abt_push before a change*/
+    bool          pause;                    /* Pause background thread execution */
+    bool          disable_implicit_file;    /* Disable implicit async execution globally */
+    bool          disable_implicit;         /* Disable implicit async execution for dxpl */
+    bool          disable_implicit_nondset; /* Disable non-dataset implicit async execution globally */
+    bool          delay_time_env;           /* Flag that indicates the delay time is set by env variable */
+    bool          disable_async_dset_get;   /* Disable async execution for dataset get */
     uint64_t      delay_time; /* Sleep time before background thread trying to acquire global mutex */
     int           sleep_time; /* Sleep time between checking the global mutex attemp count */
 #ifdef ENABLE_WRITE_MEMCPY
@@ -21717,7 +21717,7 @@ H5VL_async_free_wrap_ctx(void *_wrap_ctx)
  *-------------------------------------------------------------------------
  */
 static inline int
-H5VL_async_is_implicit_disabled(int op_type, const char* func_name)
+H5VL_async_is_implicit_disabled(int op_type, const char *func_name)
 {
     int ret_value = 0;
     if (async_instance_g->disable_implicit_file) {
@@ -21742,7 +21742,6 @@ H5VL_async_is_implicit_disabled(int op_type, const char* func_name)
 
     return ret_value;
 }
-
 
 /*-------------------------------------------------------------------------
  * Function:    H5VL_async_attr_create
