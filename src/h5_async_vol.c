@@ -1811,8 +1811,8 @@ async_waitall(int is_implicit)
     int    sleeptime = 1000;
     size_t size = 1;
     unsigned int mutex_count = 1;
-    hbool_t acquired = false;
-    hbool_t tmp = async_instance_g->start_abt_push;
+    hbool_t      acquired    = false;
+    hbool_t      tmp         = async_instance_g->start_abt_push;
 
     async_instance_g->start_abt_push = true;
 
@@ -2766,7 +2766,8 @@ H5VL_async_object_wait(H5VL_async_t *async_obj)
 
     // Check for all tasks on this dset of a file
 
-    if (async_obj->file_async_obj && ABT_mutex_lock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (async_obj->file_async_obj &&
+        ABT_mutex_lock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         return -1;
     }
@@ -2786,7 +2787,8 @@ H5VL_async_object_wait(H5VL_async_t *async_obj)
         /*     fprintf(fout_g,"  [ASYNC VOL ERROR] %s ABT_mutex_lock failed\n", __func__); */
     }
 
-    if (async_obj->file_async_obj && ABT_mutex_unlock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (async_obj->file_async_obj &&
+        ABT_mutex_unlock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         return -1;
     }
@@ -2839,7 +2841,8 @@ H5VL_async_dataset_wait(H5VL_async_t *async_obj)
 
     // Check for all tasks on this dset of a file
 
-    if (async_obj->file_async_obj && ABT_mutex_lock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (async_obj->file_async_obj &&
+        ABT_mutex_lock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         return -1;
     }
@@ -2859,7 +2862,8 @@ H5VL_async_dataset_wait(H5VL_async_t *async_obj)
         /*     fprintf(fout_g,"  [ASYNC VOL ERROR] %s ABT_mutex_lock failed\n", __func__); */
     }
 
-    if (async_obj->file_async_obj && ABT_mutex_unlock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (async_obj->file_async_obj &&
+        ABT_mutex_unlock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         return -1;
     }
@@ -2910,7 +2914,8 @@ H5VL_async_file_wait(H5VL_async_t *async_obj)
     if (H5TSmutex_release(&mutex_count) < 0)
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__);
 
-    if (async_obj->file_async_obj && ABT_mutex_lock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (async_obj->file_async_obj &&
+        ABT_mutex_lock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         return -1;
     }
@@ -2938,7 +2943,8 @@ H5VL_async_file_wait(H5VL_async_t *async_obj)
         /*     fprintf(fout_g,"  [ASYNC VOL ERROR] %s ABT_mutex_lock failed\n", __func__); */
     }
 
-    if (async_obj->file_async_obj && ABT_mutex_unlock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (async_obj->file_async_obj &&
+        ABT_mutex_unlock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         return -1;
     }
@@ -5471,13 +5477,15 @@ async_attr_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_lo
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -5822,13 +5830,15 @@ async_attr_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc_
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -6142,13 +6152,15 @@ async_attr_read(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type_
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -6488,13 +6500,15 @@ async_attr_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -6805,13 +6819,15 @@ async_attr_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -7140,13 +7156,15 @@ async_attr_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -7454,13 +7472,15 @@ async_attr_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -7771,13 +7791,15 @@ async_attr_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -8160,13 +8182,15 @@ async_dataset_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -8870,13 +8894,15 @@ async_dataset_read(async_instance_t *aid, size_t count, H5VL_async_t **parent_ob
         usleep(1000);
     }
 
-    if (parent_obj[0]->file_async_obj && ABT_mutex_lock(parent_obj[0]->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj[0]->file_async_obj &&
+        ABT_mutex_lock(parent_obj[0]->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj[0]->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj[0]->file_async_obj && ABT_mutex_unlock(parent_obj[0]->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj[0]->file_async_obj &&
+        ABT_mutex_unlock(parent_obj[0]->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -9203,13 +9229,15 @@ async_dataset_read(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_ty
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -9675,13 +9703,15 @@ async_dataset_write(async_instance_t *aid, size_t count, H5VL_async_t **parent_o
         usleep(1000);
     }
 
-    if (parent_obj[0]->file_async_obj && ABT_mutex_lock(parent_obj[0]->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj[0]->file_async_obj &&
+        ABT_mutex_lock(parent_obj[0]->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj[0]->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj[0]->file_async_obj && ABT_mutex_unlock(parent_obj[0]->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj[0]->file_async_obj &&
+        ABT_mutex_unlock(parent_obj[0]->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -10099,13 +10129,15 @@ async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_t
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -10425,13 +10457,15 @@ async_dataset_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -10744,13 +10778,15 @@ async_dataset_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -11058,13 +11094,15 @@ async_dataset_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -11749,13 +11787,15 @@ async_datatype_commit(async_instance_t *aid, H5VL_async_t *parent_obj, const H5V
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -12098,13 +12138,15 @@ async_datatype_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -12415,13 +12457,15 @@ async_datatype_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *p
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -12730,13 +12774,15 @@ async_datatype_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -13045,13 +13091,15 @@ async_datatype_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -13357,13 +13405,15 @@ async_datatype_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -13728,13 +13778,15 @@ async_file_create(async_instance_t *aid, const char *name, unsigned flags, hid_t
     async_obj->create_task  = async_task;
     async_obj->under_vol_id = async_task->under_vol_id;
 
-    if (async_obj->file_async_obj && ABT_mutex_lock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (async_obj->file_async_obj &&
+        ABT_mutex_lock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(async_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (async_obj->file_async_obj && ABT_mutex_unlock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (async_obj->file_async_obj &&
+        ABT_mutex_unlock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -14075,13 +14127,15 @@ async_file_open(task_list_qtype qtype, async_instance_t *aid, const char *name, 
     async_obj->create_task  = async_task;
     async_obj->under_vol_id = async_task->under_vol_id;
 
-    if (async_obj->file_async_obj && ABT_mutex_lock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (async_obj->file_async_obj &&
+        ABT_mutex_lock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(async_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (async_obj->file_async_obj && ABT_mutex_unlock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (async_obj->file_async_obj &&
+        ABT_mutex_unlock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -14382,13 +14436,15 @@ async_file_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -15772,13 +15828,15 @@ async_group_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_l
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -16124,13 +16182,15 @@ async_group_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -16446,13 +16506,15 @@ async_group_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pare
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -16760,13 +16822,15 @@ async_group_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -17074,13 +17138,15 @@ async_group_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -17392,13 +17458,15 @@ async_group_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
             usleep(1000);
         }
 
-        if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+        if (parent_obj->file_async_obj &&
+            ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
             goto done;
         }
         /* Insert it into the file task list */
         DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-        if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+        if (parent_obj->file_async_obj &&
+            ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
             goto done;
         }
@@ -17752,13 +17820,15 @@ async_link_create(task_list_qtype qtype, async_instance_t *aid, H5VL_link_create
     async_obj->create_task  = async_task;
     async_obj->under_vol_id = async_task->under_vol_id;
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -18112,13 +18182,15 @@ async_link_copy(async_instance_t *aid, H5VL_async_t *parent_obj1, const H5VL_loc
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -18463,13 +18535,15 @@ async_link_move(async_instance_t *aid, H5VL_async_t *parent_obj1, const H5VL_loc
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -18789,13 +18863,15 @@ async_link_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -19119,13 +19195,15 @@ async_link_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -19446,13 +19524,15 @@ async_link_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -19793,13 +19873,15 @@ async_object_open(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -20149,13 +20231,15 @@ async_object_copy(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -20484,13 +20568,15 @@ async_object_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
         usleep(1000);
     }
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock file_task_list_mutex\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -20819,13 +20905,15 @@ async_object_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t
     }
     lock_parent = true;
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
@@ -21146,13 +21234,15 @@ async_object_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t
     }
     lock_parent = true;
 
-    if (parent_obj->file_async_obj && ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto done;
     }
     /* Insert it into the file task list */
     DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj && ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (parent_obj->file_async_obj &&
+        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         goto done;
     }
