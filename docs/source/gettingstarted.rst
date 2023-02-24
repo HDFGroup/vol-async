@@ -1,23 +1,30 @@
-Installation
-============
-
-This section describes how to build the HDF5 Asynchronous I/O VOL connector. 
-
-- Current method for installing the async I/O VOL connector is from the source code.
-- A Spack recipe will be available soon.
-
 Background
 ==========
 
-Asynchronous I/O is becoming increasingly popular with the large amount of data access required by scientific applications. They can take advantage of an asynchronous interface by scheduling I/O as early as possible and overlap computation or communication with I/O operations, which hides the cost associated with I/O and improves the overall performance.
+Asynchronous I/O enables an application executing the I/O operations at the same time as performing computation or communication tasks. By scheduling I/O operations early and overlapping them with computation or communication, asynchronous I/O can effectively hide the I/O cost and reduce the total execution time. The asynchronous I/O VOL connector (async VOL) uses background threads to execute HDF5 I/O operations. This work is supported by the DOE `ECP-ExaIO <https://www.exascaleproject.org/research-project/exaio>`_ project.
 
-- Houjun Tang, Quincey Koziol, Suren Byna and John Ravi, `Transparent Asynchronous Parallel I/O using Background Threads <https://ieeexplore.ieee.org/document/9459479>`_ in IEEE Transactions on Parallel and Distributed Systems, doi: 10.1109/TPDS.2021.3090322.
-- Houjun Tang, Quincey Koziol, Suren Byna, John Mainzer, and Tonglin Li, "`Enabling Transparent Asynchronous I/O using Background Threads <https://ieeexplore.ieee.org/abstract/document/8955215>`_ ", 2019 IEEE/ACM Fourth International Parallel Data Systems Workshop (PDSW), 2019, pp. 11-19, doi: 10.1109/PDSW49588.2019.00006.
+.. image:: async.png
+
+Citation
+========
+- Houjun Tang, Quincey Koziol, Suren Byna, and John Ravi, "Transparent Asynchronous Parallel I/O using Background Threads", IEEE Transactions on Parallel and Distributed Systems 33, no. 4 (2021): 891-902, doi: `10.1109/TPDS.2021.3090322 <https://www.doi.org/10.1109/TPDS.2021.3090322>`_.
+- Houjun Tang, Quincey Koziol, Suren Byna, John Mainzer, and Tonglin Li, "Enabling Transparent Asynchronous I/O using Background Threads", 2019 IEEE/ACM Fourth International Parallel Data Systems Workshop (PDSW), 2019, pp. 11-19, doi: `10.1109/PDSW49588.2019.00006 <https://www.doi.org/10.1109/PDSW49588.2019.00006>`_.
+
+Building with Spack
+===================
+`Spack <https://spack.io/>`_ is a flexible package manager that supports multiple versions, configurations, platforms, and compilers. Async VOL and its dependent libraries (MPI, HDF5, Argobots) can all be installed with the following spack command:
+
+.. code-block::
+   spack install hdf5-vol-async
+
+
+Building with Make 
+==================
+We have tested async VOL compiled with GNU(gcc 6.4+), Intel, and Cray compilers on Summit, Cori, Perlmutter, and Theta supercomputers.
 
 Preparation
-===========
-
-Define the following configuration parameters, which are used in the instructions. 
+-----------
+    Define the following configuration parameters, which may be used in the instructions. 
 
 .. code-block::
 
@@ -26,8 +33,7 @@ Define the following configuration parameters, which are used in the instruction
     H5_DIR  : directory of HDF5 source code
 
 
-1. Download the Asynchronous I/O VOL connector code (this repository) with Argobots git submodule Use system provided by HDF5.
-Latest Argobots can also be downloaded separately from https://github.com/pmodels/argobots
+1. Download the async VOL with Argobots git submodule. Latest Argobots can also be downloaded separately from https://github.com/pmodels/argobots
 
 .. code-block::
 
@@ -38,27 +44,28 @@ Latest Argobots can also be downloaded separately from https://github.com/pmodel
 .. code-block::
 
     git clone https://github.com/HDFGroup/hdf5.git
+    (Optional) git checkout hdf5-1_14_0 # use latest stable version
 
-3. (Optional) Set the environment variables for the paths of the codes if the full path of ``VOL_DIR``, ``ABT_DIR``, and ``H5_DIR`` are not used in later setup.
+3. (Optional) Set the environment variables for the paths of the codes if the full path of ``VOL_DIR``, ``ABT_DIR``, and ``H5_DIR`` are used in later setup.
 
 .. code-block::
 
-    export H5_DIR=/path/to/hdf5/dir
-    export VOL_DIR=/path/to/async_vol/dir
-    export ABT_DIR=/path/to/argobots/dir
+    export H5_DIR=/path/to/hdf5
+    export VOL_DIR=/path/to/vol_async
+    export ABT_DIR=/path/to/vol_async/argobots
 
-We have tested async VOL compiled with GNU(gcc 6.4+), Intel, and Cray compilers on Summit, Cori, and Theta supercomputers.
 
-Build Async I/O VOL
-===================
+Build Async VOL
+---------------
 
 1. Compile HDF5
+    HDF5 must be compiled with threadsafety support, and optionally parallel I/O support. CC=cc/CC=mpicc may needed in the following commands.
 
 .. code-block::
 
     cd $H5_DIR
     ./autogen.sh
-    ./configure --prefix=$H5_DIR/install --enable-parallel --enable-threadsafe --enable-unsupported #(may need CC=cc/mpicc)
+    ./configure --prefix=$H5_DIR/install --enable-parallel --enable-threadsafe --enable-unsupported 
     make && make install
 
 
@@ -67,20 +74,21 @@ Build Async I/O VOL
 .. code-block::
 
     cd $ABT_DIR
-    ./autogen.sh  (may skip this step if the configure file exists)
-    ./configure --prefix=$ABT_DIR/install #(may need to add CC=cc or CC=mpicc)
+    ./autogen.sh
+    ./configure --prefix=$ABT_DIR/install
     make && make install
 
 .. note::
-    Using mpixlC on Summit will result in Argobots runtime error, use xlC or gcc instead.
+    Using mpixlC on Summit may result in an Argobots runtime error, use xlC or gcc instead.
 
 
 3. Compile Asynchronous VOL connector
+    If successfull, 
 
 .. code-block::
 
     cd $VOL_DIR/src
-    Edit "Makefile"
+    Prepare Makefile
         Copy a sample Makefile (Makefile.cori, Makefile.summit, Makefile.macos), e.g. "cp Makefile.summit Makefile", which should work for most linux systems
         Change the path of HDF5_DIR and ABT_DIR to $H5_DIR/install and $ABT_DIR/install (replace $H5_DIR and $ABT_DIR with their full path)
         (Optional) update the compiler flag macros: DEBUG, CFLAGS, LIBS, ARFLAGS
@@ -89,9 +97,9 @@ Build Async I/O VOL
 
 
 Set Environmental Variables
-===========================
+---------------------------
 
-Async VOL requires the setting of the following environmental variable to enable asynchronous I/O:
+Async VOL requires the setting of the following environmental variable to enable it with HDF5:
 
 *Linux*
 
@@ -113,7 +121,7 @@ Async VOL requires the setting of the following environmental variable to enable
     For some Linux systems, e.g., Ubuntu, ``LD_PRELOAD`` needs to be set to point to the shared libraries.
 
 Test
-====
+----
 
 1. Compile test codes
 
@@ -132,10 +140,10 @@ Test
 
 .. code-block::
 
-    //Run serial and parallel tests
+    // Run serial and parallel tests
     make check
 
-    //Run the serial tests only
+    // Run the serial tests only
     make check_serial
 
 If any test fails, check ``async_vol_test.err`` in the test directory for the error message. 
@@ -151,7 +159,7 @@ If any test fails, check ``async_vol_test.err`` in the test directory for the er
 Implicit mode
 =============
 
-The implicit mode allows an application to enable asynchronous I/O through setting the following environemental variables and without any major code change. By default, the HDF5 metadata operations are executed asynchronously, and the dataset operations are executed synchronously.
+This mode is only recommended for testing. The implicit mode allows an application to enable asynchronous I/O through setting the following environemental variables and without any major code change. By default, the HDF5 metadata operations are executed asynchronously, and the dataset operations are executed synchronously.
 
 .. code-block::
 
@@ -165,7 +173,7 @@ The implicit mode allows an application to enable asynchronous I/O through setti
 Explicit mode
 =============
 
-Please refer to the Makefile and source codes (async_test_serial_event_set*) under $VOL_DIR/test/ for example usage.
+This mode is recommended to get the full benefits of async VOL, however, it requires application code changes to use the HDF5 asynchronous and event set APIs.
 
 1. (Required) Set async VOL environment variables
 
@@ -240,7 +248,8 @@ With the double buffering enabled, users can also specify how much memory is all
     export HDF5_ASYNC_MAX_MEM_MB=max_total_async_vol_memory_allocation_in_mb
 
 
-6. (Optional) Include the header file if async VOL API is used (see Async VOL APIs section)
+6. (Optional) Include the header file if async VOL internal API is used (see Async VOL APIs section)
+   This is rarely needed by an application.
 
 .. code-block::
 
@@ -252,7 +261,7 @@ When async VOL is enabled, each HDF5 operation is recorded and put into a task q
 
 The application status detection can avoid an effectively synchronous I/O when the application thread and the async VOL background thread acquire the mutex in an interleaved fashion. However, some applications may have larger time gaps between HDF5 function calls and experience partially asynchronous behavior. To mitigate this, we provide a way by setting an environment variable that informs async VOL to queue the operations and not start their execution until file/group/dataset close time. 
 
-When set properly, it make async VOL especially effective for applications that periodically output (write-only) data, e.g., a checkpointing file output.
+When set properly, it make async VOL especially effective for applications that periodically output (write-only) data, e.g., writing checkpoint files periodically.
 
 .. code-block::
 
@@ -263,6 +272,8 @@ When set properly, it make async VOL especially effective for applications that 
     // Start execution at dataset close time
     export HDF5_ASYNC_EXE_DCLOSE=1
 
-.. warning::
-    This option requires the application developer to ensure that no deadlock occurs.
+Async VOL has overhead to manage the asynchronous I/O tasks, and if an application issues a large number of small I/O operations (e.g. scalar attribute create, write, close), the async VOL overhead may be comparable to those operations, and thus resulting in slower I/O performance. We provide an option to disable the asynchronous execution of the small I/O operations and only execute the dataset operations asynchronously, by setting the following environment variable: 
+
+.. code-block::
+   export HDF5_ASYNC_DISABLE_IMPLICIT_NON_DSET_RW=1
 
