@@ -15,12 +15,13 @@ Building with Spack
 `Spack <https://spack.io/>`_ is a flexible package manager that supports multiple versions, configurations, platforms, and compilers. Async VOL and its dependent libraries (MPI, HDF5, Argobots) can all be installed with the following spack command:
 
 .. code-block::
+
    spack install hdf5-vol-async
 
 
-Building with Make 
-==================
-We have tested async VOL compiled with GNU(gcc 6.4+), Intel, and Cray compilers on Summit, Cori, Perlmutter, and Theta supercomputers.
+Building from source code 
+=========================
+We have tested async VOL compiled with GNU (gcc 6.4+), Intel, and Cray compilers on Summit, Cori, Perlmutter, and Theta supercomputers.
 
 Preparation
 -----------
@@ -61,6 +62,20 @@ Build Async VOL
 1. Compile HDF5
     HDF5 must be compiled with threadsafety support, and optionally parallel I/O support. CC=cc/CC=mpicc may needed in the following commands.
 
+1.1 Using CMake
+
+.. code-block::
+
+    export HDF5_DIR=$H5_DIR/install
+    cd hdf5
+    mkdir build
+    cd build
+    cmake -DCMAKE_INSTALL_PREFIX=$HDF5_DIR -DHDF5_ENABLE_PARALLEL=ON -DHDF5_ENABLE_THREADSAFE=ON \
+      -DALLOW_UNSUPPORTED=ON -DCMAKE_C_COMPILER=mpicc ..
+    make -j && make install
+
+1.2 Using Makefile
+
 .. code-block::
 
     cd $H5_DIR
@@ -83,7 +98,19 @@ Build Async VOL
 
 
 3. Compile Asynchronous VOL connector
-    If successfull, 
+
+3.1 Using CMake
+
+.. code-block::
+
+    cd $VOL_DIR
+    mkdir build
+    cd build
+    export HDF5_DIR=$H5_DIR/install
+    cmake -DCMAKE_INSTALL_PREFIX=$VOL_DIR/install -DCMAKE_C_COMPILER=mpicc ..
+    make && make install
+
+3.2 Using Makefile
 
 .. code-block::
 
@@ -99,22 +126,22 @@ Build Async VOL
 Set Environmental Variables
 ---------------------------
 
-Async VOL requires the setting of the following environmental variable to enable it with HDF5:
+Async VOL requires the setting of the following environmental variable to enable it with HDF5. Depending on which way Async VOL is compiled, the libh5async.so library file may be installed to $VOL_DIR/install/lib (CMake) or $VOL_DIR/src (Makefile), and should be set accordingly to the LD_LIBRARY_PATH and HDF5_PLUGIN_PATH.
 
 *Linux*
 
 .. code-block::
 
-    export LD_LIBRARY_PATH=$VOL_DIR/src:$H5_DIR/install/lib:$ABT_DIR/install/lib:$LD_LIBRARY_PATH
-    export HDF5_PLUGIN_PATH="$VOL_DIR/src"
+    export LD_LIBRARY_PATH=$VOL_DIR/install/lib:$H5_DIR/install/lib:$ABT_DIR/install/lib:$LD_LIBRARY_PATH
+    export HDF5_PLUGIN_PATH="$VOL_DIR/install/lib"
     export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
 
 *MacOS*
 
 .. code-block::
 
-    export DYLD_LIBRARY_PATH=$VOL_DIR/src:$H5_DIR/install/lib:$ABT_DIR/install/lib:$DYLD_LIBRARY_PATH
-    export HDF5_PLUGIN_PATH="$VOL_DIR/src"
+    export DYLD_LIBRARY_PATH=$VOL_DIR:$H5_DIR/install/lib:$ABT_DIR/install/lib:$DYLD_LIBRARY_PATH
+    export HDF5_PLUGIN_PATH="$VOL_DIR/install/lib"
     export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}" 
 
 .. note::
@@ -123,10 +150,19 @@ Async VOL requires the setting of the following environmental variable to enable
 Test
 ----
 
-1. Compile test codes
+1. Compile and run test codes
+
+1.1 Using CMake
+    Tests are compiled by default when building async VOL with CMake. Running the tests can be done with the ctest command:
 
 .. code-block::
 
+    ctest
+
+
+1.2 Using Makefile
+
+.. code-block::
     cd $VOL_DIR/test
     Edit "Makefile":
         Copy a sample Makefile (Makefile.cori, Makefile.summit, Makefile.macos), e.g., "cp Makefile.summit Makefile", Makefile.summit should work for most linux systems
@@ -134,11 +170,6 @@ Test
         (Optional) update the compiler flag macros: DEBUG, CFLAGS, LIBS, ARFLAGS
         (Optional) comment/uncomment the correct DYNLIB & LDFLAGS macro
     make
-
-
-2. Run tests
-
-.. code-block::
 
     // Run serial and parallel tests
     make check
