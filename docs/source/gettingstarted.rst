@@ -13,7 +13,7 @@ We have tested async VOL compiled with GNU (gcc 6.4+), Intel, and Cray compilers
 
 Preparation
 -----------
-    Define the following configuration parameters, which may be used in the instructions. 
+Define the following configuration parameters, which may be used in the instructions. 
 
 .. code-block::
 
@@ -151,6 +151,7 @@ Test
 1.2 Using Makefile
 
 .. code-block::
+
     cd $VOL_DIR/test
     Edit "Makefile":
         Copy a sample Makefile (Makefile.cori, Makefile.summit, Makefile.macos), e.g., "cp Makefile.summit Makefile", Makefile.summit should work for most linux systems
@@ -178,12 +179,7 @@ If any test fails, check ``async_vol_test.err`` in the test directory for the er
 Implicit mode
 =============
 
-This mode is only recommended for testing. The implicit mode allows an application to enable asynchronous I/O through setting the following environemental variables and without any major code change. By default, the HDF5 metadata operations are executed asynchronously, and the dataset operations are executed synchronously.
-
-.. code-block::
-
-    Set environment variables, :ref:`Set Environmental Variables`
-    Run your application
+This mode is only recommended for testing. The implicit mode allows an application to enable asynchronous I/O through setting the environemental variables :ref:`Set Environmental Variables` and without any major code change. By default, the HDF5 metadata operations are executed asynchronously, and the dataset operations are executed synchronously.
 
 .. note::
     Due to the limitations of the implicit mode, we highly recommend applications to use the explicit mode for the best I/O performance.
@@ -252,9 +248,17 @@ Although it is listed as optional, it is highly recommended to integrate the asy
 
 Applications may choose to have async VOL to manage the write buffer consistency. When enabled, async VOL will automatically makes a memory copy of the buffer for data writes. This increases the runtime memory usage but relieves the burden for the application to manage the double buffering. The copy is automatically freed after the background asynchronous write completes.
 
+5.1 Building with CMake
+
 .. code-block::
 
-    Add -DENABLE_WRITE_MEMCPY=1 to the end of the CFLAGS line in src/Makefile before compiling.
+    Add -DCMAKE_ENABLE_WRITE_MEMCPY=1 to the cmake command
+
+5.2 Building with Makefile
+
+.. code-block::
+
+    Add -DENABLE_WRITE_MEMCPY=1 to the end of the CFLAGS line in src/Makefile
 
 .. note::
     Async vol checks available system memory before its double buffer allocation at runtime, using get_avphys_pages() and sysconf().
@@ -294,5 +298,6 @@ When set properly, it make async VOL especially effective for applications that 
 Async VOL has overhead to manage the asynchronous I/O tasks, and if an application issues a large number of small I/O operations (e.g. scalar attribute create, write, close), the async VOL overhead may be comparable to those operations, and thus resulting in slower I/O performance. We provide an option to disable the asynchronous execution of the small I/O operations and only execute the dataset operations asynchronously, by setting the following environment variable: 
 
 .. code-block::
+
    export HDF5_ASYNC_DISABLE_IMPLICIT_NON_DSET_RW=1
 
