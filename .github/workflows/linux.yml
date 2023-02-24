@@ -14,7 +14,7 @@ on:
   # Allows to run this workflow manually from the Actions tab
   workflow_dispatch:
 jobs:
-  vol-async-hdf5-1_13_2-Makefile:
+  vol-async-hdf5-1_14_0-Makefile:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -24,11 +24,11 @@ jobs:
         with:
           submodules: 'true'
         
-      - name: Checkout HDF5 1.13.2
+      - name: Checkout HDF5 1.14.0
         uses: actions/checkout@v3
         with:
           repository: HDFGroup/hdf5
-          ref: hdf5-1_13_2
+          ref: hdf5-1_14_0
           path: hdf5
       
       - name: Dependencies
@@ -197,7 +197,7 @@ jobs:
           # make check
           date
 
-  vol-async-hdf5-1_13_2-cmake:
+  vol-async-hdf5-1_14_0-cmake:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -207,11 +207,11 @@ jobs:
         with:
           submodules: 'true'
         
-      - name: Checkout HDF5 1.13.2
+      - name: Checkout HDF5 1.14.0
         uses: actions/checkout@v3
         with:
           repository: HDFGroup/hdf5
-          ref: hdf5-1_13_2
+          ref: hdf5-1_14_0
           path: hdf5
       
       - name: Dependencies
