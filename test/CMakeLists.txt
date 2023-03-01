@@ -38,11 +38,12 @@ if(MPI_FOUND)
     endif()
 
     set(tests_p
+        async_test_parallel
         async_test_parallel2
         async_test_parallel3
         async_test_parallel4
         async_test_parallel5
-        async_test_parallel
+        async_test_parallel_merge
     )
 endif()
 
