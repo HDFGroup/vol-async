@@ -8810,7 +8810,7 @@ async_dataset_read(async_instance_t *aid, size_t count, H5VL_async_t **parent_ob
     hbool_t                    acquired    = false;
     unsigned int               mutex_count = 1;
 #ifdef MPI_VERSION
-    H5FD_mpio_xfer_t           xfer_mode   = H5FD_MPIO_INDEPENDENT;
+    H5FD_mpio_xfer_t xfer_mode = H5FD_MPIO_INDEPENDENT;
 #endif
 
     func_enter(__func__, NULL);
@@ -8921,11 +8921,11 @@ async_dataset_read(async_instance_t *aid, size_t count, H5VL_async_t **parent_ob
     if (NULL == parent_obj[0]->under_object) {
         if (NULL != parent_obj[0]->create_task) {
 #ifdef MPI_VERSION
-        if (xfer_mode == H5FD_MPIO_COLLECTIVE)
-            add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
-        else
+            if (xfer_mode == H5FD_MPIO_COLLECTIVE)
+                add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
+            else
 #endif
-            add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
+                add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
         else {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s parent task not created\n", __func__);
@@ -9003,14 +9003,15 @@ error:
 } // End async_dataset_read > 1.13.3
 
 static herr_t
-async_dataset_read_merge_mdset_col(async_instance_t *aid, size_t count, H5VL_async_t **parent_obj, hid_t mem_type_id[],
-                   hid_t mem_space_id[], hid_t file_space_id[], hid_t plist_id, void *buf[], void **req)
+async_dataset_read_merge_mdset_col(async_instance_t *aid, size_t count, H5VL_async_t **parent_obj,
+                                   hid_t mem_type_id[], hid_t mem_space_id[], hid_t file_space_id[],
+                                   hid_t plist_id, void *buf[], void **req)
 {
 
-    async_task_t               *task_elt;
-    async_task_list_t          *task_list_elt;
-    async_dataset_read_args_t *iter_args = NULL;
-    int                         found_task = 0, iter_cnt = 0, total_cnt = 0, is_first = 1;
+    async_task_t *             task_elt;
+    async_task_list_t *        task_list_elt;
+    async_dataset_read_args_t *iter_args  = NULL;
+    int                        found_task = 0, iter_cnt = 0, total_cnt = 0, is_first = 1;
 
     func_enter(__func__, NULL);
 
@@ -9029,20 +9030,22 @@ async_dataset_read_merge_mdset_col(async_instance_t *aid, size_t count, H5VL_asy
     }
 
     // Reverse iter task list
-    DL_FOREACH2(aid->qhead.queue, task_list_elt, prev) {
+    DL_FOREACH2(aid->qhead.queue, task_list_elt, prev)
+    {
         // Break out when done reverse iteration
         if (is_first == 0 && task_list_elt == aid->qhead.queue)
             break;
 
         if (task_list_elt->type == COLLECTIVE) {
             // Iter to get latest/tail read task
-            DL_FOREACH2(task_list_elt->task_list, task_elt, prev) {
+            DL_FOREACH2(task_list_elt->task_list, task_elt, prev)
+            {
                 // Must be same file and a dset read task
-                if (task_elt->async_obj->file_async_obj == parent_obj[0]->file_async_obj && 
-                        task_elt->func == async_dataset_read_fn) {
+                if (task_elt->async_obj->file_async_obj == parent_obj[0]->file_async_obj &&
+                    task_elt->func == async_dataset_read_fn) {
                     // append current read to existing multi dset read
                     iter_args = task_elt->args;
-                    iter_cnt  = iter_args->count; 
+                    iter_cnt  = iter_args->count;
                     total_cnt = iter_cnt + count;
 
                     if (plist_id > 0) {
@@ -9053,33 +9056,39 @@ async_dataset_read_merge_mdset_col(async_instance_t *aid, size_t count, H5VL_asy
                     }
 
                     // Realloc and fill the args with current read
-                    iter_args->dset          = (void **)realloc(iter_args->dset, total_cnt * sizeof(void *));
-                    iter_args->buf           = (void **)realloc(iter_args->buf, total_cnt * sizeof(void *));
-                    iter_args->mem_type_id   = (hid_t *)realloc(iter_args->mem_type_id, total_cnt * sizeof(hid_t));
-                    iter_args->mem_space_id  = (hid_t *)realloc(iter_args->mem_space_id, total_cnt * sizeof(hid_t));
-                    iter_args->file_space_id = (hid_t *)realloc(iter_args->file_space_id, total_cnt * sizeof(hid_t));
+                    iter_args->dset = (void **)realloc(iter_args->dset, total_cnt * sizeof(void *));
+                    iter_args->buf  = (void **)realloc(iter_args->buf, total_cnt * sizeof(void *));
+                    iter_args->mem_type_id =
+                        (hid_t *)realloc(iter_args->mem_type_id, total_cnt * sizeof(hid_t));
+                    iter_args->mem_space_id =
+                        (hid_t *)realloc(iter_args->mem_space_id, total_cnt * sizeof(hid_t));
+                    iter_args->file_space_id =
+                        (hid_t *)realloc(iter_args->file_space_id, total_cnt * sizeof(hid_t));
                     for (size_t i = iter_cnt; i < total_cnt; i++) {
-                        iter_args->dset[i] = parent_obj[i-iter_cnt]->under_object;
-                        if (mem_type_id[i-iter_cnt] > 0)
-                            iter_args->mem_type_id[i] = H5Tcopy(mem_type_id[i-iter_cnt]);
-                        if (mem_space_id[i-iter_cnt] > H5S_PLIST && mem_space_id[i-iter_cnt] < H5S_UNLIMITED)
-                            iter_args->mem_space_id[i] = H5Scopy(mem_space_id[i-iter_cnt]);
+                        iter_args->dset[i] = parent_obj[i - iter_cnt]->under_object;
+                        if (mem_type_id[i - iter_cnt] > 0)
+                            iter_args->mem_type_id[i] = H5Tcopy(mem_type_id[i - iter_cnt]);
+                        if (mem_space_id[i - iter_cnt] > H5S_PLIST &&
+                            mem_space_id[i - iter_cnt] < H5S_UNLIMITED)
+                            iter_args->mem_space_id[i] = H5Scopy(mem_space_id[i - iter_cnt]);
                         else
-                            iter_args->mem_space_id[i] = mem_space_id[i-iter_cnt];
-                        if (file_space_id[i-iter_cnt] > H5S_PLIST && file_space_id[i-iter_cnt] < H5S_UNLIMITED)
-                            iter_args->file_space_id[i] = H5Scopy(file_space_id[i-iter_cnt]);
+                            iter_args->mem_space_id[i] = mem_space_id[i - iter_cnt];
+                        if (file_space_id[i - iter_cnt] > H5S_PLIST &&
+                            file_space_id[i - iter_cnt] < H5S_UNLIMITED)
+                            iter_args->file_space_id[i] = H5Scopy(file_space_id[i - iter_cnt]);
                         else
-                            iter_args->file_space_id[i] = file_space_id[i-iter_cnt];
-                        iter_args->buf[i] = (void *)buf[i-iter_cnt];
+                            iter_args->file_space_id[i] = file_space_id[i - iter_cnt];
+                        iter_args->buf[i] = (void *)buf[i - iter_cnt];
                     }
                     // Replace with the new req
                     // TODO: what to do with old req?
                     iter_args->req   = req;
                     iter_args->count = total_cnt;
 
-                    task_elt->parent_objs  = (struct H5VL_async_t **)realloc(task_elt->parent_objs, total_cnt * sizeof(struct H5VL_async_t *));
+                    task_elt->parent_objs = (struct H5VL_async_t **)realloc(
+                        task_elt->parent_objs, total_cnt * sizeof(struct H5VL_async_t *));
                     for (size_t i = iter_cnt; i < total_cnt; i++)
-                        task_elt->parent_objs[i] = parent_obj[i-iter_cnt];
+                        task_elt->parent_objs[i] = parent_obj[i - iter_cnt];
 
                     // TODO: need this?
                     /* parent_obj[0]->task_cnt++; */
@@ -9682,7 +9691,7 @@ async_dataset_write(async_instance_t *aid, size_t count, H5VL_async_t **parent_o
     hbool_t                     acquired    = false;
     unsigned int                mutex_count = 1;
 #ifdef MPI_VERSION
-    H5FD_mpio_xfer_t            xfer_mode   = H5FD_MPIO_INDEPENDENT;
+    H5FD_mpio_xfer_t xfer_mode = H5FD_MPIO_INDEPENDENT;
 #endif
 
     func_enter(__func__, NULL);
@@ -9858,11 +9867,11 @@ async_dataset_write(async_instance_t *aid, size_t count, H5VL_async_t **parent_o
         if (NULL != parent_obj[0]->create_task) {
 /* #ifndef ASYNC_VOL_NO_MPI */
 #ifdef MPI_VERSION
-        if (xfer_mode == H5FD_MPIO_COLLECTIVE)
-            add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
-        else
+            if (xfer_mode == H5FD_MPIO_COLLECTIVE)
+                add_task_to_queue(&aid->qhead, async_task, COLLECTIVE);
+            else
 #endif
-            add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
+                add_task_to_queue(&aid->qhead, async_task, DEPENDENT);
         }
         else {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s parent task not created\n", __func__);
@@ -9950,13 +9959,13 @@ error:
 
 // Check and merge current write into an exisiting one in queue, must be collective
 static herr_t
-async_dataset_write_merge_mdset_col(async_instance_t *aid, size_t count, H5VL_async_t **parent_obj, 
-                                    hid_t mem_type_id[], hid_t mem_space_id[], hid_t file_space_id[], 
+async_dataset_write_merge_mdset_col(async_instance_t *aid, size_t count, H5VL_async_t **parent_obj,
+                                    hid_t mem_type_id[], hid_t mem_space_id[], hid_t file_space_id[],
                                     hid_t plist_id, const void **buf, void **req)
 {
-    async_task_t               *task_elt;
-    async_task_list_t          *task_list_elt;
-    async_dataset_write_args_t *iter_args = NULL;
+    async_task_t *              task_elt;
+    async_task_list_t *         task_list_elt;
+    async_dataset_write_args_t *iter_args  = NULL;
     int                         found_task = 0, iter_cnt = 0, total_cnt = 0, is_first = 1;
 
     func_enter(__func__, NULL);
@@ -9976,20 +9985,22 @@ async_dataset_write_merge_mdset_col(async_instance_t *aid, size_t count, H5VL_as
     }
 
     // Reverse iter task list
-    DL_FOREACH2(aid->qhead.queue, task_list_elt, prev) {
+    DL_FOREACH2(aid->qhead.queue, task_list_elt, prev)
+    {
         // Break out when done reverse iteration
         if (is_first == 0 && task_list_elt == aid->qhead.queue)
             break;
 
         if (task_list_elt->type == COLLECTIVE) {
             // Reverse iter to get latest/tail write task
-            DL_FOREACH2(task_list_elt->task_list, task_elt, prev) {
+            DL_FOREACH2(task_list_elt->task_list, task_elt, prev)
+            {
                 // Must be same file and a dset write task
-                if (task_elt->async_obj->file_async_obj == parent_obj[0]->file_async_obj && 
-                        task_elt->func == async_dataset_write_fn) {
+                if (task_elt->async_obj->file_async_obj == parent_obj[0]->file_async_obj &&
+                    task_elt->func == async_dataset_write_fn) {
                     // append current write to existing multi dset write
                     iter_args = task_elt->args;
-                    iter_cnt  = iter_args->count; 
+                    iter_cnt  = iter_args->count;
                     total_cnt = iter_cnt + count;
 
                     if (plist_id > 0) {
@@ -10000,48 +10011,55 @@ async_dataset_write_merge_mdset_col(async_instance_t *aid, size_t count, H5VL_as
                     }
 
                     // Realloc and fill the args with current write
-                    iter_args->dset          = (void **)realloc(iter_args->dset, total_cnt * sizeof(void *));
-                    iter_args->buf           = (void **)realloc(iter_args->buf, total_cnt * sizeof(void *));
-                    iter_args->mem_type_id   = (hid_t *)realloc(iter_args->mem_type_id, total_cnt * sizeof(hid_t));
-                    iter_args->mem_space_id  = (hid_t *)realloc(iter_args->mem_space_id, total_cnt * sizeof(hid_t));
-                    iter_args->file_space_id = (hid_t *)realloc(iter_args->file_space_id, total_cnt * sizeof(hid_t));
+                    iter_args->dset = (void **)realloc(iter_args->dset, total_cnt * sizeof(void *));
+                    iter_args->buf  = (void **)realloc(iter_args->buf, total_cnt * sizeof(void *));
+                    iter_args->mem_type_id =
+                        (hid_t *)realloc(iter_args->mem_type_id, total_cnt * sizeof(hid_t));
+                    iter_args->mem_space_id =
+                        (hid_t *)realloc(iter_args->mem_space_id, total_cnt * sizeof(hid_t));
+                    iter_args->file_space_id =
+                        (hid_t *)realloc(iter_args->file_space_id, total_cnt * sizeof(hid_t));
                     for (size_t i = iter_cnt; i < total_cnt; i++) {
-                        iter_args->dset[i] = parent_obj[i-iter_cnt]->under_object;
-                        if (mem_type_id[i-iter_cnt] > 0)
-                            iter_args->mem_type_id[i] = H5Tcopy(mem_type_id[i-iter_cnt]);
-                        if (mem_space_id[i-iter_cnt] > H5S_PLIST && mem_space_id[i-iter_cnt] < H5S_UNLIMITED)
-                            iter_args->mem_space_id[i] = H5Scopy(mem_space_id[i-iter_cnt]);
+                        iter_args->dset[i] = parent_obj[i - iter_cnt]->under_object;
+                        if (mem_type_id[i - iter_cnt] > 0)
+                            iter_args->mem_type_id[i] = H5Tcopy(mem_type_id[i - iter_cnt]);
+                        if (mem_space_id[i - iter_cnt] > H5S_PLIST &&
+                            mem_space_id[i - iter_cnt] < H5S_UNLIMITED)
+                            iter_args->mem_space_id[i] = H5Scopy(mem_space_id[i - iter_cnt]);
                         else
-                            iter_args->mem_space_id[i] = mem_space_id[i-iter_cnt];
-                        if (file_space_id[i-iter_cnt] > H5S_PLIST && file_space_id[i-iter_cnt] < H5S_UNLIMITED)
-                            iter_args->file_space_id[i] = H5Scopy(file_space_id[i-iter_cnt]);
+                            iter_args->mem_space_id[i] = mem_space_id[i - iter_cnt];
+                        if (file_space_id[i - iter_cnt] > H5S_PLIST &&
+                            file_space_id[i - iter_cnt] < H5S_UNLIMITED)
+                            iter_args->file_space_id[i] = H5Scopy(file_space_id[i - iter_cnt]);
                         else
-                            iter_args->file_space_id[i] = file_space_id[i-iter_cnt];
-                        iter_args->buf[i] = (void *)buf[i-iter_cnt];
+                            iter_args->file_space_id[i] = file_space_id[i - iter_cnt];
+                        iter_args->buf[i] = (void *)buf[i - iter_cnt];
                     }
                     // Replace with the new req
                     // TODO: what to do with old req?
                     iter_args->req   = req;
                     iter_args->count = total_cnt;
 
-                    task_elt->parent_objs  = (struct H5VL_async_t **)realloc(task_elt->parent_objs, total_cnt * sizeof(struct H5VL_async_t *));
+                    task_elt->parent_objs = (struct H5VL_async_t **)realloc(
+                        task_elt->parent_objs, total_cnt * sizeof(struct H5VL_async_t *));
                     for (size_t i = iter_cnt; i < total_cnt; i++)
-                        task_elt->parent_objs[i] = parent_obj[i-iter_cnt];
+                        task_elt->parent_objs[i] = parent_obj[i - iter_cnt];
 
-                    // TODO: need this?
-                    /* parent_obj[0]->task_cnt++; */
+                        // TODO: need this?
+                        /* parent_obj[0]->task_cnt++; */
 #ifdef ENABLE_WRITE_MEMCPY
                     hsize_t buf_size = 0;
                     for (size_t i = iter_cnt; i < total_cnt; i++) {
-                        if (parent_obj[i]->data_size > 0 &&
-                            (iter_args->file_space_id[i] == H5S_ALL || iter_args->mem_space_id[i] == H5S_ALL)) {
+                        if (parent_obj[i]->data_size > 0 && (iter_args->file_space_id[i] == H5S_ALL ||
+                                                             iter_args->mem_space_id[i] == H5S_ALL)) {
                             buf_size = parent_obj[i]->data_size;
                         }
                         else {
                             buf_size = H5Tget_size(mem_type_id[i]) * H5Sget_select_npoints(mem_space_id[i]);
 #ifdef ENABLE_DBG_MSG
                             if (buf_size == 0)
-                                fprintf(fout_g, "  [ASYNC VOL ERROR] %s with getting dataset size\n", __func__);
+                                fprintf(fout_g, "  [ASYNC VOL ERROR] %s with getting dataset size\n",
+                                        __func__);
 #endif
                         }
 
@@ -10053,14 +10071,16 @@ async_dataset_write_merge_mdset_col(async_instance_t *aid, size_t count, H5VL_as
                         if (async_instance_g->used_mem + buf_size > async_instance_g->max_mem) {
                             is_blocking = true;
                             fprintf(fout_g,
-                                    "  [ASYNC ABT INFO] %d write size %lu larger than async memory limit %lu, switch to "
+                                    "  [ASYNC ABT INFO] %d write size %lu larger than async memory limit "
+                                    "%lu, switch to "
                                     "synchronous write\n",
                                     async_instance_g->mpi_rank, buf_size, async_instance_g->max_mem);
                         }
                         else if (buf_size > avail_mem) {
                             is_blocking = true;
                             fprintf(fout_g,
-                                    "  [ASYNC ABT INFO] %d write size %lu larger than available memory %lu, switch to "
+                                    "  [ASYNC ABT INFO] %d write size %lu larger than available memory %lu, "
+                                    "switch to "
                                     "synchronous write\n",
                                     async_instance_g->mpi_rank, buf_size, avail_mem);
                         }
@@ -10073,10 +10093,12 @@ async_dataset_write_merge_mdset_col(async_instance_t *aid, size_t count, H5VL_as
                             iter_args->free_buf = true;
                             iter_args->data_size += buf_size;
 
-                            // If is contiguous space, no need to go through gather process as it can be costly
+                            // If is contiguous space, no need to go through gather process as it can be
+                            // costly
                             if (1 != is_contig_memspace(mem_space_id[i])) {
                                 /* fprintf(fout_g,"  [ASYNC VOL LOG] %s will gather!\n", __func__); */
-                                H5Dgather(mem_space_id[i], buf[i], mem_type_id[i], buf_size, iter_args->buf[i], NULL, NULL);
+                                H5Dgather(mem_space_id[i], buf[i], mem_type_id[i], buf_size,
+                                          iter_args->buf[i], NULL, NULL);
                                 hsize_t elem_size = H5Tget_size(mem_type_id[i]);
                                 if (elem_size == 0)
                                     elem_size = 1;
@@ -22611,7 +22633,6 @@ H5VL_async_dataset_read(size_t count, void *dset[], hid_t mem_type_id[], hid_t m
     H5FD_mpio_xfer_t xfer_mode;
 #endif
 
-
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATASET Read\n");
 #endif
@@ -22650,8 +22671,9 @@ H5VL_async_dataset_read(size_t count, void *dset[], hid_t mem_type_id[], hid_t m
         H5Pget_dxpl_mpio(plist_id, &xfer_mode);
 #ifdef ENABLE_MERGE_DSET
         if (xfer_mode == H5FD_MPIO_COLLECTIVE) {
-            if ((merged = async_dataset_read_merge_mdset_col(async_instance_g, count, o, mem_type_id, 
-                                    mem_space_id, file_space_id, plist_id, buf, req)) < 0)
+            if ((merged =
+                     async_dataset_read_merge_mdset_col(async_instance_g, count, o, mem_type_id, mem_space_id,
+                                                        file_space_id, plist_id, buf, req)) < 0)
                 fprintf(fout_g, "  [ASYNC VOL ERROR] with async_dataset_read_merge_mdset_col\n");
         }
 #endif
@@ -22663,7 +22685,6 @@ H5VL_async_dataset_read(size_t count, void *dset[], hid_t mem_type_id[], hid_t m
                 fprintf(fout_g, "  [ASYNC VOL ERROR] with async_dataset_read\n");
             }
         }
-
     }
 
     return ret_value;
@@ -22764,16 +22785,17 @@ H5VL_async_dataset_write(size_t count, void *dset[], hid_t mem_type_id[], hid_t 
         H5Pget_dxpl_mpio(plist_id, &xfer_mode);
 #ifdef ENABLE_MERGE_DSET
         if (xfer_mode == H5FD_MPIO_COLLECTIVE) {
-            if ((merged = async_dataset_write_merge_mdset_col(async_instance_g, count, o, mem_type_id, 
-                                    mem_space_id, file_space_id, plist_id, buf, req)) < 0)
+            if ((merged = async_dataset_write_merge_mdset_col(async_instance_g, count, o, mem_type_id,
+                                                              mem_space_id, file_space_id, plist_id, buf,
+                                                              req)) < 0)
                 fprintf(fout_g, "  [ASYNC VOL ERROR] with async_dataset_write_merge_mdset_col\n");
         }
 #endif
 #endif
         if (merged == 0) {
             // Not merged, regular async op
-            if ((ret_value = async_dataset_write(async_instance_g, count, o, mem_type_id, mem_space_id, 
-                                    file_space_id, plist_id, buf, req)) < 0) {
+            if ((ret_value = async_dataset_write(async_instance_g, count, o, mem_type_id, mem_space_id,
+                                                 file_space_id, plist_id, buf, req)) < 0) {
                 fprintf(fout_g, "  [ASYNC VOL ERROR] with async_dataset_write\n");
             }
         }
