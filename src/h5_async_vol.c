@@ -10069,7 +10069,6 @@ async_dataset_write_merge_mdset_col(async_instance_t *aid, size_t count, H5VL_as
                         hsize_t avail_mem = (hsize_t)get_avphys_pages() * sysconf(_SC_PAGESIZE);
 
                         if (async_instance_g->used_mem + buf_size > async_instance_g->max_mem) {
-                            is_blocking = true;
                             fprintf(fout_g,
                                     "  [ASYNC ABT INFO] %d write size %lu larger than async memory limit "
                                     "%lu, switch to "
@@ -10077,7 +10076,6 @@ async_dataset_write_merge_mdset_col(async_instance_t *aid, size_t count, H5VL_as
                                     async_instance_g->mpi_rank, buf_size, async_instance_g->max_mem);
                         }
                         else if (buf_size > avail_mem) {
-                            is_blocking = true;
                             fprintf(fout_g,
                                     "  [ASYNC ABT INFO] %d write size %lu larger than available memory %lu, "
                                     "switch to "
