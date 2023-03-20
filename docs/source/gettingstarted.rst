@@ -6,6 +6,12 @@ Building with Spack
 
    spack install hdf5-vol-async
 
+If the application needs Async VOL for dataset write buffer management (double buffering), e.g. SW4, Flash-X, and AMReX applications, use the following spack command:
+
+.. code-block::
+
+   spack install hdf5-vol-async +memcpy
+
 
 Building from source code 
 =========================
