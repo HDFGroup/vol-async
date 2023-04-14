@@ -15723,6 +15723,8 @@ async_file_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
     }
 
     if (qtype == BLOCKING) {
+        if (NULL == parent_obj->under_object)
+            goto done;
         async_instance_g->start_abt_push = true;
         is_blocking                      = true;
     }
@@ -15747,7 +15749,6 @@ async_file_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
             goto error;
         }
         new_req->my_task = async_task;
-        /* new_req->under_object = new_req; */
         new_req->file_async_obj = parent_obj->file_async_obj;
         *req                    = (void *)new_req;
     }
@@ -24889,16 +24890,82 @@ static herr_t
 H5VL_async_request_cancel(void *obj, H5VL_request_status_t *status)
 {
     H5VL_async_t *o = (H5VL_async_t *)obj;
-    herr_t        ret_value;
+    herr_t        ret_value = -1;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL REQUEST Cancel\n");
 #endif
 
-    ret_value = H5VLrequest_cancel(o->under_object, o->under_vol_id, status);
+    *status = H5VL_REQUEST_STATUS_CANCELED;
 
-    if (ret_value >= 0)
-        H5VL_async_free_obj(o);
+    if (o && o->my_task) {
+        if (o->my_task->is_done == 1 && o->my_task->func != async_file_optional_fn) {
+            if (o->my_task->err_stack != 0) {
+                *status = H5VL_REQUEST_STATUS_FAIL;
+#ifdef ENABLE_DBG_MSG
+                if (async_instance_g &&
+                    (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+                    fprintf(fout_g, "  [ASYNC VOL DBG] cannot cancel failed task [%p]\n", o->my_task->func);
+#endif
+            }
+            else {
+                *status = H5VL_REQUEST_STATUS_SUCCEED;
+#ifdef ENABLE_DBG_MSG
+                if (async_instance_g &&
+                    (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+                    fprintf(fout_g, "  [ASYNC VOL DBG] cannot cancel completed task [%p]\n", o->my_task->func);
+#endif
+            }
+            return 0;
+        }
+        if (o->my_task->in_abt_pool == 1) {
+            *status = H5VL_REQUEST_STATUS_IN_PROGRESS;
+#ifdef ENABLE_DBG_MSG
+            if (async_instance_g &&
+                (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+                fprintf(fout_g, "  [ASYNC VOL DBG] cannot cancel in progress task [%p]\n", o->my_task->func);
+#endif
+            return 0;
+        }
+        else {
+            if (ABT_mutex_lock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
+                return -1;
+            }
+
+            // Mark task done so it is regarded as cancelled
+            if (o->my_task->in_abt_pool != 1 && o->my_task->func != async_file_optional_fn) {
+                o->my_task->is_done = 1;
+                // Also need to mark file optional as complete
+                if (o->my_task->func == async_file_create_fn || o->my_task->func == async_file_open_fn) {
+                    if (o->my_task->file_list_next && o->my_task->file_list_next->func == async_file_optional_fn) {
+                        o->my_task->file_list_next->is_done = 1;
+                    }
+                }
+#ifdef ENABLE_DBG_MSG
+                if (async_instance_g &&
+                    (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+                    fprintf(fout_g, "  [ASYNC VOL DBG] cancelled task [%p]\n", o->my_task->func);
+#endif
+                *status = H5VL_REQUEST_STATUS_CANCELED;
+            }
+            else if (o->my_task->func != async_file_optional_fn){
+                *status = H5VL_REQUEST_STATUS_IN_PROGRESS;
+                func_log(__func__, "cannot cancel, task in progress1");
+            }
+
+            if (ABT_mutex_unlock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
+                return -1;
+            }
+
+            return 0;
+        }
+    }
+    else {
+        *status = H5VL_REQUEST_STATUS_FAIL;
+        return -1;
+    }
 
     return ret_value;
 } /* end H5VL_async_request_cancel() */
