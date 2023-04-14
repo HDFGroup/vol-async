@@ -15748,7 +15748,7 @@ async_file_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
             goto error;
         }
-        new_req->my_task = async_task;
+        new_req->my_task        = async_task;
         new_req->file_async_obj = parent_obj->file_async_obj;
         *req                    = (void *)new_req;
     }
@@ -24889,7 +24889,7 @@ H5VL_async_request_notify(void *obj, H5VL_request_notify_t cb, void *ctx)
 static herr_t
 H5VL_async_request_cancel(void *obj, H5VL_request_status_t *status)
 {
-    H5VL_async_t *o = (H5VL_async_t *)obj;
+    H5VL_async_t *o         = (H5VL_async_t *)obj;
     herr_t        ret_value = -1;
 
 #ifdef ENABLE_ASYNC_LOGGING
@@ -24913,7 +24913,8 @@ H5VL_async_request_cancel(void *obj, H5VL_request_status_t *status)
 #ifdef ENABLE_DBG_MSG
                 if (async_instance_g &&
                     (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-                    fprintf(fout_g, "  [ASYNC VOL DBG] cannot cancel completed task [%p]\n", o->my_task->func);
+                    fprintf(fout_g, "  [ASYNC VOL DBG] cannot cancel completed task [%p]\n",
+                            o->my_task->func);
 #endif
             }
             return 0;
@@ -24938,7 +24939,8 @@ H5VL_async_request_cancel(void *obj, H5VL_request_status_t *status)
                 o->my_task->is_done = 1;
                 // Also need to mark file optional as complete
                 if (o->my_task->func == async_file_create_fn || o->my_task->func == async_file_open_fn) {
-                    if (o->my_task->file_list_next && o->my_task->file_list_next->func == async_file_optional_fn) {
+                    if (o->my_task->file_list_next &&
+                        o->my_task->file_list_next->func == async_file_optional_fn) {
                         o->my_task->file_list_next->is_done = 1;
                     }
                 }
@@ -24949,7 +24951,7 @@ H5VL_async_request_cancel(void *obj, H5VL_request_status_t *status)
 #endif
                 *status = H5VL_REQUEST_STATUS_CANCELED;
             }
-            else if (o->my_task->func != async_file_optional_fn){
+            else if (o->my_task->func != async_file_optional_fn) {
                 *status = H5VL_REQUEST_STATUS_IN_PROGRESS;
                 func_log(__func__, "cannot cancel, task in progress1");
             }
