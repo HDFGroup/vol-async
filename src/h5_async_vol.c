@@ -659,7 +659,7 @@ hid_t             async_error_class_g  = H5I_INVALID_HID;
 
 /* Helper routines */
 static H5VL_async_t *H5VL_async_new_obj(void *under_obj, hid_t under_vol_id);
-static herr_t        H5VL_async_free_obj(H5VL_async_t *obj);
+static herr_t        H5VL_async_free_obj(H5VL_async_t *obj, const char* call_func);
 
 /* "Management" callbacks */
 static herr_t H5VL_async_init(hid_t vipl_id);
@@ -973,22 +973,22 @@ static inline void
 func_enter(const char *func, const char *name)
 {
 #ifdef ENABLE_DBG_MSG
-    const char *type = "VOL";
+    const char *type = "ASYNC VOL";
     if (strstr(func, "_fn"))
-        type = "ABT";
+        type = "      ABT";
     struct timeval now;
     gettimeofday(&now, NULL);
 
     if (name) {
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC %s DBG] %ld.%06ld: entering [%s], push=%d, [%s]\n", type, now.tv_sec,
+            fprintf(fout_g, "  [%s DBG] %ld.%06ld: entering [%s], push=%d, [%s]\n", type, now.tv_sec,
                     now.tv_usec, func, async_instance_g->start_abt_push, name);
     }
     else {
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC %s DBG] %ld.%06ld: entering [%s], push=%d\n", type, now.tv_sec,
+            fprintf(fout_g, "  [%s DBG] %ld.%06ld: entering [%s], push=%d\n", type, now.tv_sec,
                     now.tv_usec, func, async_instance_g->start_abt_push);
     }
 #endif
@@ -999,14 +999,14 @@ static inline void
 func_leave(const char *func)
 {
 #ifdef ENABLE_DBG_MSG
-    const char *type = "VOL";
+    const char *type = "ASYNC VOL";
     if (strstr(func, "_fn"))
-        type = "ABT";
+        type = "      ABT";
     struct timeval now;
     gettimeofday(&now, NULL);
 
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC %s DBG] %ld.%06ld: leaving  [%s], push=%d\n", type, now.tv_sec, now.tv_usec,
+        fprintf(fout_g, "  [%s DBG] %ld.%06ld: leaving  [%s], push=%d\n", type, now.tv_sec, now.tv_usec,
                 func, async_instance_g->start_abt_push);
 #endif
     return;
@@ -1016,14 +1016,14 @@ static inline void
 func_log(const char *func, const char *name)
 {
 #ifdef ENABLE_DBG_MSG
-    const char *type = "VOL";
+    const char *type = "ASYNC VOL";
     if (strstr(func, "_fn"))
-        type = "ABT";
+        type = "      ABT";
     struct timeval now;
     gettimeofday(&now, NULL);
 
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC %s DBG] %ld.%06ld: [%s], push=%d, %s\n", type, now.tv_sec, now.tv_usec,
+        fprintf(fout_g, "  [%s DBG] %ld.%06ld: [%s], push=%d, %s\n", type, now.tv_sec, now.tv_usec,
                 func, async_instance_g->start_abt_push, name);
 #endif
     return;
@@ -1983,8 +1983,10 @@ create_async_task(void)
  *
  */
 static void
-free_async_task(async_task_t *task)
+free_async_task(async_task_t *task, const char *call_func)
 {
+    func_enter(__func__, call_func);
+
     assert(task->magic == TASK_MAGIC);
 
     ABT_mutex_lock(task->task_mutex);
@@ -2021,6 +2023,7 @@ free_async_task(async_task_t *task)
     memset(task, 0, sizeof(async_task_t));
     free(task);
 
+    func_leave(__func__);
     return;
 }
 
@@ -2066,9 +2069,11 @@ static void async_file_close_fn(void *foo);
  *
  */
 static void
-free_file_async_resources(H5VL_async_t *file)
+free_file_async_resources(H5VL_async_t *file, const char* call_func)
 {
     async_task_t *task_iter, *tmp;
+
+    func_enter(__func__, call_func);
 
     assert(file);
     assert(file->magic == ASYNC_MAGIC);
@@ -2083,13 +2088,12 @@ free_file_async_resources(H5VL_async_t *file)
         return;
     }
 
-    DL_FOREACH_SAFE2(file->file_async_obj->file_task_list_head, task_iter, tmp, file_list_next)
-    {
+    DL_FOREACH_SAFE2(file->file_async_obj->file_task_list_head, task_iter, tmp, file_list_next) {
         DL_DELETE2(file->file_async_obj->file_task_list_head, task_iter, file_list_prev, file_list_next);
         // Defer the file close task free operation to later request free so H5ESwait works even after file is
         // closed
         if (task_iter->func != async_file_close_fn && task_iter->magic == TASK_MAGIC) {
-            free_async_task(task_iter);
+            free_async_task(task_iter, __func__);
         }
     }
 
@@ -2110,6 +2114,9 @@ free_file_async_resources(H5VL_async_t *file)
 
     // File object is freed later at request free time for event set to working after file close
     /* free(file); */
+    func_leave(__func__);
+
+    return;
 }
 
 /**
@@ -2164,13 +2171,68 @@ add_to_dep_task(async_task_t *task, async_task_t *parent_task)
 /**
  * \ingroup ASYNC
  *
+ * \brief Get the number of tasks in Argobots pool, without locking queue mutex
+ *
+ * \param[in] task Async task
+ *
+ * \return int
+ *
+ * \details Retrieve the number of tasks already pushed into the Argobots pool by iterating through
+ *          all existing tasks and check their Argobots running state.
+ *
+ */
+static size_t
+get_n_running_task_in_queue_nolock(async_task_t *task, const char *call_func)
+{
+    size_t           pool_size = 0;
+    /* ABT_thread_state thread_state; */
+    /* async_task_t *   task_elt; */
+    /* ABT_thread       self_thread; */
+    /* ABT_bool         is_equal; */
+
+    if (task == NULL || task->async_obj || task->async_obj->pool_ptr)
+        return 0;
+
+    if (ABT_pool_get_total_size(*(task->async_obj->pool_ptr), &pool_size) != ABT_SUCCESS)
+        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_pool_get_total_size\n", __func__);
+
+    /* if (pool_size == 0) { */
+    /*     if (ABT_thread_self(&self_thread) != ABT_SUCCESS) */
+    /*         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_thread_self\n", __func__); */
+
+    /*     DL_FOREACH2(task->async_obj->file_task_list_head, task_elt, file_list_next) { */
+    /*         if (task_elt && task_elt->abt_thread) { */
+    /*             ABT_thread_equal(task_elt->abt_thread, self_thread, &is_equal); */
+    /*             if (task_elt && task_elt->abt_thread != NULL && is_equal == false) { */
+    /*                 ABT_thread_get_state(task_elt->abt_thread, &thread_state); */
+    /*                 if (thread_state != ABT_THREAD_STATE_TERMINATED) { */
+    /*                     pool_size++; */
+    /*                     break; */
+    /*                 } */
+    /*             } */
+    /*         } */
+    /*     } */
+    /* } */
+
+#ifdef ENABLE_DBG_MSG
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC VOL DBG] %s, pool size %lu, called by [%s]\n", __func__, pool_size,
+                call_func);
+#endif
+
+    return pool_size;
+}
+
+/**
+ * \ingroup ASYNC
+ *
  * \brief Get the number of tasks in Argobots pool
  *
  * \param[in] task Async task
  *
  * \return int
  *
- * \details Retrieve the number of tasks already pushed into the Argobots pool but iterating through
+ * \details Retrieve the number of tasks already pushed into the Argobots pool by iterating through
  *          all existing tasks and check their Argobots running state.
  *
  */
@@ -2178,32 +2240,43 @@ static size_t
 get_n_running_task_in_queue(async_task_t *task, const char *call_func)
 {
     size_t           pool_size = 0;
-    ABT_thread_state thread_state;
-    async_task_t *   task_elt;
-    ABT_thread       self_thread;
-    ABT_bool         is_equal;
+    /* ABT_thread_state thread_state; */
+    /* async_task_t *   task_elt; */
+    /* ABT_thread       self_thread; */
+    /* ABT_bool         is_equal; */
 
-    if (task == NULL)
+    if (task == NULL || task->async_obj || task->async_obj->pool_ptr)
         return 0;
+
+    if (ABT_mutex_lock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) {
+        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
+        return -1;
+    }
 
     if (ABT_pool_get_total_size(*(task->async_obj->pool_ptr), &pool_size) != ABT_SUCCESS)
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_pool_get_total_size\n", __func__);
 
-    if (pool_size == 0) {
-        if (ABT_thread_self(&self_thread) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_thread_self\n", __func__);
+    /* if (pool_size == 0) { */
+    /*     if (ABT_thread_self(&self_thread) != ABT_SUCCESS) */
+    /*         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_thread_self\n", __func__); */
 
-        DL_FOREACH2(task->async_obj->file_task_list_head, task_elt, file_list_next)
-        {
-            if (task_elt->abt_thread) {
-                ABT_thread_equal(task_elt->abt_thread, self_thread, &is_equal);
-                if (task_elt && task_elt->abt_thread != NULL && is_equal == false) {
-                    ABT_thread_get_state(task_elt->abt_thread, &thread_state);
-                    if (thread_state != ABT_THREAD_STATE_TERMINATED)
-                        pool_size++;
-                }
-            }
-        }
+    /*     DL_FOREACH2(task->async_obj->file_task_list_head, task_elt, file_list_next) { */
+    /*         if (task_elt && task_elt->abt_thread) { */
+    /*             ABT_thread_equal(task_elt->abt_thread, self_thread, &is_equal); */
+    /*             if (task_elt && task_elt->abt_thread != NULL && is_equal == false) { */
+    /*                 ABT_thread_get_state(task_elt->abt_thread, &thread_state); */
+    /*                 if (thread_state != ABT_THREAD_STATE_TERMINATED) { */
+    /*                     pool_size++; */
+    /*                     break; */
+    /*                 } */
+    /*             } */
+    /*         } */
+    /*     } */
+    /* } */
+
+    if (ABT_mutex_unlock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) {
+        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
+        return -1;
     }
 
 #ifdef ENABLE_DBG_MSG
@@ -2232,32 +2305,40 @@ int
 get_n_running_task_in_queue_obj(H5VL_async_t *async_obj, const char *call_func)
 {
     size_t           pool_size = 0;
-    ABT_thread_state thread_state;
-    async_task_t *   task_elt;
-    ABT_thread       self_thread;
-    ABT_bool         is_equal;
+    /* ABT_thread_state thread_state; */
+    /* async_task_t *   task_elt; */
+    /* ABT_thread       self_thread; */
+    /* ABT_bool         is_equal; */
 
     if (async_obj == NULL)
         return 0;
 
+    if (ABT_mutex_lock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) {
+        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
+        return -1;
+    }
+
     if (async_obj->pool_ptr && ABT_pool_get_total_size(*(async_obj->pool_ptr), &pool_size) != ABT_SUCCESS)
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_pool_get_total_size\n", __func__);
 
-    if (pool_size == 0) {
-        if (ABT_thread_self(&self_thread) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_thread_self\n", __func__);
+    /* if (pool_size == 0) { */
+    /*     if (ABT_thread_self(&self_thread) != ABT_SUCCESS) */
+    /*         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_thread_self\n", __func__); */
 
-        DL_FOREACH2(async_obj->file_task_list_head, task_elt, file_list_next)
-        {
-            ABT_thread_equal(task_elt->abt_thread, self_thread, &is_equal);
-            if (task_elt && task_elt->abt_thread != NULL && is_equal == false) {
-                ABT_thread_get_state(task_elt->abt_thread, &thread_state);
-                if (thread_state != ABT_THREAD_STATE_TERMINATED)
-                    pool_size++;
-            }
-        }
+    /*     DL_FOREACH2(async_obj->file_task_list_head, task_elt, file_list_next) { */
+    /*         ABT_thread_equal(task_elt->abt_thread, self_thread, &is_equal); */
+    /*         if (task_elt && task_elt->abt_thread != NULL && is_equal == false) { */
+    /*             ABT_thread_get_state(task_elt->abt_thread, &thread_state); */
+    /*             if (thread_state != ABT_THREAD_STATE_TERMINATED) */
+    /*                 pool_size++; */
+    /*         } */
+    /*     } */
+    /* } */
+
+    if (ABT_mutex_unlock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) {
+        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
+        return -1;
     }
-
 #ifdef ENABLE_DBG_MSG
     fprintf(fout_g, "  [ASYNC VOL DBG] %s, pool size %lu, called by [%s]\n", __func__, pool_size, call_func);
 #endif
@@ -2334,7 +2415,7 @@ H5VL_async_task_wait(async_task_t *async_task)
 static herr_t
 push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool, const char *call_func)
 {
-    int                i, is_dep_done = 1, ntask;
+    int                i, is_dep_done = 1, ntask = 0, locked = 0;
     ABT_thread_state   thread_state;
     async_task_t *     task_elt, *task_tmp;
     async_task_list_t *task_list_tmp, *task_list_elt;
@@ -2356,11 +2437,11 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool, const char *call_func
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         return -1;
     }
+    else
+        locked = 1;
 
-    DL_FOREACH_SAFE(qhead->queue, task_list_elt, task_list_tmp)
-    {
-        DL_FOREACH_SAFE(task_list_elt->task_list, task_elt, task_tmp)
-        {
+    DL_FOREACH_SAFE(qhead->queue, task_list_elt, task_list_tmp) {
+        DL_FOREACH_SAFE(task_list_elt->task_list, task_elt, task_tmp) {
 
 #ifdef ENABLE_DBG_MSG
             if (async_instance_g &&
@@ -2445,7 +2526,7 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool, const char *call_func
 #endif
 
             if (task_elt && task_elt->is_done == 0) {
-                ntask = get_n_running_task_in_queue(task_elt, __func__);
+                ntask = get_n_running_task_in_queue_nolock(task_elt, __func__);
                 if (ntask >= 1) {
 #ifdef ENABLE_DBG_MSG
                     if (async_instance_g &&
@@ -2499,7 +2580,7 @@ done:
         goto done;
     }
 
-    if (ABT_mutex_unlock(qhead->head_mutex) != ABT_SUCCESS) {
+    if (locked && ABT_mutex_unlock(qhead->head_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         return -1;
     }
@@ -2541,17 +2622,18 @@ done:
 static herr_t
 add_task_to_queue(async_qhead_t *qhead, async_task_t *task, task_list_qtype task_type)
 {
-    int is_end, is_end2;
-    /* int is_dep = 0; */
-    async_task_list_t *tail_list, *task_list_elt;
-    async_task_t *     task_elt, *tail_task;
+    async_task_list_t *task_list_elt;
+    async_task_t *task_elt;
 
     assert(qhead);
     assert(task);
 
     func_enter(__func__, NULL);
 
-    tail_list = qhead->queue == NULL ? NULL : qhead->queue->prev;
+    if (ABT_mutex_lock(qhead->head_mutex) != ABT_SUCCESS) {
+        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
+        return -1;
+    }
 
     // Need to depend on the object's createion (create/open) task to finish
     if (task_type == DEPENDENT) {
@@ -2576,31 +2658,17 @@ add_task_to_queue(async_qhead_t *qhead, async_task_t *task, task_list_qtype task
 
         /* Any read/write operation must be executed after a prior write operation of same object. */
         /* Any write operation must be executed after a prior read operation of same object. */
-        is_end = 0;
-        DL_FOREACH2(tail_list, task_list_elt, prev)
-        {
-            tail_task = task_list_elt->task_list == NULL ? NULL : task_list_elt->task_list->prev;
-            is_end2   = 0;
-            DL_FOREACH2(tail_task, task_elt, prev)
-            {
-                if (task_elt->async_obj && task->async_obj && task_elt->async_obj == task->async_obj &&
+        DL_FOREACH(qhead->queue, task_list_elt) {
+            DL_FOREACH(task_list_elt->task_list, task_elt) {
+                if (task_elt->async_obj && task_elt->async_obj == task->async_obj &&
                     !(task->op == READ && task_elt->op == READ)) {
                     task_type = DEPENDENT;
                     if (add_to_dep_task(task, task_elt) < 0) {
                         fprintf(fout_g, "  [ASYNC VOL ERROR] %s add_to_dep_task failed\n", __func__);
                         return -1;
                     }
-                    /* is_dep = 1; */
-                    /* break; */
                 }
-                if (is_end2 == 1 && tail_task == task_elt)
-                    break;
-                is_end2 = 1;
             }
-            if (is_end == 1 && tail_list == task_list_elt)
-                break;
-            is_end = 1;
-            /* if (is_dep == 1) { break; } */
         }
         // A reopened file may not have valid file_async_obj
         if (task->async_obj->file_async_obj) {
@@ -2608,8 +2676,7 @@ add_task_to_queue(async_qhead_t *qhead, async_task_t *task, task_list_qtype task
                 fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
                 return -1;
             }
-            DL_FOREACH2(task->async_obj->file_task_list_head, task_elt, file_list_next)
-            {
+            DL_FOREACH2(task->async_obj->file_task_list_head, task_elt, file_list_next) {
                 if (task_elt->in_abt_pool == 1 && task_elt->async_obj &&
                     task_elt->async_obj == task->async_obj && !(task->op == READ && task_elt->op == READ)) {
                     task_type = DEPENDENT;
@@ -2637,11 +2704,6 @@ add_task_to_queue(async_qhead_t *qhead, async_task_t *task, task_list_qtype task
     /*     } */
     /*     return 1; */
     /* } */
-
-    if (ABT_mutex_lock(qhead->head_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        return -1;
-    }
 
     // Check if the tail is of the same type, append to it if so
     if (qhead->queue && qhead->queue->prev->type == task_type && task_type != COLLECTIVE) {
@@ -2775,8 +2837,7 @@ H5VL_async_object_wait(H5VL_async_t *async_obj)
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         return -1;
     }
-    DL_FOREACH2(async_obj->file_task_list_head, task_iter, file_list_next)
-    {
+    DL_FOREACH2(async_obj->file_task_list_head, task_iter, file_list_next) {
         /* if (ABT_mutex_lock(async_obj->obj_mutex) != ABT_SUCCESS) { */
         /*     fprintf(fout_g,"  [ASYNC VOL ERROR] %s ABT_mutex_lock failed\n", __func__); */
         /*     return -1; */
@@ -2850,8 +2911,7 @@ H5VL_async_dataset_wait(H5VL_async_t *async_obj)
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         return -1;
     }
-    DL_FOREACH2(async_obj->file_task_list_head, task_iter, file_list_next)
-    {
+    DL_FOREACH2(async_obj->file_task_list_head, task_iter, file_list_next) {
         /* if (ABT_mutex_lock(async_obj->obj_mutex) != ABT_SUCCESS) { */
         /*     fprintf(fout_g,"  [ASYNC VOL ERROR] %s ABT_mutex_lock failed\n", __func__); */
         /*     return -1; */
@@ -2924,8 +2984,7 @@ H5VL_async_file_wait(H5VL_async_t *async_obj)
         return -1;
     }
     // Check for all tasks on this dset of a file
-    DL_FOREACH2(async_obj->file_task_list_head, task_iter, file_list_next)
-    {
+    DL_FOREACH2(async_obj->file_task_list_head, task_iter, file_list_next) {
         /* if (ABT_mutex_lock(async_obj->obj_mutex) != ABT_SUCCESS) { */
         /*     fprintf(fout_g,"  [ASYNC VOL ERROR] %s ABT_mutex_lock failed\n", __func__); */
         /*     return -1; */
@@ -3028,7 +3087,7 @@ H5VL_async_set_delay_time(uint64_t time_us)
     async_instance_g->delay_time = time_us;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s setting delay time to %lu us\n", __func__, time_us);
+        fprintf(fout_g, "  [      ABT DBG] %s setting delay time to %lu us\n", __func__, time_us);
 #endif
     return 0;
 }
@@ -3213,7 +3272,7 @@ check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s delay for %lu us\n", __func__,
+            fprintf(fout_g, "  [      ABT DBG] %s delay for %lu us\n", __func__,
                     async_instance_g->delay_time);
 #endif
         usleep(async_instance_g->delay_time);
@@ -3221,19 +3280,19 @@ check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *
 
     while (async_instance_g->pause) {
 #ifdef ENABLE_DBG_MSG
-        fprintf(fout_g, "  [ASYNC ABT INFO] async operations are paused\n");
+        fprintf(fout_g, "  [      ABT INFO] async operations are paused\n");
 #endif
         usleep(1000);
         wait_count++;
         if (wait_count == 10000) {
-            fprintf(fout_g, "  [ASYNC ABT INFO] async operations are paused for 10 seconds, use "
+            fprintf(fout_g, "  [      ABT INFO] async operations are paused for 10 seconds, use "
                             "H5Fstart/H5Dstart to start execution\n");
             wait_count = 0;
         }
     }
 
     if (H5TSmutex_get_attempt_count(&attempt_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_get_attempt_count failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_get_attempt_count failed\n", __func__);
         return -1;
     }
 
@@ -3245,7 +3304,7 @@ check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *
                     usleep(async_instance_g->sleep_time);
 
                 if (H5TSmutex_get_attempt_count(&new_attempt_count) < 0) {
-                    fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_get_attempt_count failed\n", __func__);
+                    fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_get_attempt_count failed\n", __func__);
                     return -1;
                 }
 
@@ -3255,7 +3314,7 @@ check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *
 #ifdef ENABLE_DBG_MSG
                     if (async_instance_g &&
                         (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-                        fprintf(fout_g, "  [ASYNC ABT DBG] %s counter %d/%d, reset wait time to %d \n",
+                        fprintf(fout_g, "  [      ABT DBG] %s counter %d/%d, reset wait time to %d \n",
                                 __func__, attempt_count, new_attempt_count, async_instance_g->sleep_time);
 #endif
                     break;
@@ -3272,13 +3331,13 @@ check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *
 
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s going to acquire %u lock\n", __func__, *mutex_count);
+        fprintf(fout_g, "  [      ABT DBG] %s going to acquire %u lock\n", __func__, *mutex_count);
 #endif
 
     wait_count = 1;
     while (*acquired == false && *mutex_count > 0) {
         if (H5TSmutex_acquire(*mutex_count, acquired) < 0) {
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_acquire failed\n", __func__);
             return -1;
         }
 
@@ -3286,14 +3345,14 @@ check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *
 #ifdef ENABLE_DBG_MSG
             if (wait_count % 1000 == 0 && async_instance_g &&
                 (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-                fprintf(fout_g, "  [ASYNC ABT DBG] %s lock NOT acquired, wait\n", __func__);
+                fprintf(fout_g, "  [      ABT DBG] %s lock NOT acquired, wait\n", __func__);
 #endif
         }
         else {
 #ifdef ENABLE_DBG_MSG
             if (async_instance_g &&
                 (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-                fprintf(fout_g, "  [ASYNC ABT DBG] %s lock acquired, count %u\n", __func__, *mutex_count);
+                fprintf(fout_g, "  [      ABT DBG] %s lock acquired, count %u\n", __func__, *mutex_count);
 #endif
             break;
         }
@@ -3303,7 +3362,7 @@ check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *
             wait_count++;
             if (wait_count == 10000) {
                 fprintf(fout_g,
-                        "  [ASYNC ABT INFO] %s unable to acquire HDF5 mutex for 10 seconds, deadlock?\n",
+                        "  [      ABT INFO] %s unable to acquire HDF5 mutex for 10 seconds, deadlock?\n",
                         __func__);
                 wait_count = 1;
             }
@@ -3342,7 +3401,7 @@ check_app_wait(int attempt_count, const char *func_name)
         return;
 
     if (H5TSmutex_get_attempt_count(&new_attempt_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_get_attempt_count failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_get_attempt_count failed\n", __func__);
         return;
     }
 
@@ -3356,7 +3415,7 @@ check_app_wait(int attempt_count, const char *func_name)
 #ifdef ENABLE_DBG_MSG
             if (async_instance_g &&
                 (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-                fprintf(fout_g, "  [ASYNC ABT DBG] %s counter %d/%d, increase wait time to %d \n", func_name,
+                fprintf(fout_g, "  [      ABT DBG] %s counter %d/%d, increase wait time to %d \n", func_name,
                         attempt_count, new_attempt_count, async_instance_g->sleep_time);
 #endif
         }
@@ -3367,7 +3426,7 @@ check_app_wait(int attempt_count, const char *func_name)
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s counter %d/%d, reset wait time to %d \n", func_name,
+            fprintf(fout_g, "  [      ABT DBG] %s counter %d/%d, reset wait time to %d \n", func_name,
                     attempt_count, new_attempt_count, async_instance_g->sleep_time);
 #endif
     }
@@ -5231,7 +5290,7 @@ async_attr_create_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -5258,7 +5317,7 @@ async_attr_create_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -5269,11 +5328,11 @@ async_attr_create_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -5286,7 +5345,7 @@ async_attr_create_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -5305,7 +5364,7 @@ async_attr_create_fn(void *foo)
     H5E_END_TRY
     if (NULL == obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -5317,9 +5376,9 @@ async_attr_create_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_loc_param((H5VL_loc_params_t *)args->loc_params);
@@ -5338,7 +5397,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -5348,7 +5407,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -5468,10 +5527,10 @@ async_attr_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_lo
     // Retrieve current library state
     if (H5VLretrieve_lib_state(&async_task->h5_state) < 0) {
         /* fprintf(fout_g,"  [ASYNC VOL ERROR] %s H5VLretrieve_lib_state failed\n", __func__); */
-        H5VL_async_free_obj(async_obj);
-        free_async_task(async_task);
+        H5VL_async_free_obj(async_obj, __func__);
+        free_async_task(async_task, __func__);
         async_obj = NULL;
-        goto done;
+        goto error;
     }
 
     async_task->func         = async_attr_create_fn;
@@ -5622,7 +5681,7 @@ async_attr_open_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -5649,7 +5708,7 @@ async_attr_open_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -5660,11 +5719,11 @@ async_attr_open_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -5677,7 +5736,7 @@ async_attr_open_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -5696,7 +5755,7 @@ async_attr_open_fn(void *foo)
     H5E_END_TRY
     if (NULL == obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -5708,9 +5767,9 @@ async_attr_open_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_loc_param((H5VL_loc_params_t *)args->loc_params);
@@ -5723,7 +5782,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -5733,7 +5792,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -5974,7 +6033,7 @@ async_attr_read_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -6001,7 +6060,7 @@ async_attr_read_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -6012,11 +6071,11 @@ async_attr_read_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -6029,7 +6088,7 @@ async_attr_read_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -6048,7 +6107,7 @@ async_attr_read_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -6056,9 +6115,9 @@ async_attr_read_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     if (args->mem_type_id > 0)
@@ -6068,7 +6127,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -6078,7 +6137,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -6297,7 +6356,7 @@ async_attr_write_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -6324,7 +6383,7 @@ async_attr_write_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -6335,11 +6394,11 @@ async_attr_write_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -6352,7 +6411,7 @@ async_attr_write_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -6371,7 +6430,7 @@ async_attr_write_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -6379,9 +6438,9 @@ async_attr_write_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     if (args->mem_type_id > 0)
@@ -6391,7 +6450,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -6401,7 +6460,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -6646,7 +6705,7 @@ async_attr_get_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -6673,7 +6732,7 @@ async_attr_get_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -6684,11 +6743,11 @@ async_attr_get_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -6701,7 +6760,7 @@ async_attr_get_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -6719,7 +6778,7 @@ async_attr_get_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -6727,9 +6786,9 @@ async_attr_get_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_attr_get_args(&args->args, task);
@@ -6738,7 +6797,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -6748,7 +6807,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -6966,7 +7025,7 @@ async_attr_specific_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -6993,7 +7052,7 @@ async_attr_specific_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -7004,11 +7063,11 @@ async_attr_specific_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -7023,7 +7082,7 @@ async_attr_specific_fn(void *foo)
                 break;
             }
             else {
-                fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+                fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
                 break;
             }
             usleep(1000);
@@ -7042,7 +7101,7 @@ async_attr_specific_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -7050,9 +7109,9 @@ async_attr_specific_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_loc_param((H5VL_loc_params_t *)args->loc_params);
@@ -7062,7 +7121,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -7072,7 +7131,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -7304,7 +7363,7 @@ async_attr_optional_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -7331,7 +7390,7 @@ async_attr_optional_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -7342,11 +7401,11 @@ async_attr_optional_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -7359,7 +7418,7 @@ async_attr_optional_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -7377,7 +7436,7 @@ async_attr_optional_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -7385,9 +7444,9 @@ async_attr_optional_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_native_attr_optional_args(args);
@@ -7396,7 +7455,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -7406,7 +7465,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -7621,7 +7680,7 @@ async_attr_close_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -7648,7 +7707,7 @@ async_attr_close_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -7659,11 +7718,11 @@ async_attr_close_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -7676,7 +7735,7 @@ async_attr_close_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -7694,7 +7753,7 @@ async_attr_close_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -7702,9 +7761,9 @@ async_attr_close_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     if (args->dxpl_id > 0)
@@ -7712,7 +7771,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -7722,7 +7781,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -7946,7 +8005,7 @@ async_dataset_create_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -7973,7 +8032,7 @@ async_dataset_create_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -7984,11 +8043,11 @@ async_dataset_create_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -8001,7 +8060,7 @@ async_dataset_create_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -8021,7 +8080,7 @@ async_dataset_create_fn(void *foo)
     H5E_END_TRY
     if (NULL == obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -8033,9 +8092,9 @@ async_dataset_create_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_loc_param((H5VL_loc_params_t *)args->loc_params);
@@ -8056,7 +8115,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -8066,7 +8125,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -8175,10 +8234,10 @@ async_dataset_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL
     // Retrieve current library state
     if (H5VLretrieve_lib_state(&async_task->h5_state) < 0) {
         /* fprintf(fout_g,"  [ASYNC VOL ERROR] %s H5VLretrieve_lib_state failed\n", __func__); */
-        H5VL_async_free_obj(async_obj);
-        free_async_task(async_task);
+        H5VL_async_free_obj(async_obj, __func__);
+        free_async_task(async_task, __func__);
         async_obj = NULL;
-        goto done;
+        goto error;
     }
 
     async_task->func         = async_dataset_create_fn;
@@ -8335,7 +8394,7 @@ async_dataset_open_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -8362,7 +8421,7 @@ async_dataset_open_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -8373,11 +8432,11 @@ async_dataset_open_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -8390,7 +8449,7 @@ async_dataset_open_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -8409,11 +8468,11 @@ async_dataset_open_fn(void *foo)
     H5E_END_TRY
     if (NULL == obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s: failed!\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s: failed!\n", __func__);
 #endif
         goto done;
     }
@@ -8426,9 +8485,9 @@ async_dataset_open_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_loc_param((H5VL_loc_params_t *)args->loc_params);
@@ -8441,7 +8500,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -8451,7 +8510,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -8694,7 +8753,7 @@ async_dataset_read_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -8722,7 +8781,7 @@ async_dataset_read_fn(void *foo)
 
                 if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                       &task->abt_thread) != ABT_SUCCESS) {
-                    fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                    fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                             task->func);
                 }
 
@@ -8734,11 +8793,11 @@ async_dataset_read_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -8751,7 +8810,7 @@ async_dataset_read_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -8770,7 +8829,7 @@ async_dataset_read_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -8778,9 +8837,9 @@ async_dataset_read_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     for (size_t i = 0; i < args->count; i++) {
@@ -8818,7 +8877,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -8828,7 +8887,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -9083,6 +9142,7 @@ error:
     return -1;
 } // End async_dataset_read > 1.13.3
 
+#ifdef ENABLE_MERGE_DSET
 static herr_t
 async_dataset_read_merge_mdset_col(async_instance_t *aid, size_t count, H5VL_async_t **parent_obj,
                                    hid_t mem_type_id[], hid_t mem_space_id[], hid_t file_space_id[],
@@ -9111,16 +9171,14 @@ async_dataset_read_merge_mdset_col(async_instance_t *aid, size_t count, H5VL_asy
     }
 
     // Reverse iter task list
-    DL_FOREACH2(aid->qhead.queue, task_list_elt, prev)
-    {
+    DL_FOREACH2(aid->qhead.queue, task_list_elt, prev) {
         // Break out when done reverse iteration
         if (is_first == 0 && task_list_elt == aid->qhead.queue)
             break;
 
         if (task_list_elt->type == COLLECTIVE) {
             // Iter to get latest/tail read task
-            DL_FOREACH2(task_list_elt->task_list, task_elt, prev)
-            {
+            DL_FOREACH2(task_list_elt->task_list, task_elt, prev) {
                 // Must be same file and a dset read task
                 if (task_elt->async_obj->file_async_obj == parent_obj[0]->file_async_obj &&
                     task_elt->func == async_dataset_read_fn) {
@@ -9176,7 +9234,7 @@ async_dataset_read_merge_mdset_col(async_instance_t *aid, size_t count, H5VL_asy
 
                     // TODO: need to use new lib state?
                     if (NULL != task_elt->h5_state && H5VLfree_lib_state(task_elt->h5_state) < 0)
-                        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+                        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
 
                     // Retrieve current library state
                     if (H5VLretrieve_lib_state(&task_elt->h5_state) < 0) {
@@ -9205,6 +9263,7 @@ async_dataset_read_merge_mdset_col(async_instance_t *aid, size_t count, H5VL_asy
 done:
     return found_task;
 } // End async_dataset_read_merge_mdset_col > 1.13.3
+#endif
 #else
 static void
 async_dataset_read_fn(void *foo)
@@ -9238,7 +9297,7 @@ async_dataset_read_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -9265,7 +9324,7 @@ async_dataset_read_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -9276,11 +9335,11 @@ async_dataset_read_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -9293,7 +9352,7 @@ async_dataset_read_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -9312,7 +9371,7 @@ async_dataset_read_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -9320,9 +9379,9 @@ async_dataset_read_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     if (args->mem_type_id > 0)
@@ -9336,7 +9395,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -9346,7 +9405,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -9608,7 +9667,7 @@ async_dataset_write_fn(void *foo)
 
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -9635,7 +9694,7 @@ async_dataset_write_fn(void *foo)
 
                 if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                       &task->abt_thread) != ABT_SUCCESS) {
-                    fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                    fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                             task->func);
                 }
 
@@ -9647,11 +9706,11 @@ async_dataset_write_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -9661,7 +9720,7 @@ async_dataset_write_fn(void *foo)
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
         if (count > 10000) {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s cannot acquire object lock in 10s!\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s cannot acquire object lock in 10s!\n", __func__);
             break;
         }
 
@@ -9670,7 +9729,7 @@ async_dataset_write_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -9690,8 +9749,8 @@ async_dataset_write_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
-        fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+        fprintf(fout_g, "  [      ABT LOG] Argobots execute %s failed\n", __func__);
 #ifdef PRINT_ERROR_STACK
         H5Eprint2(task->err_stack, stderr);
 #endif
@@ -9702,9 +9761,9 @@ async_dataset_write_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     for (size_t i = 0; i < args->count; i++) {
@@ -9738,7 +9797,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -9748,7 +9807,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -9762,7 +9821,7 @@ done:
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s released dset memcpy\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s released dset memcpy\n", __func__);
 #endif
     }
 #endif
@@ -9874,14 +9933,14 @@ async_dataset_write(async_instance_t *aid, size_t count, H5VL_async_t **parent_o
         if (async_instance_g->used_mem + buf_size > async_instance_g->max_mem) {
             is_blocking = true;
             fprintf(fout_g,
-                    "  [ASYNC ABT INFO] %d write size %lu larger than async memory limit %lu, switch to "
+                    "  [      ABT INFO] %d write size %lu larger than async memory limit %lu, switch to "
                     "synchronous write\n",
                     async_instance_g->mpi_rank, buf_size, async_instance_g->max_mem);
         }
         else if (buf_size > avail_mem) {
             is_blocking = true;
             fprintf(fout_g,
-                    "  [ASYNC ABT INFO] %d write size %lu larger than available memory %lu, switch to "
+                    "  [      ABT INFO] %d write size %lu larger than available memory %lu, switch to "
                     "synchronous write\n",
                     async_instance_g->mpi_rank, buf_size, avail_mem);
         }
@@ -10083,6 +10142,7 @@ error:
     return -1;
 } // End async_dataset_write > 1.13.3
 
+#ifdef ENABLE_MERGE_DSET
 // Check and merge current write into an exisiting one in queue, must be collective
 static herr_t
 async_dataset_write_merge_mdset_col(async_instance_t *aid, size_t count, H5VL_async_t **parent_obj,
@@ -10111,16 +10171,14 @@ async_dataset_write_merge_mdset_col(async_instance_t *aid, size_t count, H5VL_as
     }
 
     // Reverse iter task list
-    DL_FOREACH2(aid->qhead.queue, task_list_elt, prev)
-    {
+    DL_FOREACH2(aid->qhead.queue, task_list_elt, prev) {
         // Break out when done reverse iteration
         if (is_first == 0 && task_list_elt == aid->qhead.queue)
             break;
 
         if (task_list_elt->type == COLLECTIVE) {
             // Reverse iter to get latest/tail write task
-            DL_FOREACH2(task_list_elt->task_list, task_elt, prev)
-            {
+            DL_FOREACH2(task_list_elt->task_list, task_elt, prev) {
                 // Must be same file and a dset write task
                 if (task_elt->async_obj->file_async_obj == parent_obj[0]->file_async_obj &&
                     task_elt->func == async_dataset_write_fn) {
@@ -10196,14 +10254,14 @@ async_dataset_write_merge_mdset_col(async_instance_t *aid, size_t count, H5VL_as
 
                         if (async_instance_g->used_mem + buf_size > async_instance_g->max_mem) {
                             fprintf(fout_g,
-                                    "  [ASYNC ABT INFO] %d write size %lu larger than async memory limit "
+                                    "  [      ABT INFO] %d write size %lu larger than async memory limit "
                                     "%lu, switch to "
                                     "synchronous write\n",
                                     async_instance_g->mpi_rank, buf_size, async_instance_g->max_mem);
                         }
                         else if (buf_size > avail_mem) {
                             fprintf(fout_g,
-                                    "  [ASYNC ABT INFO] %d write size %lu larger than available memory %lu, "
+                                    "  [      ABT INFO] %d write size %lu larger than available memory %lu, "
                                     "switch to "
                                     "synchronous write\n",
                                     async_instance_g->mpi_rank, buf_size, avail_mem);
@@ -10240,7 +10298,7 @@ async_dataset_write_merge_mdset_col(async_instance_t *aid, size_t count, H5VL_as
 
                     // TODO: need to use new lib state?
                     if (NULL != task_elt->h5_state && H5VLfree_lib_state(task_elt->h5_state) < 0)
-                        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+                        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
 
                     // Retrieve current library state
                     if (H5VLretrieve_lib_state(&task_elt->h5_state) < 0) {
@@ -10269,6 +10327,7 @@ async_dataset_write_merge_mdset_col(async_instance_t *aid, size_t count, H5VL_as
 done:
     return found_task;
 } // End async_dataset_write_merge_mdset
+#endif
 
 #else
 // < 1.13.3
@@ -10304,7 +10363,7 @@ async_dataset_write_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -10331,7 +10390,7 @@ async_dataset_write_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -10342,11 +10401,11 @@ async_dataset_write_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -10356,7 +10415,7 @@ async_dataset_write_fn(void *foo)
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
         if (count > 10000) {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s cannot acquire object lock in 10s!\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s cannot acquire object lock in 10s!\n", __func__);
             break;
         }
 
@@ -10365,7 +10424,7 @@ async_dataset_write_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -10384,8 +10443,8 @@ async_dataset_write_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
-        fprintf(fout_g, "  [ASYNC ABT LOG] Argobots execute %s failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+        fprintf(fout_g, "  [      ABT LOG] Argobots execute %s failed\n", __func__);
 #ifdef PRINT_ERROR_STACK
         H5Eprint2(task->err_stack, stderr);
 #endif
@@ -10396,9 +10455,9 @@ async_dataset_write_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     if (args->mem_type_id > 0)
@@ -10412,7 +10471,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -10422,7 +10481,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -10434,7 +10493,7 @@ done:
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s released dset memcpy\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s released dset memcpy\n", __func__);
 #endif
     }
 #endif
@@ -10517,7 +10576,7 @@ async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_t
         is_blocking = true;
         args->buf = (void *)buf;
         fprintf(fout_g,
-                "  [ASYNC ABT INFO] %d write size %lu larger than async memory limit %lu, switch to "
+                "  [      ABT INFO] %d write size %lu larger than async memory limit %lu, switch to "
                 "synchronous write\n",
                 async_instance_g->mpi_rank, buf_size, async_instance_g->max_mem);
     }
@@ -10525,7 +10584,7 @@ async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_t
         is_blocking = true;
         args->buf = (void *)buf;
         fprintf(fout_g,
-                "  [ASYNC ABT INFO] %d write size %lu larger than available memory %lu, switch to "
+                "  [      ABT INFO] %d write size %lu larger than available memory %lu, switch to "
                 "synchronous write\n",
                 async_instance_g->mpi_rank, buf_size, avail_mem);
     }
@@ -10725,7 +10784,7 @@ async_dataset_get_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -10752,7 +10811,7 @@ async_dataset_get_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -10763,11 +10822,11 @@ async_dataset_get_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -10780,7 +10839,7 @@ async_dataset_get_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -10798,7 +10857,7 @@ async_dataset_get_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -10806,9 +10865,9 @@ async_dataset_get_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_dataset_get_args(&args->args, task);
@@ -10817,7 +10876,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -10827,7 +10886,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -11051,7 +11110,7 @@ async_dataset_specific_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -11078,7 +11137,7 @@ async_dataset_specific_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -11089,11 +11148,11 @@ async_dataset_specific_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -11106,7 +11165,7 @@ async_dataset_specific_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -11124,7 +11183,7 @@ async_dataset_specific_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -11132,9 +11191,9 @@ async_dataset_specific_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_dataset_spec_args(&args->args);
@@ -11143,7 +11202,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -11153,7 +11212,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -11373,7 +11432,7 @@ async_dataset_optional_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -11400,7 +11459,7 @@ async_dataset_optional_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -11411,11 +11470,11 @@ async_dataset_optional_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -11428,7 +11487,7 @@ async_dataset_optional_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -11446,7 +11505,7 @@ async_dataset_optional_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -11454,9 +11513,9 @@ async_dataset_optional_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_native_dataset_optional_args(args);
@@ -11465,7 +11524,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -11475,7 +11534,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -11690,7 +11749,7 @@ async_dataset_close_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -11717,7 +11776,7 @@ async_dataset_close_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -11728,11 +11787,11 @@ async_dataset_close_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -11745,7 +11804,7 @@ async_dataset_close_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -11763,7 +11822,7 @@ async_dataset_close_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -11771,9 +11830,9 @@ async_dataset_close_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     if (args->dxpl_id > 0)
@@ -11781,7 +11840,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -11791,7 +11850,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
 
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
@@ -12020,7 +12079,7 @@ async_datatype_commit_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -12047,7 +12106,7 @@ async_datatype_commit_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -12058,11 +12117,11 @@ async_datatype_commit_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -12075,7 +12134,7 @@ async_datatype_commit_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -12095,7 +12154,7 @@ async_datatype_commit_fn(void *foo)
     H5E_END_TRY
     if (NULL == under_obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
     task->async_obj->under_object = under_obj;
@@ -12104,9 +12163,9 @@ async_datatype_commit_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_loc_param((H5VL_loc_params_t *)args->loc_params);
@@ -12125,7 +12184,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -12135,7 +12194,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -12385,7 +12444,7 @@ async_datatype_open_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -12412,7 +12471,7 @@ async_datatype_open_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -12423,11 +12482,11 @@ async_datatype_open_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -12440,7 +12499,7 @@ async_datatype_open_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -12459,7 +12518,7 @@ async_datatype_open_fn(void *foo)
     H5E_END_TRY
     if (NULL == obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -12471,9 +12530,9 @@ async_datatype_open_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_loc_param((H5VL_loc_params_t *)args->loc_params);
@@ -12486,7 +12545,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -12496,7 +12555,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -12737,7 +12796,7 @@ async_datatype_get_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -12764,7 +12823,7 @@ async_datatype_get_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -12775,11 +12834,11 @@ async_datatype_get_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -12792,7 +12851,7 @@ async_datatype_get_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -12810,7 +12869,7 @@ async_datatype_get_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -12818,9 +12877,9 @@ async_datatype_get_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_datatype_get_args(&args->args, task);
@@ -12829,7 +12888,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -12839,7 +12898,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -13057,7 +13116,7 @@ async_datatype_specific_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -13084,7 +13143,7 @@ async_datatype_specific_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -13095,11 +13154,11 @@ async_datatype_specific_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -13112,7 +13171,7 @@ async_datatype_specific_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -13130,7 +13189,7 @@ async_datatype_specific_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -13138,9 +13197,9 @@ async_datatype_specific_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_datatype_spec_args(&args->args);
@@ -13149,7 +13208,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -13159,7 +13218,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -13375,7 +13434,7 @@ async_datatype_optional_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -13402,7 +13461,7 @@ async_datatype_optional_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -13413,11 +13472,11 @@ async_datatype_optional_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -13430,7 +13489,7 @@ async_datatype_optional_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -13448,7 +13507,7 @@ async_datatype_optional_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -13456,9 +13515,9 @@ async_datatype_optional_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_native_datatype_optional_args(args);
@@ -13467,7 +13526,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -13477,7 +13536,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -13693,7 +13752,7 @@ async_datatype_close_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -13720,7 +13779,7 @@ async_datatype_close_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -13731,11 +13790,11 @@ async_datatype_close_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -13748,7 +13807,7 @@ async_datatype_close_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -13766,7 +13825,7 @@ async_datatype_close_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -13774,9 +13833,9 @@ async_datatype_close_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     if (args->dxpl_id > 0)
@@ -13784,7 +13843,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -13794,7 +13853,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -14018,18 +14077,18 @@ async_file_create_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -14044,7 +14103,7 @@ async_file_create_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -14066,7 +14125,7 @@ async_file_create_fn(void *foo)
     H5E_END_TRY
     if (NULL == obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -14074,7 +14133,7 @@ async_file_create_fn(void *foo)
     /* supported = 0; */
     /* if(H5VLintrospect_opt_query(obj, under_vol_id, H5VL_SUBCLS_FILE, H5VL_NATIVE_FILE_POST_OPEN,
      * &supported) < 0) { */
-    /*     fprintf(fout_g,"  [ASYNC ABT ERROR] %s H5VLintrospect_opt_query failed\n", __func__); */
+    /*     fprintf(fout_g,"  [      ABT ERROR] %s H5VLintrospect_opt_query failed\n", __func__); */
     /*     goto done; */
     /* } */
     /* if(supported & H5VL_OPT_QUERY_SUPPORTED) { */
@@ -14086,7 +14145,7 @@ async_file_create_fn(void *foo)
     /*     } H5E_END_TRY */
     /*     if ( status < 0 ) { */
     /*         if ((task->err_stack = H5Eget_current_stack()) < 0) */
-    /*             fprintf(fout_g,"  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__); */
+    /*             fprintf(fout_g,"  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__); */
     /*         goto done; */
     /*     } */
     /* } /1* end if *1/ */
@@ -14099,20 +14158,20 @@ async_file_create_fn(void *foo)
 
     // Increase file open ref count
     if (ABT_mutex_lock(async_instance_mutex_g) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] with ABT_mutex_lock\n");
+        fprintf(fout_g, "  [      ABT ERROR] with ABT_mutex_lock\n");
         goto done;
     };
     async_instance_g->nfopen++;
     if (ABT_mutex_unlock(async_instance_mutex_g) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] with ABT_mutex_ulock\n");
+        fprintf(fout_g, "  [      ABT ERROR] with ABT_mutex_ulock\n");
         goto done;
     };
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     if (NULL != info)
@@ -14128,7 +14187,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -14138,7 +14197,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -14235,10 +14294,10 @@ async_file_create(async_instance_t *aid, const char *name, unsigned flags, hid_t
     // Retrieve current library state
     if (H5VLretrieve_lib_state(&async_task->h5_state) < 0) {
         /* fprintf(fout_g,"  [ASYNC VOL ERROR] %s H5VLretrieve_lib_state failed\n", __func__); */
-        H5VL_async_free_obj(async_obj);
-        free_async_task(async_task);
+        H5VL_async_free_obj(async_obj, __func__);
+        free_async_task(async_task, __func__);
         async_obj = NULL;
-        goto done;
+        goto error;
     }
 
     async_task->func         = async_file_create_fn;
@@ -14379,7 +14438,7 @@ async_file_open_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
     /* async_instance_g->start_abt_push = false; */
@@ -14387,11 +14446,11 @@ async_file_open_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -14404,7 +14463,7 @@ async_file_open_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -14426,7 +14485,7 @@ async_file_open_fn(void *foo)
     H5E_END_TRY
     if (NULL == obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -14439,7 +14498,7 @@ async_file_open_fn(void *foo)
     /* } H5E_END_TRY */
     /* if ( status < 0 ) { */
     /*     if ((task->err_stack = H5Eget_current_stack()) < 0) */
-    /*         fprintf(fout_g,"  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__); */
+    /*         fprintf(fout_g,"  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__); */
     /*     goto done; */
     /* } */
     /* if(supported & H5VL_OPT_QUERY_SUPPORTED) { */
@@ -14451,7 +14510,7 @@ async_file_open_fn(void *foo)
     /*     } H5E_END_TRY */
     /*     if ( status < 0 ) { */
     /*         if ((task->err_stack = H5Eget_current_stack()) < 0) */
-    /*             fprintf(fout_g,"  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__); */
+    /*             fprintf(fout_g,"  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__); */
     /*         goto done; */
     /*     } */
     /* } /1* end if *1/ */
@@ -14464,20 +14523,20 @@ async_file_open_fn(void *foo)
 
     // Increase file open ref count
     if (ABT_mutex_lock(async_instance_mutex_g) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] with ABT_mutex_lock\n");
+        fprintf(fout_g, "  [      ABT ERROR] with ABT_mutex_lock\n");
         goto done;
     };
     async_instance_g->nfopen++;
     if (ABT_mutex_unlock(async_instance_mutex_g) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] with ABT_mutex_ulock\n");
+        fprintf(fout_g, "  [      ABT ERROR] with ABT_mutex_ulock\n");
         goto done;
     };
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     if (NULL != info)
@@ -14491,7 +14550,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -14501,7 +14560,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -14730,7 +14789,7 @@ async_file_get_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -14757,7 +14816,7 @@ async_file_get_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -14768,11 +14827,11 @@ async_file_get_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -14785,7 +14844,7 @@ async_file_get_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -14803,7 +14862,7 @@ async_file_get_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -14811,9 +14870,9 @@ async_file_get_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_file_get_args(&args->args, task);
@@ -14822,7 +14881,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -14832,7 +14891,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -15050,7 +15109,7 @@ async_file_specific_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -15077,7 +15136,7 @@ async_file_specific_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -15088,11 +15147,11 @@ async_file_specific_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -15105,7 +15164,7 @@ async_file_specific_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -15123,7 +15182,7 @@ async_file_specific_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -15131,9 +15190,9 @@ async_file_specific_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_file_spec_args(&args->args);
@@ -15142,7 +15201,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -15152,7 +15211,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -15374,7 +15433,7 @@ async_file_optional_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -15401,7 +15460,7 @@ async_file_optional_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -15412,11 +15471,11 @@ async_file_optional_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -15429,7 +15488,7 @@ async_file_optional_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -15447,7 +15506,7 @@ async_file_optional_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -15455,9 +15514,9 @@ async_file_optional_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_native_file_optional_args(args);
@@ -15466,7 +15525,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -15474,11 +15533,11 @@ done:
     task->is_done     = 1;
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s released global lock %u\n", __func__, mutex_count);
+        fprintf(fout_g, "  [      ABT DBG] %s released global lock %u\n", __func__, mutex_count);
 #endif
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push) {
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -15486,7 +15545,7 @@ done:
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s pushed task to abt queue, mode=%d\n", __func__,
+            fprintf(fout_g, "  [      ABT DBG] %s pushed task to abt queue, mode=%d\n", __func__,
                     async_instance_g->start_abt_push);
 #endif
     }
@@ -15494,7 +15553,7 @@ done:
     else {
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s did not pushed task to abt queue, %p, mode=%d\n", __func__,
+            fprintf(fout_g, "  [      ABT DBG] %s did not pushed task to abt queue, %p, mode=%d\n", __func__,
                     async_instance_g->qhead.queue, async_instance_g->start_abt_push);
     }
 #endif
@@ -15711,7 +15770,7 @@ async_file_close_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -15738,7 +15797,7 @@ async_file_close_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -15749,11 +15808,11 @@ async_file_close_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -15767,7 +15826,7 @@ async_file_close_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -15784,7 +15843,7 @@ async_file_close_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -15792,21 +15851,21 @@ async_file_close_fn(void *foo)
 
     // Decrease file open ref count
     if (ABT_mutex_lock(async_instance_mutex_g) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] with ABT_mutex_lock\n");
+        fprintf(fout_g, "  [      ABT ERROR] with ABT_mutex_lock\n");
         goto done;
     };
     if (async_instance_g->nfopen > 0 && args->is_reopen == false)
         async_instance_g->nfopen--;
     if (ABT_mutex_unlock(async_instance_mutex_g) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] with ABT_mutex_ulock\n");
+        fprintf(fout_g, "  [      ABT ERROR] with ABT_mutex_ulock\n");
         goto done;
     };
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     if (args->dxpl_id > 0)
@@ -15814,7 +15873,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -15829,12 +15888,12 @@ done:
     // Free all the resources allocated for this file, e.g. tasks
     if (task->task_mutex) {
         ABT_mutex_lock(task->task_mutex);
-        free_file_async_resources(task->async_obj);
+        free_file_async_resources(task->async_obj, __func__);
         ABT_mutex_unlock(task->task_mutex);
     }
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
 #ifdef ENABLE_TIMING
     task->end_time = clock();
@@ -16078,7 +16137,7 @@ async_group_create_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -16105,7 +16164,7 @@ async_group_create_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -16116,11 +16175,11 @@ async_group_create_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -16133,7 +16192,7 @@ async_group_create_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -16152,7 +16211,7 @@ async_group_create_fn(void *foo)
     H5E_END_TRY
     if (NULL == obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         func_log(__func__, "execute error");
         goto done;
     }
@@ -16165,9 +16224,9 @@ async_group_create_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_loc_param((H5VL_loc_params_t *)args->loc_params);
@@ -16186,7 +16245,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -16196,7 +16255,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -16295,11 +16354,11 @@ async_group_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_l
     if (H5VLretrieve_lib_state(&async_task->h5_state) < 0) {
         /* fprintf(fout_g,"  [ASYNC VOL ERROR] %s H5VLretrieve_lib_state failed\n", __func__); */
         H5VLfree_lib_state(async_task->h5_state);
-        H5VL_async_free_obj(async_obj);
-        free_async_task(async_task);
+        H5VL_async_free_obj(async_obj, __func__);
+        free_async_task(async_task, __func__);
         async_task = NULL;
         async_obj  = NULL;
-        goto done;
+        goto error;
     }
 
     async_task->func         = async_group_create_fn;
@@ -16414,7 +16473,7 @@ error:
     /*         async_task->args = NULL; */
     /* } */
     if (NULL != async_task->h5_state && H5VLfree_lib_state(async_task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     async_task->h5_state = NULL;
     return NULL;
 } // End async_group_create
@@ -16451,7 +16510,7 @@ async_group_open_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -16478,7 +16537,7 @@ async_group_open_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -16489,11 +16548,11 @@ async_group_open_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -16506,7 +16565,7 @@ async_group_open_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -16525,7 +16584,7 @@ async_group_open_fn(void *foo)
     H5E_END_TRY
     if (NULL == obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -16537,9 +16596,9 @@ async_group_open_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_loc_param((H5VL_loc_params_t *)args->loc_params);
@@ -16552,7 +16611,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -16562,7 +16621,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -16803,7 +16862,7 @@ async_group_get_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -16830,7 +16889,7 @@ async_group_get_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -16841,11 +16900,11 @@ async_group_get_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -16858,7 +16917,7 @@ async_group_get_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -16876,7 +16935,7 @@ async_group_get_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -16884,9 +16943,9 @@ async_group_get_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_group_get_args(&args->args, task);
@@ -16895,7 +16954,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -16905,7 +16964,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -17128,7 +17187,7 @@ async_group_specific_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -17155,7 +17214,7 @@ async_group_specific_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -17166,11 +17225,11 @@ async_group_specific_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -17183,7 +17242,7 @@ async_group_specific_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -17201,7 +17260,7 @@ async_group_specific_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -17209,9 +17268,9 @@ async_group_specific_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_group_spec_args(&args->args);
@@ -17220,7 +17279,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -17230,7 +17289,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -17445,7 +17504,7 @@ async_group_optional_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -17472,7 +17531,7 @@ async_group_optional_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -17483,11 +17542,11 @@ async_group_optional_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -17500,7 +17559,7 @@ async_group_optional_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -17518,7 +17577,7 @@ async_group_optional_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -17526,9 +17585,9 @@ async_group_optional_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_native_group_optional_args(args);
@@ -17537,7 +17596,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -17547,7 +17606,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -17762,7 +17821,7 @@ async_group_close_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -17789,7 +17848,7 @@ async_group_close_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -17800,11 +17859,11 @@ async_group_close_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -17818,7 +17877,7 @@ async_group_close_fn(void *foo)
                 break;
             }
             else {
-                fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+                fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
                 break;
             }
             usleep(1000);
@@ -17837,7 +17896,7 @@ async_group_close_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -17845,9 +17904,9 @@ async_group_close_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     if (args->dxpl_id > 0)
@@ -17856,7 +17915,7 @@ done:
     if (task->async_obj->obj_mutex) {
         if (is_lock == 1) {
             if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
         }
     }
 
@@ -17867,7 +17926,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -18064,7 +18123,7 @@ error:
             async_task->args = NULL;
     }
     if (NULL != async_task->h5_state && H5VLfree_lib_state(async_task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     async_task->h5_state = NULL;
     return -1;
 } // End async_group_close
@@ -18101,7 +18160,7 @@ async_link_create_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -18128,7 +18187,7 @@ async_link_create_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -18139,11 +18198,11 @@ async_link_create_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -18156,7 +18215,7 @@ async_link_create_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -18175,7 +18234,7 @@ async_link_create_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -18186,9 +18245,9 @@ done:
     va_end(args->arguments);
 
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_link_create_args(&args->args);
@@ -18202,7 +18261,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -18212,7 +18271,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -18461,7 +18520,7 @@ async_link_copy_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -18486,12 +18545,12 @@ async_link_copy_fn(void *foo)
     /*             goto done; */
     /*         } */
     /* #ifdef ENABLE_DBG_MSG */
-    /*         fprintf(fout_g,"  [ASYNC ABT ERROR] %s parent object is NULL, re-insert to pool\n", __func__);
+    /*         fprintf(fout_g,"  [      ABT ERROR] %s parent object is NULL, re-insert to pool\n", __func__);
      */
     /* #endif */
     /*         if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
      * &task->abt_thread) != ABT_SUCCESS) { */
-    /*             fprintf(fout_g,"  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+    /*             fprintf(fout_g,"  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
      * task->func); */
     /*         } */
 
@@ -18502,11 +18561,11 @@ async_link_copy_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -18519,7 +18578,7 @@ async_link_copy_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -18538,7 +18597,7 @@ async_link_copy_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -18546,9 +18605,9 @@ async_link_copy_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_loc_param((H5VL_loc_params_t *)args->loc_params1);
@@ -18562,7 +18621,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -18572,7 +18631,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -18816,7 +18875,7 @@ async_link_move_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -18839,12 +18898,12 @@ async_link_move_fn(void *foo)
     /*             goto done; */
     /*         } */
     /* #ifdef ENABLE_DBG_MSG */
-    /*         fprintf(fout_g,"  [ASYNC ABT ERROR] %s parent object is NULL, re-insert to pool\n", __func__);
+    /*         fprintf(fout_g,"  [      ABT ERROR] %s parent object is NULL, re-insert to pool\n", __func__);
      */
     /* #endif */
     /*         if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
      * &task->abt_thread) != ABT_SUCCESS) { */
-    /*             fprintf(fout_g,"  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+    /*             fprintf(fout_g,"  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
      * task->func); */
     /*         } */
 
@@ -18855,11 +18914,11 @@ async_link_move_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -18872,7 +18931,7 @@ async_link_move_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -18891,7 +18950,7 @@ async_link_move_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -18899,9 +18958,9 @@ async_link_move_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_loc_param((H5VL_loc_params_t *)args->loc_params1);
@@ -18915,7 +18974,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -18925,7 +18984,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -19170,7 +19229,7 @@ async_link_get_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -19197,7 +19256,7 @@ async_link_get_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -19208,11 +19267,11 @@ async_link_get_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -19225,7 +19284,7 @@ async_link_get_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -19244,7 +19303,7 @@ async_link_get_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -19252,9 +19311,9 @@ async_link_get_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_loc_param((H5VL_loc_params_t *)args->loc_params);
@@ -19264,7 +19323,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -19274,7 +19333,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -19499,7 +19558,7 @@ async_link_specific_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -19526,7 +19585,7 @@ async_link_specific_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -19537,11 +19596,11 @@ async_link_specific_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -19557,7 +19616,7 @@ async_link_specific_fn(void *foo)
                 break;
             }
             else {
-                fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+                fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
                 break;
             }
             usleep(1000);
@@ -19576,7 +19635,7 @@ async_link_specific_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -19584,9 +19643,9 @@ async_link_specific_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_loc_param((H5VL_loc_params_t *)args->loc_params);
@@ -19596,7 +19655,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -19606,7 +19665,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -19832,7 +19891,7 @@ async_link_optional_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -19859,7 +19918,7 @@ async_link_optional_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -19870,11 +19929,11 @@ async_link_optional_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -19887,7 +19946,7 @@ async_link_optional_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -19906,7 +19965,7 @@ async_link_optional_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -19914,9 +19973,9 @@ async_link_optional_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_loc_param((H5VL_loc_params_t *)args->loc_params);
@@ -19926,7 +19985,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -19936,7 +19995,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -20162,7 +20221,7 @@ async_object_open_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -20189,7 +20248,7 @@ async_object_open_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -20200,11 +20259,11 @@ async_object_open_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -20217,7 +20276,7 @@ async_object_open_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -20236,7 +20295,7 @@ async_object_open_fn(void *foo)
     H5E_END_TRY
     if (NULL == obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -20248,9 +20307,9 @@ async_object_open_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_loc_param((H5VL_loc_params_t *)args->loc_params);
@@ -20259,7 +20318,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -20269,7 +20328,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -20510,7 +20569,7 @@ async_object_copy_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -20535,12 +20594,12 @@ async_object_copy_fn(void *foo)
     /*             goto done; */
     /*         } */
     /* #ifdef ENABLE_DBG_MSG */
-    /*         fprintf(fout_g,"  [ASYNC ABT ERROR] %s parent object is NULL, re-insert to pool\n", __func__);
+    /*         fprintf(fout_g,"  [      ABT ERROR] %s parent object is NULL, re-insert to pool\n", __func__);
      */
     /* #endif */
     /*         if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
      * &task->abt_thread) != ABT_SUCCESS) { */
-    /*             fprintf(fout_g,"  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+    /*             fprintf(fout_g,"  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
      * task->func); */
     /*         } */
 
@@ -20551,11 +20610,11 @@ async_object_copy_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -20568,7 +20627,7 @@ async_object_copy_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -20590,10 +20649,10 @@ async_object_copy_fn(void *foo)
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s: failed!\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s: failed!\n", __func__);
 #endif
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -20601,9 +20660,9 @@ async_object_copy_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_loc_param((H5VL_loc_params_t *)args->src_loc_params);
@@ -20621,7 +20680,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -20631,7 +20690,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -20871,7 +20930,7 @@ async_object_get_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -20898,7 +20957,7 @@ async_object_get_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -20909,11 +20968,11 @@ async_object_get_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -20930,7 +20989,7 @@ async_object_get_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -20948,7 +21007,7 @@ async_object_get_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -20956,9 +21015,9 @@ async_object_get_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_loc_param((H5VL_loc_params_t *)args->loc_params);
@@ -20968,7 +21027,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -20978,7 +21037,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -21209,7 +21268,7 @@ async_object_specific_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -21236,7 +21295,7 @@ async_object_specific_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -21247,11 +21306,11 @@ async_object_specific_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -21266,7 +21325,7 @@ async_object_specific_fn(void *foo)
                 break;
             }
             else {
-                fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+                fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
                 break;
             }
             usleep(1000);
@@ -21285,7 +21344,7 @@ async_object_specific_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -21293,9 +21352,9 @@ async_object_specific_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_loc_param((H5VL_loc_params_t *)args->loc_params);
@@ -21305,7 +21364,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -21315,7 +21374,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -21547,7 +21606,7 @@ async_object_optional_fn(void *foo)
         goto done;
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
+        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
                 mutex_count);
 #endif
 
@@ -21574,7 +21633,7 @@ async_object_optional_fn(void *foo)
 
             if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
                                   &task->abt_thread) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
                         task->func);
             }
 
@@ -21585,11 +21644,11 @@ async_object_optional_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLstart_lib_state() < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLstart_lib_state failed\n", __func__);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLrestore_lib_state failed\n", __func__);
         goto done;
     }
     is_lib_state_restored = true;
@@ -21602,7 +21661,7 @@ async_object_optional_fn(void *foo)
             break;
         }
         else {
-            fprintf(fout_g, "  [ASYNC ABT DBG] %s error with try_lock\n", __func__);
+            fprintf(fout_g, "  [      ABT DBG] %s error with try_lock\n", __func__);
             break;
         }
         usleep(1000);
@@ -21621,7 +21680,7 @@ async_object_optional_fn(void *foo)
     H5E_END_TRY
     if (status < 0) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
     }
 
@@ -21629,9 +21688,9 @@ async_object_optional_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLfinish_lib_state() < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfinish_lib_state failed\n", __func__);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
 
     free_loc_param((H5VL_loc_params_t *)args->loc_params);
@@ -21641,7 +21700,7 @@ done:
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
-            fprintf(fout_g, "  [ASYNC ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
+            fprintf(fout_g, "  [      ABT ERROR] %s ABT_mutex_unlock failed\n", __func__);
     }
 
     ABT_eventual_set(task->eventual, NULL, 0);
@@ -21651,7 +21710,7 @@ done:
     func_log(__func__, "release global lock");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
-        fprintf(fout_g, "  [ASYNC ABT ERROR] %s H5TSmutex_release failed\n", __func__);
+        fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
@@ -21894,11 +21953,11 @@ H5VL_async_new_obj(void *under_obj, hid_t under_vol_id)
  *-------------------------------------------------------------------------
  */
 static herr_t
-H5VL_async_free_obj(H5VL_async_t *obj)
+H5VL_async_free_obj(H5VL_async_t *obj, const char* call_func)
 {
     hid_t err_id;
 
-    func_enter(__func__, NULL);
+    func_enter(__func__, call_func);
 
     // A reopened file may not have a valid obj
     if (NULL == obj)
@@ -22270,7 +22329,7 @@ H5VL_async_unwrap_object(void *obj)
     under = H5VLunwrap_object(o->under_object, o->under_vol_id);
 
     if (under)
-        H5VL_async_free_obj(o);
+        H5VL_async_free_obj(o, __func__);
 
     return under;
 } /* end H5VL_async_unwrap_object() */
@@ -22669,7 +22728,7 @@ H5VL_async_attr_close(void *attr, hid_t dxpl_id, void **req)
 
         /* Release our wrapper, if underlying attribute was closed */
         if (ret_value >= 0)
-            H5VL_async_free_obj(o);
+            H5VL_async_free_obj(o, __func__);
     }
     else {
         if ((ret_value = H5is_library_terminating(&is_term)) < 0)
@@ -23187,7 +23246,7 @@ H5VL_async_dataset_close(void *dset, hid_t dxpl_id, void **req)
 
         /* Release our wrapper, if underlying dataset was closed */
         if (ret_value >= 0)
-            H5VL_async_free_obj(o);
+            H5VL_async_free_obj(o, __func__);
     }
     else {
         if ((ret_value = H5is_library_terminating(&is_term)) < 0)
@@ -23454,7 +23513,7 @@ H5VL_async_datatype_close(void *dt, hid_t dxpl_id, void **req)
 
         /* Release our wrapper, if underlying datatype was closed */
         if (ret_value >= 0)
-            H5VL_async_free_obj(o);
+            H5VL_async_free_obj(o, __func__);
     }
     else {
         if ((ret_value = H5is_library_terminating(&is_term)) < 0)
@@ -23908,7 +23967,7 @@ H5VL_async_file_close(void *file, hid_t dxpl_id, void **req)
 
         /* Release our wrapper, if underlying file was closed */
         if (ret_value >= 0)
-            H5VL_async_free_obj(o);
+            H5VL_async_free_obj(o, __func__);
     }
     else {
         if ((ret_value = H5is_library_terminating(&is_term)) < 0)
@@ -24196,7 +24255,7 @@ H5VL_async_group_close(void *grp, hid_t dxpl_id, void **req)
 
         /* Release our wrapper, if underlying file was closed */
         if (ret_value >= 0)
-            H5VL_async_free_obj(o);
+            H5VL_async_free_obj(o, __func__);
     }
     else {
         if ((ret_value = H5is_library_terminating(&is_term)) < 0)
@@ -25043,7 +25102,7 @@ H5VL_async_request_notify(void *obj, H5VL_request_notify_t cb, void *ctx)
     ret_value = H5VLrequest_notify(o->under_object, o->under_vol_id, cb, ctx);
 
     if (ret_value >= 0)
-        H5VL_async_free_obj(o);
+        H5VL_async_free_obj(o, __func__);
 
     return ret_value;
 } /* end H5VL_async_request_notify() */
@@ -25263,12 +25322,12 @@ H5VL_async_request_free(void *obj)
 #endif
 
     // Free the file close task that is not previously freed
-    if (o->my_task->func == async_file_close_fn) {
-        free_async_task(o->my_task);
-        H5VL_async_free_obj(o->file_async_obj);
+    if (o->my_task->func == async_file_close_fn && o->my_task->is_done) {
+        free_async_task(o->my_task, __func__);
+        H5VL_async_free_obj(o->file_async_obj, __func__);
     }
 
-    H5VL_async_free_obj(o);
+    H5VL_async_free_obj(o, __func__);
 
     return 0;
 } /* end H5VL_async_request_free() */
