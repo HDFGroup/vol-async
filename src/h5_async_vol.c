@@ -659,7 +659,7 @@ hid_t             async_error_class_g  = H5I_INVALID_HID;
 
 /* Helper routines */
 static H5VL_async_t *H5VL_async_new_obj(void *under_obj, hid_t under_vol_id);
-static herr_t        H5VL_async_free_obj(H5VL_async_t *obj, const char* call_func);
+static herr_t        H5VL_async_free_obj(H5VL_async_t *obj, const char *call_func);
 
 /* "Management" callbacks */
 static herr_t H5VL_async_init(hid_t vipl_id);
@@ -988,8 +988,8 @@ func_enter(const char *func, const char *name)
     else {
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [%s DBG] %ld.%06ld: entering [%s], push=%d\n", type, now.tv_sec,
-                    now.tv_usec, func, async_instance_g->start_abt_push);
+            fprintf(fout_g, "  [%s DBG] %ld.%06ld: entering [%s], push=%d\n", type, now.tv_sec, now.tv_usec,
+                    func, async_instance_g->start_abt_push);
     }
 #endif
     return;
@@ -1006,8 +1006,8 @@ func_leave(const char *func)
     gettimeofday(&now, NULL);
 
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [%s DBG] %ld.%06ld: leaving  [%s], push=%d\n", type, now.tv_sec, now.tv_usec,
-                func, async_instance_g->start_abt_push);
+        fprintf(fout_g, "  [%s DBG] %ld.%06ld: leaving  [%s], push=%d\n", type, now.tv_sec, now.tv_usec, func,
+                async_instance_g->start_abt_push);
 #endif
     return;
 }
@@ -1023,8 +1023,8 @@ func_log(const char *func, const char *name)
     gettimeofday(&now, NULL);
 
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [%s DBG] %ld.%06ld: [%s], push=%d, %s\n", type, now.tv_sec, now.tv_usec,
-                func, async_instance_g->start_abt_push, name);
+        fprintf(fout_g, "  [%s DBG] %ld.%06ld: [%s], push=%d, %s\n", type, now.tv_sec, now.tv_usec, func,
+                async_instance_g->start_abt_push, name);
 #endif
     return;
 }
@@ -2069,7 +2069,7 @@ static void async_file_close_fn(void *foo);
  *
  */
 static void
-free_file_async_resources(H5VL_async_t *file, const char* call_func)
+free_file_async_resources(H5VL_async_t *file, const char *call_func)
 {
     async_task_t *task_iter, *tmp;
 
@@ -2088,7 +2088,8 @@ free_file_async_resources(H5VL_async_t *file, const char* call_func)
         return;
     }
 
-    DL_FOREACH_SAFE2(file->file_async_obj->file_task_list_head, task_iter, tmp, file_list_next) {
+    DL_FOREACH_SAFE2(file->file_async_obj->file_task_list_head, task_iter, tmp, file_list_next)
+    {
         DL_DELETE2(file->file_async_obj->file_task_list_head, task_iter, file_list_prev, file_list_next);
         // Defer the file close task free operation to later request free so H5ESwait works even after file is
         // closed
@@ -2184,7 +2185,7 @@ add_to_dep_task(async_task_t *task, async_task_t *parent_task)
 static size_t
 get_n_running_task_in_queue_nolock(async_task_t *task, const char *call_func)
 {
-    size_t           pool_size = 0;
+    size_t pool_size = 0;
     /* ABT_thread_state thread_state; */
     /* async_task_t *   task_elt; */
     /* ABT_thread       self_thread; */
@@ -2196,23 +2197,23 @@ get_n_running_task_in_queue_nolock(async_task_t *task, const char *call_func)
     if (ABT_pool_get_total_size(*(task->async_obj->pool_ptr), &pool_size) != ABT_SUCCESS)
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_pool_get_total_size\n", __func__);
 
-    /* if (pool_size == 0) { */
-    /*     if (ABT_thread_self(&self_thread) != ABT_SUCCESS) */
-    /*         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_thread_self\n", __func__); */
+        /* if (pool_size == 0) { */
+        /*     if (ABT_thread_self(&self_thread) != ABT_SUCCESS) */
+        /*         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_thread_self\n", __func__); */
 
-    /*     DL_FOREACH2(task->async_obj->file_task_list_head, task_elt, file_list_next) { */
-    /*         if (task_elt && task_elt->abt_thread) { */
-    /*             ABT_thread_equal(task_elt->abt_thread, self_thread, &is_equal); */
-    /*             if (task_elt && task_elt->abt_thread != NULL && is_equal == false) { */
-    /*                 ABT_thread_get_state(task_elt->abt_thread, &thread_state); */
-    /*                 if (thread_state != ABT_THREAD_STATE_TERMINATED) { */
-    /*                     pool_size++; */
-    /*                     break; */
-    /*                 } */
-    /*             } */
-    /*         } */
-    /*     } */
-    /* } */
+        /*     DL_FOREACH2(task->async_obj->file_task_list_head, task_elt, file_list_next) { */
+        /*         if (task_elt && task_elt->abt_thread) { */
+        /*             ABT_thread_equal(task_elt->abt_thread, self_thread, &is_equal); */
+        /*             if (task_elt && task_elt->abt_thread != NULL && is_equal == false) { */
+        /*                 ABT_thread_get_state(task_elt->abt_thread, &thread_state); */
+        /*                 if (thread_state != ABT_THREAD_STATE_TERMINATED) { */
+        /*                     pool_size++; */
+        /*                     break; */
+        /*                 } */
+        /*             } */
+        /*         } */
+        /*     } */
+        /* } */
 
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
@@ -2239,7 +2240,7 @@ get_n_running_task_in_queue_nolock(async_task_t *task, const char *call_func)
 static size_t
 get_n_running_task_in_queue(async_task_t *task, const char *call_func)
 {
-    size_t           pool_size = 0;
+    size_t pool_size = 0;
     /* ABT_thread_state thread_state; */
     /* async_task_t *   task_elt; */
     /* ABT_thread       self_thread; */
@@ -2304,7 +2305,7 @@ get_n_running_task_in_queue(async_task_t *task, const char *call_func)
 int
 get_n_running_task_in_queue_obj(H5VL_async_t *async_obj, const char *call_func)
 {
-    size_t           pool_size = 0;
+    size_t pool_size = 0;
     /* ABT_thread_state thread_state; */
     /* async_task_t *   task_elt; */
     /* ABT_thread       self_thread; */
@@ -2440,8 +2441,10 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool, const char *call_func
     else
         locked = 1;
 
-    DL_FOREACH_SAFE(qhead->queue, task_list_elt, task_list_tmp) {
-        DL_FOREACH_SAFE(task_list_elt->task_list, task_elt, task_tmp) {
+    DL_FOREACH_SAFE(qhead->queue, task_list_elt, task_list_tmp)
+    {
+        DL_FOREACH_SAFE(task_list_elt->task_list, task_elt, task_tmp)
+        {
 
 #ifdef ENABLE_DBG_MSG
             if (async_instance_g &&
@@ -2623,7 +2626,7 @@ static herr_t
 add_task_to_queue(async_qhead_t *qhead, async_task_t *task, task_list_qtype task_type)
 {
     async_task_list_t *task_list_elt;
-    async_task_t *task_elt;
+    async_task_t *     task_elt;
 
     assert(qhead);
     assert(task);
@@ -2658,8 +2661,10 @@ add_task_to_queue(async_qhead_t *qhead, async_task_t *task, task_list_qtype task
 
         /* Any read/write operation must be executed after a prior write operation of same object. */
         /* Any write operation must be executed after a prior read operation of same object. */
-        DL_FOREACH(qhead->queue, task_list_elt) {
-            DL_FOREACH(task_list_elt->task_list, task_elt) {
+        DL_FOREACH(qhead->queue, task_list_elt)
+        {
+            DL_FOREACH(task_list_elt->task_list, task_elt)
+            {
                 if (task_elt->async_obj && task_elt->async_obj == task->async_obj &&
                     !(task->op == READ && task_elt->op == READ)) {
                     task_type = DEPENDENT;
@@ -2676,7 +2681,8 @@ add_task_to_queue(async_qhead_t *qhead, async_task_t *task, task_list_qtype task
                 fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
                 return -1;
             }
-            DL_FOREACH2(task->async_obj->file_task_list_head, task_elt, file_list_next) {
+            DL_FOREACH2(task->async_obj->file_task_list_head, task_elt, file_list_next)
+            {
                 if (task_elt->in_abt_pool == 1 && task_elt->async_obj &&
                     task_elt->async_obj == task->async_obj && !(task->op == READ && task_elt->op == READ)) {
                     task_type = DEPENDENT;
@@ -2837,7 +2843,8 @@ H5VL_async_object_wait(H5VL_async_t *async_obj)
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         return -1;
     }
-    DL_FOREACH2(async_obj->file_task_list_head, task_iter, file_list_next) {
+    DL_FOREACH2(async_obj->file_task_list_head, task_iter, file_list_next)
+    {
         /* if (ABT_mutex_lock(async_obj->obj_mutex) != ABT_SUCCESS) { */
         /*     fprintf(fout_g,"  [ASYNC VOL ERROR] %s ABT_mutex_lock failed\n", __func__); */
         /*     return -1; */
@@ -2911,7 +2918,8 @@ H5VL_async_dataset_wait(H5VL_async_t *async_obj)
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         return -1;
     }
-    DL_FOREACH2(async_obj->file_task_list_head, task_iter, file_list_next) {
+    DL_FOREACH2(async_obj->file_task_list_head, task_iter, file_list_next)
+    {
         /* if (ABT_mutex_lock(async_obj->obj_mutex) != ABT_SUCCESS) { */
         /*     fprintf(fout_g,"  [ASYNC VOL ERROR] %s ABT_mutex_lock failed\n", __func__); */
         /*     return -1; */
@@ -2984,7 +2992,8 @@ H5VL_async_file_wait(H5VL_async_t *async_obj)
         return -1;
     }
     // Check for all tasks on this dset of a file
-    DL_FOREACH2(async_obj->file_task_list_head, task_iter, file_list_next) {
+    DL_FOREACH2(async_obj->file_task_list_head, task_iter, file_list_next)
+    {
         /* if (ABT_mutex_lock(async_obj->obj_mutex) != ABT_SUCCESS) { */
         /*     fprintf(fout_g,"  [ASYNC VOL ERROR] %s ABT_mutex_lock failed\n", __func__); */
         /*     return -1; */
@@ -9171,14 +9180,16 @@ async_dataset_read_merge_mdset_col(async_instance_t *aid, size_t count, H5VL_asy
     }
 
     // Reverse iter task list
-    DL_FOREACH2(aid->qhead.queue, task_list_elt, prev) {
+    DL_FOREACH2(aid->qhead.queue, task_list_elt, prev)
+    {
         // Break out when done reverse iteration
         if (is_first == 0 && task_list_elt == aid->qhead.queue)
             break;
 
         if (task_list_elt->type == COLLECTIVE) {
             // Iter to get latest/tail read task
-            DL_FOREACH2(task_list_elt->task_list, task_elt, prev) {
+            DL_FOREACH2(task_list_elt->task_list, task_elt, prev)
+            {
                 // Must be same file and a dset read task
                 if (task_elt->async_obj->file_async_obj == parent_obj[0]->file_async_obj &&
                     task_elt->func == async_dataset_read_fn) {
@@ -10171,14 +10182,16 @@ async_dataset_write_merge_mdset_col(async_instance_t *aid, size_t count, H5VL_as
     }
 
     // Reverse iter task list
-    DL_FOREACH2(aid->qhead.queue, task_list_elt, prev) {
+    DL_FOREACH2(aid->qhead.queue, task_list_elt, prev)
+    {
         // Break out when done reverse iteration
         if (is_first == 0 && task_list_elt == aid->qhead.queue)
             break;
 
         if (task_list_elt->type == COLLECTIVE) {
             // Reverse iter to get latest/tail write task
-            DL_FOREACH2(task_list_elt->task_list, task_elt, prev) {
+            DL_FOREACH2(task_list_elt->task_list, task_elt, prev)
+            {
                 // Must be same file and a dset write task
                 if (task_elt->async_obj->file_async_obj == parent_obj[0]->file_async_obj &&
                     task_elt->func == async_dataset_write_fn) {
@@ -21953,7 +21966,7 @@ H5VL_async_new_obj(void *under_obj, hid_t under_vol_id)
  *-------------------------------------------------------------------------
  */
 static herr_t
-H5VL_async_free_obj(H5VL_async_t *obj, const char* call_func)
+H5VL_async_free_obj(H5VL_async_t *obj, const char *call_func)
 {
     hid_t err_id;
 
