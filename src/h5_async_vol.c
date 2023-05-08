@@ -15290,6 +15290,11 @@ async_file_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
         async_instance_g->start_abt_push = true;
     }
 
+    if (spec_args->op_type == H5VL_FILE_FLUSH) {
+        is_blocking                      = true;
+        async_instance_g->start_abt_push = true;
+    }
+
     // Retrieve current library state
     if (H5VLretrieve_lib_state(&async_task->h5_state) < 0) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5VLretrieve_lib_state failed\n", __func__);
