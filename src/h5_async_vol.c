@@ -5558,7 +5558,16 @@ async_attr_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_lo
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -5912,7 +5921,16 @@ async_attr_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc_
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -6235,7 +6253,16 @@ async_attr_read(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type_
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -6584,7 +6611,16 @@ async_attr_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -6904,7 +6940,16 @@ async_attr_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -7242,7 +7287,16 @@ async_attr_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -7559,7 +7613,16 @@ async_attr_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -7879,7 +7942,16 @@ async_attr_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -8273,7 +8345,16 @@ async_dataset_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -8631,7 +8712,16 @@ async_dataset_open(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *p
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj && parent_obj->file_async_obj->file_task_list_mutex) {
@@ -9020,7 +9110,16 @@ async_dataset_read(async_instance_t *aid, size_t count, H5VL_async_t **parent_ob
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj[0]->file_async_obj &&
@@ -9513,7 +9612,16 @@ async_dataset_read(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_ty
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -10021,7 +10129,16 @@ async_dataset_write(async_instance_t *aid, size_t count, H5VL_async_t **parent_o
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj[0]->file_async_obj &&
@@ -10663,7 +10780,16 @@ async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_t
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -10993,7 +11119,16 @@ async_dataset_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -11315,7 +11450,16 @@ async_dataset_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -11632,7 +11776,16 @@ async_dataset_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -11953,7 +12106,16 @@ async_dataset_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj && parent_obj->file_async_obj->file_task_list_mutex) {
@@ -12327,7 +12489,16 @@ async_datatype_commit(async_instance_t *aid, H5VL_async_t *parent_obj, const H5V
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -12679,7 +12850,16 @@ async_datatype_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -12999,7 +13179,16 @@ async_datatype_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *p
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -13317,7 +13506,16 @@ async_datatype_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -13635,7 +13833,16 @@ async_datatype_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -13950,7 +14157,16 @@ async_datatype_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -14992,7 +15208,16 @@ async_file_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -15314,7 +15539,16 @@ async_file_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -15657,7 +15891,16 @@ async_file_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -16012,10 +16255,16 @@ async_file_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
             lock_parent = true;
             break;
         }
-        else if (parent_obj->obj_mutex == NULL) {
-            break;
-        }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -16395,7 +16644,16 @@ async_group_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_l
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -16750,7 +17008,16 @@ async_group_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -17075,7 +17342,16 @@ async_group_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pare
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -17392,7 +17668,16 @@ async_group_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -17709,7 +17994,16 @@ async_group_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -18025,13 +18319,22 @@ async_group_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
     // There may be cases, e.g. with link iteration, that enters group close without a valid async_obj mutex
     if (parent_obj->obj_mutex) {
         /* Lock parent_obj */
-        while (1) {
-            if (ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
-                lock_parent = true;
-                break;
-            }
-            usleep(1000);
-        }
+	while (1) {
+	    if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+		lock_parent = true;
+		break;
+	    }
+	    // Temp release global lock in case background is waiting
+	    if (H5TSmutex_release(&mutex_count) < 0)
+		fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
+	    usleep(1000);
+	    while (acquired == false && mutex_count > 0) {
+		if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+		    fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+		    goto error;
+		}
+	    }
+	}
 
         if (parent_obj->file_async_obj &&
             ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
@@ -18422,7 +18725,16 @@ async_link_create(task_list_qtype qtype, async_instance_t *aid, H5VL_link_create
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     parent_obj->task_cnt++;
@@ -18763,7 +19075,16 @@ async_link_copy(async_instance_t *aid, H5VL_async_t *parent_obj1, const H5VL_loc
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -19117,7 +19438,16 @@ async_link_move(async_instance_t *aid, H5VL_async_t *parent_obj1, const H5VL_loc
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -19446,7 +19776,16 @@ async_link_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -19779,7 +20118,16 @@ async_link_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -20109,7 +20457,16 @@ async_link_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -20459,7 +20816,16 @@ async_object_open(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -20818,7 +21184,16 @@ async_object_copy(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
             lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -21147,16 +21522,20 @@ async_object_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
 
     /* Lock parent_obj */
     while (1) {
-        if (parent_obj->obj_mutex) {
-            if (ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
-                lock_parent = true;
-                break;
-            }
-        }
-        else {
+        if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
 
     if (parent_obj->file_async_obj &&
@@ -21491,11 +21870,20 @@ async_object_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
-    lock_parent = true;
 
     if (parent_obj->file_async_obj &&
         ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
@@ -21821,11 +22209,20 @@ async_object_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
+            lock_parent = true;
             break;
         }
+        // Temp release global lock in case background is waiting
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
+        while (acquired == false && mutex_count > 0) {
+            if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
+                goto error;
+            }
+        }
     }
-    lock_parent = true;
 
     if (parent_obj->file_async_obj &&
         ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
