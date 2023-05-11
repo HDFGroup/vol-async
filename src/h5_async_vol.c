@@ -23178,7 +23178,7 @@ H5VL_async_dataset_create(void *obj, const H5VL_loc_params_t *loc_params, const 
     H5VL_async_t *dset;
     H5VL_async_t *o = (H5VL_async_t *)obj;
     void *        under;
-    ssize_t 	  buf_size = 0;
+    ssize_t       buf_size = 0;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATASET Create\n");
