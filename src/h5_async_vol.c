@@ -23175,6 +23175,7 @@ H5VL_async_dataset_create(void *obj, const H5VL_loc_params_t *loc_params, const 
     H5VL_async_t *dset;
     H5VL_async_t *o = (H5VL_async_t *)obj;
     void *        under;
+    ssize_t 	  buf_size = 0;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATASET Create\n");
@@ -23185,7 +23186,9 @@ H5VL_async_dataset_create(void *obj, const H5VL_loc_params_t *loc_params, const 
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (H5VL_async_is_implicit_disabled(DSET_OP, __func__)) {
+    buf_size = H5Pget_efile_prefix(dapl_id, NULL, 0);
+
+    if (H5VL_async_is_implicit_disabled(DSET_OP, __func__) || buf_size > 0) {
         under = H5VLdataset_create(o->under_object, loc_params, o->under_vol_id, name, lcpl_id, type_id,
                                    space_id, dcpl_id, dapl_id, dxpl_id, req);
         if (under) {
