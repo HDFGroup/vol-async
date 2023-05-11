@@ -2202,7 +2202,7 @@ add_to_dep_task(async_task_t *task, async_task_t *parent_task)
 static size_t
 get_n_running_task_in_queue_nolock(async_task_t *task, const char *call_func)
 {
-    size_t pool_size = 0;
+    size_t           pool_size = 0;
     ABT_thread_state thread_state;
     async_task_t *   task_elt;
     ABT_thread       self_thread;
@@ -2218,7 +2218,8 @@ get_n_running_task_in_queue_nolock(async_task_t *task, const char *call_func)
         if (ABT_thread_self(&self_thread) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_thread_self\n", __func__);
 
-        DL_FOREACH2(task->async_obj->file_task_list_head, task_elt, file_list_next) {
+        DL_FOREACH2(task->async_obj->file_task_list_head, task_elt, file_list_next)
+        {
             if (task_elt && task_elt->abt_thread) {
                 ABT_thread_equal(task_elt->abt_thread, self_thread, &is_equal);
                 if (task_elt && task_elt->abt_thread != NULL && is_equal == false) {
@@ -2257,7 +2258,7 @@ get_n_running_task_in_queue_nolock(async_task_t *task, const char *call_func)
 static size_t
 get_n_running_task_in_queue(async_task_t *task, const char *call_func)
 {
-    size_t pool_size = 0;
+    size_t           pool_size = 0;
     ABT_thread_state thread_state;
     async_task_t *   task_elt;
     ABT_thread       self_thread;
@@ -2278,7 +2279,8 @@ get_n_running_task_in_queue(async_task_t *task, const char *call_func)
         if (ABT_thread_self(&self_thread) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_thread_self\n", __func__);
 
-        DL_FOREACH2(task->async_obj->file_task_list_head, task_elt, file_list_next) {
+        DL_FOREACH2(task->async_obj->file_task_list_head, task_elt, file_list_next)
+        {
             if (task_elt && task_elt->abt_thread) {
                 ABT_thread_equal(task_elt->abt_thread, self_thread, &is_equal);
                 if (task_elt && task_elt->abt_thread != NULL && is_equal == false) {
@@ -2322,7 +2324,7 @@ get_n_running_task_in_queue(async_task_t *task, const char *call_func)
 int
 get_n_running_task_in_queue_obj(H5VL_async_t *async_obj, const char *call_func)
 {
-    size_t pool_size = 0;
+    size_t           pool_size = 0;
     ABT_thread_state thread_state;
     async_task_t *   task_elt;
     ABT_thread       self_thread;
@@ -2343,7 +2345,8 @@ get_n_running_task_in_queue_obj(H5VL_async_t *async_obj, const char *call_func)
         if (ABT_thread_self(&self_thread) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_thread_self\n", __func__);
 
-        DL_FOREACH2(async_obj->file_task_list_head, task_elt, file_list_next) {
+        DL_FOREACH2(async_obj->file_task_list_head, task_elt, file_list_next)
+        {
             ABT_thread_equal(task_elt->abt_thread, self_thread, &is_equal);
             if (task_elt && task_elt->abt_thread != NULL && is_equal == false) {
                 ABT_thread_get_state(task_elt->abt_thread, &thread_state);
@@ -2525,8 +2528,8 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool, const char *call_func
                         is_dep_done = 1;
                         continue;
                     } // End if thread is not terminated
-                } // End if dependent task is not finished
-            } // End for dependent parents of current task
+                }     // End if dependent task is not finished
+            }         // End for dependent parents of current task
 
             if (is_dep_done == 0) {
 #ifdef ENABLE_DBG_MSG
@@ -14517,7 +14520,7 @@ async_file_create(async_instance_t *aid, const char *name, unsigned flags, hid_t
 
     // Retrieve current library state
     if (H5VLretrieve_lib_state(&async_task->h5_state) < 0) {
-        fprintf(fout_g,"  [ASYNC VOL ERROR] %s H5VLretrieve_lib_state failed\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5VLretrieve_lib_state failed\n", __func__);
         H5VL_async_free_obj(async_obj, __func__);
         free_async_task(async_task, __func__);
         async_obj = NULL;
@@ -25394,8 +25397,8 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
 #ifdef ENABLE_DBG_MSG
         if ((async_instance_g &&
              (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK)))
-            fprintf(fout_g, "  [ASYNC VOL DBG] released global lock, %d count, %lu timeout\n", 
-                    mutex_count, timeout);
+            fprintf(fout_g, "  [ASYNC VOL DBG] released global lock, %d count, %lu timeout\n", mutex_count,
+                    timeout);
 #endif
 
         async_instance_g->start_abt_push = true;
@@ -25429,8 +25432,8 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
 #endif
         async_instance_g->start_abt_push = true;
 
-	if (async_instance_g && NULL != async_instance_g->qhead.queue)
-	    push_task_to_abt_pool(&async_instance_g->qhead, async_instance_g->pool, __func__);
+        if (async_instance_g && NULL != async_instance_g->qhead.queue)
+            push_task_to_abt_pool(&async_instance_g->qhead, async_instance_g->pool, __func__);
 
         *status = H5VL_REQUEST_STATUS_IN_PROGRESS;
         goto done;
@@ -25488,15 +25491,14 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
 done:
 
     while (false == acquired && mutex_count > 0) {
-	if (H5TSmutex_acquire(mutex_count, &acquired) < 0)
-	    fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_acquire\n", __func__);
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_acquire\n", __func__);
     }
 
 #ifdef ENABLE_DBG_MSG
-    if (async_instance_g &&
-	(async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-	fprintf(fout_g, "  [ASYNC VOL DBG] %s reacquire global lock %d, reset ASYNC MODE to %d\n",
-		__func__, mutex_count, tmp);
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [ASYNC VOL DBG] %s reacquire global lock %d, reset ASYNC MODE to %d\n", __func__,
+                mutex_count, tmp);
 #endif
 
     return ret_value;
