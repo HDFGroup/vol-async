@@ -1077,10 +1077,15 @@ async_init(hid_t vipl_id)
 {
     herr_t ret_val = 1;
     int    abt_ret;
+    char   env_str[64];
 
 #ifdef ENABLE_DBG_MSG
     fprintf(stderr, "  [ASYNC VOL DBG] Success with async vol registration\n");
 #endif
+
+    // Increase the default Argobots stacksize
+    sprintf(env_str, "%d", 2*1024*1024);
+    setenv("ABT_THREAD_STACKSIZE", env_str, 0);
 
     /* Only init argobots once */
     if (ABT_SUCCESS != ABT_initialized()) {
