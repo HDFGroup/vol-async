@@ -1029,6 +1029,23 @@ func_log(const char *func, const char *name)
     return;
 }
 
+static inline void
+func_log_int1(const char *func, const char *name, int val)
+{
+#ifdef ENABLE_DBG_MSG
+    const char *type = "ASYNC VOL";
+    if (strstr(func, "_fn"))
+        type = "      ABT";
+    struct timeval now;
+    gettimeofday(&now, NULL);
+
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [%s DBG] %ld.%06ld: [%s], push=%d, %s: %d\n", type, now.tv_sec, now.tv_usec, func,
+                async_instance_g->start_abt_push, name, val);
+#endif
+    return;
+}
+
 /** @defgroup ASYNC
  * This group is for async VOL functionalities.
  */
@@ -2186,34 +2203,34 @@ static size_t
 get_n_running_task_in_queue_nolock(async_task_t *task, const char *call_func)
 {
     size_t pool_size = 0;
-    /* ABT_thread_state thread_state; */
-    /* async_task_t *   task_elt; */
-    /* ABT_thread       self_thread; */
-    /* ABT_bool         is_equal; */
+    ABT_thread_state thread_state;
+    async_task_t *   task_elt;
+    ABT_thread       self_thread;
+    ABT_bool         is_equal;
 
-    if (task == NULL || task->async_obj || task->async_obj->pool_ptr)
+    if (task == NULL || task->async_obj == NULL || task->async_obj->pool_ptr == NULL)
         return 0;
 
     if (ABT_pool_get_total_size(*(task->async_obj->pool_ptr), &pool_size) != ABT_SUCCESS)
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_pool_get_total_size\n", __func__);
 
-        /* if (pool_size == 0) { */
-        /*     if (ABT_thread_self(&self_thread) != ABT_SUCCESS) */
-        /*         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_thread_self\n", __func__); */
+    if (pool_size == 0) {
+        if (ABT_thread_self(&self_thread) != ABT_SUCCESS)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_thread_self\n", __func__);
 
-        /*     DL_FOREACH2(task->async_obj->file_task_list_head, task_elt, file_list_next) { */
-        /*         if (task_elt && task_elt->abt_thread) { */
-        /*             ABT_thread_equal(task_elt->abt_thread, self_thread, &is_equal); */
-        /*             if (task_elt && task_elt->abt_thread != NULL && is_equal == false) { */
-        /*                 ABT_thread_get_state(task_elt->abt_thread, &thread_state); */
-        /*                 if (thread_state != ABT_THREAD_STATE_TERMINATED) { */
-        /*                     pool_size++; */
-        /*                     break; */
-        /*                 } */
-        /*             } */
-        /*         } */
-        /*     } */
-        /* } */
+        DL_FOREACH2(task->async_obj->file_task_list_head, task_elt, file_list_next) {
+            if (task_elt && task_elt->abt_thread) {
+                ABT_thread_equal(task_elt->abt_thread, self_thread, &is_equal);
+                if (task_elt && task_elt->abt_thread != NULL && is_equal == false) {
+                    ABT_thread_get_state(task_elt->abt_thread, &thread_state);
+                    if (thread_state != ABT_THREAD_STATE_TERMINATED) {
+                        pool_size++;
+                        break;
+                    }
+                }
+            }
+        }
+    }
 
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
@@ -2241,12 +2258,12 @@ static size_t
 get_n_running_task_in_queue(async_task_t *task, const char *call_func)
 {
     size_t pool_size = 0;
-    /* ABT_thread_state thread_state; */
-    /* async_task_t *   task_elt; */
-    /* ABT_thread       self_thread; */
-    /* ABT_bool         is_equal; */
+    ABT_thread_state thread_state;
+    async_task_t *   task_elt;
+    ABT_thread       self_thread;
+    ABT_bool         is_equal;
 
-    if (task == NULL || task->async_obj || task->async_obj->pool_ptr)
+    if (task == NULL || task->async_obj == NULL || task->async_obj->pool_ptr == NULL)
         return 0;
 
     if (ABT_mutex_lock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) {
@@ -2257,23 +2274,23 @@ get_n_running_task_in_queue(async_task_t *task, const char *call_func)
     if (ABT_pool_get_total_size(*(task->async_obj->pool_ptr), &pool_size) != ABT_SUCCESS)
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_pool_get_total_size\n", __func__);
 
-    /* if (pool_size == 0) { */
-    /*     if (ABT_thread_self(&self_thread) != ABT_SUCCESS) */
-    /*         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_thread_self\n", __func__); */
+    if (pool_size == 0) {
+        if (ABT_thread_self(&self_thread) != ABT_SUCCESS)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_thread_self\n", __func__);
 
-    /*     DL_FOREACH2(task->async_obj->file_task_list_head, task_elt, file_list_next) { */
-    /*         if (task_elt && task_elt->abt_thread) { */
-    /*             ABT_thread_equal(task_elt->abt_thread, self_thread, &is_equal); */
-    /*             if (task_elt && task_elt->abt_thread != NULL && is_equal == false) { */
-    /*                 ABT_thread_get_state(task_elt->abt_thread, &thread_state); */
-    /*                 if (thread_state != ABT_THREAD_STATE_TERMINATED) { */
-    /*                     pool_size++; */
-    /*                     break; */
-    /*                 } */
-    /*             } */
-    /*         } */
-    /*     } */
-    /* } */
+        DL_FOREACH2(task->async_obj->file_task_list_head, task_elt, file_list_next) {
+            if (task_elt && task_elt->abt_thread) {
+                ABT_thread_equal(task_elt->abt_thread, self_thread, &is_equal);
+                if (task_elt && task_elt->abt_thread != NULL && is_equal == false) {
+                    ABT_thread_get_state(task_elt->abt_thread, &thread_state);
+                    if (thread_state != ABT_THREAD_STATE_TERMINATED) {
+                        pool_size++;
+                        break;
+                    }
+                }
+            }
+        }
+    }
 
     if (ABT_mutex_unlock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
@@ -2306,10 +2323,10 @@ int
 get_n_running_task_in_queue_obj(H5VL_async_t *async_obj, const char *call_func)
 {
     size_t pool_size = 0;
-    /* ABT_thread_state thread_state; */
-    /* async_task_t *   task_elt; */
-    /* ABT_thread       self_thread; */
-    /* ABT_bool         is_equal; */
+    ABT_thread_state thread_state;
+    async_task_t *   task_elt;
+    ABT_thread       self_thread;
+    ABT_bool         is_equal;
 
     if (async_obj == NULL)
         return 0;
@@ -2322,19 +2339,19 @@ get_n_running_task_in_queue_obj(H5VL_async_t *async_obj, const char *call_func)
     if (async_obj->pool_ptr && ABT_pool_get_total_size(*(async_obj->pool_ptr), &pool_size) != ABT_SUCCESS)
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_pool_get_total_size\n", __func__);
 
-    /* if (pool_size == 0) { */
-    /*     if (ABT_thread_self(&self_thread) != ABT_SUCCESS) */
-    /*         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_thread_self\n", __func__); */
+    if (pool_size == 0) {
+        if (ABT_thread_self(&self_thread) != ABT_SUCCESS)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_thread_self\n", __func__);
 
-    /*     DL_FOREACH2(async_obj->file_task_list_head, task_elt, file_list_next) { */
-    /*         ABT_thread_equal(task_elt->abt_thread, self_thread, &is_equal); */
-    /*         if (task_elt && task_elt->abt_thread != NULL && is_equal == false) { */
-    /*             ABT_thread_get_state(task_elt->abt_thread, &thread_state); */
-    /*             if (thread_state != ABT_THREAD_STATE_TERMINATED) */
-    /*                 pool_size++; */
-    /*         } */
-    /*     } */
-    /* } */
+        DL_FOREACH2(async_obj->file_task_list_head, task_elt, file_list_next) {
+            ABT_thread_equal(task_elt->abt_thread, self_thread, &is_equal);
+            if (task_elt && task_elt->abt_thread != NULL && is_equal == false) {
+                ABT_thread_get_state(task_elt->abt_thread, &thread_state);
+                if (thread_state != ABT_THREAD_STATE_TERMINATED)
+                    pool_size++;
+            }
+        }
+    }
 
     if (ABT_mutex_unlock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
@@ -2425,7 +2442,7 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool, const char *call_func
 
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] entering %s, called by [%s], mode=%d\n", __func__, call_func,
+        fprintf(fout_g, "  [ASYNC VOL DBG] entering %s, called by [%s], push=%d\n", __func__, call_func,
                 async_instance_g->start_abt_push);
 #endif
 
@@ -2494,7 +2511,7 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool, const char *call_func
 #ifdef ENABLE_DBG_MSG
                         if (async_instance_g &&
                             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-                            fprintf(fout_g, "  [ASYNC VOL DBG] wait for dep task [%p] to be executed, %d\n",
+                            fprintf(fout_g, "  [ASYNC VOL DBG] wait dep task [%p], thread_state %d\n",
                                     task_elt->dep_tasks[i]->func, thread_state);
 #endif
                         // Dependent task already in abt pool, release lock and wait for it to finish
@@ -2508,8 +2525,8 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool, const char *call_func
                         is_dep_done = 1;
                         continue;
                     } // End if thread is not terminated
-                }     // End if dependent task is not finished
-            }         // End for dependent parents of current task
+                } // End if dependent task is not finished
+            } // End for dependent parents of current task
 
             if (is_dep_done == 0) {
 #ifdef ENABLE_DBG_MSG
@@ -2521,30 +2538,15 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool, const char *call_func
                 continue;
             }
 
-#ifdef ENABLE_DBG_MSG
-            if (async_instance_g &&
-                (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-                fprintf(fout_g, "  [ASYNC VOL DBG] will create abt thread for func [%p], type %d\n",
-                        task_elt->func, task_list_elt->type);
-#endif
-
             if (task_elt && task_elt->is_done == 0) {
                 ntask = get_n_running_task_in_queue_nolock(task_elt, __func__);
-                if (ntask >= 1) {
-#ifdef ENABLE_DBG_MSG
-                    if (async_instance_g &&
-                        (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-                        fprintf(fout_g, "  [ASYNC VOL DBG] %d tasks in pool, skip current one\n", ntask);
-#endif
+                if (ntask > 0) {
+                    func_log_int1(__func__, "skipping create thread, pool already has", ntask);
                     goto done;
                 }
 
-#ifdef ENABLE_DBG_MSG
-                if (async_instance_g &&
-                    (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-                    fprintf(fout_g, "  [ASYNC VOL DBG] create abt thread for [%p]\n", task_elt->func);
-#endif
-                /* assert(task_elt->abt_thread == NULL); */
+                func_log_int1(__func__, "will create abt thread, pool has ntask", ntask);
+
                 if (ABT_thread_create(pool, task_elt->func, task_elt, ABT_THREAD_ATTR_NULL,
                                       &task_elt->abt_thread) != ABT_SUCCESS) {
                     fprintf(fout_g, "  [ASYNC VOL ERROR] %s ABT_thread_create failed for %p\n", __func__,
@@ -2561,7 +2563,6 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool, const char *call_func
                             task_elt->func);
             }
 #endif
-
             // Remove task from current task list
             DL_DELETE(task_list_elt->task_list, task_elt);
             task_elt->prev = NULL;
@@ -2573,14 +2574,8 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool, const char *call_func
 done:
     // Remove head if all its tasks have been pushed to Argobots pool
     if (qhead->queue && qhead->queue->task_list == NULL) {
-        /* tmp = qhead->queue; */
         DL_DELETE(qhead->queue, qhead->queue);
-        /* qhead->queue->prev = qhead->queue->next->prev; */
-        /* qhead->queue = qhead->queue->next; */
-        /* free(tmp); */
         func_log(__func__, "removed empty queue task list");
-
-        goto done;
     }
 
     if (locked && ABT_mutex_unlock(qhead->head_mutex) != ABT_SUCCESS) {
@@ -14522,7 +14517,7 @@ async_file_create(async_instance_t *aid, const char *name, unsigned flags, hid_t
 
     // Retrieve current library state
     if (H5VLretrieve_lib_state(&async_task->h5_state) < 0) {
-        /* fprintf(fout_g,"  [ASYNC VOL ERROR] %s H5VLretrieve_lib_state failed\n", __func__); */
+        fprintf(fout_g,"  [ASYNC VOL ERROR] %s H5VLretrieve_lib_state failed\n", __func__);
         H5VL_async_free_obj(async_obj, __func__);
         free_async_task(async_task, __func__);
         async_obj = NULL;
@@ -14877,7 +14872,7 @@ async_file_open(task_list_qtype qtype, async_instance_t *aid, const char *name, 
     // Retrieve current library state
     if (H5VLretrieve_lib_state(&async_task->h5_state) < 0) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5VLretrieve_lib_state failed\n", __func__);
-        goto done;
+        goto error;
     }
 
     async_task->func         = async_file_open_fn;
@@ -15797,7 +15792,7 @@ done:
 #ifdef ENABLE_DBG_MSG
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [      ABT DBG] %s pushed task to abt queue, mode=%d\n", __func__,
+            fprintf(fout_g, "  [      ABT DBG] %s pushed task to abt queue, push=%d\n", __func__,
                     async_instance_g->start_abt_push);
 #endif
     }
@@ -15805,7 +15800,7 @@ done:
     else {
         if (async_instance_g &&
             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [      ABT DBG] %s did not pushed task to abt queue, %p, mode=%d\n", __func__,
+            fprintf(fout_g, "  [      ABT DBG] %s did not pushed task to abt queue, %p, push=%d\n", __func__,
                     async_instance_g->qhead.queue, async_instance_g->start_abt_push);
     }
 #endif
@@ -22378,6 +22373,8 @@ H5VL_async_free_obj(H5VL_async_t *obj, const char *call_func)
     if (NULL == obj)
         return 0;
 
+    assert(obj->magic == ASYNC_MAGIC);
+
     err_id = H5Eget_current_stack();
 
     H5Idec_ref(obj->under_vol_id);
@@ -22385,9 +22382,9 @@ H5VL_async_free_obj(H5VL_async_t *obj, const char *call_func)
     H5Eset_current_stack(err_id);
 
     if (obj->obj_mutex && ABT_mutex_free(&(obj->obj_mutex)) != ABT_SUCCESS)
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_free\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL ERROR] %s ABT_mutex_free called by %s\n", __func__, call_func);
 
-    memset(obj, 0, sizeof(H5VL_async_t));
+    /* memset(obj, 0, sizeof(H5VL_async_t)); */
     free(obj);
 
     func_leave(__func__);
@@ -25364,7 +25361,7 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
     H5VL_async_t *   request;
     async_task_t *   task;
     ABT_thread_state state;
-    hbool_t          acquired    = false;
+    hbool_t          acquired    = true;
     unsigned int     mutex_count = 0;
     hbool_t          tmp         = async_instance_g->start_abt_push;
 
@@ -25393,10 +25390,12 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
     if (timeout > 0 && task->is_done == 0) {
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__);
+        acquired = false;
 #ifdef ENABLE_DBG_MSG
         if ((async_instance_g &&
              (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK)))
-            fprintf(fout_g, "  [ASYNC VOL DBG] released global lock, %d count\n", mutex_count);
+            fprintf(fout_g, "  [ASYNC VOL DBG] released global lock, %d count, %lu timeout\n", 
+                    mutex_count, timeout);
 #endif
 
         async_instance_g->start_abt_push = true;
@@ -25420,7 +25419,20 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
     else if (timeout == 0) {
         // timeout 0, start push all tasks in queue
         func_log(__func__, "0 timeout, start push");
-        H5VL_async_start();
+        if (H5TSmutex_release(&mutex_count) < 0)
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__);
+        acquired = false;
+#ifdef ENABLE_DBG_MSG
+        if ((async_instance_g &&
+             (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK)))
+            fprintf(fout_g, "  [ASYNC VOL DBG] released global lock, %d count, start push\n", mutex_count);
+#endif
+        async_instance_g->start_abt_push = true;
+
+	if (async_instance_g && NULL != async_instance_g->qhead.queue)
+	    push_task_to_abt_pool(&async_instance_g->qhead, async_instance_g->pool, __func__);
+
+        *status = H5VL_REQUEST_STATUS_IN_PROGRESS;
         goto done;
     }
 
@@ -25471,22 +25483,21 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
                 trigger);
 #endif
 
+    async_instance_g->start_abt_push = tmp;
+
 done:
 
-    if (timeout > 0) {
-        while (false == acquired && mutex_count > 0) {
-            if (H5TSmutex_acquire(mutex_count, &acquired) < 0)
-                fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_acquire\n", __func__);
-        }
+    while (false == acquired && mutex_count > 0) {
+	if (H5TSmutex_acquire(mutex_count, &acquired) < 0)
+	    fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_acquire\n", __func__);
+    }
 
 #ifdef ENABLE_DBG_MSG
-        if (async_instance_g &&
-            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %s reacquire global lock %d, reset ASYNC MODE to %d\n",
-                    __func__, mutex_count, tmp);
+    if (async_instance_g &&
+	(async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+	fprintf(fout_g, "  [ASYNC VOL DBG] %s reacquire global lock %d, reset ASYNC MODE to %d\n",
+		__func__, mutex_count, tmp);
 #endif
-        async_instance_g->start_abt_push = tmp;
-    }
 
     return ret_value;
 } /* end H5VL_async_request_wait() */
