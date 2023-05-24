@@ -1084,7 +1084,7 @@ async_init(hid_t vipl_id)
 #endif
 
     // Increase the default Argobots stacksize
-    sprintf(env_str, "%d", 2*1024*1024);
+    sprintf(env_str, "%d", 2 * 1024 * 1024);
     setenv("ABT_THREAD_STACKSIZE", env_str, 0);
 
     /* Only init argobots once */
