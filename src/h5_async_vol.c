@@ -25420,6 +25420,7 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
                 async_instance_g->qhead.queue) 
             {
                 push_task_to_abt_pool(&async_instance_g->qhead, *task->async_obj->pool_ptr, __func__);
+                break;
 
 #ifdef ENABLE_DBG_MSG
                 if ((async_instance_g &&
