@@ -25414,10 +25414,9 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
         // There is a chance that the background task is finishing up, so check it twice
         int attempt = 2;
         while (attempt--) {
-            if (task->async_obj && 
+            if (task->async_obj &&
                 get_n_running_task_in_queue_obj(task->async_obj, __func__) == 0 &&
-                task->async_obj->pool_ptr && 
-                async_instance_g->qhead && 
+                task->async_obj->pool_ptr &&
                 async_instance_g->qhead.queue) 
             {
 
