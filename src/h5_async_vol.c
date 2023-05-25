@@ -25415,15 +25415,15 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
         int attempt = 2;
         while (attempt--) {
             if (task->async_obj && get_n_running_task_in_queue_obj(task->async_obj, __func__) == 0 &&
-                task->async_obj->pool_ptr && async_instance_g->qhead.queue) {
+                async_instance_g->qhead.queue && task->async_obj->pool_ptr) {
                 push_task_to_abt_pool(&async_instance_g->qhead, *task->async_obj->pool_ptr, __func__);
-                break;
 
 #ifdef ENABLE_DBG_MSG
                 if ((async_instance_g &&
                      (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK)))
                     fprintf(fout_g, "  [ASYNC VOL DBG] %s, will push a task\n", __func__);
 #endif
+                break;
             }
             usleep(1000);
         }
