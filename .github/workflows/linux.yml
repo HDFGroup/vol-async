@@ -14,7 +14,7 @@ on:
   # Allows to run this workflow manually from the Actions tab
   workflow_dispatch:
 jobs:
-  vol-async-hdf5-1_14_0-Makefile:
+  vol-async-hdf5-1_14_1-Makefile:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -24,11 +24,11 @@ jobs:
         with:
           submodules: 'true'
         
-      - name: Checkout HDF5 1.14.0
+      - name: Checkout HDF5 1.14.1
         uses: actions/checkout@v3
         with:
           repository: HDFGroup/hdf5
-          ref: hdf5-1_14_0
+          ref: hdf5-1_14_1
           path: hdf5
       
       - name: Dependencies
@@ -87,7 +87,6 @@ jobs:
           
           date
           # Run serial and parallel tests
-          export ABT_THREAD_STACKSIZE=100000
           make check
           date
           
@@ -102,7 +101,6 @@ jobs:
           date
           make clean
           make
-          export ABT_THREAD_STACKSIZE=100000
           # make check
           date
 
@@ -178,7 +176,6 @@ jobs:
           
           date
           # Run serial and parallel tests
-          export ABT_THREAD_STACKSIZE=100000
           make check
           date
           
@@ -193,11 +190,10 @@ jobs:
           date
           make clean
           make
-          export ABT_THREAD_STACKSIZE=100000
           # make check
           date
 
-  vol-async-hdf5-1_14_0-cmake:
+  vol-async-hdf5-1_14_1-cmake:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -207,11 +203,11 @@ jobs:
         with:
           submodules: 'true'
         
-      - name: Checkout HDF5 1.14.0
+      - name: Checkout HDF5 1.14.1
         uses: actions/checkout@v3
         with:
           repository: HDFGroup/hdf5
-          ref: hdf5-1_14_0
+          ref: hdf5-1_14_1
           path: hdf5
       
       - name: Dependencies
@@ -264,7 +260,6 @@ jobs:
           export LD_LIBRARY_PATH=$VOL_DIR/lib:$HDF5_DIR/install/lib:$ABT_DIR/lib:$LD_LIBRARY_PATH
           export HDF5_PLUGIN_PATH="$VOL_DIR/lib"
           export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}"
-          export ABT_THREAD_STACKSIZE=100000
           export LD_PRELOAD=$mydir/argobots/lib/libabt.so
 
           # Run serial and parallel tests
@@ -346,7 +341,6 @@ jobs:
           export LD_LIBRARY_PATH=$VOL_DIR/lib:$HDF5_DIR/install/lib:$ABT_DIR/lib:$LD_LIBRARY_PATH
           export HDF5_PLUGIN_PATH="$VOL_DIR/lib"
           export HDF5_VOL_CONNECTOR="async under_vol=0;under_info={}"
-          export ABT_THREAD_STACKSIZE=100000
           export LD_PRELOAD=$mydir/argobots/lib/libabt.so
 
           # Run serial and parallel tests
