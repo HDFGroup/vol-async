@@ -23636,9 +23636,9 @@ H5VL_async_dataset_optional(void *obj, H5VL_optional_args_t *args, hid_t dxpl_id
 } /* end H5VL_async_dataset_optional() */
 
 /*-------------------------------------------------------------------------
- * Function:    H5VL_async_has_pending_dset_ops 
+ * Function:    H5VL_async_has_pending_dset_ops
  *
- * Purpose:     Check if there are uncompleted dataset operations 
+ * Purpose:     Check if there are uncompleted dataset operations
  *
  * Return:      1:    Yes
  *              0:    No uncompleted
@@ -23649,8 +23649,8 @@ H5VL_async_dataset_optional(void *obj, H5VL_optional_args_t *args, hid_t dxpl_id
 static inline int
 H5VL_async_has_pending_dset_ops(void *dset_obj, const char *func_name)
 {
-    int ret_value = 0;
-    async_task_t *task_elt;
+    int                ret_value = 0;
+    async_task_t *     task_elt;
     async_task_list_t *task_list_elt;
 
     func_enter(__func__, NULL);
@@ -23710,8 +23710,8 @@ H5VL_async_dataset_close(void *dset, hid_t dxpl_id, void **req)
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (H5VL_async_is_implicit_disabled(DSET_OP, __func__) && 
-            H5VL_async_has_pending_dset_ops(o->under_object, __func__) == 0) {
+    if (H5VL_async_is_implicit_disabled(DSET_OP, __func__) &&
+        H5VL_async_has_pending_dset_ops(o->under_object, __func__) == 0) {
         ret_value = H5VLdataset_close(o->under_object, o->under_vol_id, dxpl_id, req);
 
         /* Check for async request */
