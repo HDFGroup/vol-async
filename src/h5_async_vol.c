@@ -66,7 +66,7 @@ works, and perform publicly and display publicly, and to permit others to do so.
 
 /* Whether to display log messge when callback is invoked */
 /* (Uncomment to enable) */
-/* #define ENABLE_DBG_MSG 1 */
+#define ENABLE_DBG_MSG 1
 /* #define PRINT_ERROR_STACK           1 */
 /* #define ENABLE_ASYNC_LOGGING */
 
@@ -10105,10 +10105,11 @@ async_dataset_write(async_instance_t *aid, size_t count, H5VL_async_t **parent_o
         new_req->file_async_obj = parent_obj[0]->file_async_obj;
         *req                    = (void *)new_req;
     }
-    else {
-        is_blocking                      = true;
-        async_instance_g->start_abt_push = true;
-    }
+    // Allow implicit mode to do async dset write
+    /* else { */
+    /*     is_blocking                      = true; */
+    /*     async_instance_g->start_abt_push = true; */
+    /* } */
 
     // Retrieve current library state
     if (H5VLretrieve_lib_state(&async_task->h5_state) < 0) {
@@ -22816,7 +22817,7 @@ H5VL_async_is_implicit_disabled(int op_type, const char *func_name)
     }
     // Need file ops to be implicit to init requried internal data structures
     if (op_type != FILE_OP && op_type != DSET_RW_OP && async_instance_g->disable_implicit_nondrw) {
-        func_log(func_name, "implicit async disabled with disable_implicit_nondrw ");
+        func_log(func_name, "implicit async disabled with HDF5_ASYNC_DISABLE_IMPLICIT_NON_DSET_RW");
         ret_value = 1;
     }
 
@@ -23635,6 +23636,55 @@ H5VL_async_dataset_optional(void *obj, H5VL_optional_args_t *args, hid_t dxpl_id
 } /* end H5VL_async_dataset_optional() */
 
 /*-------------------------------------------------------------------------
+ * Function:    H5VL_async_has_pending_dset_ops 
+ *
+ * Purpose:     Check if there are uncompleted dataset operations 
+ *
+ * Return:      1:    Yes
+ *              0:    No uncompleted
+ *             -1:    Error
+ *
+ *-------------------------------------------------------------------------
+ */
+static inline int
+H5VL_async_has_pending_dset_ops(void *dset_obj, const char *func_name)
+{
+    int ret_value = 0;
+    async_task_t *task_elt;
+    async_task_list_t *task_list_elt;
+
+    func_enter(__func__, NULL);
+
+    if (ABT_mutex_lock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) {
+        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
+        return -1;
+    }
+
+    DL_FOREACH(async_instance_g->qhead.queue, task_list_elt)
+    {
+        DL_FOREACH(task_list_elt->task_list, task_elt)
+        {
+            if (task_elt->async_obj->under_object == dset_obj) {
+                ret_value = 1;
+                func_log(__func__, "has pending dset ops, use async dset close");
+                break;
+            }
+        }
+        if (ret_value)
+            break;
+    }
+
+    if (ABT_mutex_unlock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) {
+        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
+        return -1;
+    }
+
+    func_leave(__func__);
+
+    return ret_value;
+}
+
+/*-------------------------------------------------------------------------
  * Function:    H5VL_async_dataset_close
  *
  * Purpose:     Closes a dataset.
@@ -23660,7 +23710,8 @@ H5VL_async_dataset_close(void *dset, hid_t dxpl_id, void **req)
     H5VL_async_dxpl_set_disable_implicit(dxpl_id);
     H5VL_async_dxpl_set_pause(dxpl_id);
 
-    if (H5VL_async_is_implicit_disabled(DSET_OP, __func__)) {
+    if (H5VL_async_is_implicit_disabled(DSET_OP, __func__) && 
+            H5VL_async_has_pending_dset_ops(o->under_object, __func__) == 0) {
         ret_value = H5VLdataset_close(o->under_object, o->under_vol_id, dxpl_id, req);
 
         /* Check for async request */
