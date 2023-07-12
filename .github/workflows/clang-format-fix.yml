@@ -1,4 +1,4 @@
-name: clang-format Check
+name: clang-format Fix
 on: 
   workflow_dispatch:
   push:
@@ -8,7 +8,7 @@ on:
       - 'docs/**'
 jobs:
   formatting-check:
-    name: Formatting Check
+    name: Formatting Fix
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, 'skip-ci')"
     steps:
