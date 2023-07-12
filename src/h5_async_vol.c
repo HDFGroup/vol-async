@@ -123,11 +123,11 @@ struct async_future_obj_t;
 typedef void (*async_after_op_cb_t)(struct async_task_t *task, void *ctx);
 
 typedef struct async_task_t {
-    hid_t     under_vol_id;
-    int       magic;
-    ABT_mutex task_mutex;
-    void *    h5_state;
-    void (*func)(void *);
+    hid_t                 under_vol_id;
+    int                   magic;
+    ABT_mutex             task_mutex;
+    void *                h5_state;
+    void                  (*func)(void *);
     void *                args;
     obj_op_type           op;
     struct H5VL_async_t * async_obj;
@@ -139,6 +139,7 @@ typedef struct async_task_t {
     int                   n_dep;
     int                   n_dep_alloc;
     struct async_task_t **dep_tasks;
+    char                 *name;
 
     struct H5VL_async_t *parent_obj; /* pointer back to the parent async object */
 #if H5_VERSION_GE(1, 13, 3)
@@ -2041,6 +2042,9 @@ free_async_task(async_task_t *task, const char *call_func)
     if (task->parent_objs)
         free(task->parent_objs);
 #endif
+
+    if (task->name)
+        free(task->name);
 
     memset(task, 0, sizeof(async_task_t));
     free(task);
@@ -5395,7 +5399,6 @@ done:
 
     free_loc_param((H5VL_loc_params_t *)args->loc_params);
     free(args->name);
-    args->name = NULL;
     if (args->type_id > 0)
         H5Tclose(args->type_id);
     if (args->space_id > 0)
@@ -5406,6 +5409,8 @@ done:
         H5Pclose(args->aapl_id);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -5551,6 +5556,7 @@ async_attr_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_lo
     async_task->under_vol_id = parent_obj->under_vol_id;
     async_task->async_obj    = async_obj;
     async_task->parent_obj   = parent_obj;
+    async_task->name         = strdup(name);
 
     async_obj->create_task  = async_task;
     async_obj->under_vol_id = async_task->under_vol_id;
@@ -5795,11 +5801,12 @@ done:
 
     free_loc_param((H5VL_loc_params_t *)args->loc_params);
     free(args->name);
-    args->name = NULL;
     if (args->aapl_id > 0)
         H5Pclose(args->aapl_id);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -5825,23 +5832,69 @@ done:
     return;
 } // End async_attr_open_fn
 
+static void
+async_attr_close_fn(void *foo);
+
 static H5VL_async_t *
 async_attr_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params,
                 const char *name, hid_t aapl_id, hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *          async_obj   = NULL;
-    async_task_t *          async_task  = NULL;
-    async_attr_open_args_t *args        = NULL;
-    bool                    lock_parent = false;
-    bool                    is_blocking = false;
-    hbool_t                 acquired    = false;
-    unsigned int            mutex_count = 1;
+    H5VL_async_t *          async_obj    = NULL;
+    async_task_t *          async_task   = NULL;
+    async_task_t *          task_elt     = NULL;
+    async_task_t *          create_task  = NULL;
+    async_attr_open_args_t *args         = NULL;
+    bool                    lock_parent  = false;
+    bool                    is_blocking  = false;
+    hbool_t                 acquired     = false;
+    hbool_t                 found_create = false;
+    unsigned int            mutex_count  = 1;
 
     func_enter(__func__, name);
 
     assert(aid);
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
+
+    /* // If there is a previous close of the same attr, cancel it and return the already opened obj */
+    /* if (ABT_mutex_lock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) { */
+    /*     fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__); */
+    /*     goto error; */
+    /* } */
+
+    /* // Find the attr create task of the same name under same location */
+    /* DL_FOREACH2(parent_obj->file_task_list_head, task_elt, file_list_next) { */
+    /*     if (task_elt->func == async_attr_create_fn && task_elt->is_done == 1 && */
+    /*         task_elt->parent_obj == parent_obj && strcmp(task_elt->name, name) == 0) */
+    /*     { */
+    /*         create_task = task_elt; */
+    /*         found_create = true; */
+    /*         break; */
+    /*     } */
+    /* } */
+
+    /* // Find a close task of the same attr that is not finished */
+    /* if (found_create) { */
+    /*     DL_FOREACH2(parent_obj->file_task_list_head, task_elt, file_list_next) { */
+    /*         if (task_elt->func == async_attr_close_fn && task_elt->is_done == 0 && */
+    /*             task_elt->in_abt_pool == 0 && task_elt->async_obj == create_task->async_obj) */
+    /*         { */
+    /*             // Mark the close task as done */
+    /*             task_elt->is_done = 1; */
+    /*             async_obj = create_task->async_obj; */
+    /*             break; */
+    /*         } */
+    /*     } */
+    /* } */
+
+    /* if (ABT_mutex_unlock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) { */
+    /*     fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__); */
+    /*     goto error; */
+    /* } */
+
+    /* // Early return with already opened attr */
+    /* if (async_obj) */
+    /*     goto done; */
 
     async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
@@ -5914,6 +5967,7 @@ async_attr_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc_
     async_task->under_vol_id = parent_obj->under_vol_id;
     async_task->async_obj    = async_obj;
     async_task->parent_obj   = parent_obj;
+    async_task->name         = strdup(name);
 
     async_obj->create_task  = async_task;
     async_obj->under_vol_id = async_task->under_vol_id;
@@ -6154,6 +6208,8 @@ done:
         H5Tclose(args->mem_type_id);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -6486,6 +6542,8 @@ done:
         H5Tclose(args->mem_type_id);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -6842,6 +6900,8 @@ done:
     free_attr_get_args(&args->args, task);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -7175,6 +7235,8 @@ done:
     free_attr_spec_args(&args->args);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -7518,6 +7580,8 @@ done:
     free_native_attr_optional_args(args);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -7843,6 +7907,8 @@ done:
 
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -8196,6 +8262,8 @@ done:
         H5Pclose(args->dapl_id);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -8590,6 +8658,8 @@ done:
         H5Pclose(args->dapl_id);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -8976,6 +9046,8 @@ done:
         free(args->buf);
         args->buf = NULL;
     }
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -9505,6 +9577,8 @@ done:
         H5Sclose(args->file_space_id);
     if (args->plist_id > 0)
         H5Pclose(args->plist_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -9916,6 +9990,8 @@ done:
         free(args->dset);
         args->dset = NULL;
     }
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -10602,6 +10678,8 @@ done:
         H5Sclose(args->file_space_id);
     if (args->plist_id > 0)
         H5Pclose(args->plist_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -11016,6 +11094,8 @@ done:
     free_dataset_get_args(&args->args, task);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -11351,6 +11431,8 @@ done:
     free_dataset_spec_args(&args->args);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -11682,6 +11764,8 @@ done:
     free_native_dataset_optional_args(args);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -12007,6 +12091,8 @@ done:
 
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -12360,6 +12446,8 @@ done:
         H5Pclose(args->tapl_id);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -12730,6 +12818,8 @@ done:
         H5Pclose(args->tapl_id);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -13082,6 +13172,8 @@ done:
     free_datatype_get_args(&args->args, task);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -13411,6 +13503,8 @@ done:
     free_datatype_spec_args(&args->args);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -13738,6 +13832,8 @@ done:
     free_native_datatype_optional_args(args);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -14064,6 +14160,8 @@ done:
 
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -14417,6 +14515,8 @@ done:
         H5Pclose(args->fapl_id);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -14780,6 +14880,8 @@ done:
         H5Pclose(args->fapl_id);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -15111,6 +15213,8 @@ done:
     free_file_get_args(&args->args, task);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -15440,6 +15544,8 @@ done:
     free_file_spec_args(&args->args);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -15778,6 +15884,8 @@ done:
     free_native_file_optional_args(args);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -16135,6 +16243,8 @@ done:
 
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -16888,6 +16998,8 @@ done:
         H5Pclose(args->gapl_id);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -17240,6 +17352,8 @@ done:
     free_group_get_args(&args->args, task);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -17574,6 +17688,8 @@ done:
     free_group_spec_args(&args->args);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -17900,6 +18016,8 @@ done:
     free_native_group_optional_args(args);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -18227,6 +18345,8 @@ done:
 
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (task->async_obj->obj_mutex) {
         if (is_lock == 1) {
@@ -18583,6 +18703,8 @@ done:
         H5Pclose(args->lapl_id);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -18952,6 +19074,8 @@ done:
         H5Pclose(args->lapl_id);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -19314,6 +19438,8 @@ done:
         H5Pclose(args->lapl_id);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -19672,6 +19798,8 @@ done:
     free_link_get_args(&args->args);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -20013,6 +20141,8 @@ done:
     free_link_spec_args(&args->args);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -20352,6 +20482,8 @@ done:
     free_native_link_optional_args(args);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -20694,6 +20826,8 @@ done:
     free_loc_param((H5VL_loc_params_t *)args->loc_params);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -21065,6 +21199,8 @@ done:
         H5Pclose(args->lcpl_id);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -21421,6 +21557,8 @@ done:
     free_object_get_args(&args->args);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -21762,6 +21900,8 @@ done:
     free_object_spec_args(&args->args);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
@@ -22107,6 +22247,8 @@ done:
     free_native_object_optional_args(args);
     if (args->dxpl_id > 0)
         H5Pclose(args->dxpl_id);
+    free(args);
+    task->args = NULL;
 
     if (is_lock == 1) {
         if (ABT_mutex_unlock(task->async_obj->obj_mutex) != ABT_SUCCESS)
