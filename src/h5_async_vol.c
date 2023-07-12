@@ -123,11 +123,11 @@ struct async_future_obj_t;
 typedef void (*async_after_op_cb_t)(struct async_task_t *task, void *ctx);
 
 typedef struct async_task_t {
-    hid_t                 under_vol_id;
-    int                   magic;
-    ABT_mutex             task_mutex;
-    void *                h5_state;
-    void                  (*func)(void *);
+    hid_t     under_vol_id;
+    int       magic;
+    ABT_mutex task_mutex;
+    void *    h5_state;
+    void (*func)(void *);
     void *                args;
     obj_op_type           op;
     struct H5VL_async_t * async_obj;
@@ -139,7 +139,7 @@ typedef struct async_task_t {
     int                   n_dep;
     int                   n_dep_alloc;
     struct async_task_t **dep_tasks;
-    char                 *name;
+    char *                name;
 
     struct H5VL_async_t *parent_obj; /* pointer back to the parent async object */
 #if H5_VERSION_GE(1, 13, 3)
@@ -5832,8 +5832,7 @@ done:
     return;
 } // End async_attr_open_fn
 
-static void
-async_attr_close_fn(void *foo);
+static void async_attr_close_fn(void *foo);
 
 static H5VL_async_t *
 async_attr_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params,
