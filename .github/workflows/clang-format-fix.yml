@@ -14,7 +14,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Run clang-format style check for C programs.
-      uses: DoozyX/clang-format-lint-action@v0.11
+      uses: DoozyX/clang-format-lint-action@v0.13
       with:
         source: '.'
         extensions: 'c,h,cpp,hpp'
@@ -22,7 +22,7 @@ jobs:
         inplace: True
         style: file
         # exclude: './config '
-    - uses: EndBug/add-and-commit@v7
+    - uses: EndBug/add-and-commit@v9
       with:
           author_name: github-actions
           author_email: github-actions[bot]@users.noreply.github.com
