@@ -16,7 +16,7 @@ on:
 jobs:
   vol-async-hdf5-1_14_1-Makefile:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
 
     steps:
       - name: Checkout submodule Argobots
