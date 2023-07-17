@@ -1058,8 +1058,8 @@ func_log_uint64_1(const char *func, const char *name, uint64_t val)
     gettimeofday(&now, NULL);
 
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [%s DBG] %ld.%06ld: [%s], push=%d, %s: %llu\n", type, now.tv_sec, now.tv_usec, func,
-                async_instance_g->start_abt_push, name, val);
+        fprintf(fout_g, "  [%s DBG] %ld.%06ld: [%s], push=%d, %s: %llu\n", type, now.tv_sec, now.tv_usec,
+                func, async_instance_g->start_abt_push, name, val);
 #endif
     return;
 }
@@ -10188,7 +10188,8 @@ async_dataset_write(async_instance_t *aid, size_t count, H5VL_async_t **parent_o
             // If is contiguous space, no need to go through gather process as it can be costly
             if (1 != is_contig_memspace(mem_space_id[i])) {
                 func_log(__func__, "memspace is not contiguous, need H5Dgather");
-                if (H5Dgather(mem_space_id[i], buf[i], mem_type_id[i], buf_size, args->buf[i], NULL, NULL) < 0)
+                if (H5Dgather(mem_space_id[i], buf[i], mem_type_id[i], buf_size, args->buf[i], NULL, NULL) <
+                    0)
                     fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5Dgather failed!\n", __func__);
 
                 hsize_t elem_size = H5Tget_size(mem_type_id[i]);
