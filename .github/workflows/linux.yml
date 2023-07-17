@@ -101,7 +101,7 @@ jobs:
           date
           make clean
           make
-          # make check
+          make check
           date
 
   vol-async-hdf5-develop-Makefile:
@@ -190,7 +190,7 @@ jobs:
           date
           make clean
           make
-          # make check
+          make check
           date
 
   vol-async-hdf5-1_14_1-cmake:
@@ -271,9 +271,9 @@ jobs:
           cmake -DCMAKE_INSTALL_PREFIX=$VOL_DIR -DCMAKE_C_COMPILER=mpicc -DENABLE_WRITE_MEMCPY=ON ..
           make clean
           make && make install
-          # date
-          # ctest
-          # date
+          date
+          ctest
+          date
 
   vol-async-hdf5-develop-cmake:
     runs-on: ubuntu-latest
@@ -352,6 +352,6 @@ jobs:
           cmake -DCMAKE_INSTALL_PREFIX=$VOL_DIR -DCMAKE_C_COMPILER=mpicc -DENABLE_WRITE_MEMCPY=ON ..
           make clean
           make && make install
-          # date
-          # ctest
-          # date
+          date
+          ctest
+          date
