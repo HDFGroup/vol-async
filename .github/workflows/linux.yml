@@ -355,3 +355,7 @@ jobs:
           date
           ctest
           date
+
+      - name: Setup tmate session
+        if: ${{ failure() }}
+        uses: mxschmitt/action-tmate@v3
