@@ -2122,7 +2122,11 @@ free_file_async_resources(H5VL_async_t *file, const char *call_func)
     assert(file->magic == ASYNC_MAGIC);
 
     // When closing a reopened file
-    if (NULL == file->file_async_obj) {
+    if (NULL == file->file_async_obj)
+        return;
+
+    if (ABT_mutex_lock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) {
+        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         return;
     }
 
@@ -2140,21 +2144,21 @@ free_file_async_resources(H5VL_async_t *file, const char *call_func)
             free_async_task(task_iter, __func__);
         }
     }
+    file->file_async_obj->file_task_list_head = NULL;
 
     if (file->file_task_list_mutex && ABT_mutex_unlock(file->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        return;
     }
-
-    /* if (file->obj_mutex && ABT_mutex_free(&file->obj_mutex) != ABT_SUCCESS) { */
-    /*     fprintf(fout_g,"  [ASYNC VOL ERROR] %s with ABT_mutex_free\n", __func__); */
-    /*     return; */
-    /* } */
 
     if (file->file_task_list_mutex && ABT_mutex_free(&file->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_free\n", __func__);
-        return;
     }
+    file->file_task_list_mutex = NULL;
+
+    if (ABT_mutex_unlock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) {
+        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
+    }
+
 
     // File object is freed later at request free time for event set to working after file close
     /* free(file); */
@@ -2293,13 +2297,13 @@ get_n_running_task_in_queue(async_task_t *task, const char *call_func)
     if (task == NULL || task->async_obj == NULL || task->async_obj->pool_ptr == NULL)
         return 0;
 
-    if (ABT_mutex_lock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) {
+    if (task->async_obj->file_task_list_mutex &&
+        ABT_mutex_lock(task->async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         return -1;
     }
 
-    if (task->async_obj->file_task_list_mutex &&
-        ABT_mutex_lock(task->async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (ABT_mutex_lock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         return -1;
     }
@@ -2326,12 +2330,13 @@ get_n_running_task_in_queue(async_task_t *task, const char *call_func)
         }
     }
 
-    if (ABT_mutex_unlock(task->async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+    if (ABT_mutex_unlock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         return -1;
     }
 
-    if (ABT_mutex_unlock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) {
+    if (task->async_obj->file_async_obj && 
+            ABT_mutex_unlock(task->async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         return -1;
     }
@@ -2378,14 +2383,14 @@ get_n_running_task_in_queue_obj(H5VL_async_t *async_obj, const char *call_func)
     if (async_obj->pool_ptr && ABT_pool_get_total_size(*(async_obj->pool_ptr), &pool_size) != ABT_SUCCESS)
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_pool_get_total_size\n", __func__);
 
-    if (async_obj->file_task_list_mutex && ABT_mutex_lock(async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        return -1;
-    }
-
     if (pool_size == 0) {
         if (ABT_thread_self(&self_thread) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_thread_self\n", __func__);
+
+        if (async_obj->file_task_list_mutex && ABT_mutex_lock(async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
+            return -1;
+        }
 
         DL_FOREACH2(async_obj->file_task_list_head, task_elt, file_list_next)
         {
@@ -2396,15 +2401,16 @@ get_n_running_task_in_queue_obj(H5VL_async_t *async_obj, const char *call_func)
                     pool_size++;
             }
         }
-    }
 
-    if (ABT_mutex_unlock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        return -1;
+        if (async_obj->file_async_obj && async_obj->file_async_obj->file_task_list_mutex &&
+                ABT_mutex_unlock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock file_task_list_mutex\n", __func__);
+            return -1;
+        }
     }
 
     if (ABT_mutex_unlock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
+        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock head_mutex\n", __func__);
         return -1;
     }
 #ifdef ENABLE_DBG_MSG
