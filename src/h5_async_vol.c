@@ -25674,8 +25674,8 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
             pool_ptr = task->async_obj->pool_ptr;
         while (attempt--) {
             if (task->async_obj && get_n_running_task_in_queue_obj(task->async_obj, __func__) == 0 &&
-                async_instance_g->qhead.queue && task->async_obj->pool_ptr) {
-                push_task_to_abt_pool(&async_instance_g->qhead, *task->async_obj->pool_ptr, __func__);
+                async_instance_g->qhead.queue && pool_ptr) {
+                push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
 
 #ifdef ENABLE_DBG_MSG
                 if ((async_instance_g &&
