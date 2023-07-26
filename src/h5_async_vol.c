@@ -25631,6 +25631,7 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
     hbool_t          acquired    = true;
     unsigned int     mutex_count = 0;
     hbool_t          tmp         = async_instance_g->start_abt_push;
+    ABT_pool *       pool_ptr    = NULL;
 
     assert(obj);
     assert(status);
@@ -25669,6 +25670,8 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
 
         // There is a chance that the background task is finishing up, so check it twice
         int attempt = 2;
+        if (task->async_obj)
+            pool_ptr = task->async_obj->pool_ptr;
         while (attempt--) {
             if (task->async_obj && get_n_running_task_in_queue_obj(task->async_obj, __func__) == 0 &&
                 async_instance_g->qhead.queue && task->async_obj->pool_ptr) {
