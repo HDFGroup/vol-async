@@ -2596,8 +2596,8 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool, const char *call_func
                         is_dep_done = 1;
                         continue;
                     } // End if thread is not terminated
-                } // End if dependent task is not finished
-            } // End for dependent parents of current task
+                }     // End if dependent task is not finished
+            }         // End for dependent parents of current task
 
             if (is_dep_done == 0) {
 #ifdef ENABLE_DBG_MSG
@@ -2628,7 +2628,7 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool, const char *call_func
                 }
                 else {
                     task_elt->in_abt_pool = 1;
-                    ret_val = 0;
+                    ret_val               = 0;
                     goto done;
                 }
             }
