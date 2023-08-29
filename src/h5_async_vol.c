@@ -9788,7 +9788,7 @@ done:
             free(args->buf[i]);
             async_instance_g->used_mem -= args->data_size;
         }
-        func_log(__func__, "released dset memcpy")
+        func_log(__func__, "released dset memcpy");
     }
 #endif
     if (args->buf) {
