@@ -111,10 +111,10 @@ typedef struct H5VL_async_wrap_ctx_t {
     struct H5VL_async_t *file_async_obj;
 } H5VL_async_wrap_ctx_t;
 
-typedef enum { QTYPE_NONE, REGULAR, DEPENDENT, COLLECTIVE, BLOCKING, ISOLATED } task_list_qtype;
-typedef enum { OP_NONE, READ, WRITE } obj_op_type;
-typedef enum { FILE_OP, GROUP_OP, DSET_OP, DSET_RW_OP, ATTR_OP, DTYPE_OP, LINK_OP, OBJ_OP } hdf5_op_type;
-const char *qtype_names_g[10] = {"QTYPE_NONE", "REGULAR", "DEPENDENT", "COLLECTIVE", "BLOCKING", "ISOLATED"};
+typedef enum { QTYPE_NONE, REGULAR, DEPENDENT, COLLECTIVE, BLOCKING, ISOLATED } task_type_t;
+typedef enum { OP_NONE, READ, WRITE } obj_op_type_t;
+typedef enum { FILE_OP, GROUP_OP, DSET_OP, DSET_RW_OP, ATTR_OP, DTYPE_OP, LINK_OP, OBJ_OP } hdf5_op_type_t;
+const char *task_type_names_g[10] = {"QTYPE_NONE", "REGULAR", "DEPENDENT", "COLLECTIVE", "BLOCKING", "ISOLATED"};
 
 struct H5VL_async_t;
 struct async_task_t;
@@ -123,14 +123,14 @@ struct async_future_obj_t;
 typedef void (*async_after_op_cb_t)(struct async_task_t *task, void *ctx);
 
 typedef struct async_task_t {
-    hid_t     under_vol_id;
-    int       magic;
-    ABT_mutex task_mutex;
-    void *    h5_state;
-    void (*func)(void *);
+    hid_t                 under_vol_id;
+    int                   magic;
+    ABT_mutex             task_mutex;
+    void *                h5_state;
+    void                  (*func)(void *);
     void *                args;
-    obj_op_type           op;
-    struct H5VL_async_t * async_obj;
+    obj_op_type_t           op;
+    struct H5VL_async_t  *async_obj;
     ABT_eventual          eventual;
     int                   in_abt_pool;
     int                   is_done;
@@ -140,13 +140,12 @@ typedef struct async_task_t {
     int                   n_dep_alloc;
     struct async_task_t **dep_tasks;
     char *                name;
+    task_type_t type;
 
     struct H5VL_async_t *parent_obj; /* pointer back to the parent async object */
 #if H5_VERSION_GE(1, 13, 3)
     struct H5VL_async_t **parent_objs; /* pointer back to the parent async object when multi-dset is used*/
 #endif
-
-    struct async_task_list_t *task_list_head;
 
     clock_t create_time;
     clock_t start_time;
@@ -157,8 +156,6 @@ typedef struct async_task_t {
 
     struct async_task_t *prev;
     struct async_task_t *next;
-    struct async_task_t *file_list_prev;
-    struct async_task_t *file_list_next;
 } async_task_t;
 
 typedef struct H5VL_async_t {
@@ -169,8 +166,6 @@ typedef struct H5VL_async_t {
     async_task_t *       create_task; /* task that creates the object */
     async_task_t *       close_task;
     async_task_t *       my_task; /* for request */
-    async_task_t *       file_task_list_head;
-    ABT_mutex            file_task_list_mutex;
     struct H5VL_async_t *file_async_obj;
     int                  task_cnt;
     int                  attempt_check_cnt;
@@ -182,17 +177,9 @@ typedef struct H5VL_async_t {
 #endif
 } H5VL_async_t;
 
-typedef struct async_task_list_t {
-    task_list_qtype type;
-    async_task_t *  task_list;
-
-    struct async_task_list_t *prev;
-    struct async_task_list_t *next;
-} async_task_list_t;
-
 typedef struct async_qhead_t {
-    ABT_mutex          head_mutex;
-    async_task_list_t *queue;
+    ABT_mutex       head_mutex;
+    async_task_t *  queue;
 } async_qhead_t;
 
 typedef struct async_instance_t {
@@ -205,20 +192,20 @@ typedef struct async_instance_t {
     int           nfopen;
     int           mpi_size;
     int           mpi_rank;
-    bool          ex_delay;              /* Delay background thread execution */
-    bool          ex_fclose;             /* Delay background thread execution until file close */
-    bool          ex_gclose;             /* Delay background thread execution until group close */
-    bool          ex_dclose;             /* Delay background thread execution until dset close */
-    bool          start_abt_push;        /* Start pushing tasks to Argobots pool */
-    bool          prev_push_state;       /* Previous state of start_abt_push before a change*/
-    bool          pause;                 /* Pause background thread execution */
-    bool          disable_implicit_file; /* Disable implicit async execution globally */
-    bool          disable_implicit;      /* Disable implicit async execution for dxpl */
-    bool     disable_implicit_nondrw; /* Disable non-dataset read/write implicit async execution globally */
-    bool     delay_time_env;          /* Flag that indicates the delay time is set by env variable */
-    bool     disable_async_dset_get;  /* Disable async execution for dataset get */
-    uint64_t delay_time;              /* Sleep time before background thread trying to acquire global mutex */
-    int      sleep_time;              /* Sleep time between checking the global mutex attemp count */
+    bool          ex_delay;                /* Delay background thread execution */
+    bool          ex_fclose;               /* Delay background thread execution until file close */
+    bool          ex_gclose;               /* Delay background thread execution until group close */
+    bool          ex_dclose;               /* Delay background thread execution until dset close */
+    bool          start_abt_push;          /* Start pushing tasks to Argobots pool */
+    bool          prev_push_state;         /* Previous state of start_abt_push before a change*/
+    bool          pause;                   /* Pause background thread execution */
+    bool          disable_implicit_file;   /* Disable implicit async execution globally */
+    bool          disable_implicit;        /* Disable implicit async execution for dxpl */
+    bool          disable_implicit_nondrw; /* Disable non-dataset read/write implicit async execution globally */
+    bool          delay_time_env;          /* Flag that indicates the delay time is set by env variable */
+    bool          disable_async_dset_get;  /* Disable async execution for dataset get */
+    uint64_t      delay_time;              /* Sleep time before background thread trying to acquire global mutex */
+    int           sleep_time;              /* Sleep time between checking the global mutex attemp count */
 #ifdef ENABLE_WRITE_MEMCPY
     hsize_t max_mem;
     hsize_t used_mem;
@@ -1033,6 +1020,23 @@ func_log(const char *func, const char *name)
 }
 
 static inline void
+func_log_str(const char *func, const char *name, char* str)
+{
+#ifdef ENABLE_DBG_MSG
+    const char *type = "ASYNC VOL";
+    if (strstr(func, "_fn"))
+        type = "      ABT";
+    struct timeval now;
+    gettimeofday(&now, NULL);
+
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+        fprintf(fout_g, "  [%s DBG] %ld.%06ld: [%s], push=%d, %s %s\n", type, now.tv_sec, now.tv_usec, func,
+                async_instance_g->start_abt_push, name, str);
+#endif
+    return;
+}
+
+static inline void
 func_log_int1(const char *func, const char *name, int val)
 {
 #ifdef ENABLE_DBG_MSG
@@ -1519,11 +1523,7 @@ H5VL_async_fapl_set_disable_implicit(hid_t fapl)
                 return -1;
             }
 
-#ifdef ENABLE_DBG_MSG
-            if (async_instance_g->disable_implicit_file != is_disable && async_instance_g &&
-                (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-                fprintf(fout_g, "  [ASYNC VOL DBG] set implicit mode to %d\n", is_disable);
-#endif
+            func_log_int1(__func__, "set implicit mode to", is_disable);
             async_instance_g->disable_implicit_file = is_disable;
         }
         else {
@@ -1577,11 +1577,7 @@ H5VL_async_dxpl_set_disable_implicit(hid_t dxpl)
                 func_log(__func__, "already set disable implicit file");
             }
             else {
-#ifdef ENABLE_DBG_MSG
-                if (async_instance_g->disable_implicit != is_disable && async_instance_g &&
-                    (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-                    fprintf(fout_g, "  [ASYNC VOL DBG] set implicit mode to %d\n", is_disable);
-#endif
+                func_log_int1(__func__, "set implicit mode to", is_disable);
                 async_instance_g->disable_implicit = is_disable;
             }
         }
@@ -1590,11 +1586,7 @@ H5VL_async_dxpl_set_disable_implicit(hid_t dxpl)
                 func_log(__func__, "already set disable implicit file");
             }
             else {
-#ifdef ENABLE_DBG_MSG
-                if (async_instance_g->disable_implicit != is_disable && async_instance_g &&
-                    (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-                    fprintf(fout_g, "  [ASYNC VOL DBG] set implicit mode to %d\n", is_disable);
-#endif
+                func_log_int1(__func__, "set implicit mode to", is_disable);
                 async_instance_g->disable_implicit = is_disable;
             }
         }
@@ -1647,20 +1639,12 @@ H5VL_async_dxpl_set_pause(hid_t dxpl)
             }
 
             if (async_instance_g->pause != is_pause) {
+                func_log_int1(__func__, "set pause flag to", is_pause);
                 async_instance_g->pause = is_pause;
-#ifdef ENABLE_DBG_MSG
-                if (async_instance_g &&
-                    (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-                    fprintf(fout_g, "  [ASYNC VOL DBG] set pause async execution to %d\n", is_pause);
-#endif
             }
-#ifdef ENABLE_DBG_MSG
             else {
-                if (async_instance_g &&
-                    (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-                    fprintf(fout_g, "  [ASYNC VOL DBG] pause async execution unchanged %d\n", is_pause);
+                func_log_int1(__func__, "pause flag unchanged", is_pause);
             }
-#endif
         }
         else {
             if (async_instance_g->pause != is_pause) {
@@ -1683,11 +1667,7 @@ H5VL_async_dxpl_set_pause(hid_t dxpl)
 
             if (async_instance_g->delay_time != delay_us) {
                 async_instance_g->delay_time = delay_us;
-#ifdef ENABLE_DBG_MSG
-                if (async_instance_g &&
-                    (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-                    fprintf(fout_g, "  [ASYNC VOL DBG] set delay execution to %ld\n", delay_us);
-#endif
+                func_log_uint64_1(__func__, "delay time (us)", (uint64_t)delay_us);
             }
         }
         else {
@@ -1860,6 +1840,7 @@ async_waitall(int is_implicit)
 
     async_instance_g->start_abt_push = true;
 
+    func_log(__func__, "release global lock");
     if (H5TSmutex_release(&mutex_count) < 0)
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__);
 
@@ -1884,6 +1865,7 @@ async_waitall(int is_implicit)
         if (false == acquired)
             usleep(sleeptime);
     }
+    func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
     async_instance_g->start_abt_push = tmp;
     return;
@@ -2072,30 +2054,6 @@ free_async_task(async_task_t *task, const char *call_func)
     return;
 }
 
-/* // Debug only */
-/* static void */
-/* check_tasks_object_valid(H5VL_async_t *async_obj) */
-/* { */
-/*     async_task_t *task_iter, *tmp; */
-/*     assert(async_obj); */
-
-/*     if (ABT_mutex_lock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) { */
-/*         fprintf(fout_g,"  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__); */
-/*         return; */
-/*     } */
-
-/*     DL_FOREACH_SAFE2(async_obj->file_task_list_head, task_iter, tmp, file_list_next) { */
-/*         if (task_iter->async_obj->magic != ASYNC_MAGIC) { */
-/*             printf("Error with magic number\n"); */
-/*         } */
-/*     } */
-
-/*     if (ABT_mutex_unlock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) { */
-/*         fprintf(fout_g,"  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__); */
-/*         return; */
-/*     } */
-/* } */
-
 static void async_file_close_fn(void *foo);
 
 /**
@@ -2132,30 +2090,17 @@ free_file_async_resources(H5VL_async_t *file, const char *call_func)
         return;
     }
 
-    if (file->file_task_list_mutex && ABT_mutex_lock(file->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        return;
-    }
-
-    DL_FOREACH_SAFE2(file->file_async_obj->file_task_list_head, task_iter, tmp, file_list_next)
-    {
-        DL_DELETE2(file->file_async_obj->file_task_list_head, task_iter, file_list_prev, file_list_next);
-        // Defer the file close task free operation to later request free so H5ESwait works even after file is
-        // closed
-        if (task_iter->func != async_file_close_fn && task_iter->magic == TASK_MAGIC) {
-            free_async_task(task_iter, __func__);
+    DL_FOREACH_SAFE(async_instance_g->qhead.queue, task_iter, tmp) {
+        if (task_iter->async_obj && task_iter->async_obj->file_async_obj == file->file_async_obj) {
+            func_log_str(__func__, "delete task from queue:", task_iter->name);
+            DL_DELETE(async_instance_g->qhead.queue, task_iter);
+            // Defer the file close task free operation to later request free so H5ESwait works even after file is
+            // closed
+            if (task_iter->func != async_file_close_fn && task_iter->magic == TASK_MAGIC) {
+                free_async_task(task_iter, __func__);
+            }
         }
     }
-    file->file_async_obj->file_task_list_head = NULL;
-
-    if (file->file_task_list_mutex && ABT_mutex_unlock(file->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-    }
-
-    if (file->file_task_list_mutex && ABT_mutex_free(&file->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_free\n", __func__);
-    }
-    file->file_task_list_mutex = NULL;
 
     if (ABT_mutex_unlock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
@@ -2163,6 +2108,7 @@ free_file_async_resources(H5VL_async_t *file, const char *call_func)
 
     // File object is freed later at request free time for event set to working after file close
     /* free(file); */
+
     func_leave(__func__);
 
     return;
@@ -2249,8 +2195,7 @@ get_n_running_task_in_queue_nolock(async_task_t *task, const char *call_func)
         if (ABT_thread_self(&self_thread) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_thread_self\n", __func__);
 
-        DL_FOREACH2(task->async_obj->file_task_list_head, task_elt, file_list_next)
-        {
+        DL_FOREACH(async_instance_g->qhead.queue, task_elt) {
             if (task_elt && task_elt->abt_thread) {
                 ABT_thread_equal(task_elt->abt_thread, self_thread, &is_equal);
                 if (task_elt && task_elt->abt_thread != NULL && is_equal == false) {
@@ -2298,12 +2243,6 @@ get_n_running_task_in_queue(async_task_t *task, const char *call_func)
     if (task == NULL || task->async_obj == NULL || task->async_obj->pool_ptr == NULL)
         return 0;
 
-    if (task->async_obj->file_task_list_mutex &&
-        ABT_mutex_lock(task->async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        return -1;
-    }
-
     if (ABT_mutex_lock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         return -1;
@@ -2316,8 +2255,7 @@ get_n_running_task_in_queue(async_task_t *task, const char *call_func)
         if (ABT_thread_self(&self_thread) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_thread_self\n", __func__);
 
-        DL_FOREACH2(task->async_obj->file_task_list_head, task_elt, file_list_next)
-        {
+        DL_FOREACH(async_instance_g->qhead.queue, task_elt) {
             if (task_elt && task_elt->abt_thread) {
                 ABT_thread_equal(task_elt->abt_thread, self_thread, &is_equal);
                 if (task_elt && task_elt->abt_thread != NULL && is_equal == false) {
@@ -2332,12 +2270,6 @@ get_n_running_task_in_queue(async_task_t *task, const char *call_func)
     }
 
     if (ABT_mutex_unlock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        return -1;
-    }
-
-    if (task->async_obj->file_async_obj &&
-        ABT_mutex_unlock(task->async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         return -1;
     }
@@ -2388,26 +2320,13 @@ get_n_running_task_in_queue_obj(H5VL_async_t *async_obj, const char *call_func)
         if (ABT_thread_self(&self_thread) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_thread_self\n", __func__);
 
-        if (async_obj->file_task_list_mutex &&
-            ABT_mutex_lock(async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-            return -1;
-        }
-
-        DL_FOREACH2(async_obj->file_task_list_head, task_elt, file_list_next)
-        {
+        DL_FOREACH(async_instance_g->qhead.queue, task_elt) {
             ABT_thread_equal(task_elt->abt_thread, self_thread, &is_equal);
             if (task_elt && task_elt->abt_thread != NULL && is_equal == false) {
                 ABT_thread_get_state(task_elt->abt_thread, &thread_state);
                 if (thread_state != ABT_THREAD_STATE_TERMINATED)
                     pool_size++;
             }
-        }
-
-        if (async_obj->file_async_obj && async_obj->file_async_obj->file_task_list_mutex &&
-            ABT_mutex_unlock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock file_task_list_mutex\n", __func__);
-            return -1;
         }
     }
 
@@ -2445,6 +2364,7 @@ H5VL_async_task_wait(async_task_t *async_task)
 
     async_instance_g->start_abt_push = true;
 
+    func_log(__func__, "release global lock");
     if (H5TSmutex_release(&mutex_count) < 0)
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__);
 
@@ -2462,11 +2382,9 @@ H5VL_async_task_wait(async_task_t *async_task)
         if (false == acquired)
             usleep(1000);
     }
+    func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] %s, reacquired global lock, %u count\n", __func__, mutex_count);
-#endif
+    func_log_int1(__func__, "reacquired global lock, count", (int)mutex_count);
 
     async_instance_g->start_abt_push = tmp;
 
@@ -2493,8 +2411,7 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool, const char *call_func
 {
     int                i, is_dep_done = 1, ntask = 0, locked = 0, ret_val = 0;
     ABT_thread_state   thread_state;
-    async_task_t *     task_elt, *task_tmp;
-    async_task_list_t *task_list_tmp, *task_list_elt;
+    async_task_t *     task_elt;
 
     assert(qhead);
 
@@ -2516,142 +2433,134 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool, const char *call_func
     else
         locked = 1;
 
-    DL_FOREACH_SAFE(qhead->queue, task_list_elt, task_list_tmp)
-    {
-        DL_FOREACH_SAFE(task_list_elt->task_list, task_elt, task_tmp)
-        {
+    DL_FOREACH(qhead->queue, task_elt) {
+        if(task_elt->is_done == 1 || task_elt->in_abt_pool == 1)
+            continue;
 
 #ifdef ENABLE_DBG_MSG
-            if (async_instance_g &&
-                (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-                fprintf(fout_g, "  [ASYNC VOL DBG] checking task func [%p] dependency\n", task_elt->func);
+        if (async_instance_g &&
+            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+            fprintf(fout_g, "  [ASYNC VOL DBG] checking task func [%p] dependency\n", task_elt->func);
 #endif
-            is_dep_done = 1;
-            // Check if depenent tasks are finished
-            for (i = 0; i < task_elt->n_dep; i++) {
+        is_dep_done = 1;
+        // Check if depenent tasks are finished
+        for (i = 0; i < task_elt->n_dep; i++) {
 
-                /* // If dependent parent failed, do not push to Argobots pool */
-                /* if (task_elt->dep_tasks[i]->err_stack != 0) { */
-                /*     task_elt->err_stack = H5Ecreate_stack(); */
-                /*     H5Eappend_stack(task_elt->err_stack, task_elt->dep_tasks[i]->err_stack, false); */
-                /*     H5Epush(task_elt->err_stack, __FILE__, __func__, __LINE__, async_error_class_g, */
-                /*         H5E_VOL, H5E_CANTCREATE, "Parent task failed"); */
+            /* // If dependent parent failed, do not push to Argobots pool */
+            /* if (task_elt->dep_tasks[i]->err_stack != 0) { */
+            /*     task_elt->err_stack = H5Ecreate_stack(); */
+            /*     H5Eappend_stack(task_elt->err_stack, task_elt->dep_tasks[i]->err_stack, false); */
+            /*     H5Epush(task_elt->err_stack, __FILE__, __func__, __LINE__, async_error_class_g, */
+            /*         H5E_VOL, H5E_CANTCREATE, "Parent task failed"); */
 
-                /* #ifdef PRINT_ERROR_STACK */
-                /*     H5Eprint2(task_elt->err_stack, fout_g); */
-                /* #endif */
-                /*     DL_DELETE(qhead->queue->task_list, task_elt); */
-                /*     task_elt->prev = NULL; */
-                /*     task_elt->next = NULL; */
-                /*     is_dep_done = 0; */
-                /*     break; */
-                /* } */
+            /* #ifdef PRINT_ERROR_STACK */
+            /*     H5Eprint2(task_elt->err_stack, fout_g); */
+            /* #endif */
+            /*     DL_DELETE(qhead->queue, task_elt); */
+            /*     task_elt->prev = NULL; */
+            /*     task_elt->next = NULL; */
+            /*     is_dep_done = 0; */
+            /*     break; */
+            /* } */
 
-                if (task_elt->dep_tasks[i]->is_done == 1)
-                    continue;
-                else {
-                    is_dep_done = 0;
+            if (task_elt->dep_tasks[i]->is_done == 1)
+                continue;
+            else {
+                is_dep_done = 0;
+#ifdef ENABLE_DBG_MSG
+                if (async_instance_g &&
+                    (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+                    fprintf(fout_g, "  [ASYNC VOL DBG] [%p] has dependent [%p] not finished\n",
+                            task_elt->func, task_elt->dep_tasks[i]->func);
+#endif
+            }
+
+            if (task_elt && task_elt->dep_tasks[i] && NULL != task_elt->dep_tasks[i]->abt_thread) {
+                if (ABT_thread_get_state(task_elt->dep_tasks[i]->abt_thread, &thread_state) !=
+                    ABT_SUCCESS) {
+                    fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_thread_get_state\n", __func__);
+                    return -1;
+                }
+
+                if (thread_state != ABT_THREAD_STATE_TERMINATED) {
 #ifdef ENABLE_DBG_MSG
                     if (async_instance_g &&
                         (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-                        fprintf(fout_g, "  [ASYNC VOL DBG] [%p] has dependent [%p] not finished\n",
-                                task_elt->func, task_elt->dep_tasks[i]->func);
+                        fprintf(fout_g, "  [ASYNC VOL DBG] wait dep task [%p], thread_state %d\n",
+                                task_elt->dep_tasks[i]->func, thread_state);
 #endif
-                }
 
-                if (task_elt && task_elt->dep_tasks[i] && NULL != task_elt->dep_tasks[i]->abt_thread) {
-                    if (ABT_thread_get_state(task_elt->dep_tasks[i]->abt_thread, &thread_state) !=
-                        ABT_SUCCESS) {
-                        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_thread_get_state\n", __func__);
+                    if (locked && ABT_mutex_unlock(qhead->head_mutex) != ABT_SUCCESS) {
+                        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
                         return -1;
                     }
+                    // Dependent task already in abt pool, release lock and wait for it to finish
+                    H5VL_async_task_wait(task_elt->dep_tasks[i]);
 
-                    if (thread_state != ABT_THREAD_STATE_TERMINATED) {
+                    if (ABT_mutex_unlock(qhead->head_mutex) != ABT_SUCCESS) {
+                        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
+                        return -1;
+                    }
+                    else
+                        locked = 1;
 #ifdef ENABLE_DBG_MSG
-                        if (async_instance_g &&
-                            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-                            fprintf(fout_g, "  [ASYNC VOL DBG] wait dep task [%p], thread_state %d\n",
-                                    task_elt->dep_tasks[i]->func, thread_state);
+                    if (async_instance_g &&
+                        (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+                        fprintf(fout_g, "  [ASYNC VOL DBG] done waiting for dependent task [%p]\n",
+                                task_elt->dep_tasks[i]->func);
 #endif
+                    is_dep_done = 1;
+                    continue;
+                } // End if thread is not terminated
+            } // End if dependent task is not finished
+        } // End for dependent parents of current task
 
-                        if (locked && ABT_mutex_unlock(qhead->head_mutex) != ABT_SUCCESS) {
-                            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-                            return -1;
-                        }
-                        // Dependent task already in abt pool, release lock and wait for it to finish
-                        H5VL_async_task_wait(task_elt->dep_tasks[i]);
-
-                        if (ABT_mutex_unlock(qhead->head_mutex) != ABT_SUCCESS) {
-                            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-                            return -1;
-                        }
-                        else
-                            locked = 1;
+        if (is_dep_done == 0) {
 #ifdef ENABLE_DBG_MSG
-                        if (async_instance_g &&
-                            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-                            fprintf(fout_g, "  [ASYNC VOL DBG] done waiting for dependent task [%p]\n",
-                                    task_elt->dep_tasks[i]->func);
+            if (async_instance_g &&
+                (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+                fprintf(fout_g, "  [ASYNC VOL DBG] func [%p] has dependent not finished\n",
+                        task_elt->func);
 #endif
-                        is_dep_done = 1;
-                        continue;
-                    } // End if thread is not terminated
-                }     // End if dependent task is not finished
-            }         // End for dependent parents of current task
+            continue;
+        }
 
-            if (is_dep_done == 0) {
-#ifdef ENABLE_DBG_MSG
-                if (async_instance_g &&
-                    (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-                    fprintf(fout_g, "  [ASYNC VOL DBG] func [%p] has dependent not finished\n",
-                            task_elt->func);
-#endif
-                continue;
+        if (task_elt && task_elt->is_done == 0 && task_elt->in_abt_pool == 0) {
+            ntask = get_n_running_task_in_queue_nolock(task_elt, __func__);
+            if (ntask > 0) {
+                func_log_int1(__func__, "skipping create thread, ntask in pool", ntask);
+                ret_val = -1;
+                goto done;
             }
 
-            if (task_elt && task_elt->is_done == 0 && task_elt->in_abt_pool == 0) {
-                ntask = get_n_running_task_in_queue_nolock(task_elt, __func__);
-                if (ntask > 0) {
-                    func_log_int1(__func__, "skipping create thread, pool already has", ntask);
-                    ret_val = -1;
-                    goto done;
-                }
+            func_log_int1(__func__, "will create abt thread, ntask in pool", ntask);
 
-                func_log_int1(__func__, "will create abt thread, pool has ntask", ntask);
-
-                if (ABT_thread_create(pool, task_elt->func, task_elt, ABT_THREAD_ATTR_NULL,
-                                      &task_elt->abt_thread) != ABT_SUCCESS) {
-                    fprintf(fout_g, "  [ASYNC VOL ERROR] %s ABT_thread_create failed for %p\n", __func__,
-                            task_elt->func);
-                    ret_val = -1;
-                    goto done;
-                }
-                else {
-                    task_elt->in_abt_pool = 1;
-                    ret_val               = 0;
-                    goto done;
-                }
+            if (ABT_thread_create(pool, task_elt->func, task_elt, ABT_THREAD_ATTR_NULL,
+                                  &task_elt->abt_thread) != ABT_SUCCESS) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                        task_elt->func);
+                ret_val = -1;
+                goto done;
             }
-#ifdef ENABLE_DBG_MSG
             else {
-                if (async_instance_g &&
-                    (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-                    fprintf(fout_g, "  [ASYNC VOL DBG] func [%p] is already completed, skip create\n",
-                            task_elt->func);
+                task_elt->in_abt_pool = 1;
+                ret_val               = 0;
+                goto done;
             }
+        }
+#ifdef ENABLE_DBG_MSG
+        else {
+            if (async_instance_g &&
+                (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
+                fprintf(fout_g, "  [ASYNC VOL DBG] func [%p] is already completed, skip create\n",
+                        task_elt->func);
+        }
 #endif
-        } // End  DL_FOREACH_SAFE(task_list_elt, task_elt,  task_tmp)
-    }     // End DL_FOREACH_SAFE(qhead->queue, task_list_elt, task_list_tmp)
+    } // End DL_FOREACH(qhead->queue, task_elt)
 
     ret_val = 0;
 
 done:
-    // Remove head if all its tasks have been pushed to Argobots pool
-    if (qhead->queue && qhead->queue->task_list == NULL && qhead->queue->next == qhead->queue) {
-        DL_DELETE(qhead->queue, qhead->queue);
-        func_log(__func__, "removed empty queue task list");
-    }
-
     if (locked && ABT_mutex_unlock(qhead->head_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
         return -1;
@@ -2663,24 +2572,14 @@ done:
 } // End push_task_to_abt_pool
 
 static void
-remove_task_from_list(async_task_t *task, const char *func_name)
+remove_task_from_queue(async_task_t *task, const char *func_name)
 {
     if (ABT_mutex_lock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         return;
     }
 
-    // Remove task list if there is only one element (this task) in the list
-    if (task->task_list_head->task_list == task->task_list_head->task_list->prev) {
-        DL_DELETE(async_instance_g->qhead.queue, task->task_list_head);
-    }
-    else {
-        // Remove task from current task list
-        DL_DELETE(task->task_list_head->task_list, task);
-        func_log(func_name, "removed task from list");
-        task->prev = NULL;
-        task->next = NULL;
-    }
+    DL_DELETE(async_instance_g->qhead.queue, task);
 
     if (ABT_mutex_unlock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
@@ -2720,10 +2619,10 @@ remove_task_from_list(async_task_t *task, const char *func_name)
  *
  */
 static herr_t
-add_task_to_queue(async_qhead_t *qhead, async_task_t *task, task_list_qtype task_type)
+add_task_to_queue(async_qhead_t *qhead, async_task_t *task, task_type_t task_type)
 {
-    async_task_list_t *task_list_elt;
-    async_task_t *     task_elt;
+    /* async_task_t *     task_elt; */
+    herr_t             ret_val = 0;
 
     assert(qhead);
     assert(task);
@@ -2735,122 +2634,78 @@ add_task_to_queue(async_qhead_t *qhead, async_task_t *task, task_list_qtype task
         return -1;
     }
 
+    task->type = task_type;
+
     // Need to depend on the object's createion (create/open) task to finish
-    if (task_type == DEPENDENT) {
-        if (task->parent_obj && task->parent_obj->is_obj_valid != 1) {
-            /* is_dep = 1; */
-            task_type = DEPENDENT;
-            if (add_to_dep_task(task, task->parent_obj->create_task) < 0) {
-                fprintf(fout_g, "  [ASYNC VOL ERROR] %s add_to_dep_task failed\n", __func__);
-                return -1;
-            }
-        }
+    /* if (task_type == DEPENDENT) { */
 
-        if (task != task->async_obj->create_task && task->async_obj->is_obj_valid != 1 &&
-            task->parent_obj->create_task != task->async_obj->create_task) {
-            /* is_dep = 1; */
-            task_type = DEPENDENT;
-            if (add_to_dep_task(task, task->async_obj->create_task) < 0) {
-                fprintf(fout_g, "  [ASYNC VOL ERROR] %s add_to_dep_task failed\n", __func__);
-                return -1;
-            }
-        }
-
-        /* Any read/write operation must be executed after a prior write operation of same object. */
-        /* Any write operation must be executed after a prior read operation of same object. */
-        DL_FOREACH(qhead->queue, task_list_elt)
-        {
-            DL_FOREACH(task_list_elt->task_list, task_elt)
-            {
-                if (task_elt->async_obj && task_elt->async_obj == task->async_obj &&
-                    !(task->op == READ && task_elt->op == READ)) {
-                    task_type = DEPENDENT;
-                    if (add_to_dep_task(task, task_elt) < 0) {
-                        fprintf(fout_g, "  [ASYNC VOL ERROR] %s add_to_dep_task failed\n", __func__);
-                        return -1;
-                    }
-                }
-            }
-        }
-        // A reopened file may not have valid file_async_obj
-        if (task->async_obj->file_async_obj) {
-            if (ABT_mutex_lock(task->async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-                return -1;
-            }
-            DL_FOREACH2(task->async_obj->file_task_list_head, task_elt, file_list_next)
-            {
-                if (task_elt->in_abt_pool == 1 && task_elt->async_obj &&
-                    task_elt->async_obj == task->async_obj && !(task->op == READ && task_elt->op == READ)) {
-                    task_type = DEPENDENT;
-                    if (add_to_dep_task(task, task_elt) < 0) {
-                        fprintf(fout_g, "  [ASYNC VOL ERROR] %s add_to_dep_task failed\n", __func__);
-                        return -1;
-                    }
-                }
-            }
-
-            if (ABT_mutex_unlock(task->async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-                fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-                return -1;
-            }
-        } // End has valid file_async_obj
-    }     // End if task type is DEPENDENT
-
-    /* // If regular task, add to Argobots pool for execution directly */
-    /* if (task_type == REGULAR) { */
-    /*     if (ABT_thread_create(*(task->async_obj->pool_ptr), task->func, task, ABT_THREAD_ATTR_NULL,
-     * &task->abt_thread) != ABT_SUCCESS) { */
-    /*         fprintf(fout_g,"  [ASYNC VOL ERROR] %s ABT_thread_create failed for %p\n", __func__,
-     * task->func); */
-    /*         return -1; */
+    /*     // Add unfinished parent's create task as dependent */
+    /*     if (task->parent_obj && task->parent_obj->is_obj_valid != 1) { */
+    /*         task_type = DEPENDENT; */
+    /*         func_log(__func__, "add unfinished parent obj to dependent task"); */
+    /*         if (add_to_dep_task(task, task->parent_obj->create_task) < 0) { */
+    /*             fprintf(fout_g, "  [ASYNC VOL ERROR] %s add_to_dep_task failed\n", __func__); */
+    /*             ret_val = -1; */
+    /*             goto done; */
+    /*         } */
     /*     } */
-    /*     return 1; */
-    /* } */
 
-    // Check if the tail is of the same type, append to it if so
-    if (qhead->queue && qhead->queue->prev->type == task_type && task_type != COLLECTIVE) {
-#ifdef ENABLE_DBG_MSG
-        struct timeval now;
-        gettimeofday(&now, NULL);
+    /*     // Add unfinished async obj create task as dependent */
+    /*     if (task != task->async_obj->create_task && task->async_obj->is_obj_valid != 1 && */
+    /*         task->parent_obj->create_task != task->async_obj->create_task) { */
+    /*         task_type = DEPENDENT; */
+    /*         func_log(__func__, "add unfinished async obj to dependent task"); */
+    /*         if (add_to_dep_task(task, task->async_obj->create_task) < 0) { */
+    /*             fprintf(fout_g, "  [ASYNC VOL ERROR] %s add_to_dep_task failed\n", __func__); */
+    /*             ret_val = -1; */
+    /*             goto done; */
+    /*         } */
+    /*     } */
 
-        if (async_instance_g &&
-            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %ld.%06ld: append [%p] to %s task list\n", now.tv_sec,
-                    now.tv_usec, task->func, qtype_names_g[task_type]);
-#endif
-        DL_APPEND(qhead->queue->prev->task_list, task);
-        task->task_list_head = qhead->queue->prev;
-    }
-    else {
-        // Create a new task list in queue and add the current task to it
-        async_task_list_t *new_list = (async_task_list_t *)calloc(1, sizeof(async_task_list_t));
-        new_list->type              = task_type;
-#ifdef ENABLE_DBG_MSG
-        struct timeval now;
-        gettimeofday(&now, NULL);
+    /*     // Any read/write operation must be executed after a prior write operation of same object. */
+    /*     // Any write operation must be executed after a prior read operation of same object. */
+    /*     DL_FOREACH(qhead->queue, task_elt) { */
+    /*         if (task_elt->async_obj && task_elt->async_obj == task->async_obj && */
+    /*             !(task->op == READ && task_elt->op == READ)) { */
+    /*             task_type = DEPENDENT; */
+    /*             func_log(__func__, "add prior write task of same obj to dependent task"); */
+    /*             if (add_to_dep_task(task, task_elt) < 0) { */
+    /*                 fprintf(fout_g, "  [ASYNC VOL ERROR] %s add_to_dep_task failed\n", __func__); */
+    /*                 ret_val = -1; */
+    /*                 goto done; */
+    /*             } */
+    /*         } */
+    /*     } */
+    /*     // A reopened file may not have valid file_async_obj */
+    /*     /1* if (task->async_obj->file_async_obj) { *1/ */
+    /*     /1*     DL_FOREACH(async_instance_g->qhead.queue, task_elt) { *1/ */
+    /*     /1*         if (task_elt->in_abt_pool == 1 && task_elt->async_obj && *1/ */
+    /*     /1*             task_elt->async_obj == task->async_obj && !(task->op == READ && task_elt->op == READ)) { *1/ */
+    /*     /1*             task_type = DEPENDENT; *1/ */
+    /*     /1*             func_log(__func__, "add prior write task of same obj to dependent task"); *1/ */
+    /*     /1*             if (add_to_dep_task(task, task_elt) < 0) { *1/ */
+    /*     /1*                 fprintf(fout_g, "  [ASYNC VOL ERROR] %s add_to_dep_task failed\n", __func__); *1/ */
+    /*     /1*                 ret_val = -1; *1/ */
+    /*     /1*                 goto done; *1/ */
+    /*     /1*             } *1/ */
+    /*     /1*         } *1/ */
+    /*     /1*     } // End DL_FOREACH *1/ */
+    /*     /1* } // End has valid file_async_obj *1/ */
 
-        if (async_instance_g &&
-            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [ASYNC VOL DBG] %ld.%06ld: create and append [%p] to new %s task list\n",
-                    now.tv_sec, now.tv_usec, task->func, qtype_names_g[task_type]);
-#endif
-        DL_APPEND(new_list->task_list, task);
-        DL_APPEND(qhead->queue, new_list);
-        task->task_list_head = new_list;
-    }
+    /* } // End if task type is DEPENDENT */
 
+    func_log(__func__, "add task to queue");
+    DL_APPEND(qhead->queue, task);
+
+/* done: */
     if (ABT_mutex_unlock(qhead->head_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        return -1;
+        ret_val = -1;
     }
-
-    /* if (get_n_running_task_in_queue(task) == 0) */
-    /*     push_task_to_abt_pool(qhead, *(task->async_obj->pool_ptr)); */
 
     func_leave(__func__);
 
-    return 1;
+    return ret_val;
 } // add_task_to_queue
 
 /**
@@ -2932,44 +2787,27 @@ H5VL_async_object_wait(H5VL_async_t *async_obj)
     if (get_n_running_task_in_queue_obj(async_obj, __func__) == 0)
         push_task_to_abt_pool(&async_instance_g->qhead, *async_obj->pool_ptr, __func__);
 
+    func_log(__func__, "release global lock");
     if (H5TSmutex_release(&mutex_count) < 0)
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__);
 
     // Check for all tasks on this dset of a file
-
-    if (async_obj->file_async_obj &&
-        ABT_mutex_lock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        return -1;
-    }
-    DL_FOREACH2(async_obj->file_task_list_head, task_iter, file_list_next)
-    {
-        /* if (ABT_mutex_lock(async_obj->obj_mutex) != ABT_SUCCESS) { */
-        /*     fprintf(fout_g,"  [ASYNC VOL ERROR] %s ABT_mutex_lock failed\n", __func__); */
-        /*     return -1; */
-        /* } */
-
+    // TODO: aquire queue mutex?
+    DL_FOREACH(async_instance_g->qhead.queue, task_iter) {
         if (task_iter->async_obj == async_obj) {
             if (task_iter->is_done != 1) {
                 ABT_eventual_wait(task_iter->eventual, NULL);
             }
         }
-        /* if (ABT_mutex_unlock(async_obj->obj_mutex) != ABT_SUCCESS) */
-        /*     fprintf(fout_g,"  [ASYNC VOL ERROR] %s ABT_mutex_lock failed\n", __func__); */
     }
 
-    if (async_obj->file_async_obj &&
-        ABT_mutex_unlock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        return -1;
-    }
     while (false == acquired && mutex_count > 0) {
         if (H5TSmutex_acquire(mutex_count, &acquired) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_acquire\n", __func__);
     }
+    func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
-    func_log(__func__, "set start_abt_push false");
-
+    func_log_int1(__func__, "set start_abt_push to", tmp);
     async_instance_g->start_abt_push = tmp;
 
     func_leave(__func__);
@@ -3007,43 +2845,27 @@ H5VL_async_dataset_wait(H5VL_async_t *async_obj)
     if (get_n_running_task_in_queue_obj(async_obj, __func__) == 0)
         push_task_to_abt_pool(&async_instance_g->qhead, *async_obj->pool_ptr, __func__);
 
+    func_log(__func__, "release global lock");
     if (H5TSmutex_release(&mutex_count) < 0)
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__);
 
     // Check for all tasks on this dset of a file
 
-    if (async_obj->file_async_obj &&
-        ABT_mutex_lock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        return -1;
-    }
-    DL_FOREACH2(async_obj->file_task_list_head, task_iter, file_list_next)
-    {
-        /* if (ABT_mutex_lock(async_obj->obj_mutex) != ABT_SUCCESS) { */
-        /*     fprintf(fout_g,"  [ASYNC VOL ERROR] %s ABT_mutex_lock failed\n", __func__); */
-        /*     return -1; */
-        /* } */
-
+    DL_FOREACH(async_instance_g->qhead.queue, task_iter) {
         if (task_iter->async_obj == async_obj) {
             if (task_iter->is_done != 1) {
                 ABT_eventual_wait(task_iter->eventual, NULL);
             }
         }
-        /* if (ABT_mutex_unlock(async_obj->obj_mutex) != ABT_SUCCESS) */
-        /*     fprintf(fout_g,"  [ASYNC VOL ERROR] %s ABT_mutex_lock failed\n", __func__); */
     }
 
-    if (async_obj->file_async_obj &&
-        ABT_mutex_unlock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        return -1;
-    }
     while (false == acquired && mutex_count > 0) {
         if (H5TSmutex_acquire(mutex_count, &acquired) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_acquire\n", __func__);
     }
+    func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
-    func_log(__func__, "set start_abt_push false");
+    func_log_int1(__func__, "set start_abt_push to", tmp);
 
     async_instance_g->start_abt_push = tmp;
 
@@ -3082,22 +2904,12 @@ H5VL_async_file_wait(H5VL_async_t *async_obj)
     if (get_n_running_task_in_queue_obj(async_obj, __func__) == 0 && async_instance_g->qhead.queue != NULL)
         push_task_to_abt_pool(&async_instance_g->qhead, *async_obj->pool_ptr, __func__);
 
+    func_log(__func__, "release global lock");
     if (H5TSmutex_release(&mutex_count) < 0)
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__);
 
-    if (async_obj->file_async_obj &&
-        ABT_mutex_lock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        return -1;
-    }
     // Check for all tasks on this dset of a file
-    DL_FOREACH2(async_obj->file_task_list_head, task_iter, file_list_next)
-    {
-        /* if (ABT_mutex_lock(async_obj->obj_mutex) != ABT_SUCCESS) { */
-        /*     fprintf(fout_g,"  [ASYNC VOL ERROR] %s ABT_mutex_lock failed\n", __func__); */
-        /*     return -1; */
-        /* } */
-
+    DL_FOREACH(async_instance_g->qhead.queue, task_iter) {
         if (task_iter->is_done != 1) {
             ABT_eventual_wait(task_iter->eventual, NULL);
         }
@@ -3110,23 +2922,15 @@ H5VL_async_file_wait(H5VL_async_t *async_obj)
         /* if (ABT_TASK_STATE_TERMINATED != state) */
         /*     ABT_eventual_wait(task_iter->eventual, NULL); */
         /* } */
-        /* if (ABT_mutex_unlock(async_obj->obj_mutex) != ABT_SUCCESS) */
-        /*     fprintf(fout_g,"  [ASYNC VOL ERROR] %s ABT_mutex_lock failed\n", __func__); */
-    }
-
-    if (async_obj->file_async_obj &&
-        ABT_mutex_unlock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        return -1;
     }
 
     while (false == acquired && mutex_count > 0) {
         if (H5TSmutex_acquire(mutex_count, &acquired) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_acquire\n", __func__);
     }
+    func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
-    func_log(__func__, "set start_abt_push false");
-
+    func_log_int1(__func__, "set start_abt_push to", tmp);
     async_instance_g->start_abt_push = tmp;
 
     func_leave(__func__);
@@ -3192,11 +2996,9 @@ H5VL_async_pause()
 int
 H5VL_async_set_delay_time(uint64_t time_us)
 {
+    func_log_uint64_1(__func__, "set delay time (us)", (uint64_t)time_us);
     async_instance_g->delay_time = time_us;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s setting delay time to %lu us\n", __func__, time_us);
-#endif
+
     return 0;
 }
 
@@ -3372,24 +3174,17 @@ H5VL_async_set_delay_time(uint64_t time_us)
  *
  */
 static int
-check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *acquired)
+check_app_acquire_mutex_fn(async_task_t *task, unsigned int *mutex_count, hbool_t *acquired)
 {
     unsigned int attempt_count = 0, new_attempt_count = 0, wait_count = 0;
 
     if (async_instance_g->delay_time > 0) {
-#ifdef ENABLE_DBG_MSG
-        if (async_instance_g &&
-            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [      ABT DBG] %s delay for %lu us\n", __func__,
-                    async_instance_g->delay_time);
-#endif
+        func_log_uint64_1(__func__, "delay time (us)", (uint64_t)async_instance_g->delay_time);
         usleep(async_instance_g->delay_time);
     }
 
     while (async_instance_g->pause) {
-#ifdef ENABLE_DBG_MSG
-        fprintf(fout_g, "  [      ABT INFO] async operations are paused\n");
-#endif
+        func_log(__func__, "operations are paused");
         usleep(1000);
         wait_count++;
         if (wait_count == 10000) {
@@ -3437,10 +3232,7 @@ check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *
         }
     }
 
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s going to acquire %u lock\n", __func__, *mutex_count);
-#endif
+    func_log_int1(__func__, "going to acquire lock, count", *mutex_count);
 
     wait_count = 1;
     while (*acquired == false && *mutex_count > 0) {
@@ -3450,18 +3242,10 @@ check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *
         }
 
         if (false == *acquired) {
-#ifdef ENABLE_DBG_MSG
-            if (wait_count % 1000 == 0 && async_instance_g &&
-                (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-                fprintf(fout_g, "  [      ABT DBG] %s lock NOT acquired, wait\n", __func__);
-#endif
+            func_log(__func__, "waiting to acquire lock");
         }
         else {
-#ifdef ENABLE_DBG_MSG
-            if (async_instance_g &&
-                (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-                fprintf(fout_g, "  [      ABT DBG] %s lock acquired, count %u\n", __func__, *mutex_count);
-#endif
+            func_log_int1(__func__, "global lock acquired, count", *mutex_count);
             break;
         }
 
@@ -3490,9 +3274,9 @@ check_app_acquire_mutex(async_task_t *task, unsigned int *mutex_count, hbool_t *
  *
  * \return \herr_t
  *
- * \details This function works with check_app_acquire_mutex(), it detects whether the HDF5 global
+ * \details This function works with check_app_acquire_mutex_fn(), it detects whether the HDF5 global
  *          mutex counter value increased right after a task is executed by the background thread.
- *          If so, then it is likely that our check period in check_app_acquire_mutex() is too short
+ *          If so, then it is likely that our check period in check_app_acquire_mutex_fn() is too short
  *          and we executed a task while the application has more HDF5 I/O calls. So we increase the
  *          check period by a factor of two. On the other hand, if we found the value did not increase
  *          then we can reduce the checking overhead by setting the check time to zero until next time
@@ -3587,11 +3371,13 @@ execute_parent_task_recursive(async_task_t *task)
         execute_parent_task_recursive(task->dep_tasks[i]);
 
     if (task->in_abt_pool == 1) {
-        func_log(__func__, "wait for argobots task");
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
             return;
         }
+
+        func_log(__func__, "wait for argobots task");
         if (ABT_eventual_wait(task->eventual, NULL) != ABT_SUCCESS) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", __func__);
             return;
@@ -3602,6 +3388,7 @@ execute_parent_task_recursive(async_task_t *task)
                 return;
             }
         }
+        func_log_int1(__func__, "global lock acquired, count", mutex_count);
     }
     else {
         task->func(task);
@@ -3631,6 +3418,7 @@ async_realize_future_cb(void *_future_object, hid_t *actual_object_id)
 
     // Drain the existing tasks in Argobots pool first
     while (get_n_running_task_in_queue(future_object->task, __func__) != 0) {
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
             return -1;
@@ -3643,6 +3431,7 @@ async_realize_future_cb(void *_future_object, hid_t *actual_object_id)
             return -1;
         }
     }
+    func_log_int1(__func__, "global lock acquired, count", mutex_count);
 
     if (H5I_INVALID_HID == future_object->id) {
         /* Execute the task, recursively executing any parent tasks first */
@@ -3650,6 +3439,7 @@ async_realize_future_cb(void *_future_object, hid_t *actual_object_id)
         execute_parent_task_recursive(future_object->task);
 
         if (future_object->task) {
+            func_log(__func__, "release global lock");
             if (H5TSmutex_release(&mutex_count) < 0) {
                 fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
                 return -1;
@@ -3663,6 +3453,7 @@ async_realize_future_cb(void *_future_object, hid_t *actual_object_id)
                     fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", __func__);
                     return -1;
                 }
+                func_log_int1(__func__, "acquired global lock, count", mutex_count);
             }
         }
 
@@ -5394,13 +5185,10 @@ async_attr_create_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
@@ -5513,13 +5301,13 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
-
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
+
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
 #ifdef ENABLE_TIMING
@@ -5573,7 +5361,6 @@ async_attr_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_lo
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
-    async_obj->file_task_list_head = parent_obj->file_task_list_head;
     async_obj->file_async_obj      = parent_obj->file_async_obj;
     async_obj->is_col_meta         = parent_obj->is_col_meta;
     async_obj->pool_ptr            = &aid->pool;
@@ -5662,6 +5449,7 @@ async_attr_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_lo
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -5671,20 +5459,9 @@ async_attr_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_lo
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -5718,9 +5495,12 @@ async_attr_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_lo
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -5741,7 +5521,7 @@ async_attr_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_lo
             }
         }
 
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0) {
@@ -5762,8 +5542,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -5798,13 +5578,10 @@ async_attr_open_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
@@ -5911,13 +5688,13 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
-
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
+
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
 #ifdef ENABLE_TIMING
@@ -5958,7 +5735,7 @@ async_attr_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc_
     /* } */
 
     /* // Find the attr create task of the same name under same location */
-    /* DL_FOREACH2(parent_obj->file_task_list_head, task_elt, file_list_next) { */
+    /* DL_FOREACH(async_instance_g->qhead.queue, task_elt) { */
     /*     if (task_elt->func == async_attr_create_fn && task_elt->is_done == 1 && */
     /*         task_elt->parent_obj == parent_obj && strcmp(task_elt->name, name) == 0) */
     /*     { */
@@ -5970,7 +5747,7 @@ async_attr_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc_
 
     /* // Find a close task of the same attr that is not finished */
     /* if (found_create) { */
-    /*     DL_FOREACH2(parent_obj->file_task_list_head, task_elt, file_list_next) { */
+    /*     DL_FOREACH(async_instance_g->qhead.queue, task_elt) { */
     /*         if (task_elt->func == async_attr_close_fn && task_elt->is_done == 0 && */
     /*             task_elt->in_abt_pool == 0 && task_elt->async_obj == create_task->async_obj) */
     /*         { */
@@ -6002,7 +5779,6 @@ async_attr_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc_
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
-    async_obj->file_task_list_head = parent_obj->file_task_list_head;
     async_obj->file_async_obj      = parent_obj->file_async_obj;
     async_obj->is_col_meta         = parent_obj->is_col_meta;
     async_obj->pool_ptr            = &aid->pool;
@@ -6062,7 +5838,8 @@ async_attr_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc_
     async_task->under_vol_id = parent_obj->under_vol_id;
     async_task->async_obj    = async_obj;
     async_task->parent_obj   = parent_obj;
-    async_task->name         = strdup(name);
+    if (name)
+        async_task->name     = strdup(name);
 
     async_obj->create_task  = async_task;
     async_obj->under_vol_id = async_task->under_vol_id;
@@ -6074,6 +5851,7 @@ async_attr_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc_
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -6083,20 +5861,9 @@ async_attr_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc_
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -6130,9 +5897,12 @@ async_attr_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc_
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -6152,8 +5922,7 @@ async_attr_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc_
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -6172,8 +5941,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -6208,13 +5977,10 @@ async_attr_read_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->attr) {
@@ -6315,13 +6081,13 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
-
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
+
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
 #ifdef ENABLE_TIMING
@@ -6410,6 +6176,7 @@ async_attr_read(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type_
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -6419,20 +6186,9 @@ async_attr_read(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type_
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -6466,9 +6222,12 @@ async_attr_read(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type_
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -6488,8 +6247,7 @@ async_attr_read(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type_
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -6508,8 +6266,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -6544,13 +6302,10 @@ async_attr_write_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->attr) {
@@ -6651,10 +6406,9 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
-
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -6772,6 +6526,7 @@ async_attr_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -6781,20 +6536,9 @@ async_attr_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -6828,9 +6572,12 @@ async_attr_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -6850,8 +6597,7 @@ async_attr_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_type
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -6870,8 +6616,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -6906,13 +6652,10 @@ async_attr_get_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
@@ -7011,10 +6754,9 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
-
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -7029,7 +6771,7 @@ done:
 } // End async_attr_get_fn
 
 static herr_t
-async_attr_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
+async_attr_get(task_type_t qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                H5VL_attr_get_args_t *get_args, hid_t dxpl_id, void **req)
 {
     async_task_t *         async_task  = NULL;
@@ -7105,6 +6847,7 @@ async_attr_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -7114,20 +6857,9 @@ async_attr_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -7161,9 +6893,12 @@ async_attr_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -7183,8 +6918,7 @@ async_attr_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -7203,8 +6937,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -7239,13 +6973,10 @@ async_attr_specific_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
@@ -7348,10 +7079,9 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
-
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -7366,7 +7096,7 @@ done:
 } // End async_attr_specific_fn
 
 static herr_t
-async_attr_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
+async_attr_specific(task_type_t qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                     const H5VL_loc_params_t *loc_params, H5VL_attr_specific_args_t *spec_args, hid_t dxpl_id,
                     void **req)
 {
@@ -7456,6 +7186,7 @@ async_attr_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -7465,20 +7196,9 @@ async_attr_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -7512,9 +7232,12 @@ async_attr_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -7534,8 +7257,7 @@ async_attr_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -7554,8 +7276,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -7590,13 +7312,10 @@ async_attr_optional_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
@@ -7695,10 +7414,9 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
-
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -7713,7 +7431,7 @@ done:
 } // End async_attr_optional_fn
 
 static herr_t
-async_attr_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
+async_attr_optional(task_type_t qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                     H5VL_optional_args_t *opt_args, hid_t dxpl_id, void **req)
 {
     async_task_t *              async_task  = NULL;
@@ -7786,6 +7504,7 @@ async_attr_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -7795,20 +7514,9 @@ async_attr_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -7842,9 +7550,12 @@ async_attr_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -7864,8 +7575,7 @@ async_attr_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -7884,8 +7594,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -7920,13 +7630,10 @@ async_attr_close_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->attr) {
@@ -8024,10 +7731,9 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
-
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -8042,7 +7748,7 @@ done:
 } // End async_attr_close_fn
 
 static herr_t
-async_attr_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj, hid_t dxpl_id,
+async_attr_close(task_type_t qtype, async_instance_t *aid, H5VL_async_t *parent_obj, hid_t dxpl_id,
                  void **req)
 {
     async_task_t *           async_task  = NULL;
@@ -8119,6 +7825,7 @@ async_attr_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -8128,20 +7835,9 @@ async_attr_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -8180,9 +7876,12 @@ async_attr_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -8202,8 +7901,7 @@ async_attr_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -8222,8 +7920,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -8258,13 +7956,10 @@ async_dataset_create_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
@@ -8381,10 +8076,9 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
-
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -8428,7 +8122,6 @@ async_dataset_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
-    async_obj->file_task_list_head = parent_obj->file_task_list_head;
     async_obj->file_async_obj      = parent_obj->file_async_obj;
     async_obj->is_col_meta         = parent_obj->is_col_meta;
     async_obj->pool_ptr            = &aid->pool;
@@ -8526,6 +8219,7 @@ async_dataset_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -8535,20 +8229,9 @@ async_dataset_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -8582,9 +8265,12 @@ async_dataset_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -8604,8 +8290,7 @@ async_dataset_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -8624,8 +8309,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -8660,13 +8345,10 @@ async_dataset_open_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
@@ -8739,11 +8421,7 @@ async_dataset_open_fn(void *foo)
     if (NULL == obj) {
         if ((task->err_stack = H5Eget_current_stack()) < 0)
             fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
-#ifdef ENABLE_DBG_MSG
-        if (async_instance_g &&
-            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [      ABT DBG] %s: failed!\n", __func__);
-#endif
+        func_log(__func__, "HDF5 execution failed!");
         goto done;
     }
 
@@ -8779,10 +8457,11 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
+    func_log(__func__, "release global lock");
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -8797,7 +8476,7 @@ done:
 } // End async_dataset_open_fn
 
 static H5VL_async_t *
-async_dataset_open(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
+async_dataset_open(task_type_t qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                    const H5VL_loc_params_t *loc_params, const char *name, hid_t dapl_id, hid_t dxpl_id,
                    void **req)
 {
@@ -8826,7 +8505,6 @@ async_dataset_open(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *p
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
-    async_obj->file_task_list_head = parent_obj->file_task_list_head;
     async_obj->file_async_obj      = parent_obj->file_async_obj;
     async_obj->is_col_meta         = parent_obj->is_col_meta;
     async_obj->pool_ptr            = &aid->pool;
@@ -8897,6 +8575,7 @@ async_dataset_open(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *p
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -8906,20 +8585,9 @@ async_dataset_open(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *p
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj && parent_obj->file_async_obj->file_task_list_mutex) {
-        if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-            goto done;
-        }
-        /* Insert it into the file task list */
-        DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-        if (ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-            goto done;
-        }
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -8953,9 +8621,12 @@ async_dataset_open(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *p
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -8975,8 +8646,7 @@ async_dataset_open(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *p
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -8995,8 +8665,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -9032,13 +8702,10 @@ async_dataset_read_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     for (size_t i = 0; i < args->count; i++) {
         /* Update the dependent parent object if it is NULL */
@@ -9169,10 +8836,11 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
+    func_log(__func__, "release global lock");
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
@@ -9299,6 +8967,7 @@ async_dataset_read(async_instance_t *aid, size_t count, H5VL_async_t **parent_ob
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -9308,20 +8977,9 @@ async_dataset_read(async_instance_t *aid, size_t count, H5VL_async_t **parent_ob
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj[0]->file_async_obj &&
-        ABT_mutex_lock(parent_obj[0]->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj[0]->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj[0]->file_async_obj &&
-        ABT_mutex_unlock(parent_obj[0]->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj[0]->task_cnt++;
     parent_obj[0]->pool_ptr = &aid->pool;
 
@@ -9363,9 +9021,12 @@ async_dataset_read(async_instance_t *aid, size_t count, H5VL_async_t **parent_ob
     }
 
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -9385,8 +9046,7 @@ async_dataset_read(async_instance_t *aid, size_t count, H5VL_async_t **parent_ob
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -9401,7 +9061,7 @@ async_dataset_read(async_instance_t *aid, size_t count, H5VL_async_t **parent_ob
 done:
     return 1;
 error:
-    if (args) {
+    if (async_task && async_task->args) {
         for (size_t i = 0; i < count; i++) {
             if (args->mem_type_id[i] > 0)
                 H5Tclose(args->mem_type_id[i]);
@@ -9445,7 +9105,6 @@ async_dataset_read_merge_mdset_col(async_instance_t *aid, size_t count, H5VL_asy
 {
 
     async_task_t *             task_elt;
-    async_task_list_t *        task_list_elt;
     async_dataset_read_args_t *iter_args  = NULL;
     int                        found_task = 0, iter_cnt = 0, total_cnt = 0, is_first = 1;
 
@@ -9466,89 +9125,82 @@ async_dataset_read_merge_mdset_col(async_instance_t *aid, size_t count, H5VL_asy
     }
 
     // Reverse iter task list
-    DL_FOREACH2(aid->qhead.queue, task_list_elt, prev)
-    {
+    DL_FOREACH2(aid->qhead.queue, task_elt, prev) {
         // Break out when done reverse iteration
-        if (is_first == 0 && task_list_elt == aid->qhead.queue)
+        if (is_first == 0 && task_elt == aid->qhead.queue)
             break;
 
-        if (task_list_elt->type == COLLECTIVE) {
-            // Iter to get latest/tail read task
-            DL_FOREACH2(task_list_elt->task_list, task_elt, prev)
-            {
-                // Must be same file and a dset read task
-                if (task_elt->async_obj->file_async_obj == parent_obj[0]->file_async_obj &&
-                    task_elt->func == async_dataset_read_fn) {
-                    // append current read to existing multi dset read
-                    iter_args = task_elt->args;
-                    iter_cnt  = iter_args->count;
-                    total_cnt = iter_cnt + count;
+        // Only supports merging collective task
+        if (task_elt->type != COLLECTIVE)
+            continue;
 
-                    if (plist_id > 0) {
-                        if (H5Pequal(iter_args->plist_id, plist_id) <= 0) {
-                            func_log(__func__, "dxpl is not the same, cannot merge to multi-dset read");
-                            continue;
-                        }
-                    }
+        // Must be same file and a dset read task
+        if (task_elt->async_obj->file_async_obj == parent_obj[0]->file_async_obj &&
+            task_elt->func == async_dataset_read_fn) {
+            // append current read to existing multi dset read
+            iter_args = task_elt->args;
+            iter_cnt  = iter_args->count;
+            total_cnt = iter_cnt + count;
 
-                    // Realloc and fill the args with current read
-                    iter_args->dset = (void **)realloc(iter_args->dset, total_cnt * sizeof(void *));
-                    iter_args->buf  = (void **)realloc(iter_args->buf, total_cnt * sizeof(void *));
-                    iter_args->mem_type_id =
-                        (hid_t *)realloc(iter_args->mem_type_id, total_cnt * sizeof(hid_t));
-                    iter_args->mem_space_id =
-                        (hid_t *)realloc(iter_args->mem_space_id, total_cnt * sizeof(hid_t));
-                    iter_args->file_space_id =
-                        (hid_t *)realloc(iter_args->file_space_id, total_cnt * sizeof(hid_t));
-                    for (size_t i = iter_cnt; i < total_cnt; i++) {
-                        iter_args->dset[i] = parent_obj[i - iter_cnt]->under_object;
-                        if (mem_type_id[i - iter_cnt] > 0)
-                            iter_args->mem_type_id[i] = H5Tcopy(mem_type_id[i - iter_cnt]);
-                        if (mem_space_id[i - iter_cnt] > H5S_PLIST &&
-                            mem_space_id[i - iter_cnt] < H5S_UNLIMITED)
-                            iter_args->mem_space_id[i] = H5Scopy(mem_space_id[i - iter_cnt]);
-                        else
-                            iter_args->mem_space_id[i] = mem_space_id[i - iter_cnt];
-                        if (file_space_id[i - iter_cnt] > H5S_PLIST &&
-                            file_space_id[i - iter_cnt] < H5S_UNLIMITED)
-                            iter_args->file_space_id[i] = H5Scopy(file_space_id[i - iter_cnt]);
-                        else
-                            iter_args->file_space_id[i] = file_space_id[i - iter_cnt];
-                        iter_args->buf[i] = (void *)buf[i - iter_cnt];
-                    }
-                    // Replace with the new req
-                    // TODO: what to do with old req?
-                    iter_args->req   = req;
-                    iter_args->count = total_cnt;
-
-                    task_elt->parent_objs = (struct H5VL_async_t **)realloc(
-                        task_elt->parent_objs, total_cnt * sizeof(struct H5VL_async_t *));
-                    for (size_t i = iter_cnt; i < total_cnt; i++)
-                        task_elt->parent_objs[i] = parent_obj[i - iter_cnt];
-
-                    // TODO: need this?
-                    /* parent_obj[0]->task_cnt++; */
-
-                    // TODO: need to use new lib state?
-                    if (NULL != task_elt->h5_state && H5VLfree_lib_state(task_elt->h5_state) < 0)
-                        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-
-                    // Retrieve current library state
-                    if (H5VLretrieve_lib_state(&task_elt->h5_state) < 0) {
-                        fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5VLretrieve_lib_state failed\n", __func__);
-                        goto done;
-                    }
-
-                    found_task = 1;
-                    func_log(__func__, "merged multi-dset read");
-                    break;
+            if (plist_id > 0) {
+                if (H5Pequal(iter_args->plist_id, plist_id) <= 0) {
+                    func_log(__func__, "dxpl is not the same, cannot merge to multi-dset read");
+                    continue;
                 }
             }
-        } // End DL_FOREACH2 task_elt
+
+            // Realloc and fill the args with current read
+            iter_args->dset = (void **)realloc(iter_args->dset, total_cnt * sizeof(void *));
+            iter_args->buf  = (void **)realloc(iter_args->buf, total_cnt * sizeof(void *));
+            iter_args->mem_type_id =
+                (hid_t *)realloc(iter_args->mem_type_id, total_cnt * sizeof(hid_t));
+            iter_args->mem_space_id =
+                (hid_t *)realloc(iter_args->mem_space_id, total_cnt * sizeof(hid_t));
+            iter_args->file_space_id =
+                (hid_t *)realloc(iter_args->file_space_id, total_cnt * sizeof(hid_t));
+            for (size_t i = iter_cnt; i < total_cnt; i++) {
+                iter_args->dset[i] = parent_obj[i - iter_cnt]->under_object;
+                if (mem_type_id[i - iter_cnt] > 0)
+                    iter_args->mem_type_id[i] = H5Tcopy(mem_type_id[i - iter_cnt]);
+                if (mem_space_id[i - iter_cnt] > H5S_PLIST &&
+                    mem_space_id[i - iter_cnt] < H5S_UNLIMITED)
+                    iter_args->mem_space_id[i] = H5Scopy(mem_space_id[i - iter_cnt]);
+                else
+                    iter_args->mem_space_id[i] = mem_space_id[i - iter_cnt];
+                if (file_space_id[i - iter_cnt] > H5S_PLIST &&
+                    file_space_id[i - iter_cnt] < H5S_UNLIMITED)
+                    iter_args->file_space_id[i] = H5Scopy(file_space_id[i - iter_cnt]);
+                else
+                    iter_args->file_space_id[i] = file_space_id[i - iter_cnt];
+                iter_args->buf[i] = (void *)buf[i - iter_cnt];
+            }
+            // Replace with the new req
+            // TODO: what to do with old req?
+            iter_args->req   = req;
+            iter_args->count = total_cnt;
+
+            task_elt->parent_objs = (struct H5VL_async_t **)realloc(
+                task_elt->parent_objs, total_cnt * sizeof(struct H5VL_async_t *));
+            for (size_t i = iter_cnt; i < total_cnt; i++)
+                task_elt->parent_objs[i] = parent_obj[i - iter_cnt];
+
+            if (NULL != task_elt->h5_state && H5VLfree_lib_state(task_elt->h5_state) < 0)
+                fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+
+            // Retrieve current library state
+            if (H5VLretrieve_lib_state(&task_elt->h5_state) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5VLretrieve_lib_state failed\n", __func__);
+                goto done;
+            }
+
+            found_task = 1;
+            func_log(__func__, "merged multi-dset read");
+            break;
+        }
         if (found_task)
             break;
         is_first = 0;
-    } // End DL_FOREACH2 task_list_elt
+    } // End DL_FOREACH task_elt
 
     if (ABT_mutex_unlock(aid->qhead.head_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
@@ -9590,13 +9242,10 @@ async_dataset_read_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->dset) {
@@ -9701,7 +9350,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -9804,6 +9453,7 @@ async_dataset_read(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_ty
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -9813,20 +9463,9 @@ async_dataset_read(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_ty
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -9861,9 +9500,12 @@ async_dataset_read(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_ty
     }
 
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -9883,8 +9525,7 @@ async_dataset_read(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_ty
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -9903,8 +9544,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -9988,14 +9629,11 @@ async_dataset_write_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
 
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     for (size_t i = 0; i < args->count; i++) {
@@ -10130,7 +9768,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -10146,11 +9784,7 @@ done:
             free(args->buf[i]);
             async_instance_g->used_mem -= args->data_size;
         }
-#ifdef ENABLE_DBG_MSG
-        if (async_instance_g &&
-            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [      ABT DBG] %s released dset memcpy\n", __func__);
-#endif
+        func_log(__func__, "released dset memcpy")
     }
 #endif
     if (args->buf) {
@@ -10353,6 +9987,7 @@ async_dataset_write(async_instance_t *aid, size_t count, H5VL_async_t **parent_o
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -10362,20 +9997,9 @@ async_dataset_write(async_instance_t *aid, size_t count, H5VL_async_t **parent_o
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj[0]->file_async_obj &&
-        ABT_mutex_lock(parent_obj[0]->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj[0]->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj[0]->file_async_obj &&
-        ABT_mutex_unlock(parent_obj[0]->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj[0]->task_cnt++;
     parent_obj[0]->pool_ptr = &aid->pool;
 
@@ -10418,9 +10042,12 @@ async_dataset_write(async_instance_t *aid, size_t count, H5VL_async_t **parent_o
     }
 
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -10440,8 +10067,7 @@ async_dataset_write(async_instance_t *aid, size_t count, H5VL_async_t **parent_o
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -10461,7 +10087,7 @@ error:
         if (ABT_mutex_unlock(parent_obj[0]->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
+    if (async_task && async_task->args) {
         for (size_t i = 0; i < count; i++) {
             if (args->mem_type_id[i] > 0)
                 H5Tclose(args->mem_type_id[i]);
@@ -10498,7 +10124,6 @@ async_dataset_write_merge_mdset_col(async_instance_t *aid, size_t count, H5VL_as
                                     hid_t plist_id, const void **buf, void **req)
 {
     async_task_t *              task_elt;
-    async_task_list_t *         task_list_elt;
     async_dataset_write_args_t *iter_args  = NULL;
     int                         found_task = 0, iter_cnt = 0, total_cnt = 0, is_first = 1;
 
@@ -10519,153 +10144,147 @@ async_dataset_write_merge_mdset_col(async_instance_t *aid, size_t count, H5VL_as
     }
 
     // Reverse iter task list
-    DL_FOREACH2(aid->qhead.queue, task_list_elt, prev)
+    DL_FOREACH2(aid->qhead.queue, task_elt, prev)
     {
         // Break out when done reverse iteration
-        if (is_first == 0 && task_list_elt == aid->qhead.queue)
+        if (is_first == 0 && task_elt == aid->qhead.queue)
             break;
 
-        if (task_list_elt->type == COLLECTIVE) {
-            // Reverse iter to get latest/tail write task
-            DL_FOREACH2(task_list_elt->task_list, task_elt, prev)
-            {
-                // Must be same file and a dset write task
-                if (task_elt->async_obj->file_async_obj == parent_obj[0]->file_async_obj &&
-                    task_elt->func == async_dataset_write_fn) {
-                    // append current write to existing multi dset write
-                    iter_args = task_elt->args;
-                    iter_cnt  = iter_args->count;
-                    total_cnt = iter_cnt + count;
+        if (task_elt->type != COLLECTIVE)
+            continue;
 
-                    if (plist_id > 0) {
-                        if (H5Pequal(iter_args->plist_id, plist_id) <= 0) {
-                            func_log(__func__, "dxpl is not the same, cannot merge to multi-dset write");
-                            continue;
-                        }
-                    }
+        // Must be same file and a dset write task
+        if (task_elt->async_obj->file_async_obj == parent_obj[0]->file_async_obj &&
+            task_elt->func == async_dataset_write_fn) {
+            // append current write to existing multi dset write
+            iter_args = task_elt->args;
+            iter_cnt  = iter_args->count;
+            total_cnt = iter_cnt + count;
 
-                    // Realloc and fill the args with current write
-                    iter_args->dset = (void **)realloc(iter_args->dset, total_cnt * sizeof(void *));
-                    iter_args->buf  = (void **)realloc(iter_args->buf, total_cnt * sizeof(void *));
-                    iter_args->mem_type_id =
-                        (hid_t *)realloc(iter_args->mem_type_id, total_cnt * sizeof(hid_t));
-                    iter_args->mem_space_id =
-                        (hid_t *)realloc(iter_args->mem_space_id, total_cnt * sizeof(hid_t));
-                    iter_args->file_space_id =
-                        (hid_t *)realloc(iter_args->file_space_id, total_cnt * sizeof(hid_t));
-                    for (size_t i = iter_cnt; i < total_cnt; i++) {
-                        iter_args->dset[i] = parent_obj[i - iter_cnt]->under_object;
-                        if (mem_type_id[i - iter_cnt] > 0)
-                            iter_args->mem_type_id[i] = H5Tcopy(mem_type_id[i - iter_cnt]);
-                        if (mem_space_id[i - iter_cnt] > H5S_PLIST &&
-                            mem_space_id[i - iter_cnt] < H5S_UNLIMITED)
-                            iter_args->mem_space_id[i] = H5Scopy(mem_space_id[i - iter_cnt]);
-                        else
-                            iter_args->mem_space_id[i] = mem_space_id[i - iter_cnt];
-                        if (file_space_id[i - iter_cnt] > H5S_PLIST &&
-                            file_space_id[i - iter_cnt] < H5S_UNLIMITED)
-                            iter_args->file_space_id[i] = H5Scopy(file_space_id[i - iter_cnt]);
-                        else
-                            iter_args->file_space_id[i] = file_space_id[i - iter_cnt];
-                        iter_args->buf[i] = (void *)buf[i - iter_cnt];
-                    }
-                    // Replace with the new req
-                    // TODO: what to do with old req?
-                    iter_args->req   = req;
-                    iter_args->count = total_cnt;
-
-                    task_elt->parent_objs = (struct H5VL_async_t **)realloc(
-                        task_elt->parent_objs, total_cnt * sizeof(struct H5VL_async_t *));
-                    for (size_t i = iter_cnt; i < total_cnt; i++)
-                        task_elt->parent_objs[i] = parent_obj[i - iter_cnt];
-
-                        // TODO: need this?
-                        /* parent_obj[0]->task_cnt++; */
-#ifdef ENABLE_WRITE_MEMCPY
-                    hsize_t buf_size = 0;
-                    for (size_t i = iter_cnt; i < total_cnt; i++) {
-                        if (parent_obj[i]->data_size > 0 && (iter_args->file_space_id[i] == H5S_ALL ||
-                                                             iter_args->mem_space_id[i] == H5S_ALL)) {
-                            buf_size = parent_obj[i]->data_size;
-                        }
-                        else {
-                            buf_size = H5Tget_size(mem_type_id[i]) * H5Sget_select_npoints(mem_space_id[i]);
-#ifdef ENABLE_DBG_MSG
-                            if (buf_size == 0)
-                                fprintf(fout_g, "  [ASYNC VOL ERROR] %s with getting dataset size\n",
-                                        __func__);
-#endif
-                        }
-
-                        /* fprintf(fout_g, "buf size = %llu\n", buf_size); */
-
-                        // Get available system memory
-                        hsize_t avail_mem = (hsize_t)get_avphys_pages() * sysconf(_SC_PAGESIZE);
-
-                        if (async_instance_g->used_mem + buf_size > async_instance_g->max_mem) {
-                            fprintf(fout_g,
-                                    "  [      ABT INFO] %d write size %lu larger than async memory limit "
-                                    "%lu, switch to "
-                                    "synchronous write\n",
-                                    async_instance_g->mpi_rank, buf_size, async_instance_g->max_mem);
-                        }
-                        else if (buf_size > avail_mem) {
-                            fprintf(fout_g,
-                                    "  [      ABT INFO] %d write size %lu larger than available memory %lu, "
-                                    "switch to "
-                                    "synchronous write\n",
-                                    async_instance_g->mpi_rank, buf_size, avail_mem);
-                        }
-                        else if (buf_size > 0) {
-                            if (NULL == (iter_args->buf[i] = malloc(buf_size))) {
-                                fprintf(fout_g, "  [ASYNC VOL ERROR] %s malloc failed!\n", __func__);
-                                goto done;
-                            }
-                            async_instance_g->used_mem += buf_size;
-                            iter_args->free_buf = true;
-                            iter_args->data_size += buf_size;
-
-                            // If is contiguous space, no need to go through gather process as it can be
-                            // costly
-                            if (1 != is_contig_memspace(mem_space_id[i])) {
-                                /* fprintf(fout_g,"  [ASYNC VOL LOG] %s will gather!\n", __func__); */
-                                H5Dgather(mem_space_id[i], buf[i], mem_type_id[i], buf_size,
-                                          iter_args->buf[i], NULL, NULL);
-                                hsize_t elem_size = H5Tget_size(mem_type_id[i]);
-                                if (elem_size == 0)
-                                    elem_size = 1;
-                                hsize_t n_elem = (hsize_t)(buf_size / elem_size);
-                                if (iter_args->mem_space_id[i] > 0)
-                                    H5Sclose(iter_args->mem_space_id[i]);
-                                iter_args->mem_space_id[i] = H5Screate_simple(1, &n_elem, NULL);
-                            }
-                            else {
-                                memcpy(iter_args->buf[i], buf[i], buf_size);
-                            }
-                        }
-                    }
-#endif
-
-                    // TODO: need to use new lib state?
-                    if (NULL != task_elt->h5_state && H5VLfree_lib_state(task_elt->h5_state) < 0)
-                        fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
-
-                    // Retrieve current library state
-                    if (H5VLretrieve_lib_state(&task_elt->h5_state) < 0) {
-                        fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5VLretrieve_lib_state failed\n", __func__);
-                        goto done;
-                    }
-
-                    found_task = 1;
-                    func_log(__func__, "merged multi-dset write");
-                    break;
+            if (plist_id > 0) {
+                if (H5Pequal(iter_args->plist_id, plist_id) <= 0) {
+                    func_log(__func__, "dxpl is not the same, cannot merge to multi-dset write");
+                    continue;
                 }
             }
-        } // end task_elt
+
+            // Realloc and fill the args with current write
+            iter_args->dset = (void **)realloc(iter_args->dset, total_cnt * sizeof(void *));
+            iter_args->buf  = (void **)realloc(iter_args->buf, total_cnt * sizeof(void *));
+            iter_args->mem_type_id =
+                (hid_t *)realloc(iter_args->mem_type_id, total_cnt * sizeof(hid_t));
+            iter_args->mem_space_id =
+                (hid_t *)realloc(iter_args->mem_space_id, total_cnt * sizeof(hid_t));
+            iter_args->file_space_id =
+                (hid_t *)realloc(iter_args->file_space_id, total_cnt * sizeof(hid_t));
+            for (size_t i = iter_cnt; i < total_cnt; i++) {
+                iter_args->dset[i] = parent_obj[i - iter_cnt]->under_object;
+                if (mem_type_id[i - iter_cnt] > 0)
+                    iter_args->mem_type_id[i] = H5Tcopy(mem_type_id[i - iter_cnt]);
+                if (mem_space_id[i - iter_cnt] > H5S_PLIST &&
+                    mem_space_id[i - iter_cnt] < H5S_UNLIMITED)
+                    iter_args->mem_space_id[i] = H5Scopy(mem_space_id[i - iter_cnt]);
+                else
+                    iter_args->mem_space_id[i] = mem_space_id[i - iter_cnt];
+                if (file_space_id[i - iter_cnt] > H5S_PLIST &&
+                    file_space_id[i - iter_cnt] < H5S_UNLIMITED)
+                    iter_args->file_space_id[i] = H5Scopy(file_space_id[i - iter_cnt]);
+                else
+                    iter_args->file_space_id[i] = file_space_id[i - iter_cnt];
+                iter_args->buf[i] = (void *)buf[i - iter_cnt];
+            }
+            // Replace with the new req
+            // TODO: what to do with old req?
+            iter_args->req   = req;
+            iter_args->count = total_cnt;
+
+            task_elt->parent_objs = (struct H5VL_async_t **)realloc(
+                task_elt->parent_objs, total_cnt * sizeof(struct H5VL_async_t *));
+            for (size_t i = iter_cnt; i < total_cnt; i++)
+                task_elt->parent_objs[i] = parent_obj[i - iter_cnt];
+
+#ifdef ENABLE_WRITE_MEMCPY
+            hsize_t buf_size = 0;
+            for (size_t i = iter_cnt; i < total_cnt; i++) {
+                if (parent_obj[i]->data_size > 0 && (iter_args->file_space_id[i] == H5S_ALL ||
+                                                     iter_args->mem_space_id[i] == H5S_ALL)) {
+                    buf_size = parent_obj[i]->data_size;
+                }
+                else {
+                    buf_size = H5Tget_size(mem_type_id[i]) * H5Sget_select_npoints(mem_space_id[i]);
+#ifdef ENABLE_DBG_MSG
+                    if (buf_size == 0)
+                        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with getting dataset size\n",
+                                __func__);
+#endif
+                }
+
+                /* fprintf(fout_g, "buf size = %llu\n", buf_size); */
+
+                // Get available system memory
+                hsize_t avail_mem = (hsize_t)get_avphys_pages() * sysconf(_SC_PAGESIZE);
+
+                if (async_instance_g->used_mem + buf_size > async_instance_g->max_mem) {
+                    fprintf(fout_g,
+                            "  [      ABT INFO] %d write size %lu larger than async memory limit "
+                            "%lu, switch to "
+                            "synchronous write\n",
+                            async_instance_g->mpi_rank, buf_size, async_instance_g->max_mem);
+                }
+                else if (buf_size > avail_mem) {
+                    fprintf(fout_g,
+                            "  [      ABT INFO] %d write size %lu larger than available memory %lu, "
+                            "switch to "
+                            "synchronous write\n",
+                            async_instance_g->mpi_rank, buf_size, avail_mem);
+                }
+                else if (buf_size > 0) {
+                    if (NULL == (iter_args->buf[i] = malloc(buf_size))) {
+                        fprintf(fout_g, "  [ASYNC VOL ERROR] %s malloc failed!\n", __func__);
+                        goto done;
+                    }
+                    async_instance_g->used_mem += buf_size;
+                    iter_args->free_buf = true;
+                    iter_args->data_size += buf_size;
+
+                    // If is contiguous space, no need to go through gather process as it can be
+                    // costly
+                    if (1 != is_contig_memspace(mem_space_id[i])) {
+                        /* fprintf(fout_g,"  [ASYNC VOL LOG] %s will gather!\n", __func__); */
+                        H5Dgather(mem_space_id[i], buf[i], mem_type_id[i], buf_size,
+                                  iter_args->buf[i], NULL, NULL);
+                        hsize_t elem_size = H5Tget_size(mem_type_id[i]);
+                        if (elem_size == 0)
+                            elem_size = 1;
+                        hsize_t n_elem = (hsize_t)(buf_size / elem_size);
+                        if (iter_args->mem_space_id[i] > 0)
+                            H5Sclose(iter_args->mem_space_id[i]);
+                        iter_args->mem_space_id[i] = H5Screate_simple(1, &n_elem, NULL);
+                    }
+                    else {
+                        memcpy(iter_args->buf[i], buf[i], buf_size);
+                    }
+                }
+            }
+#endif
+
+            if (NULL != task_elt->h5_state && H5VLfree_lib_state(task_elt->h5_state) < 0)
+                fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
+
+            // Retrieve current library state
+            if (H5VLretrieve_lib_state(&task_elt->h5_state) < 0) {
+                fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5VLretrieve_lib_state failed\n", __func__);
+                goto done;
+            }
+
+            found_task = 1;
+            func_log(__func__, "merged multi-dset write");
+            break;
+        }
         if (found_task)
             break;
         is_first = 0;
-    } // End task_list_elt
+    } // End task_elt
 
     if (ABT_mutex_unlock(aid->qhead.head_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
@@ -10677,7 +10296,7 @@ async_dataset_write_merge_mdset_col(async_instance_t *aid, size_t count, H5VL_as
 done:
     return found_task;
 } // End async_dataset_write_merge_mdset
-#endif
+#endif // #ifdef ENABLE_MERGE_DSET
 
 #else
 // < 1.13.3
@@ -10709,13 +10328,10 @@ async_dataset_write_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->dset) {
@@ -10828,7 +10444,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -10842,11 +10458,7 @@ done:
     if (args->free_buf && args->buf) {
         free(args->buf);
         async_instance_g->used_mem -= args->data_size;
-#ifdef ENABLE_DBG_MSG
-        if (async_instance_g &&
-            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [      ABT DBG] %s released dset memcpy\n", __func__);
-#endif
+        func_log(__func__, "released dset memcpy")
     }
 #endif
     free(args);
@@ -11005,6 +10617,7 @@ async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_t
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -11014,20 +10627,9 @@ async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_t
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -11062,9 +10664,12 @@ async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_t
     }
 
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -11084,8 +10689,7 @@ async_dataset_write(async_instance_t *aid, H5VL_async_t *parent_obj, hid_t mem_t
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -11105,8 +10709,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -11142,13 +10746,10 @@ async_dataset_get_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->dset) {
@@ -11247,7 +10848,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -11265,7 +10866,7 @@ done:
 } // End async_dataset_get_fn
 
 static herr_t
-async_dataset_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
+async_dataset_get(task_type_t qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                   H5VL_dataset_get_args_t *get_args, hid_t dxpl_id, void **req)
 {
     async_task_t *            async_task  = NULL;
@@ -11347,6 +10948,7 @@ async_dataset_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -11356,20 +10958,9 @@ async_dataset_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -11403,9 +10994,12 @@ async_dataset_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -11425,8 +11019,7 @@ async_dataset_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -11445,8 +11038,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -11481,13 +11074,10 @@ async_dataset_specific_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
@@ -11586,7 +11176,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -11604,7 +11194,7 @@ done:
 } // End async_dataset_specific_fn
 
 static herr_t
-async_dataset_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
+async_dataset_specific(task_type_t qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                        H5VL_dataset_specific_args_t *spec_args, hid_t dxpl_id, void **req)
 {
     async_task_t *                 async_task  = NULL;
@@ -11682,6 +11272,7 @@ async_dataset_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -11691,20 +11282,9 @@ async_dataset_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -11738,9 +11318,12 @@ async_dataset_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -11760,8 +11343,7 @@ async_dataset_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -11780,8 +11362,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -11816,13 +11398,10 @@ async_dataset_optional_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
@@ -11921,7 +11500,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -11939,7 +11518,7 @@ done:
 } // End async_dataset_optional_fn
 
 static herr_t
-async_dataset_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
+async_dataset_optional(task_type_t qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                        H5VL_optional_args_t *opt_args, hid_t dxpl_id, void **req)
 {
     async_task_t *                 async_task  = NULL;
@@ -12012,6 +11591,7 @@ async_dataset_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -12021,20 +11601,9 @@ async_dataset_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -12068,9 +11637,12 @@ async_dataset_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -12090,8 +11662,7 @@ async_dataset_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -12110,8 +11681,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -12146,13 +11717,10 @@ async_dataset_close_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->dset) {
@@ -12250,7 +11818,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -12269,7 +11837,7 @@ done:
 } // End async_dataset_close_fn
 
 static herr_t
-async_dataset_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj, hid_t dxpl_id,
+async_dataset_close(task_type_t qtype, async_instance_t *aid, H5VL_async_t *parent_obj, hid_t dxpl_id,
                     void **req)
 {
     async_task_t *              async_task  = NULL;
@@ -12346,6 +11914,7 @@ async_dataset_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -12355,20 +11924,9 @@ async_dataset_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj && parent_obj->file_async_obj->file_task_list_mutex) {
-        if (ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-            goto done;
-        }
-        /* Insert it into the file task list */
-        DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-        if (ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-            goto done;
-        }
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -12412,9 +11970,12 @@ async_dataset_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -12434,8 +11995,7 @@ async_dataset_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -12455,8 +12015,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -12491,13 +12051,10 @@ async_datatype_commit_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
@@ -12609,7 +12166,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -12656,7 +12213,6 @@ async_datatype_commit(async_instance_t *aid, H5VL_async_t *parent_obj, const H5V
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
-    async_obj->file_task_list_head = parent_obj->file_task_list_head;
     async_obj->file_async_obj      = parent_obj->file_async_obj;
     async_obj->is_col_meta         = parent_obj->is_col_meta;
     async_obj->pool_ptr            = &aid->pool;
@@ -12735,6 +12291,7 @@ async_datatype_commit(async_instance_t *aid, H5VL_async_t *parent_obj, const H5V
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -12744,20 +12301,9 @@ async_datatype_commit(async_instance_t *aid, H5VL_async_t *parent_obj, const H5V
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -12791,9 +12337,12 @@ async_datatype_commit(async_instance_t *aid, H5VL_async_t *parent_obj, const H5V
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -12813,8 +12362,7 @@ async_datatype_commit(async_instance_t *aid, H5VL_async_t *parent_obj, const H5V
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -12833,8 +12381,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -12869,13 +12417,10 @@ async_datatype_open_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
@@ -12983,7 +12528,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -13029,7 +12574,6 @@ async_datatype_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
-    async_obj->file_task_list_head = parent_obj->file_task_list_head;
     async_obj->file_async_obj      = parent_obj->file_async_obj;
     async_obj->is_col_meta         = parent_obj->is_col_meta;
     async_obj->pool_ptr            = &aid->pool;
@@ -13100,6 +12644,7 @@ async_datatype_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -13109,20 +12654,9 @@ async_datatype_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -13156,9 +12690,12 @@ async_datatype_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -13178,8 +12715,7 @@ async_datatype_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -13198,8 +12734,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -13234,13 +12770,10 @@ async_datatype_get_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->dt) {
@@ -13339,7 +12872,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -13357,7 +12890,7 @@ done:
 } // End async_datatype_get_fn
 
 static herr_t
-async_datatype_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
+async_datatype_get(task_type_t qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                    H5VL_datatype_get_args_t *get_args, hid_t dxpl_id, void **req)
 {
     async_task_t *             async_task  = NULL;
@@ -13433,6 +12966,7 @@ async_datatype_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *p
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -13442,20 +12976,9 @@ async_datatype_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *p
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -13489,9 +13012,12 @@ async_datatype_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *p
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -13511,8 +13037,7 @@ async_datatype_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *p
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -13531,8 +13056,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -13567,13 +13092,10 @@ async_datatype_specific_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
@@ -13672,7 +13194,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -13690,7 +13212,7 @@ done:
 } // End async_datatype_specific_fn
 
 static herr_t
-async_datatype_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
+async_datatype_specific(task_type_t qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                         H5VL_datatype_specific_args_t *spec_args, hid_t dxpl_id, void **req)
 {
     async_task_t *                  async_task  = NULL;
@@ -13764,6 +13286,7 @@ async_datatype_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -13773,20 +13296,9 @@ async_datatype_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -13820,9 +13332,12 @@ async_datatype_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -13842,8 +13357,7 @@ async_datatype_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -13862,8 +13376,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -13898,13 +13412,10 @@ async_datatype_optional_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
@@ -14003,7 +13514,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -14021,7 +13532,7 @@ done:
 } // End async_datatype_optional_fn
 
 static herr_t
-async_datatype_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
+async_datatype_optional(task_type_t qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                         H5VL_optional_args_t *opt_args, hid_t dxpl_id, void **req)
 {
     async_task_t *                  async_task  = NULL;
@@ -14095,6 +13606,7 @@ async_datatype_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -14104,20 +13616,9 @@ async_datatype_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -14151,9 +13652,12 @@ async_datatype_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -14173,8 +13677,7 @@ async_datatype_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -14193,8 +13696,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -14229,13 +13732,10 @@ async_datatype_close_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->dt) {
@@ -14333,7 +13833,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -14351,7 +13851,7 @@ done:
 } // End async_datatype_close_fn
 
 static herr_t
-async_datatype_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj, hid_t dxpl_id,
+async_datatype_close(task_type_t qtype, async_instance_t *aid, H5VL_async_t *parent_obj, hid_t dxpl_id,
                      void **req)
 {
     async_task_t *               async_task  = NULL;
@@ -14423,6 +13923,7 @@ async_datatype_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -14432,20 +13933,9 @@ async_datatype_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -14485,9 +13975,12 @@ async_datatype_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
     aid->start_abt_push = true;
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -14507,8 +14000,7 @@ async_datatype_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -14527,8 +14019,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -14567,13 +14059,10 @@ async_file_create_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     // Restore previous library state
     assert(task->h5_state);
@@ -14690,7 +14179,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -14744,10 +14233,6 @@ async_file_create(async_instance_t *aid, const char *name, unsigned flags, hid_t
         goto error;
     }
     async_obj->file_async_obj = async_obj;
-    if (ABT_mutex_create(&(async_obj->file_task_list_mutex)) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
-        goto error;
-    }
     async_obj->pool_ptr = &aid->pool;
     /* create a new task and insert into its file task list */
     if ((async_task = create_async_task()) == NULL) {
@@ -14818,18 +14303,6 @@ async_file_create(async_instance_t *aid, const char *name, unsigned flags, hid_t
     async_obj->create_task  = async_task;
     async_obj->under_vol_id = async_task->under_vol_id;
 
-    if (async_obj->file_async_obj &&
-        ABT_mutex_lock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(async_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (async_obj->file_async_obj &&
-        ABT_mutex_unlock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     async_obj->task_cnt++;
     async_obj->pool_ptr = &aid->pool;
 #ifdef MPI_VERSION
@@ -14849,9 +14322,12 @@ async_file_create(async_instance_t *aid, const char *name, unsigned flags, hid_t
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -14871,8 +14347,7 @@ async_file_create(async_instance_t *aid, const char *name, unsigned flags, hid_t
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -14891,8 +14366,8 @@ error:
         if (ABT_mutex_unlock(async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL DBG] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -14931,13 +14406,10 @@ async_file_open_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
     /* async_instance_g->start_abt_push = false; */
 
     // Restore previous library state
@@ -15072,7 +14544,7 @@ done:
 } // End async_file_open_fn
 
 static H5VL_async_t *
-async_file_open(task_list_qtype qtype, async_instance_t *aid, const char *name, unsigned flags, hid_t fapl_id,
+async_file_open(task_type_t qtype, async_instance_t *aid, const char *name, unsigned flags, hid_t fapl_id,
                 hid_t dxpl_id, void **req)
 {
     hid_t                   under_vol_id;
@@ -15102,10 +14574,6 @@ async_file_open(task_list_qtype qtype, async_instance_t *aid, const char *name, 
         goto error;
     }
     async_obj->file_async_obj = async_obj;
-    if (ABT_mutex_create(&(async_obj->file_task_list_mutex)) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_create\n", __func__);
-        goto error;
-    }
     async_obj->pool_ptr = &aid->pool;
     /* create a new task and insert into its file task list */
     if ((async_task = create_async_task()) == NULL) {
@@ -15170,18 +14638,6 @@ async_file_open(task_list_qtype qtype, async_instance_t *aid, const char *name, 
     async_obj->create_task  = async_task;
     async_obj->under_vol_id = async_task->under_vol_id;
 
-    if (async_obj->file_async_obj &&
-        ABT_mutex_lock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(async_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (async_obj->file_async_obj &&
-        ABT_mutex_unlock(async_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     async_obj->task_cnt++;
     async_obj->pool_ptr = &aid->pool;
 #ifdef MPI_VERSION
@@ -15197,16 +14653,19 @@ async_file_open(task_list_qtype qtype, async_instance_t *aid, const char *name, 
     }
     lock_self = false;
 
-    if (aid->ex_delay == false && !async_instance_g->pause) {
+    if (is_blocking == 0 && aid->ex_delay == false && !async_instance_g->pause) {
         if (get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
     }
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -15226,8 +14685,7 @@ async_file_open(task_list_qtype qtype, async_instance_t *aid, const char *name, 
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -15247,8 +14705,8 @@ error:
         if (ABT_mutex_unlock(async_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL DBG] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -15283,13 +14741,10 @@ async_file_get_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->file) {
@@ -15388,7 +14843,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -15406,7 +14861,7 @@ done:
 } // End async_file_get_fn
 
 static herr_t
-async_file_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
+async_file_get(task_type_t qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                H5VL_file_get_args_t *get_args, hid_t dxpl_id, void **req)
 {
     async_task_t *         async_task  = NULL;
@@ -15482,6 +14937,7 @@ async_file_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -15491,20 +14947,9 @@ async_file_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -15538,9 +14983,12 @@ async_file_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -15560,8 +15008,7 @@ async_file_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -15580,8 +15027,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -15616,13 +15063,10 @@ async_file_specific_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->file) {
@@ -15721,7 +15165,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -15739,7 +15183,7 @@ done:
 } // End async_file_specific_fn
 
 static herr_t
-async_file_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
+async_file_specific(task_type_t qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                     H5VL_file_specific_args_t *spec_args, hid_t dxpl_id, void **req)
 {
     async_task_t *              async_task  = NULL;
@@ -15817,6 +15261,7 @@ async_file_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -15826,20 +15271,9 @@ async_file_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -15880,9 +15314,12 @@ async_file_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -15902,8 +15339,7 @@ async_file_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -15922,8 +15358,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -15958,13 +15394,10 @@ async_file_optional_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->file) {
@@ -16063,35 +15496,22 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
 
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s released global lock %u\n", __func__, mutex_count);
-#endif
-    if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push) {
-        push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
+    func_log_int1(__func__, "released global lock, count", (int)mutex_count);
 
-#ifdef ENABLE_DBG_MSG
-        if (async_instance_g &&
-            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [      ABT DBG] %s pushed task to abt queue, push=%d\n", __func__,
-                    async_instance_g->start_abt_push);
-#endif
+    if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push) {
+        func_log_int1(__func__, "will push task to abt, push", async_instance_g->start_abt_push);
+        push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
     }
-#ifdef ENABLE_DBG_MSG
     else {
-        if (async_instance_g &&
-            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [      ABT DBG] %s did not pushed task to abt queue, %p, push=%d\n", __func__,
-                    async_instance_g->qhead.queue, async_instance_g->start_abt_push);
+        func_log_int1(__func__, "will not push task to abt, push", async_instance_g->start_abt_push);
     }
-#endif
 
 #ifdef ENABLE_TIMING
     task->end_time = clock();
@@ -16102,7 +15522,7 @@ done:
 } // End async_file_optional_fn
 
 static herr_t
-async_file_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
+async_file_optional(task_type_t qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                     H5VL_optional_args_t *opt_args, hid_t dxpl_id, void **req)
 {
     async_task_t *              async_task  = NULL;
@@ -16175,6 +15595,7 @@ async_file_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -16184,20 +15605,9 @@ async_file_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -16232,9 +15642,12 @@ async_file_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -16254,8 +15667,7 @@ async_file_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -16274,8 +15686,8 @@ error:
         if (parent_obj && ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -16310,13 +15722,10 @@ async_file_close_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->file) {
@@ -16426,7 +15835,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -16434,11 +15843,13 @@ done:
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
 
     // Free all the resources allocated for this file, e.g. tasks
-    if (task->task_mutex) {
-        ABT_mutex_lock(task->task_mutex);
+    /* if (task->task_mutex) { */
+    /*     ABT_mutex_lock(task->task_mutex); */
         free_file_async_resources(task->async_obj, __func__);
-        ABT_mutex_unlock(task->task_mutex);
-    }
+        /* ABT_mutex_unlock(task->task_mutex); */
+    /* } */
+
+    func_log(__func__, "file async resources freed");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
@@ -16452,7 +15863,7 @@ done:
 } // End async_file_close_fn
 
 static herr_t
-async_file_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj, hid_t dxpl_id,
+async_file_close(task_type_t qtype, async_instance_t *aid, H5VL_async_t *parent_obj, hid_t dxpl_id,
                  void **req)
 {
     async_task_t *           async_task  = NULL;
@@ -16543,6 +15954,7 @@ async_file_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -16552,20 +15964,9 @@ async_file_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr   = &aid->pool;
     parent_obj->close_task = async_task;
@@ -16612,9 +16013,12 @@ wait:
     aid->start_abt_push = true;
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -16634,8 +16038,7 @@ wait:
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -16651,8 +16054,8 @@ error:
         if (parent_obj->obj_mutex && ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -16687,13 +16090,10 @@ async_group_create_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
@@ -16806,7 +16206,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -16852,7 +16252,6 @@ async_group_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_l
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
-    async_obj->file_task_list_head = parent_obj->file_task_list_head;
     async_obj->file_async_obj      = parent_obj->file_async_obj;
     async_obj->is_col_meta         = parent_obj->is_col_meta;
     async_obj->pool_ptr            = &aid->pool;
@@ -16934,6 +16333,7 @@ async_group_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_l
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -16943,20 +16343,9 @@ async_group_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_l
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -16990,9 +16379,12 @@ async_group_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_l
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -17012,8 +16404,7 @@ async_group_create(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_l
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -17032,11 +16423,11 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    /* if (args) { */
-    /*     free(args); */
-    /*     if (async_task) */
-    /*         async_task->args = NULL; */
-    /* } */
+    if (async_task && async_task->args) {
+        free(async_task->args);
+        if (async_task)
+            async_task->args = NULL;
+    }
     if (NULL != async_task->h5_state && H5VLfree_lib_state(async_task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     async_task->h5_state = NULL;
@@ -17071,13 +16462,10 @@ async_group_open_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
@@ -17185,7 +16573,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -17231,7 +16619,6 @@ async_group_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
-    async_obj->file_task_list_head = parent_obj->file_task_list_head;
     async_obj->file_async_obj      = parent_obj->file_async_obj;
     async_obj->is_col_meta         = parent_obj->is_col_meta;
     async_obj->pool_ptr            = &aid->pool;
@@ -17302,6 +16689,7 @@ async_group_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -17311,20 +16699,9 @@ async_group_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -17358,9 +16735,12 @@ async_group_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -17380,8 +16760,7 @@ async_group_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -17400,8 +16779,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -17436,13 +16815,10 @@ async_group_get_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
@@ -17541,7 +16917,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -17559,7 +16935,7 @@ done:
 } // End async_group_get_fn
 
 static herr_t
-async_group_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
+async_group_get(task_type_t qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                 H5VL_group_get_args_t *get_args, hid_t dxpl_id, void **req)
 {
     async_task_t *          async_task  = NULL;
@@ -17640,6 +17016,7 @@ async_group_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pare
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -17649,20 +17026,9 @@ async_group_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pare
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -17696,9 +17062,12 @@ async_group_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pare
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -17718,8 +17087,7 @@ async_group_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pare
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -17738,8 +17106,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -17774,13 +17142,10 @@ async_group_specific_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
@@ -17879,7 +17244,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -17897,7 +17262,7 @@ done:
 } // End async_group_specific_fn
 
 static herr_t
-async_group_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
+async_group_specific(task_type_t qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                      H5VL_group_specific_args_t *spec_args, hid_t dxpl_id, void **req)
 {
     async_task_t *               async_task  = NULL;
@@ -17970,6 +17335,7 @@ async_group_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -17979,20 +17345,9 @@ async_group_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -18026,9 +17381,12 @@ async_group_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -18048,8 +17406,7 @@ async_group_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -18068,8 +17425,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -18104,13 +17461,10 @@ async_group_optional_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
@@ -18209,7 +17563,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -18227,7 +17581,7 @@ done:
 } // End async_group_optional_fn
 
 static herr_t
-async_group_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
+async_group_optional(task_type_t qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                      H5VL_optional_args_t *opt_args, hid_t dxpl_id, void **req)
 {
     async_task_t *               async_task  = NULL;
@@ -18300,6 +17654,7 @@ async_group_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -18309,20 +17664,9 @@ async_group_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -18356,9 +17700,12 @@ async_group_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -18378,8 +17725,7 @@ async_group_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t 
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -18398,8 +17744,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -18434,13 +17780,10 @@ async_group_close_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->grp) {
@@ -18542,7 +17885,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -18560,7 +17903,7 @@ done:
 } // End async_group_close_fn
 
 static herr_t
-async_group_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj, hid_t dxpl_id,
+async_group_close(task_type_t qtype, async_instance_t *aid, H5VL_async_t *parent_obj, hid_t dxpl_id,
                   void **req)
 {
     async_task_t *            async_task  = NULL;
@@ -18634,6 +17977,7 @@ async_group_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
                 break;
             }
             // Temp release global lock in case background is waiting
+            func_log(__func__, "release global lock");
             if (H5TSmutex_release(&mutex_count) < 0)
                 fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
             usleep(1000);
@@ -18643,20 +17987,9 @@ async_group_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
                     goto error;
                 }
             }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
         }
 
-        if (parent_obj->file_async_obj &&
-            ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-            goto done;
-        }
-        /* Insert it into the file task list */
-        DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-        if (parent_obj->file_async_obj &&
-            ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-            goto done;
-        }
         parent_obj->task_cnt++;
         parent_obj->pool_ptr = &aid->pool;
         /* Check if its parent has valid object */
@@ -18705,8 +18038,12 @@ async_group_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
+
+        func_log(__func__, "release global lock");
 
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
@@ -18727,8 +18064,7 @@ async_group_close(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -18747,8 +18083,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -18786,13 +18122,10 @@ async_link_create_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
@@ -18900,7 +18233,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -18918,7 +18251,7 @@ done:
 } // End async_link_create_fn
 
 herr_t
-async_link_create(task_list_qtype qtype, async_instance_t *aid, H5VL_link_create_args_t *create_args,
+async_link_create(task_type_t qtype, async_instance_t *aid, H5VL_link_create_args_t *create_args,
                   H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params, hid_t lcpl_id, hid_t lapl_id,
                   hid_t dxpl_id, void **req)
 {
@@ -18954,7 +18287,6 @@ async_link_create(task_list_qtype qtype, async_instance_t *aid, H5VL_link_create
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
-    async_obj->file_task_list_head = parent_obj->file_task_list_head;
     async_obj->file_async_obj      = parent_obj->file_async_obj;
     async_obj->is_col_meta         = parent_obj->is_col_meta;
     async_obj->pool_ptr            = &aid->pool;
@@ -19019,19 +18351,6 @@ async_link_create(task_list_qtype qtype, async_instance_t *aid, H5VL_link_create
     async_obj->create_task  = async_task;
     async_obj->under_vol_id = async_task->under_vol_id;
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
-
     /* Lock parent_obj */
     while (1) {
         if (parent_obj->obj_mutex && ABT_mutex_trylock(parent_obj->obj_mutex) == ABT_SUCCESS) {
@@ -19039,6 +18358,7 @@ async_link_create(task_list_qtype qtype, async_instance_t *aid, H5VL_link_create
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -19048,6 +18368,7 @@ async_link_create(task_list_qtype qtype, async_instance_t *aid, H5VL_link_create
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
     parent_obj->task_cnt++;
@@ -19083,9 +18404,12 @@ async_link_create(task_list_qtype qtype, async_instance_t *aid, H5VL_link_create
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -19105,8 +18429,7 @@ async_link_create(task_list_qtype qtype, async_instance_t *aid, H5VL_link_create
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -19125,8 +18448,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -19159,13 +18482,10 @@ async_link_copy_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     pool_ptr = task->async_obj->pool_ptr;
 
@@ -19273,7 +18593,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -19393,6 +18713,7 @@ async_link_copy(async_instance_t *aid, H5VL_async_t *parent_obj1, const H5VL_loc
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -19402,20 +18723,9 @@ async_link_copy(async_instance_t *aid, H5VL_async_t *parent_obj1, const H5VL_loc
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -19449,9 +18759,12 @@ async_link_copy(async_instance_t *aid, H5VL_async_t *parent_obj1, const H5VL_loc
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -19471,8 +18784,7 @@ async_link_copy(async_instance_t *aid, H5VL_async_t *parent_obj1, const H5VL_loc
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -19491,8 +18803,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -19527,13 +18839,10 @@ async_link_move_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     /* if (NULL == args->src_obj) { */
@@ -19639,7 +18948,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -19760,6 +19069,7 @@ async_link_move(async_instance_t *aid, H5VL_async_t *parent_obj1, const H5VL_loc
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -19769,20 +19079,9 @@ async_link_move(async_instance_t *aid, H5VL_async_t *parent_obj1, const H5VL_loc
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -19816,9 +19115,12 @@ async_link_move(async_instance_t *aid, H5VL_async_t *parent_obj1, const H5VL_loc
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -19838,8 +19140,7 @@ async_link_move(async_instance_t *aid, H5VL_async_t *parent_obj1, const H5VL_loc
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -19858,8 +19159,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -19894,13 +19195,10 @@ async_link_get_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
@@ -20001,7 +19299,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -20019,7 +19317,7 @@ done:
 } // End async_link_get_fn
 
 static herr_t
-async_link_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
+async_link_get(task_type_t qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                const H5VL_loc_params_t *loc_params, H5VL_link_get_args_t *get_args, hid_t dxpl_id, void **req)
 {
     async_task_t *         async_task  = NULL;
@@ -20102,6 +19400,7 @@ async_link_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -20111,20 +19410,9 @@ async_link_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -20158,9 +19446,12 @@ async_link_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -20180,8 +19471,7 @@ async_link_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *paren
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -20200,8 +19490,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -20236,13 +19526,10 @@ async_link_specific_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
@@ -20346,7 +19633,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -20364,7 +19651,7 @@ done:
 } // End async_link_specific_fn
 
 static herr_t
-async_link_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
+async_link_specific(task_type_t qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                     const H5VL_loc_params_t *loc_params, H5VL_link_specific_args_t *spec_args, hid_t dxpl_id,
                     void **req)
 {
@@ -20448,6 +19735,7 @@ async_link_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -20457,20 +19745,9 @@ async_link_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -20504,9 +19781,12 @@ async_link_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -20526,8 +19806,7 @@ async_link_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -20546,8 +19825,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -20582,13 +19861,10 @@ async_link_optional_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
@@ -20689,7 +19965,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -20707,7 +19983,7 @@ done:
 } // End async_link_optional_fn
 
 static herr_t
-async_link_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
+async_link_optional(task_type_t qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                     const H5VL_loc_params_t *loc_params, H5VL_optional_args_t *opt_args, hid_t dxpl_id,
                     void **req)
 {
@@ -20791,6 +20067,7 @@ async_link_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -20800,20 +20077,9 @@ async_link_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -20847,9 +20113,12 @@ async_link_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -20869,8 +20138,7 @@ async_link_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -20889,8 +20157,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -20925,13 +20193,10 @@ async_object_open_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
@@ -21035,7 +20300,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -21053,7 +20318,7 @@ done:
 } // End async_object_open_fn
 
 static H5VL_async_t *
-async_object_open(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
+async_object_open(task_type_t qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                   const H5VL_loc_params_t *loc_params, H5I_type_t *opened_type, hid_t dxpl_id, void **req)
 {
     H5VL_async_t *            async_obj   = NULL;
@@ -21086,7 +20351,6 @@ async_object_open(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with calloc\n", __func__);
         goto error;
     }
-    async_obj->file_task_list_head = parent_obj->file_task_list_head;
     async_obj->file_async_obj      = parent_obj->file_async_obj;
     async_obj->is_col_meta         = parent_obj->is_col_meta;
     async_obj->pool_ptr            = &aid->pool;
@@ -21154,6 +20418,7 @@ async_object_open(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -21163,20 +20428,9 @@ async_object_open(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -21210,9 +20464,12 @@ async_object_open(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -21232,8 +20489,7 @@ async_object_open(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -21252,8 +20508,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -21286,13 +20542,10 @@ async_object_copy_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     pool_ptr = task->async_obj->pool_ptr;
 
@@ -21367,11 +20620,7 @@ async_object_copy_fn(void *foo)
     }
     H5E_END_TRY
     if (status < 0) {
-#ifdef ENABLE_DBG_MSG
-        if (async_instance_g &&
-            (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-            fprintf(fout_g, "  [      ABT DBG] %s: failed!\n", __func__);
-#endif
+        func_log(__func__, "HDF5 operation failed!");
         if ((task->err_stack = H5Eget_current_stack()) < 0)
             fprintf(fout_g, "  [      ABT ERROR] %s H5Eget_current_stack failed\n", __func__);
         goto done;
@@ -21410,7 +20659,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -21428,7 +20677,7 @@ done:
 } // End async_object_copy_fn
 
 static herr_t
-async_object_copy(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj1,
+async_object_copy(task_type_t qtype, async_instance_t *aid, H5VL_async_t *parent_obj1,
                   const H5VL_loc_params_t *src_loc_params, const char *src_name, H5VL_async_t *parent_obj2,
                   const H5VL_loc_params_t *dst_loc_params, const char *dst_name, hid_t ocpypl_id,
                   hid_t lcpl_id, hid_t dxpl_id, void **req)
@@ -21526,6 +20775,7 @@ async_object_copy(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -21535,20 +20785,9 @@ async_object_copy(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -21582,9 +20821,12 @@ async_object_copy(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -21604,8 +20846,7 @@ async_object_copy(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *pa
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -21624,8 +20865,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -21660,13 +20901,10 @@ async_object_get_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
@@ -21770,7 +21008,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -21788,7 +21026,7 @@ done:
 } // End async_object_get_fn
 
 static herr_t
-async_object_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
+async_object_get(task_type_t qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                  const H5VL_loc_params_t *loc_params, H5VL_object_get_args_t *get_args, hid_t dxpl_id,
                  void **req)
 {
@@ -21872,6 +21110,7 @@ async_object_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -21881,20 +21120,9 @@ async_object_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock file_task_list_mutex\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -21928,9 +21156,12 @@ async_object_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -21950,8 +21181,7 @@ async_object_get(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *par
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -21970,8 +21200,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -22006,13 +21236,10 @@ async_object_specific_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
@@ -22115,7 +21342,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -22133,7 +21360,7 @@ done:
 } // End async_object_specific_fn
 
 static herr_t
-async_object_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
+async_object_specific(task_type_t qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                       const H5VL_loc_params_t *loc_params, H5VL_object_specific_args_t *spec_args,
                       hid_t dxpl_id, void **req)
 {
@@ -22223,6 +21450,7 @@ async_object_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -22232,20 +21460,9 @@ async_object_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -22279,9 +21496,12 @@ async_object_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -22301,8 +21521,7 @@ async_object_specific(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -22321,8 +21540,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -22357,13 +21576,10 @@ async_object_optional_fn(void *foo)
 
     func_log(__func__, "trying to aquire global lock");
 
-    if ((attempt_count = check_app_acquire_mutex(task, &mutex_count, &acquired)) < 0)
+    if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
-#ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [      ABT DBG] %s: global lock acquired %d, %u\n", __func__, acquired,
-                mutex_count);
-#endif
+
+    func_log_int1(__func__, "global lock acquired, mutex_count", mutex_count);
 
     /* Update the dependent parent object if it is NULL */
     if (NULL == args->obj) {
@@ -22464,7 +21680,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_list(task, __func__);
+    remove_task_from_queue(task, __func__);
 
     func_log(__func__, "release global lock");
 
@@ -22482,7 +21698,7 @@ done:
 } // End async_object_optional_fn
 
 static herr_t
-async_object_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
+async_object_optional(task_type_t qtype, async_instance_t *aid, H5VL_async_t *parent_obj,
                       const H5VL_loc_params_t *loc_params, H5VL_optional_args_t *opt_args, hid_t dxpl_id,
                       void **req)
 {
@@ -22566,6 +21782,7 @@ async_object_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t
             break;
         }
         // Temp release global lock in case background is waiting
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         usleep(1000);
@@ -22575,20 +21792,9 @@ async_object_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t
                 goto error;
             }
         }
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_lock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
-        goto done;
-    }
-    /* Insert it into the file task list */
-    DL_APPEND2(parent_obj->file_task_list_head, async_task, file_list_prev, file_list_next);
-    if (parent_obj->file_async_obj &&
-        ABT_mutex_unlock(parent_obj->file_async_obj->file_task_list_mutex) != ABT_SUCCESS) {
-        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
-        goto done;
-    }
     parent_obj->task_cnt++;
     parent_obj->pool_ptr = &aid->pool;
     /* Check if its parent has valid object */
@@ -22622,9 +21828,14 @@ async_object_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t
 
     /* Wait if blocking is needed */
     if (is_blocking) {
+        func_log(__func__, "task is set to be blocking");
+
         if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
 
+        func_log(__func__, "release global lock");
+
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", __func__);
         }
@@ -22644,8 +21855,7 @@ async_object_optional(task_list_qtype qtype, async_instance_t *aid, H5VL_async_t
                 goto done;
             }
         }
-
-        func_log(__func__, "restored ASYNC MODE");
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
         /* Failed background thread execution */
         if (async_task->err_stack != 0)
@@ -22664,8 +21874,8 @@ error:
         if (ABT_mutex_unlock(parent_obj->obj_mutex) != ABT_SUCCESS)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
     }
-    if (args) {
-        free(args);
+    if (async_task && async_task->args) {
+        free(async_task->args);
         if (async_task)
             async_task->args = NULL;
     }
@@ -23356,7 +22566,7 @@ H5VL_async_attr_get(void *obj, H5VL_attr_get_args_t *args, hid_t dxpl_id, void *
 {
     H5VL_async_t *  o = (H5VL_async_t *)obj;
     herr_t          ret_value;
-    task_list_qtype qtype = ISOLATED;
+    task_type_t qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL ATTRIBUTE Get\n");
@@ -23395,7 +22605,7 @@ H5VL_async_attr_specific(void *obj, const H5VL_loc_params_t *loc_params, H5VL_at
 {
     H5VL_async_t *  o = (H5VL_async_t *)obj;
     herr_t          ret_value;
-    task_list_qtype qtype = ISOLATED;
+    task_type_t qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL ATTRIBUTE Specific\n");
@@ -23436,7 +22646,7 @@ H5VL_async_attr_optional(void *obj, H5VL_optional_args_t *args, hid_t dxpl_id, v
 {
     H5VL_async_t *  o = (H5VL_async_t *)obj;
     herr_t          ret_value;
-    task_list_qtype qtype = ISOLATED;
+    task_type_t qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL ATTRIBUTE Optional\n");
@@ -23481,7 +22691,7 @@ H5VL_async_attr_close(void *attr, hid_t dxpl_id, void **req)
     H5VL_async_t *  o = (H5VL_async_t *)attr;
     herr_t          ret_value;
     hbool_t         is_term;
-    task_list_qtype qtype = DEPENDENT;
+    task_type_t qtype = DEPENDENT;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL ATTRIBUTE Close\n");
@@ -23585,7 +22795,7 @@ H5VL_async_dataset_open(void *obj, const H5VL_loc_params_t *loc_params, const ch
 {
     H5VL_async_t *  dset;
     H5VL_async_t *  o     = (H5VL_async_t *)obj;
-    task_list_qtype qtype = REGULAR;
+    task_type_t qtype = REGULAR;
     void *          under;
 
 #ifdef ENABLE_ASYNC_LOGGING
@@ -23857,7 +23067,7 @@ H5VL_async_dataset_get(void *dset, H5VL_dataset_get_args_t *args, hid_t dxpl_id,
 {
     H5VL_async_t *  o = (H5VL_async_t *)dset;
     herr_t          ret_value;
-    task_list_qtype qtype = ISOLATED;
+    task_type_t qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATASET Get\n");
@@ -23896,7 +23106,7 @@ H5VL_async_dataset_specific(void *obj, H5VL_dataset_specific_args_t *args, hid_t
     H5VL_async_t *  o = (H5VL_async_t *)obj;
     hid_t           under_vol_id;
     herr_t          ret_value;
-    task_list_qtype qtype = ISOLATED;
+    task_type_t qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL H5Dspecific\n");
@@ -23941,7 +23151,7 @@ H5VL_async_dataset_optional(void *obj, H5VL_optional_args_t *args, hid_t dxpl_id
 {
     H5VL_async_t *  o = (H5VL_async_t *)obj;
     herr_t          ret_value;
-    task_list_qtype qtype = ISOLATED;
+    task_type_t qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATASET Optional\n");
@@ -24000,7 +23210,6 @@ H5VL_async_has_pending_dset_ops(void *dset_obj, const char *func_name)
 {
     int                ret_value = 0;
     async_task_t *     task_elt;
-    async_task_list_t *task_list_elt;
 
     func_enter(__func__, NULL);
 
@@ -24009,18 +23218,12 @@ H5VL_async_has_pending_dset_ops(void *dset_obj, const char *func_name)
         return -1;
     }
 
-    DL_FOREACH(async_instance_g->qhead.queue, task_list_elt)
-    {
-        DL_FOREACH(task_list_elt->task_list, task_elt)
-        {
-            if (task_elt->async_obj->under_object == dset_obj) {
-                ret_value = 1;
-                func_log(__func__, "has pending dset ops, use async dset close");
-                break;
-            }
-        }
-        if (ret_value)
+    DL_FOREACH(async_instance_g->qhead.queue, task_elt) {
+        if (task_elt->async_obj->under_object == dset_obj) {
+            ret_value = 1;
+            func_log(__func__, "has pending dset ops, use async dset close");
             break;
+        }
     }
 
     if (ABT_mutex_unlock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) {
@@ -24049,7 +23252,7 @@ H5VL_async_dataset_close(void *dset, hid_t dxpl_id, void **req)
     H5VL_async_t *  o = (H5VL_async_t *)dset;
     herr_t          ret_value;
     hbool_t         is_term;
-    task_list_qtype qtype = DEPENDENT;
+    task_type_t qtype = DEPENDENT;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATASET Close\n");
@@ -24191,7 +23394,7 @@ H5VL_async_datatype_get(void *dt, H5VL_datatype_get_args_t *args, hid_t dxpl_id,
 {
     H5VL_async_t *  o = (H5VL_async_t *)dt;
     herr_t          ret_value;
-    task_list_qtype qtype = ISOLATED;
+    task_type_t qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATATYPE Get\n");
@@ -24229,7 +23432,7 @@ H5VL_async_datatype_specific(void *obj, H5VL_datatype_specific_args_t *args, hid
 {
     H5VL_async_t *  o = (H5VL_async_t *)obj;
     herr_t          ret_value;
-    task_list_qtype qtype = ISOLATED;
+    task_type_t qtype = ISOLATED;
     hid_t           under_vol_id;
 
 #ifdef ENABLE_ASYNC_LOGGING
@@ -24272,7 +23475,7 @@ H5VL_async_datatype_optional(void *obj, H5VL_optional_args_t *args, hid_t dxpl_i
 {
     H5VL_async_t *  o = (H5VL_async_t *)obj;
     herr_t          ret_value;
-    task_list_qtype qtype = ISOLATED;
+    task_type_t qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATATYPE Optional\n");
@@ -24317,7 +23520,7 @@ H5VL_async_datatype_close(void *dt, hid_t dxpl_id, void **req)
     H5VL_async_t *  o = (H5VL_async_t *)dt;
     herr_t          ret_value;
     hbool_t         is_term;
-    task_list_qtype qtype = DEPENDENT;
+    task_type_t qtype = DEPENDENT;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL DATATYPE Close\n");
@@ -24472,7 +23675,7 @@ H5VL_async_file_open(const char *name, unsigned flags, hid_t fapl_id, hid_t dxpl
     H5VL_async_info_t *info;
     H5VL_async_t *     file;
     hid_t              under_fapl_id;
-    task_list_qtype    qtype = REGULAR;
+    task_type_t    qtype = REGULAR;
     void *             under;
 
 #ifdef ENABLE_ASYNC_LOGGING
@@ -24575,7 +23778,7 @@ H5VL_async_file_get(void *file, H5VL_file_get_args_t *args, hid_t dxpl_id, void 
 {
     H5VL_async_t *  o = (H5VL_async_t *)file;
     herr_t          ret_value;
-    task_list_qtype qtype = ISOLATED;
+    task_type_t qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL FILE Get\n");
@@ -24613,7 +23816,7 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_args_t *args, hid_t dxpl
 {
     H5VL_async_t *  o = (H5VL_async_t *)file;
     herr_t          ret_value;
-    task_list_qtype qtype = ISOLATED;
+    task_type_t qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL FILE Specific\n");
@@ -24714,7 +23917,7 @@ H5VL_async_file_optional(void *file, H5VL_optional_args_t *args, hid_t dxpl_id, 
 {
     H5VL_async_t *  o = (H5VL_async_t *)file;
     herr_t          ret_value;
-    task_list_qtype qtype = REGULAR;
+    task_type_t qtype = REGULAR;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL File Optional\n");
@@ -24773,7 +23976,7 @@ H5VL_async_file_close(void *file, hid_t dxpl_id, void **req)
     H5VL_async_t *  o = (H5VL_async_t *)file;
     herr_t          ret_value;
     hbool_t         is_term;
-    task_list_qtype qtype = REGULAR;
+    task_type_t qtype = REGULAR;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL FILE Close\n");
@@ -24910,7 +24113,7 @@ H5VL_async_group_get(void *obj, H5VL_group_get_args_t *args, hid_t dxpl_id, void
 {
     H5VL_async_t *  o = (H5VL_async_t *)obj;
     herr_t          ret_value;
-    task_list_qtype qtype = ISOLATED;
+    task_type_t qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL GROUP Get\n");
@@ -24953,7 +24156,7 @@ H5VL_async_group_specific(void *obj, H5VL_group_specific_args_t *args, hid_t dxp
     H5VL_group_specific_args_t  my_args;
     H5VL_group_specific_args_t *new_args;
     herr_t                      ret_value;
-    task_list_qtype             qtype = ISOLATED;
+    task_type_t             qtype = ISOLATED;
     hid_t                       under_vol_id;
 
 #ifdef ENABLE_ASYNC_LOGGING
@@ -25011,7 +24214,7 @@ H5VL_async_group_optional(void *obj, H5VL_optional_args_t *args, hid_t dxpl_id, 
 {
     H5VL_async_t *  o = (H5VL_async_t *)obj;
     herr_t          ret_value;
-    task_list_qtype qtype = ISOLATED;
+    task_type_t qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL GROUP Optional\n");
@@ -25056,7 +24259,7 @@ H5VL_async_group_close(void *grp, hid_t dxpl_id, void **req)
     H5VL_async_t *  o = (H5VL_async_t *)grp;
     herr_t          ret_value;
     hbool_t         is_term;
-    task_list_qtype qtype  = REGULAR;
+    task_type_t qtype  = REGULAR;
     ABT_unit_id     abt_id = 0;
 
 #ifdef ENABLE_ASYNC_LOGGING
@@ -25111,7 +24314,7 @@ H5VL_async_link_create(H5VL_link_create_args_t *args, void *obj, const H5VL_loc_
 {
     H5VL_async_t *  o = (H5VL_async_t *)obj;
     herr_t          ret_value;
-    task_list_qtype qtype = ISOLATED;
+    task_type_t qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL LINK Create\n");
@@ -25325,7 +24528,7 @@ H5VL_async_link_get(void *obj, const H5VL_loc_params_t *loc_params, H5VL_link_ge
 {
     H5VL_async_t *  o = (H5VL_async_t *)obj;
     herr_t          ret_value;
-    task_list_qtype qtype = ISOLATED;
+    task_type_t qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL LINK Get\n");
@@ -25364,7 +24567,7 @@ H5VL_async_link_specific(void *obj, const H5VL_loc_params_t *loc_params, H5VL_li
 {
     H5VL_async_t *  o = (H5VL_async_t *)obj;
     herr_t          ret_value;
-    task_list_qtype qtype = ISOLATED;
+    task_type_t qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL LINK Specific\n");
@@ -25403,7 +24606,7 @@ H5VL_async_link_optional(void *obj, const H5VL_loc_params_t *loc_params, H5VL_op
 {
     H5VL_async_t *  o = (H5VL_async_t *)obj;
     herr_t          ret_value;
-    task_list_qtype qtype = ISOLATED;
+    task_type_t qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL LINK Optional\n");
@@ -25448,7 +24651,7 @@ H5VL_async_object_open(void *obj, const H5VL_loc_params_t *loc_params, H5I_type_
 {
     H5VL_async_t *  new_obj;
     H5VL_async_t *  o     = (H5VL_async_t *)obj;
-    task_list_qtype qtype = BLOCKING;
+    task_type_t qtype = BLOCKING;
     void *          under;
 
 #ifdef ENABLE_ASYNC_LOGGING
@@ -25496,7 +24699,7 @@ H5VL_async_object_copy(void *src_obj, const H5VL_loc_params_t *src_loc_params, c
     H5VL_async_t *  o_src = (H5VL_async_t *)src_obj;
     H5VL_async_t *  o_dst = (H5VL_async_t *)dst_obj;
     herr_t          ret_value;
-    task_list_qtype qtype = ISOLATED;
+    task_type_t qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL OBJECT Copy\n");
@@ -25538,7 +24741,7 @@ H5VL_async_object_get(void *obj, const H5VL_loc_params_t *loc_params, H5VL_objec
 {
     H5VL_async_t *  o = (H5VL_async_t *)obj;
     herr_t          ret_value;
-    task_list_qtype qtype = ISOLATED;
+    task_type_t qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL OBJECT Get\n");
@@ -25577,7 +24780,7 @@ H5VL_async_object_specific(void *obj, const H5VL_loc_params_t *loc_params, H5VL_
 {
     H5VL_async_t *  o = (H5VL_async_t *)obj;
     herr_t          ret_value;
-    task_list_qtype qtype = ISOLATED;
+    task_type_t qtype = ISOLATED;
     hid_t           under_vol_id;
 
 #ifdef ENABLE_ASYNC_LOGGING
@@ -25623,7 +24826,7 @@ H5VL_async_object_optional(void *obj, const H5VL_loc_params_t *loc_params, H5VL_
 {
     H5VL_async_t *  o = (H5VL_async_t *)obj;
     herr_t          ret_value;
-    task_list_qtype qtype = ISOLATED;
+    task_type_t qtype = ISOLATED;
 
 #ifdef ENABLE_ASYNC_LOGGING
     printf("------- ASYNC VOL OBJECT Optional\n");
@@ -25800,6 +25003,9 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
     }
 
     if (timeout > 0 && task->is_done == 0) {
+        func_log(__func__, "release global lock");
+
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__);
         acquired = false;
@@ -25833,7 +25039,7 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
     }
     else if (timeout == 0) {
         // timeout 0, start push all tasks in queue
-        func_log(__func__, "0 timeout, start push");
+        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__);
         acquired = false;
@@ -25844,6 +25050,7 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
 #endif
         async_instance_g->start_abt_push = true;
 
+        func_log(__func__, "0 timeout, start push");
         if (async_instance_g && NULL != async_instance_g->qhead.queue)
             push_task_to_abt_pool(&async_instance_g->qhead, async_instance_g->pool, __func__);
 
@@ -25905,6 +25112,7 @@ done:
     while (false == acquired && mutex_count > 0) {
         if (H5TSmutex_acquire(mutex_count, &acquired) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_acquire\n", __func__);
+        func_log_int1(__func__, "acquired global lock, count", mutex_count);
     }
 
 #ifdef ENABLE_DBG_MSG
@@ -26012,10 +25220,8 @@ H5VL_async_request_cancel(void *obj, H5VL_request_status_t *status)
                 o->my_task->is_done = 1;
                 // Also need to mark file optional as complete
                 if (o->my_task->func == async_file_create_fn || o->my_task->func == async_file_open_fn) {
-                    if (o->my_task->file_list_next &&
-                        o->my_task->file_list_next->func == async_file_optional_fn) {
-                        o->my_task->file_list_next->is_done = 1;
-                    }
+                    if (o->my_task->next->func == async_file_optional_fn)
+                        o->my_task->next->is_done = 1;
                 }
 #ifdef ENABLE_DBG_MSG
                 if (async_instance_g &&
