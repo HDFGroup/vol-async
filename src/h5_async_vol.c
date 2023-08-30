@@ -207,6 +207,7 @@ typedef struct async_instance_t {
     bool     disable_async_dset_get;  /* Disable async execution for dataset get */
     uint64_t delay_time;              /* Sleep time before background thread trying to acquire global mutex */
     int      sleep_time;              /* Sleep time between checking the global mutex attemp count */
+    hid_t         under_vol_id;
 #ifdef ENABLE_WRITE_MEMCPY
     hsize_t max_mem;
     hsize_t used_mem;
@@ -5259,19 +5260,9 @@ async_attr_create_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -5627,15 +5618,6 @@ async_attr_open_fn(void *foo)
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -5976,19 +5958,10 @@ async_attr_read_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -6276,19 +6249,10 @@ async_attr_write_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -6601,19 +6565,10 @@ async_attr_get_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -6897,19 +6852,10 @@ async_attr_specific_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -7211,19 +7157,10 @@ async_attr_optional_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -7504,19 +7441,10 @@ async_attr_close_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -7805,19 +7733,10 @@ async_dataset_create_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -8168,19 +8087,10 @@ async_dataset_open_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -8501,21 +8411,10 @@ async_dataset_read_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                     H5Eprint2(task->err_stack, stderr);
 #endif
-
+		    fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                     goto done;
                 }
 
-                /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-                /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
-                 */
-                /*                       &task->abt_thread) != ABT_SUCCESS) { */
-                /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
-                 */
-                /*             task->func); */
-                /* } */
-
-                /* goto done; */
             }
         }
     }
@@ -9015,19 +8914,10 @@ async_dataset_read_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                    fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -9378,20 +9268,10 @@ async_dataset_write_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                     H5Eprint2(task->err_stack, stderr);
 #endif
-                    goto done;
+                    fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
+		    goto done;
                 }
 
-                /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-                /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
-                 */
-                /*                       &task->abt_thread) != ABT_SUCCESS) { */
-                /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
-                 */
-                /*             task->func); */
-                /* } */
-
-                /* goto done; */
             }
         }
     }
@@ -10045,19 +9925,10 @@ async_dataset_write_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+		fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -10437,19 +10308,10 @@ async_dataset_get_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+		fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -10740,19 +10602,10 @@ async_dataset_specific_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -11039,19 +10892,10 @@ async_dataset_optional_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -11333,19 +11177,10 @@ async_dataset_close_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -11641,19 +11476,10 @@ async_datatype_commit_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -11982,19 +11808,10 @@ async_datatype_open_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -12310,19 +12127,10 @@ async_datatype_get_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -12607,19 +12415,10 @@ async_datatype_specific_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -12902,19 +12701,10 @@ async_datatype_optional_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -13197,19 +12987,10 @@ async_datatype_close_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -13639,6 +13420,9 @@ async_file_create(async_instance_t *aid, const char *name, unsigned flags, hid_t
 
     H5Pget_vol_id(fapl_id, &under_vol_id);
 
+    if (async_instance_g->under_vol_id == 0)
+        async_instance_g->under_vol_id = under_vol_id;
+
     async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_file_create_args_t *)calloc(1, sizeof(async_file_create_args_t))) == NULL) {
@@ -13952,6 +13736,9 @@ async_file_open(task_type_t qtype, async_instance_t *aid, const char *name, unsi
 
     H5Pget_vol_id(fapl_id, &under_vol_id);
 
+    if (async_instance_g->under_vol_id == 0)
+        async_instance_g->under_vol_id = under_vol_id;
+
     async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
     if ((args = (async_file_open_args_t *)calloc(1, sizeof(async_file_open_args_t))) == NULL) {
@@ -14124,19 +13911,10 @@ async_file_get_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -14421,19 +14199,10 @@ async_file_specific_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -14727,19 +14496,10 @@ async_file_optional_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -15030,19 +14790,10 @@ async_file_close_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -15373,19 +15124,10 @@ async_group_create_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -15719,19 +15461,10 @@ async_group_open_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -16047,19 +15780,10 @@ async_group_get_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -16349,19 +16073,10 @@ async_group_specific_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -16643,19 +16358,10 @@ async_group_optional_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -16937,19 +16643,10 @@ async_group_close_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -17253,19 +16950,10 @@ async_link_create_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -17590,20 +17278,8 @@ async_link_copy_fn(void *foo)
     /* #ifdef PRINT_ERROR_STACK */
     /*             H5Eprint2(task->err_stack, stderr); */
     /* #endif */
-
     /*             goto done; */
     /*         } */
-    /* #ifdef ENABLE_DBG_MSG */
-    /*         fprintf(fout_g,"  [      ABT ERROR] %s parent object is NULL, re-insert to pool\n", __func__);
-     */
-    /* #endif */
-    /*         if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
-     * &task->abt_thread) != ABT_SUCCESS) { */
-    /*             fprintf(fout_g,"  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
-     * task->func); */
-    /*         } */
-
-    /*         goto done; */
     /*     } */
     /* } */
 
@@ -17923,16 +17599,6 @@ async_link_move_fn(void *foo)
 
     /*             goto done; */
     /*         } */
-    /* #ifdef ENABLE_DBG_MSG */
-    /*         fprintf(fout_g,"  [      ABT ERROR] %s parent object is NULL, re-insert to pool\n", __func__);
-     */
-    /* #endif */
-    /*         if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
-     * &task->abt_thread) != ABT_SUCCESS) { */
-    /*             fprintf(fout_g,"  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
-     * task->func); */
-    /*         } */
-
     /*         goto done; */
     /*     } */
     /* } */
@@ -18251,19 +17917,10 @@ async_link_get_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -18557,19 +18214,10 @@ async_link_specific_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -18867,19 +18515,10 @@ async_link_optional_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -19174,19 +18813,10 @@ async_object_open_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -19503,16 +19133,6 @@ async_object_copy_fn(void *foo)
 
     /*             goto done; */
     /*         } */
-    /* #ifdef ENABLE_DBG_MSG */
-    /*         fprintf(fout_g,"  [      ABT ERROR] %s parent object is NULL, re-insert to pool\n", __func__);
-     */
-    /* #endif */
-    /*         if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
-     * &task->abt_thread) != ABT_SUCCESS) { */
-    /*             fprintf(fout_g,"  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
-     * task->func); */
-    /*         } */
-
     /*         goto done; */
     /*     } */
     /* } */
@@ -19832,19 +19452,10 @@ async_object_get_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -20142,19 +19753,10 @@ async_object_specific_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
 
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -20457,19 +20059,9 @@ async_object_optional_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
-            /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
-
-            /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
-            /*                       &task->abt_thread) != ABT_SUCCESS) { */
-            /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
-            /*             task->func); */
-            /* } */
-
-            /* goto done; */
         }
     }
 
@@ -22668,7 +22260,7 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_args_t *args, hid_t dxpl
     /* Check for 'is accessible' operation */
     if (args->op_type == H5VL_FILE_IS_ACCESSIBLE || args->op_type == H5VL_FILE_DELETE) {
         H5VL_file_specific_args_t my_args;
-        H5VL_async_info_t *       info;
+        H5VL_async_info_t *       info = NULL;
         hid_t                     new_fapl_id;
 
         /* Don't currently support asynchronous execution of these operations */
@@ -22692,22 +22284,28 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_args_t *args, hid_t dxpl
         } /* end else */
 
         /* Make sure we have info about the underlying VOL to be used */
-        if (!info)
-            return (-1);
+        /* if (!info) */
+        /*     return (-1); */
 
-        /* Set the VOL ID and info for the underlying FAPL */
-        H5Pset_vol(new_fapl_id, info->under_vol_id, info->under_vol_info);
+        if (info) {
+            /* Set the VOL ID and info for the underlying FAPL */
+            H5Pset_vol(new_fapl_id, info->under_vol_id, info->under_vol_info);
 
-        /* Execute operation synchronously */
-        if ((ret_value = H5VLfile_specific(NULL, info->under_vol_id, &my_args, dxpl_id, NULL)) < 0)
-            fprintf(fout_g, "  [ASYNC VOL ERROR] with H5VL_async_file_specific\n");
+            /* Execute operation synchronously */
+            if ((ret_value = H5VLfile_specific(NULL, info->under_vol_id, &my_args, dxpl_id, NULL)) < 0)
+                fprintf(fout_g, "  [ASYNC VOL ERROR] with H5VL_async_file_specific\n");
 
-        /* Close underlying FAPL */
-        H5Pclose(new_fapl_id);
+            /* Close underlying FAPL */
+            H5Pclose(new_fapl_id);
 
-        /* Release copy of our VOL info */
-        if (ret_value == 0)
+            /* Release copy of our VOL info */
             H5VL_async_info_free(info);
+        }
+        else {
+            // Workaround
+            if ((ret_value = H5VLfile_specific(NULL, async_instance_g->under_vol_id, &my_args, dxpl_id, NULL)) < 0)
+                fprintf(fout_g, "  [ASYNC VOL ERROR] with H5VL_async_file_specific\n");
+        }
     } /* end if */
     else {
         hid_t under_vol_id;
