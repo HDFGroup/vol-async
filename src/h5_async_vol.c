@@ -5169,42 +5169,42 @@ free_native_object_optional_args(async_object_optional_args_t *args)
 static herr_t
 block_and_wait_task(async_task_t *async_task, const char *call_func)
 {
-    hbool_t acquired = false;
+    hbool_t      acquired    = false;
     unsigned int mutex_count = 0;
-    herr_t ret_val = 0;
+    herr_t       ret_val     = 0;
 
     func_log(call_func, "task is set to be blocking");
 
     if (async_instance_g->start_abt_push || get_n_running_task_in_queue(async_task, call_func) == 0)
-	push_task_to_abt_pool(&async_instance_g->qhead, async_instance_g->pool, call_func);
+        push_task_to_abt_pool(&async_instance_g->qhead, async_instance_g->pool, call_func);
 
     func_log(call_func, "releasing global lock");
 
     if (H5TSmutex_release(&mutex_count) < 0) {
-	fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", call_func);
+        fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_release failed\n", call_func);
     }
 
     func_log(call_func, "lock released, wait to finish previous task, SYNC MODE now!");
 
     if (ABT_eventual_wait(async_task->eventual, NULL) != ABT_SUCCESS) {
-	fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", call_func);
+        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_eventual_wait\n", call_func);
         ret_val = -1;
     }
 
     func_log(call_func, "finished all previous tasks");
 
     while (acquired == false && mutex_count > 0) {
-	if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
-	    fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", call_func);
+        if (H5TSmutex_acquire(mutex_count, &acquired) < 0) {
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", call_func);
             ret_val = -1;
-	}
+        }
     }
 
     func_log_int1(call_func, "re-acquired global lock, count", mutex_count);
 
     /* Failed background thread execution */
     if (async_task->err_stack != 0) {
-	fprintf(fout_g, "  [ASYNC VOL ERROR] %s HDF5 op failed\n", call_func);
+        fprintf(fout_g, "  [ASYNC VOL ERROR] %s HDF5 op failed\n", call_func);
         ret_val = -1;
     }
 
@@ -8507,9 +8507,11 @@ async_dataset_read_fn(void *foo)
 
                 /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
 
-                /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
+                /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
+                 */
                 /*                       &task->abt_thread) != ABT_SUCCESS) { */
-                /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
+                /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                 */
                 /*             task->func); */
                 /* } */
 
@@ -9381,9 +9383,11 @@ async_dataset_write_fn(void *foo)
 
                 /* func_log(__func__, "parent object is NULL, re-insert to pool"); */
 
-                /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL, */
+                /* if (ABT_thread_create(*task->async_obj->pool_ptr, task->func, task, ABT_THREAD_ATTR_NULL,
+                 */
                 /*                       &task->abt_thread) != ABT_SUCCESS) { */
-                /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__, */
+                /*     fprintf(fout_g, "  [      ABT ERROR] %s ABT_thread_create failed for %p\n", __func__,
+                 */
                 /*             task->func); */
                 /* } */
 
