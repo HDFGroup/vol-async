@@ -207,7 +207,7 @@ typedef struct async_instance_t {
     bool     disable_async_dset_get;  /* Disable async execution for dataset get */
     uint64_t delay_time;              /* Sleep time before background thread trying to acquire global mutex */
     int      sleep_time;              /* Sleep time between checking the global mutex attemp count */
-    hid_t         under_vol_id;
+    hid_t    under_vol_id;
 #ifdef ENABLE_WRITE_MEMCPY
     hsize_t max_mem;
     hsize_t used_mem;
@@ -5617,7 +5617,6 @@ async_attr_open_fn(void *foo)
 
                 goto done;
             }
-
         }
     }
 
@@ -5961,7 +5960,6 @@ async_attr_read_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -6252,7 +6250,6 @@ async_attr_write_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -6568,7 +6565,6 @@ async_attr_get_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -6855,7 +6851,6 @@ async_attr_specific_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -7160,7 +7155,6 @@ async_attr_optional_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -7444,7 +7438,6 @@ async_attr_close_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -7736,7 +7729,6 @@ async_dataset_create_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -8090,7 +8082,6 @@ async_dataset_open_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -8411,10 +8402,9 @@ async_dataset_read_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                     H5Eprint2(task->err_stack, stderr);
 #endif
-		    fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
+                    fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                     goto done;
                 }
-
             }
         }
     }
@@ -8914,10 +8904,9 @@ async_dataset_read_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-                    fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -9269,9 +9258,8 @@ async_dataset_write_fn(void *foo)
                     H5Eprint2(task->err_stack, stderr);
 #endif
                     fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
-		    goto done;
+                    goto done;
                 }
-
             }
         }
     }
@@ -9925,10 +9913,9 @@ async_dataset_write_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-		fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -10308,10 +10295,9 @@ async_dataset_get_fn(void *foo)
 #ifdef PRINT_ERROR_STACK
                 H5Eprint2(task->err_stack, stderr);
 #endif
-		fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
+                fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -10605,7 +10591,6 @@ async_dataset_specific_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -10895,7 +10880,6 @@ async_dataset_optional_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -11180,7 +11164,6 @@ async_dataset_close_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -11479,7 +11462,6 @@ async_datatype_commit_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -11811,7 +11793,6 @@ async_datatype_open_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -12130,7 +12111,6 @@ async_datatype_get_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -12418,7 +12398,6 @@ async_datatype_specific_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -12704,7 +12683,6 @@ async_datatype_optional_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -12990,7 +12968,6 @@ async_datatype_close_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -13914,7 +13891,6 @@ async_file_get_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -14202,7 +14178,6 @@ async_file_specific_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -14499,7 +14474,6 @@ async_file_optional_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -14793,7 +14767,6 @@ async_file_close_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -15127,7 +15100,6 @@ async_group_create_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -15464,7 +15436,6 @@ async_group_open_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -15783,7 +15754,6 @@ async_group_get_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -16076,7 +16046,6 @@ async_group_specific_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -16361,7 +16330,6 @@ async_group_optional_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -16646,7 +16614,6 @@ async_group_close_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -16953,7 +16920,6 @@ async_link_create_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -17920,7 +17886,6 @@ async_link_get_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -18217,7 +18182,6 @@ async_link_specific_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -18518,7 +18482,6 @@ async_link_optional_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -18816,7 +18779,6 @@ async_object_open_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -19455,7 +19417,6 @@ async_object_get_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -19756,7 +19717,6 @@ async_object_specific_fn(void *foo)
                 fprintf(fout_g, "  [      ABT ERROR] %s obj is NULL\n", __func__);
                 goto done;
             }
-
         }
     }
 
@@ -22303,7 +22263,8 @@ H5VL_async_file_specific(void *file, H5VL_file_specific_args_t *args, hid_t dxpl
         }
         else {
             // Workaround
-            if ((ret_value = H5VLfile_specific(NULL, async_instance_g->under_vol_id, &my_args, dxpl_id, NULL)) < 0)
+            if ((ret_value =
+                     H5VLfile_specific(NULL, async_instance_g->under_vol_id, &my_args, dxpl_id, NULL)) < 0)
                 fprintf(fout_g, "  [ASYNC VOL ERROR] with H5VL_async_file_specific\n");
         }
     } /* end if */
