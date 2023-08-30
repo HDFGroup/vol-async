@@ -5720,14 +5720,14 @@ static H5VL_async_t *
 async_attr_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params,
                 const char *name, hid_t aapl_id, hid_t dxpl_id, void **req)
 {
-    H5VL_async_t           *async_obj    = NULL;
-    async_task_t           *async_task   = NULL;
-    async_attr_open_args_t *args         = NULL;
-    async_task_t *          task_elt     = NULL;
-    bool                    lock_parent  = false;
-    bool                    is_blocking  = false;
-    hbool_t                 acquired     = false;
-    unsigned int mutex_count = 1;
+    H5VL_async_t *          async_obj   = NULL;
+    async_task_t *          async_task  = NULL;
+    async_attr_open_args_t *args        = NULL;
+    async_task_t *          task_elt    = NULL;
+    bool                    lock_parent = false;
+    bool                    is_blocking = false;
+    hbool_t                 acquired    = false;
+    unsigned int            mutex_count = 1;
 
     func_enter(__func__, name);
 
@@ -5735,17 +5735,17 @@ async_attr_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc_
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
 
-    // Workaround for an issue in HDF5 library when re-opening a closed attr 
+    // Workaround for an issue in HDF5 library when re-opening a closed attr
     if (ABT_mutex_lock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
         goto error;
     }
 
     // Find the attr create task of the same name under same location
-    DL_FOREACH(async_instance_g->qhead.queue, task_elt) {
-        if (task_elt->func == async_attr_create_fn && task_elt->parent_obj == parent_obj && 
-            strcmp(task_elt->name, name) == 0)
-        {
+    DL_FOREACH(async_instance_g->qhead.queue, task_elt)
+    {
+        if (task_elt->func == async_attr_create_fn && task_elt->parent_obj == parent_obj &&
+            strcmp(task_elt->name, name) == 0) {
             is_blocking = true;
             break;
         }
