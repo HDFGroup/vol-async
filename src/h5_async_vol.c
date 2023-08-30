@@ -9086,9 +9086,11 @@ error:
         for (size_t i = 0; i < count; i++) {
             if (args->mem_type_id && args->mem_type_id[i] > 0)
                 H5Tclose(args->mem_type_id[i]);
-            if (args->mem_space_id && args->mem_space_id[i] > H5S_PLIST && args->mem_space_id[i] < H5S_UNLIMITED)
+            if (args->mem_space_id && args->mem_space_id[i] > H5S_PLIST &&
+                args->mem_space_id[i] < H5S_UNLIMITED)
                 H5Sclose(args->mem_space_id[i]);
-            if (args->file_space_id && args->file_space_id[i] > H5S_PLIST && args->file_space_id[i] < H5S_UNLIMITED)
+            if (args->file_space_id && args->file_space_id[i] > H5S_PLIST &&
+                args->file_space_id[i] < H5S_UNLIMITED)
                 H5Sclose(args->file_space_id[i]);
         }
 
@@ -10110,9 +10112,11 @@ error:
         for (size_t i = 0; i < count; i++) {
             if (args->mem_type_id && args->mem_type_id[i] > 0)
                 H5Tclose(args->mem_type_id[i]);
-            if (args->mem_space_id && args->mem_space_id[i] > H5S_PLIST && args->mem_space_id[i] < H5S_UNLIMITED)
+            if (args->mem_space_id && args->mem_space_id[i] > H5S_PLIST &&
+                args->mem_space_id[i] < H5S_UNLIMITED)
                 H5Sclose(args->mem_space_id[i]);
-            if (args->file_space_id && args->file_space_id[i] > H5S_PLIST && args->file_space_id[i] < H5S_UNLIMITED)
+            if (args->file_space_id && args->file_space_id[i] > H5S_PLIST &&
+                args->file_space_id[i] < H5S_UNLIMITED)
                 H5Sclose(args->file_space_id[i]);
         }
         if (args->plist_id > 0)
