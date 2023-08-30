@@ -2095,10 +2095,10 @@ free_file_async_resources(H5VL_async_t *file, const char *call_func)
     {
         if (task_iter->async_obj && task_iter->async_obj->file_async_obj == file->file_async_obj) {
             func_log_str(__func__, "delete task from queue:", task_iter->name);
-            DL_DELETE(async_instance_g->qhead.queue, task_iter);
             // Defer the file close task free operation to later request free so H5ESwait works even after
             // file is closed
             if (task_iter->func != async_file_close_fn && task_iter->magic == TASK_MAGIC) {
+                DL_DELETE(async_instance_g->qhead.queue, task_iter);
                 free_async_task(task_iter, __func__);
             }
         }
@@ -5310,7 +5310,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
@@ -5697,7 +5697,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
@@ -5720,15 +5720,13 @@ static H5VL_async_t *
 async_attr_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc_params_t *loc_params,
                 const char *name, hid_t aapl_id, hid_t dxpl_id, void **req)
 {
-    H5VL_async_t *async_obj  = NULL;
-    async_task_t *async_task = NULL;
-    /* async_task_t *          task_elt     = NULL; */
-    /* async_task_t *          create_task  = NULL; */
-    async_attr_open_args_t *args        = NULL;
-    bool                    lock_parent = false;
-    bool                    is_blocking = false;
-    hbool_t                 acquired    = false;
-    /* hbool_t                 found_create = false; */
+    H5VL_async_t           *async_obj    = NULL;
+    async_task_t           *async_task   = NULL;
+    async_attr_open_args_t *args         = NULL;
+    async_task_t *          task_elt     = NULL;
+    bool                    lock_parent  = false;
+    bool                    is_blocking  = false;
+    hbool_t                 acquired     = false;
     unsigned int mutex_count = 1;
 
     func_enter(__func__, name);
@@ -5737,45 +5735,26 @@ async_attr_open(async_instance_t *aid, H5VL_async_t *parent_obj, const H5VL_loc_
     assert(parent_obj);
     assert(parent_obj->magic == ASYNC_MAGIC);
 
-    /* // If there is a previous close of the same attr, cancel it and return the already opened obj */
-    /* if (ABT_mutex_lock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) { */
-    /*     fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__); */
-    /*     goto error; */
-    /* } */
+    // Workaround for an issue in HDF5 library when re-opening a closed attr 
+    if (ABT_mutex_lock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) {
+        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_lock\n", __func__);
+        goto error;
+    }
 
-    /* // Find the attr create task of the same name under same location */
-    /* DL_FOREACH(async_instance_g->qhead.queue, task_elt) { */
-    /*     if (task_elt->func == async_attr_create_fn && task_elt->is_done == 1 && */
-    /*         task_elt->parent_obj == parent_obj && strcmp(task_elt->name, name) == 0) */
-    /*     { */
-    /*         create_task = task_elt; */
-    /*         found_create = true; */
-    /*         break; */
-    /*     } */
-    /* } */
+    // Find the attr create task of the same name under same location
+    DL_FOREACH(async_instance_g->qhead.queue, task_elt) {
+        if (task_elt->func == async_attr_create_fn && task_elt->parent_obj == parent_obj && 
+            strcmp(task_elt->name, name) == 0)
+        {
+            is_blocking = true;
+            break;
+        }
+    }
 
-    /* // Find a close task of the same attr that is not finished */
-    /* if (found_create) { */
-    /*     DL_FOREACH(async_instance_g->qhead.queue, task_elt) { */
-    /*         if (task_elt->func == async_attr_close_fn && task_elt->is_done == 0 && */
-    /*             task_elt->in_abt_pool == 0 && task_elt->async_obj == create_task->async_obj) */
-    /*         { */
-    /*             // Mark the close task as done */
-    /*             task_elt->is_done = 1; */
-    /*             async_obj = create_task->async_obj; */
-    /*             break; */
-    /*         } */
-    /*     } */
-    /* } */
-
-    /* if (ABT_mutex_unlock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) { */
-    /*     fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__); */
-    /*     goto error; */
-    /* } */
-
-    /* // Early return with already opened attr */
-    /* if (async_obj) */
-    /*     goto done; */
+    if (ABT_mutex_unlock(async_instance_g->qhead.head_mutex) != ABT_SUCCESS) {
+        fprintf(fout_g, "  [ASYNC VOL ERROR] %s with ABT_mutex_unlock\n", __func__);
+        goto error;
+    }
 
     async_instance_g->prev_push_state = async_instance_g->start_abt_push;
 
@@ -6090,7 +6069,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
@@ -6415,7 +6394,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
@@ -6763,7 +6742,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
@@ -7088,7 +7067,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
@@ -7423,7 +7402,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
@@ -7740,7 +7719,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
@@ -8085,7 +8064,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
@@ -8466,7 +8445,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -8845,7 +8824,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -9355,7 +9334,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -9772,7 +9751,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -10442,7 +10421,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -10846,7 +10825,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -11174,7 +11153,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -11498,7 +11477,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -11816,7 +11795,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -12164,7 +12143,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -12526,7 +12505,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -12870,7 +12849,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -13192,7 +13171,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -13512,7 +13491,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -13831,7 +13810,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -14177,7 +14156,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -14841,7 +14820,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -15163,7 +15142,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -15494,7 +15473,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
@@ -15833,7 +15812,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -16204,7 +16183,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -16571,7 +16550,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -16915,7 +16894,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -17242,7 +17221,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -17561,7 +17540,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -17883,7 +17862,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -18231,7 +18210,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -18591,7 +18570,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -18946,7 +18925,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -19297,7 +19276,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -19631,7 +19610,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -19963,7 +19942,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -20298,7 +20277,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -20657,7 +20636,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -21006,7 +20985,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -21340,7 +21319,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -21678,7 +21657,7 @@ done:
     task->in_abt_pool = 0;
     task->is_done     = 1;
 
-    remove_task_from_queue(task, __func__);
+    /* remove_task_from_queue(task, __func__); */
 
     func_log(__func__, "release global lock");
 
@@ -25368,6 +25347,7 @@ H5VL_async_request_free(void *obj)
 
     // Free the file close task that is not previously freed
     if (o->my_task->func == async_file_close_fn && o->my_task->is_done) {
+        remove_task_from_queue(o->my_task, __func__);
         free_async_task(o->my_task, __func__);
         H5VL_async_free_obj(o->file_async_obj, __func__);
     }
