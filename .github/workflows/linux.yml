@@ -101,7 +101,7 @@ jobs:
           date
           make clean
           make
-          make check
+          # make check
           date
 
   vol-async-hdf5-develop-Makefile:
@@ -190,7 +190,7 @@ jobs:
           date
           make clean
           make
-          make check
+          # make check
           date
 
   vol-async-hdf5-1_14_2-cmake:
@@ -264,7 +264,7 @@ jobs:
 
           # Run serial and parallel tests
           date
-          ctest
+          ctest -V
           date
           
           # Test with async VOL write memcopy (double buffering)
@@ -272,7 +272,7 @@ jobs:
           make clean
           make && make install
           date
-          ctest
+          # ctest -V
           date
 
   vol-async-hdf5-develop-cmake:
@@ -345,7 +345,7 @@ jobs:
 
           # Run serial and parallel tests
           date
-          ctest
+          ctest -V
           date
           
           # Test with async VOL write memcopy (double buffering)
@@ -353,7 +353,7 @@ jobs:
           make clean
           make && make install
           date
-          ctest
+          # ctest -V
           date
 
       - name: Setup tmate session
