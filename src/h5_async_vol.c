@@ -966,7 +966,7 @@ func_enter(const char *func, const char *name)
 {
 #ifdef ENABLE_DBG_MSG
     const char *type = "ASYNC VOL";
-    if (strstr(func, "_fn"))
+    if (strstr(func, "_fn") || (name && strstr(name, "_fn")))
         type = "      ABT";
     struct timeval now;
     gettimeofday(&now, NULL);
@@ -1848,7 +1848,8 @@ async_waitall(int is_implicit)
 
     while (async_instance_g && async_instance_g->pool && (async_instance_g->nfopen > 0 || size > 0)) {
 
-        ABT_pool_get_size(async_instance_g->pool, &size);
+        ABT_pool_get_total_size(async_instance_g->pool, &size);
+	func_log_int1(__func__, "async_waitall, pool size", size);
         /* printf("H5VLasync_wailall: pool size is %lu\n", size); */
 
         if (size == 0) {
@@ -2074,7 +2075,7 @@ static void async_file_close_fn(void *foo);
  *
  */
 static void
-free_file_async_resources(H5VL_async_t *file, const char *call_func)
+free_file_async_resources_fn(H5VL_async_t *file, const char *call_func)
 {
     async_task_t *task_iter, *tmp;
 
@@ -5200,6 +5201,7 @@ block_and_wait_task(async_task_t *async_task, const char *call_func)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", call_func);
             ret_val = -1;
         }
+	usleep(1000);
     }
 
     func_log_int1(call_func, "re-acquired global lock, count", mutex_count);
@@ -14878,23 +14880,19 @@ done:
 
     /* remove_task_from_queue(task, __func__); */
 
-    func_log(__func__, "release global lock");
-
     if (async_instance_g && NULL != async_instance_g->qhead.queue && async_instance_g->start_abt_push)
         push_task_to_abt_pool(&async_instance_g->qhead, *pool_ptr, __func__);
 
     // Free all the resources allocated for this file, e.g. tasks
-    /* if (task->task_mutex) { */
-    /*     ABT_mutex_lock(task->task_mutex); */
-    free_file_async_resources(task->async_obj, __func__);
-    /* ABT_mutex_unlock(task->task_mutex); */
-    /* } */
+    free_file_async_resources_fn(task->async_obj, __func__);
 
     func_log(__func__, "file async resources freed");
 
     if (acquired == true && H5TSmutex_release(&mutex_count) < 0) {
         fprintf(fout_g, "  [      ABT ERROR] %s H5TSmutex_release failed\n", __func__);
     }
+    func_log(__func__, "released global lock");
+
 #ifdef ENABLE_TIMING
     task->end_time = clock();
 #endif
@@ -15038,15 +15036,15 @@ async_file_close(task_type_t qtype, async_instance_t *aid, H5VL_async_t *parent_
     lock_parent = false;
 
     if (aid->ex_delay == false && !async_instance_g->pause) {
+        aid->start_abt_push = true;
         if (get_n_running_task_in_queue(async_task, __func__) == 0)
             push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
-        aid->start_abt_push = true;
     }
     else {
         if (aid->ex_fclose) {
+            aid->start_abt_push = true;
             if (get_n_running_task_in_queue(async_task, __func__) == 0)
                 push_task_to_abt_pool(&aid->qhead, aid->pool, __func__);
-            aid->start_abt_push = true;
         }
     }
 
