@@ -2534,7 +2534,7 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool, const char *call_func
         // Can push the current task to execution
         if (task_elt && task_elt->is_done == 0 && task_elt->in_abt_pool == 0) {
             ntask = get_n_running_task_in_queue_nolock(task_elt, __func__);
-            if (ntask > 1) {
+            if (ntask > 0) {
                 func_log_int1(__func__, "skipping create thread, ntask in pool", ntask);
                 ret_val = -1;
                 goto done;
