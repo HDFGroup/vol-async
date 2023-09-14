@@ -1849,7 +1849,7 @@ async_waitall(int is_implicit)
     while (async_instance_g && async_instance_g->pool && (async_instance_g->nfopen > 0 || size > 0)) {
 
         ABT_pool_get_total_size(async_instance_g->pool, &size);
-	func_log_int1(__func__, "async_waitall, pool size", size);
+        func_log_int1(__func__, "async_waitall, pool size", size);
         /* printf("H5VLasync_wailall: pool size is %lu\n", size); */
 
         if (size == 0) {
@@ -5201,7 +5201,7 @@ block_and_wait_task(async_task_t *async_task, const char *call_func)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s H5TSmutex_acquire failed\n", call_func);
             ret_val = -1;
         }
-	usleep(1000);
+        usleep(1000);
     }
 
     func_log_int1(call_func, "re-acquired global lock, count", mutex_count);
