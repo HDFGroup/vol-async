@@ -23444,8 +23444,6 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
 
     if (timeout > 0 && task->is_done == 0) {
         func_log(__func__, "release global lock");
-
-        func_log(__func__, "release global lock");
         if (H5TSmutex_release(&mutex_count) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__);
         acquired = false;
@@ -23549,11 +23547,18 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
 
 done:
 
+    int tmp_cnt = 0;
     while (false == acquired && mutex_count > 0) {
+        func_log_int1(__func__, "trying to acquire global lock, count", mutex_count);
         if (H5TSmutex_acquire(mutex_count, &acquired) < 0)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_acquire\n", __func__);
-        func_log_int1(__func__, "acquired global lock, count", mutex_count);
+        func_log_uint64_1(__func__, "                      timeout", timeout);
+        func_log_int1(__func__, "                      iter", tmp_cnt);
+        if (tmp_cnt > 0)
+            usleep(1000000);
+        tmp_cnt++;
     }
+    func_log_int1(__func__, "acquired global lock, count", mutex_count);
 
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
