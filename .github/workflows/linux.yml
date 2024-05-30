@@ -23,13 +23,6 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: 'true'
-        
-      - name: Checkout HDF5 latest
-        uses: actions/download-artifact@v4
-        with:
-          repository: HDFGroup/hdf5
-          name: hdf5.tar.gz
-          path: releases/latest/download
       
       - name: Dependencies
         run: |
@@ -45,6 +38,7 @@ jobs:
           
           mkdir $HDF5_DIR
           # Compile HDF5
+          wget https://github.com/HDFGroup/hdf5/releases/latest/download/hdf5.tar.gz
           tar xzf hdf5.tar.gz
           ln -sf hdf5* hdf5
           cd hdf5
