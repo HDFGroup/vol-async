@@ -185,7 +185,7 @@ If any test fails, check ``async_vol_test.err`` in the test directory for the er
 Implicit mode
 =============
 
-This mode is only recommended for testing. The implicit mode allows an application to enable asynchronous I/O through setting the environemental variables :ref:`Set Environmental Variables` and without any major code change. By default, the HDF5 metadata operations are executed asynchronously, and the dataset operations are executed synchronously.
+This mode is only recommended for testing. The implicit mode allows an application to enable asynchronous I/O through setting the environmental variables :ref:`Set Environmental Variables` and without any major code change. By default, the HDF5 metadata operations are executed asynchronously, and the dataset operations are executed synchronously.
 
 .. note::
     Due to the limitations of the implicit mode, we highly recommend applications to use the explicit mode for the best I/O performance.
@@ -270,7 +270,7 @@ Applications may choose to have async VOL to manage the write buffer consistency
     Async vol checks available system memory before its double buffer allocation at runtime, using get_avphys_pages() and sysconf().
     When there is not enough memory for duplicating the current write buffer, it will not allocate memory and force the current write to be synchronous.
 
-With the double buffering enabled, users can also specify how much memory is allowed for async VOL to allocate, with can be set through an environment variable. When the limit is reached during runtime, async VOL will skip the memory allocation and execute the write synchronously, until previous duplicated buffers are freed after their operation compeleted.
+With the double buffering enabled, users can also specify how much memory is allowed for async VOL to allocate, with can be set through an environment variable. When the limit is reached during runtime, async VOL will skip the memory allocation and execute the write synchronously, until previous duplicated buffers are freed after their operation completed.
 
 .. code-block::
 
