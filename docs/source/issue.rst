@@ -3,7 +3,7 @@ Known Issues
 
 Slow performance with metadata heavy workload
 ---------------------------------------------
-Async VOL has additional overhead due to its internal management of asynchronous tasks and the background thread execution. If the application is metadata-intensive, e.g. create thousands of groups, datasets, or attributes, this overhead (~0.001s per operation) becomes comparable to the creation time, and could result in worse performance. There may also be additional overhead due to the *wait and check* mechnism  unless ``HDF5_ASYNC_EXE_*`` is set.
+Async VOL has additional overhead due to its internal management of asynchronous tasks and the background thread execution. If the application is metadata-intensive, e.g. create thousands of groups, datasets, or attributes, this overhead (~0.001s per operation) becomes comparable to the creation time, and could result in worse performance. There may also be additional overhead due to the *wait and check* mechanism  unless ``HDF5_ASYNC_EXE_*`` is set.
 
 ABT_thread_create SegFault
 --------------------------
@@ -20,7 +20,7 @@ When an application has a large number of HDF5 function calls, an error like the
     [ 2] 0 libabt.1.dylib 0x0000000105bdbdc0 ABT_thread_create + 128
     [ 3] 0 libh5async.dylib 0x00000001064bde1f push_task_to_abt_pool + 559
 
-This is due to the default Argobots thread stack size being too small, and can be resovled by setting the environement variable:
+This is due to the default Argobots thread stack size being too small, and can be resolved by setting the environment variable:
 
 .. code-block::
 
@@ -43,7 +43,7 @@ This `patch <https://gist.github.com/houjun/208903d8e6a64e2670754d8ca0f6b548>`_ 
 
 Synchronous H5Dget_space_async
 ------------------------------
-When an application calls H5Dget_space_async, and uses the dataspace ID immediately, a deadlock may occur occationally. Thus we force synchronous execution for H5Dget_space_async. To re-enable its asynchronous execution, set the following environement variable:
+When an application calls H5Dget_space_async, and uses the dataspace ID immediately, a deadlock may occur occasionally. Thus we force synchronous execution for H5Dget_space_async. To re-enable its asynchronous execution, set the following environment variable:
 
 .. code-block::
 

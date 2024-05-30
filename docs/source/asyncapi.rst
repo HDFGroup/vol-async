@@ -1,6 +1,6 @@
 Async VOL APIs
 ==============
-Besides the HDF5 EventSet and asynchronous I/O operation APIs, the async VOL connector also provides convinient functions for finer control of the asynchronous I/O operations. Application developers should be very careful with these APIs as they may cause unexpected behavior when not properly used. The "h5_async_lib.h" header file must be included in the application's source code and the static async VOL library (libasynchdf5.a) must be linked.
+Besides the HDF5 EventSet and asynchronous I/O operation APIs, the async VOL connector also provides convenient functions for finer control of the asynchronous I/O operations. Application developers should be very careful with these APIs as they may cause unexpected behavior when not properly used. The "h5_async_lib.h" header file must be included in the application's source code and the static async VOL library (libasynchdf5.a) must be linked.
 
 
 * Set the ``disable implicit`` flag to the property list, which will force all HDF5 I/O operations to be synchronous, even when the HDF5's explicit ``_async`` APIs are used.
@@ -19,7 +19,7 @@ Besides the HDF5 EventSet and asynchronous I/O operation APIs, the async VOL con
 
 .. code-block::
     // Set the pause flag to property list that pauses all asynchronous I/O operations.
-    // Note: similar to the disable implict flag setting, the operations are only paused when
+    // Note: similar to the disable implicit flag setting, the operations are only paused when
     // the dxpl is used by another HDF5 function call.
     herr_t H5Pset_dxpl_pause(hid_t dxpl, hbool_t is_pause);
 
@@ -47,7 +47,7 @@ Besides the HDF5 EventSet and asynchronous I/O operation APIs, the async VOL con
 .. note::
     The operations are only delayed when the dxpl is used by another HDF5 function call.
 
-* Convinient APIs for other stacked VOL connectors
+* Convenient APIs for other stacked VOL connectors
 
 .. warning:: 
     Following APIs are not intended for application use.

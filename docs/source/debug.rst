@@ -54,7 +54,7 @@ Following is an example of the messages printed out. By default, when running in
     [ASYNC VOL DBG] entering push_task_to_abt_pool
     [ASYNC VOL DBG] leaving push_task_to_abt_pool
     [ASYNC VOL DBG] async_file_create waiting to finish all previous tasks
-    [ASYNC ABT DBG] async_file_create_fn: trying to aquire global lock
+    [ASYNC ABT DBG] async_file_create_fn: trying to acquire global lock
     [ASYNC ABT DBG] async_file_create_fn: global lock acquired
 
 .. note::

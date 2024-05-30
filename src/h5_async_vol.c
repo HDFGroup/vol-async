@@ -64,7 +64,7 @@ works, and perform publicly and display publicly, and to permit others to do so.
 /* Experimental feature to merge dset R/W to multi-dset R/W */
 /* #define ENABLE_MERGE_DSET 1 */
 
-/* Whether to display log messge when callback is invoked */
+/* Whether to display log message when callback is invoked */
 /* (Uncomment to enable) */
 /* #define ENABLE_DBG_MSG 1 */
 /* #define PRINT_ERROR_STACK           1 */
@@ -206,7 +206,7 @@ typedef struct async_instance_t {
     bool     delay_time_env;          /* Flag that indicates the delay time is set by env variable */
     bool     disable_async_dset_get;  /* Disable async execution for dataset get */
     uint64_t delay_time;              /* Sleep time before background thread trying to acquire global mutex */
-    int      sleep_time;              /* Sleep time between checking the global mutex attemp count */
+    int      sleep_time;              /* Sleep time between checking the global mutex attempt count */
     hid_t    under_vol_id;
 #ifdef ENABLE_WRITE_MEMCPY
     hsize_t max_mem;
@@ -1288,7 +1288,7 @@ async_instance_init(int backing_thread_count)
     /*     fprintf(stderr, "  [ASYNC VOL DBG] Init Argobots with %d threads\n", backing_thread_count); */
     /* #endif */
 
-    /* Use mutex to guarentee there is only one Argobots IO instance (singleton) */
+    /* Use mutex to guarantee there is only one Argobots IO instance (singleton) */
     abt_ret = ABT_mutex_lock(async_instance_mutex_g);
     if (abt_ret != ABT_SUCCESS) {
         fprintf(stderr, "  [ASYNC VOL ERROR] with ABT_mutex_lock\n");
@@ -2451,7 +2451,7 @@ push_task_to_abt_pool(async_qhead_t *qhead, ABT_pool pool, const char *call_func
             fprintf(fout_g, "  [ASYNC VOL DBG] checking task func [%p] dependency\n", task_elt->func);
 #endif
         is_dep_done = 1;
-        // Check if depenent tasks are finished
+        // Check if dependent tasks are finished
         for (i = 0; i < task_elt->n_dep; i++) {
 
             /* // If dependent parent failed, do not push to Argobots pool */
@@ -2801,7 +2801,7 @@ H5VL_async_object_wait(H5VL_async_t *async_obj)
         fprintf(fout_g, "  [ASYNC VOL ERROR] %s with H5TSmutex_release\n", __func__);
 
     // Check for all tasks on this dset of a file
-    // TODO: aquire queue mutex?
+    // TODO: acquire queue mutex?
     DL_FOREACH(async_instance_g->qhead.queue, task_iter)
     {
         if (task_iter->async_obj == async_obj) {
@@ -3177,7 +3177,7 @@ H5VL_async_set_delay_time(uint64_t time_us)
  *
  * \details This function is a workaround of avoiding synchronous execution due to the HDF5 global
  *          mutex. If we start the background thread executing the task as they are created by
- *          the application, the backgrond thread will compete with the application thread for
+ *          the application, the background thread will compete with the application thread for
  *          acquiring the HDF5 mutex and may effective make everything synchronous. Thus we
  *          implemented this "spying" approach by checking the HDF5 global mutex counter value,
  *          if the value does not increase within a predefined (short) amount of time, then we
@@ -5241,7 +5241,7 @@ async_attr_create_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -5281,7 +5281,7 @@ async_attr_create_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -5596,7 +5596,7 @@ async_attr_open_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -5636,7 +5636,7 @@ async_attr_open_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -5940,7 +5940,7 @@ async_attr_read_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -5980,7 +5980,7 @@ async_attr_read_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -6231,7 +6231,7 @@ async_attr_write_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -6271,7 +6271,7 @@ async_attr_write_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -6547,7 +6547,7 @@ async_attr_get_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -6587,7 +6587,7 @@ async_attr_get_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -6834,7 +6834,7 @@ async_attr_specific_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -6874,7 +6874,7 @@ async_attr_specific_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     if (args->args.op_type != H5VL_ATTR_ITER) {
@@ -7139,7 +7139,7 @@ async_attr_optional_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -7179,7 +7179,7 @@ async_attr_optional_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -7423,7 +7423,7 @@ async_attr_close_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -7463,7 +7463,7 @@ async_attr_close_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -7715,7 +7715,7 @@ async_dataset_create_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -7755,7 +7755,7 @@ async_dataset_create_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -8069,7 +8069,7 @@ async_dataset_open_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -8109,7 +8109,7 @@ async_dataset_open_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -8390,7 +8390,7 @@ async_dataset_read_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -8432,7 +8432,7 @@ async_dataset_read_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -8894,7 +8894,7 @@ async_dataset_read_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -8934,7 +8934,7 @@ async_dataset_read_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -9247,7 +9247,7 @@ async_dataset_write_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -9289,7 +9289,7 @@ async_dataset_write_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -9702,7 +9702,7 @@ error:
 } // End async_dataset_write > 1.13.3
 
 #ifdef ENABLE_MERGE_DSET
-// Check and merge current write into an exisiting one in queue, must be collective
+// Check and merge current write into an existing one in queue, must be collective
 static herr_t
 async_dataset_write_merge_mdset_col(async_instance_t *aid, size_t count, H5VL_async_t **parent_obj,
                                     hid_t mem_type_id[], hid_t mem_space_id[], hid_t file_space_id[],
@@ -9905,7 +9905,7 @@ async_dataset_write_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -9945,7 +9945,7 @@ async_dataset_write_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -10288,7 +10288,7 @@ async_dataset_get_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -10328,7 +10328,7 @@ async_dataset_get_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -10582,7 +10582,7 @@ async_dataset_specific_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -10622,7 +10622,7 @@ async_dataset_specific_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -10872,7 +10872,7 @@ async_dataset_optional_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -10912,7 +10912,7 @@ async_dataset_optional_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -11157,7 +11157,7 @@ async_dataset_close_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -11197,7 +11197,7 @@ async_dataset_close_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -11456,7 +11456,7 @@ async_datatype_commit_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -11496,7 +11496,7 @@ async_datatype_commit_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -11788,7 +11788,7 @@ async_datatype_open_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -11828,7 +11828,7 @@ async_datatype_open_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -12107,7 +12107,7 @@ async_datatype_get_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -12147,7 +12147,7 @@ async_datatype_get_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -12396,7 +12396,7 @@ async_datatype_specific_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -12436,7 +12436,7 @@ async_datatype_specific_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -12682,7 +12682,7 @@ async_datatype_optional_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -12722,7 +12722,7 @@ async_datatype_optional_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -12968,7 +12968,7 @@ async_datatype_close_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -13008,7 +13008,7 @@ async_datatype_close_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -13261,7 +13261,7 @@ async_file_create_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -13282,7 +13282,7 @@ async_file_create_fn(void *foo)
 
     /* async_instance_g->start_abt_push = false; */
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -13584,7 +13584,7 @@ async_file_open_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -13604,7 +13604,7 @@ async_file_open_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -13894,7 +13894,7 @@ async_file_get_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -13934,7 +13934,7 @@ async_file_get_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -14182,7 +14182,7 @@ async_file_specific_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -14222,7 +14222,7 @@ async_file_specific_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -14479,7 +14479,7 @@ async_file_optional_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -14519,7 +14519,7 @@ async_file_optional_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -14773,7 +14773,7 @@ async_file_close_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -14813,7 +14813,7 @@ async_file_close_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     /* assert(task->async_obj->obj_mutex); */
     /* assert(task->async_obj->magic == ASYNC_MAGIC); */
     while (task->async_obj && task->async_obj->obj_mutex) {
@@ -15103,7 +15103,7 @@ async_group_create_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -15143,7 +15143,7 @@ async_group_create_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -15440,7 +15440,7 @@ async_group_open_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -15480,7 +15480,7 @@ async_group_open_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -15759,7 +15759,7 @@ async_group_get_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -15799,7 +15799,7 @@ async_group_get_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -16052,7 +16052,7 @@ async_group_specific_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -16092,7 +16092,7 @@ async_group_specific_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -16337,7 +16337,7 @@ async_group_optional_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -16377,7 +16377,7 @@ async_group_optional_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -16622,7 +16622,7 @@ async_group_close_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -16664,7 +16664,7 @@ async_group_close_fn(void *foo)
 
     // There may be cases, e.g. with link iteration, that enters group close without a valid async_obj mutex
     if (task->async_obj->obj_mutex) {
-        /* Aquire async obj mutex and set the obj */
+        /* Acquire async obj mutex and set the obj */
         assert(task->async_obj->magic == ASYNC_MAGIC);
         while (1) {
             if (ABT_mutex_trylock(task->async_obj->obj_mutex) == ABT_SUCCESS) {
@@ -16929,7 +16929,7 @@ async_link_create_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -16969,7 +16969,7 @@ async_link_create_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -17255,7 +17255,7 @@ async_link_copy_fn(void *foo)
     assert(task->async_obj);
     assert(task->async_obj->magic == ASYNC_MAGIC);
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -17296,7 +17296,7 @@ async_link_copy_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -17576,7 +17576,7 @@ async_link_move_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -17617,7 +17617,7 @@ async_link_move_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -17898,7 +17898,7 @@ async_link_get_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -17938,7 +17938,7 @@ async_link_get_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -18195,7 +18195,7 @@ async_link_specific_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -18238,7 +18238,7 @@ async_link_specific_fn(void *foo)
     assert(task->async_obj->magic == ASYNC_MAGIC);
     /* No need to lock the object with iteration */
     if (args->args.op_type != H5VL_LINK_ITER) {
-        /* Aquire async obj mutex and set the obj */
+        /* Acquire async obj mutex and set the obj */
         assert(task->async_obj->obj_mutex);
         while (1) {
             if (ABT_mutex_trylock(task->async_obj->obj_mutex) == ABT_SUCCESS) {
@@ -18496,7 +18496,7 @@ async_link_optional_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -18536,7 +18536,7 @@ async_link_optional_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -18794,7 +18794,7 @@ async_object_open_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -18834,7 +18834,7 @@ async_object_open_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -19109,7 +19109,7 @@ async_object_copy_fn(void *foo)
     assert(task->async_obj);
     assert(task->async_obj->magic == ASYNC_MAGIC);
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -19152,7 +19152,7 @@ async_object_copy_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -19434,7 +19434,7 @@ async_object_get_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -19474,7 +19474,7 @@ async_object_get_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     /* assert(task->async_obj->obj_mutex); */
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -19735,7 +19735,7 @@ async_object_specific_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -19775,7 +19775,7 @@ async_object_specific_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     if (args->args.op_type != H5VL_OBJECT_VISIT) {
@@ -20041,7 +20041,7 @@ async_object_optional_fn(void *foo)
 
     pool_ptr = task->async_obj->pool_ptr;
 
-    func_log(__func__, "trying to aquire global lock");
+    func_log(__func__, "trying to acquire global lock");
 
     if ((attempt_count = check_app_acquire_mutex_fn(task, &mutex_count, &acquired)) < 0)
         goto done;
@@ -20081,7 +20081,7 @@ async_object_optional_fn(void *foo)
     }
     is_lib_state_restored = true;
 
-    /* Aquire async obj mutex and set the obj */
+    /* Acquire async obj mutex and set the obj */
     assert(task->async_obj->obj_mutex);
     assert(task->async_obj->magic == ASYNC_MAGIC);
     while (1) {
@@ -20805,7 +20805,7 @@ H5VL_async_is_implicit_disabled(int op_type, const char *func_name)
         func_log(func_name, "implicit async disabled with disable_implicit");
         ret_value = 1;
     }
-    // Need file ops to be implicit to init requried internal data structures
+    // Need file ops to be implicit to init required internal data structures
     if (op_type != FILE_OP && op_type != DSET_RW_OP && async_instance_g->disable_implicit_nondrw) {
         func_log(func_name, "implicit async disabled with HDF5_ASYNC_DISABLE_IMPLICIT_NON_DSET_RW");
         ret_value = 1;
@@ -22031,7 +22031,7 @@ H5VL_async_file_create(const char *name, unsigned flags, hid_t fcpl_id, hid_t fa
         if (H5VLintrospect_get_cap_flags(info->under_vol_info, info->under_vol_id, &cap_flags) < 0)
             return NULL;
 
-        /* Querying for the VFD is only meaninful when using the native VOL connector */
+        /* Querying for the VFD is only meaningful when using the native VOL connector */
         if ((cap_flags & H5VL_CAP_FLAG_NATIVE_FILES) > 0) {
             hid_t vfd_id; /* VFD for file */
 
@@ -22134,7 +22134,7 @@ H5VL_async_file_open(const char *name, unsigned flags, hid_t fapl_id, hid_t dxpl
         if (H5VLintrospect_get_cap_flags(info->under_vol_info, info->under_vol_id, &cap_flags) < 0)
             return NULL;
 
-        /* Querying for the VFD is only meaninful when using the native VOL connector */
+        /* Querying for the VFD is only meaningful when using the native VOL connector */
         if ((cap_flags & H5VL_CAP_FLAG_NATIVE_FILES) > 0) {
             hid_t vfd_id; /* VFD for file */
 
