@@ -15,7 +15,7 @@ Besides the HDF5 EventSet and asynchronous I/O operation APIs, the async VOL con
     herr_t H5Pget_dxpl_disable_async_implicit(hid_t dxpl, hbool_t *is_disable);
 
 .. note::
-    The ``disable implicit`` flag only becomes effective when the corresponding ``fapl`` or ``dxpl`` is actually used by another HDF5 function call, e.g., with ``H5Fopen`` or ``H5Dwrite``. When a new ``fapl`` or ``dxpl`` is used by any HDF5 function without setting the ``disable implict`` flag, e.g., ``H5P_DEFAULT``, it will reset the mode back to asynchronous execution.
+    The ``disable implicit`` flag only becomes effective when the corresponding ``fapl`` or ``dxpl`` is actually used by another HDF5 function call, e.g., with ``H5Fopen`` or ``H5Dwrite``. When a new ``fapl`` or ``dxpl`` is used by any HDF5 function without setting the ``disable implicit`` flag, e.g., ``H5P_DEFAULT``, it will reset the mode back to asynchronous execution.
 
 .. code-block::
     // Set the pause flag to property list that pauses all asynchronous I/O operations.

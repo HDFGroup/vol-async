@@ -2643,7 +2643,7 @@ add_task_to_queue(async_qhead_t *qhead, async_task_t *task, task_type_t task_typ
 
     task->type = task_type;
 
-    // Need to depend on the object's createion (create/open) task to finish
+    // Need to depend on the object's creation (create/open) task to finish
     /* if (task_type == DEPENDENT) { */
 
     /*     // Add unfinished parent's create task as dependent */
