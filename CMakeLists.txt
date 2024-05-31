@@ -44,6 +44,13 @@ if(NOT HDF5_HAVE_THREADSAFE)
   message(FATAL_ERROR "HDF5 library needs to enable threadsafe support.")
 endif()
 
+#Check if HDF5 version is 1.14 or greater
+if(HDF5_FOUND)
+  if (HDF5_VERSION VERSION_LESS "1.14.0")
+     message (FATAL_ERROR "HDF5 ${HDF5_VERSION}: required HDF5 is at least 1.14 ")
+  endif ()
+endif ()
+
 set(HDF5_VOL_ASYNC_PACKAGE "hdf5_vol_async")
 set(HDF5_VOL_ASYNC_PACKAGE_NAME "HDF5_VOL_ASYNC")
 set(HDF5_VOL_ASYNC_PACKAGE_DESCRIPTION "HDF5 Asynchronous I/O VOL connector")
