@@ -8,7 +8,7 @@ set (CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 find_package(MPI REQUIRED)
 find_package(ABT REQUIRED)
-find_package(HDF5 1.14 REQUIRED COMPONENTS C)
+find_package(HDF5 REQUIRED COMPONENTS C)
 
 include_directories(${MPI_INCLUDE_PATH})
 include_directories(${HDF5_INCLUDE_DIRS})
