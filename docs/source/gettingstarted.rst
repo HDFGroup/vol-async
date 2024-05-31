@@ -32,7 +32,7 @@ Define the following configuration parameters, which may be used in the instruct
 
 .. code-block::
 
-    git clone --recursive https://github.com/hpc-io/vol-async.git
+    git clone --recursive https://github.com/HDFGroup/vol-async.git
 
 2. Download the HDF5 source code
 
