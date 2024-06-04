@@ -34,15 +34,21 @@ endif()
 
 include(CheckSymbolExists)
 list(APPEND CMAKE_REQUIRED_INCLUDES ${HDF5_INCLUDE_DIRS})
-check_symbol_exists(H5_HAVE_PARALLEL "H5pubconf.h" HDF5_HAVE_PARALLEL)
-if(NOT HDF5_HAVE_PARALLEL)
+if(NOT HDF5_IS_PARALLEL)
   message(FATAL_ERROR "HDF5 library needs to enable parallel support.")
+else()
+  check_symbol_exists(H5_HAVE_PARALLEL "H5pubconf.h" HDF5_HAVE_PARALLEL)
+  if(NOT HDF5_HAVE_PARALLEL)
+    message(FATAL_ERROR "HDF5 library needs to enable parallel support.")
+  endif()
 endif()
 
-check_symbol_exists(H5_HAVE_THREADSAFE "H5pubconf.h" HDF5_HAVE_THREADSAFE)
-if(NOT HDF5_HAVE_THREADSAFE)
-  message(FATAL_ERROR "HDF5 library needs to enable threadsafe support.")
-endif()
+# Comment out until H5_IS_THREADSAFE is added as a CMake variable. Otherwise, 
+# this may fail when fetch content is used in VOL testing with HDF5 actions.
+#check_symbol_exists(H5_HAVE_THREADSAFE "H5pubconf.h" HDF5_HAVE_THREADSAFE)
+#if(NOT HDF5_HAVE_THREADSAFE)
+#  message(FATAL_ERROR "HDF5 library needs to enable threadsafe support.")
+#endif()
 
 # Check if HDF5 version is 1.14 or greater
 if(HDF5_FOUND)
