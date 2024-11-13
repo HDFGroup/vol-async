@@ -99,14 +99,14 @@ works, and perform publicly and display publicly, and to permit others to do so.
 #endif
 
 #if H5_VERSION_GE(2, 0, 0)
-#define FUNC_H5VLOPEN_LIB_CONTEXT H5VLopen_lib_context
-#define FUNC_H5VLCLOSE_LIB_CONTEXT H5VLclose_lib_context
-#define H5VLOPEN_LIB_CONTEXT(CONTEXT) FUNC_H5VLOPEN_LIB_CONTEXT(CONTEXT)
+#define FUNC_H5VLOPEN_LIB_CONTEXT      H5VLopen_lib_context
+#define FUNC_H5VLCLOSE_LIB_CONTEXT     H5VLclose_lib_context
+#define H5VLOPEN_LIB_CONTEXT(CONTEXT)  FUNC_H5VLOPEN_LIB_CONTEXT(CONTEXT)
 #define H5VLCLOSE_LIB_CONTEXT(CONTEXT) FUNC_H5VLCLOSE_LIB_CONTEXT(CONTEXT)
 #else
-#define FUNC_H5VLOPEN_LIB_CONTEXT H5VLstart_lib_state
-#define FUNC_H5VLCLOSE_LIB_CONTEXT H5VLfinish_lib_state
-#define H5VLOPEN_LIB_CONTEXT(CONTEXT) FUNC_H5VLOPEN_LIB_CONTEXT()
+#define FUNC_H5VLOPEN_LIB_CONTEXT      H5VLstart_lib_state
+#define FUNC_H5VLCLOSE_LIB_CONTEXT     H5VLfinish_lib_state
+#define H5VLOPEN_LIB_CONTEXT(CONTEXT)  FUNC_H5VLOPEN_LIB_CONTEXT()
 #define H5VLCLOSE_LIB_CONTEXT(CONTEXT) FUNC_H5VLCLOSE_LIB_CONTEXT()
 #endif
 
@@ -5240,7 +5240,6 @@ async_attr_create_fn(void *foo)
     ABT_pool *                pool_ptr;
     async_task_t *            task = (async_task_t *)foo;
     async_attr_create_args_t *args = (async_attr_create_args_t *)(task->args);
-
 
 #ifdef ENABLE_TIMING
     task->start_time = clock();
