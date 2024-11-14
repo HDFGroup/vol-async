@@ -1,4 +1,13 @@
-name: clang-format Fix
+# NOTE: This action requires write permissions to be set in your GitHub
+#       repo/fork for it to be able to commit changes.
+#
+# This is currently enabled via:
+#
+#   settings > Actions > General > Workflow permissions
+#
+# which you will need to set to "Read and write permissions"
+#
+name: clang-format Commit Changes
 on: 
   workflow_dispatch:
   push:
@@ -6,15 +15,22 @@ on:
       - '**.md'
       - '**.txt'
       - 'docs/**'
+
+permissions:
+  contents: write
+
 jobs:
   formatting-check:
-    name: Formatting Fix
+    name: Commit Format Changes
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, 'skip-ci')"
+    permissions:
+        contents: write # In order to allow EndBug/add-and-commit to commit changes
     steps:
-    - uses: actions/checkout@v4.1.1
-    - name: Run clang-format style check for C programs.
-      uses: DoozyX/clang-format-lint-action@v0.13
+    - uses: actions/checkout@v4.1.7
+
+    - name: Fix C formatting issues detected by clang-format
+      uses: DoozyX/clang-format-lint-action@v0.18.2
       with:
         source: '.'
         extensions: 'c,h,cpp,hpp'
@@ -22,7 +38,8 @@ jobs:
         inplace: True
         style: file
         # exclude: './config '
-    - uses: EndBug/add-and-commit@v9
+
+    - uses: EndBug/add-and-commit@a94899bca583c204427a224a7af87c02f9b325d5 # v9.1.4
       with:
           author_name: github-actions
           author_email: github-actions[bot]@users.noreply.github.com
