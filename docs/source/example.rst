@@ -39,7 +39,7 @@ The H5ESwait is also required before closing an event set, with:
 
 HDF5 Asynchronous I/O API
 -------------------------
-The HDF5-1.13 and later versions provide an asynchronous version of all the HDF5 I/O operations. A complete list of them can be found in the API section. Applications need to switch their existing HDF5 function calls to their asynchronous version, which can be done by adding "_async" to the end of the HDF5 function name and adding an event set ID as the last parameter to the function parameter list. One can also maintain both the original synchronous calls and  asynchronous with a MACRO and decides which to use at compile time, e.g.,:
+The HDF5-1.14 and later versions provide an asynchronous version of all the HDF5 I/O operations. A complete list of them can be found in the API section. Applications need to switch their existing HDF5 function calls to their asynchronous version, which can be done by adding "_async" to the end of the HDF5 function name and adding an event set ID as the last parameter to the function parameter list. One can also maintain both the original synchronous calls and  asynchronous with a MACRO and decides which to use at compile time, e.g.,:
 
 .. code-block::
 

@@ -1,6 +1,6 @@
 HDF5 Async APIs
 ===============
-HDF5-1.13 and later versions added a number of new APIs that allow applications to take advantage of the asynchronous I/O feature provided by the asynchronous I/O VOL connector. They are part of the HDF5 public header, so users only need to include the HDF5 header file (hdf5.h) to use them.
+HDF5-1.14 and later versions added a number of new APIs that allow applications to take advantage of the asynchronous I/O feature provided by the asynchronous I/O VOL connector. They are part of the HDF5 public header, so users only need to include the HDF5 header file (hdf5.h) to use them.
 
 EventSet APIs
 -------------
