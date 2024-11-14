@@ -104,8 +104,8 @@ works, and perform publicly and display publicly, and to permit others to do so.
 #define H5VLOPEN_LIB_CONTEXT(CONTEXT)  FUNC_H5VLOPEN_LIB_CONTEXT(CONTEXT)
 #define H5VLCLOSE_LIB_CONTEXT(CONTEXT) FUNC_H5VLCLOSE_LIB_CONTEXT(CONTEXT)
 #else
-#define FUNC_H5VLOPEN_LIB_CONTEXT   H5VLstart_lib_state
-#define FUNC_H5VLCLOSE_LIB_CONTEXT  H5VLfinish_lib_state
+#define FUNC_H5VLOPEN_LIB_CONTEXT      H5VLstart_lib_state
+#define FUNC_H5VLCLOSE_LIB_CONTEXT     H5VLfinish_lib_state
 #define H5VLOPEN_LIB_CONTEXT(CONTEXT)  FUNC_H5VLOPEN_LIB_CONTEXT()
 #define H5VLCLOSE_LIB_CONTEXT(CONTEXT) FUNC_H5VLCLOSE_LIB_CONTEXT()
 #endif
