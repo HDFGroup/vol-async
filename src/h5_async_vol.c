@@ -156,7 +156,7 @@ typedef struct async_task_t {
     char *                name;
     task_type_t           type;
 
-    struct H5VL_async_t *parent_obj; /* pointer back to the parent async object */
+    struct H5VL_async_t * parent_obj;  /* pointer back to the parent async object */
     struct H5VL_async_t **parent_objs; /* pointer back to the parent async object when multi-dset is used*/
 
     clock_t create_time;
@@ -678,11 +678,11 @@ static herr_t H5VL_async_attr_optional(void *obj, H5VL_optional_args_t *args, hi
 static herr_t H5VL_async_attr_close(void *attr, hid_t dxpl_id, void **req);
 
 /* Dataset callbacks */
-static void *H5VL_async_dataset_create(void *obj, const H5VL_loc_params_t *loc_params, const char *name,
-                                       hid_t lcpl_id, hid_t type_id, hid_t space_id, hid_t dcpl_id,
-                                       hid_t dapl_id, hid_t dxpl_id, void **req);
-static void *H5VL_async_dataset_open(void *obj, const H5VL_loc_params_t *loc_params, const char *name,
-                                     hid_t dapl_id, hid_t dxpl_id, void **req);
+static void * H5VL_async_dataset_create(void *obj, const H5VL_loc_params_t *loc_params, const char *name,
+                                        hid_t lcpl_id, hid_t type_id, hid_t space_id, hid_t dcpl_id,
+                                        hid_t dapl_id, hid_t dxpl_id, void **req);
+static void * H5VL_async_dataset_open(void *obj, const H5VL_loc_params_t *loc_params, const char *name,
+                                      hid_t dapl_id, hid_t dxpl_id, void **req);
 static herr_t H5VL_async_dataset_read(size_t count, void *dset[], hid_t mem_type_id[], hid_t mem_space_id[],
                                       hid_t file_space_id[], hid_t plist_id, void *buf[], void **req);
 static herr_t H5VL_async_dataset_write(size_t count, void *dset[], hid_t mem_type_id[], hid_t mem_space_id[],
