@@ -86,7 +86,6 @@ main(int argc, char *argv[])
     if (print_dbg_msg)
         fprintf(stderr, "H5Dcreate 1 done\n");
 
-#if H5_VERSION_GE(1, 13, 3)
     if (print_dbg_msg)
         fprintf(stderr, "H5Dwrite multi start\n");
     status = H5Dwrite_multi_async(2, dset_ids, mem_type_ids, mspace_id, fspace_id, H5P_DEFAULT,
@@ -133,7 +132,6 @@ main(int argc, char *argv[])
 
     if (ret != -1)
         fprintf(stderr, "Finished verification\n");
-#endif
 
     H5ESclose(es_id);
     H5Sclose(fspace_id[0]);
