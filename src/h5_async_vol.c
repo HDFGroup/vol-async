@@ -103,11 +103,15 @@ works, and perform publicly and display publicly, and to permit others to do so.
 #define FUNC_H5VLCLOSE_LIB_CONTEXT     H5VLclose_lib_context
 #define H5VLOPEN_LIB_CONTEXT(CONTEXT)  FUNC_H5VLOPEN_LIB_CONTEXT(CONTEXT)
 #define H5VLCLOSE_LIB_CONTEXT(CONTEXT) FUNC_H5VLCLOSE_LIB_CONTEXT(CONTEXT)
+#define FUNC_H5VLOPEN_LIB_CONTEXT_STR  "H5VLopen_lib_context"
+#define FUNC_H5VLCLOSE_LIB_CONTEXT_STR "H5VLclose_lib_context"
 #else
 #define FUNC_H5VLOPEN_LIB_CONTEXT      H5VLstart_lib_state
 #define FUNC_H5VLCLOSE_LIB_CONTEXT     H5VLfinish_lib_state
 #define H5VLOPEN_LIB_CONTEXT(CONTEXT)  FUNC_H5VLOPEN_LIB_CONTEXT()
 #define H5VLCLOSE_LIB_CONTEXT(CONTEXT) FUNC_H5VLCLOSE_LIB_CONTEXT()
+#define FUNC_H5VLOPEN_LIB_CONTEXT_STR  "H5VLstart_lib_state"
+#define FUNC_H5VLCLOSE_LIB_CONTEXT_STR "H5VLfinish_lib_state"
 #endif
 
 FILE *fout_g;
@@ -5250,7 +5254,7 @@ async_attr_create_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -5298,7 +5302,7 @@ async_attr_create_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -5605,7 +5609,7 @@ async_attr_open_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -5653,7 +5657,7 @@ async_attr_open_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -5949,7 +5953,7 @@ async_attr_read_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -5993,7 +5997,7 @@ async_attr_read_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -6240,7 +6244,7 @@ async_attr_write_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -6284,7 +6288,7 @@ async_attr_write_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -6556,7 +6560,7 @@ async_attr_get_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -6599,7 +6603,7 @@ async_attr_get_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -6843,7 +6847,7 @@ async_attr_specific_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -6889,7 +6893,7 @@ async_attr_specific_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -7148,7 +7152,7 @@ async_attr_optional_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -7191,7 +7195,7 @@ async_attr_optional_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -7432,7 +7436,7 @@ async_attr_close_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -7475,7 +7479,7 @@ async_attr_close_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -7724,7 +7728,7 @@ async_dataset_create_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -7773,7 +7777,7 @@ async_dataset_create_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -8078,7 +8082,7 @@ async_dataset_open_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -8127,7 +8131,7 @@ async_dataset_open_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -8400,7 +8404,7 @@ async_dataset_read_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -8444,7 +8448,7 @@ async_dataset_read_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -8951,7 +8955,7 @@ async_dataset_write_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -9006,7 +9010,7 @@ async_dataset_write_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -9605,7 +9609,7 @@ async_dataset_get_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -9648,7 +9652,7 @@ async_dataset_get_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -9899,7 +9903,7 @@ async_dataset_specific_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -9942,7 +9946,7 @@ async_dataset_specific_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -10189,7 +10193,7 @@ async_dataset_optional_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -10232,7 +10236,7 @@ async_dataset_optional_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -10474,7 +10478,7 @@ async_dataset_close_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -10517,7 +10521,7 @@ async_dataset_close_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -10773,7 +10777,7 @@ async_datatype_commit_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -10819,7 +10823,7 @@ async_datatype_commit_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -11105,7 +11109,7 @@ async_datatype_open_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -11153,7 +11157,7 @@ async_datatype_open_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -11424,7 +11428,7 @@ async_datatype_get_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -11467,7 +11471,7 @@ async_datatype_get_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -11713,7 +11717,7 @@ async_datatype_specific_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -11756,7 +11760,7 @@ async_datatype_specific_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -11999,7 +12003,7 @@ async_datatype_optional_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -12042,7 +12046,7 @@ async_datatype_optional_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -12285,7 +12289,7 @@ async_datatype_close_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -12328,7 +12332,7 @@ async_datatype_close_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -12557,7 +12561,7 @@ async_file_create_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -12642,7 +12646,7 @@ async_file_create_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -12881,7 +12885,7 @@ async_file_open_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -12969,7 +12973,7 @@ async_file_open_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -13211,7 +13215,7 @@ async_file_get_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -13254,7 +13258,7 @@ async_file_get_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -13499,7 +13503,7 @@ async_file_specific_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -13542,7 +13546,7 @@ async_file_specific_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -13796,7 +13800,7 @@ async_file_optional_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -13839,7 +13843,7 @@ async_file_optional_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -14090,7 +14094,7 @@ async_file_close_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -14145,7 +14149,7 @@ async_file_close_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -14420,7 +14424,7 @@ async_group_create_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -14469,7 +14473,7 @@ async_group_create_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -14757,7 +14761,7 @@ async_group_open_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -14805,7 +14809,7 @@ async_group_open_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -15076,7 +15080,7 @@ async_group_get_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -15119,7 +15123,7 @@ async_group_get_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -15369,7 +15373,7 @@ async_group_specific_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -15412,7 +15416,7 @@ async_group_specific_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -15654,7 +15658,7 @@ async_group_optional_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -15697,7 +15701,7 @@ async_group_optional_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -15939,7 +15943,7 @@ async_group_close_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -15984,7 +15988,7 @@ async_group_close_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -16246,7 +16250,7 @@ async_link_create_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -16293,7 +16297,7 @@ done:
     va_end(args->arguments);
 
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -16573,7 +16577,7 @@ async_link_copy_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -16617,7 +16621,7 @@ async_link_copy_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -16894,7 +16898,7 @@ async_link_move_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -16938,7 +16942,7 @@ async_link_move_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -17215,7 +17219,7 @@ async_link_get_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -17259,7 +17263,7 @@ async_link_get_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -17512,7 +17516,7 @@ async_link_specific_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -17559,7 +17563,7 @@ async_link_specific_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -17813,7 +17817,7 @@ async_link_optional_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -17857,7 +17861,7 @@ async_link_optional_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -18111,7 +18115,7 @@ async_object_open_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -18159,7 +18163,7 @@ async_object_open_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -18429,7 +18433,7 @@ async_object_copy_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -18475,7 +18479,7 @@ async_object_copy_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -18751,7 +18755,7 @@ async_object_get_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -18798,7 +18802,7 @@ async_object_get_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -19052,7 +19056,7 @@ async_object_specific_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -19098,7 +19102,7 @@ async_object_specific_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -19358,7 +19362,7 @@ async_object_optional_fn(void *foo)
     // Restore previous library state
     assert(task->h5_state);
     if (H5VLOPEN_LIB_CONTEXT(&task->h5_context) < 0) {
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLOPEN_LIB_CONTEXT_STR);
         goto done;
     }
     if (H5VLrestore_lib_state(task->h5_state) < 0) {
@@ -19402,7 +19406,7 @@ async_object_optional_fn(void *foo)
 
 done:
     if (is_lib_state_restored && H5VLCLOSE_LIB_CONTEXT(task->h5_context) < 0)
-        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT);
+        fprintf(fout_g, "  [      ABT ERROR] %s %s failed\n", __func__, FUNC_H5VLCLOSE_LIB_CONTEXT_STR);
     if (NULL != task->h5_state && H5VLfree_lib_state(task->h5_state) < 0)
         fprintf(fout_g, "  [      ABT ERROR] %s H5VLfree_lib_state failed\n", __func__);
     task->h5_state = NULL;
@@ -22526,8 +22530,17 @@ H5VL_async_introspect_get_conn_cls(void *obj, H5VL_get_conn_lvl_t lvl, const H5V
         *conn_cls = &H5VL_async_g;
         ret_value = 0;
     } /* end if */
-    else
+    else {
+        if (NULL == o->under_object) {
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s, o->under_object is NULL\n", __func__);
+            H5VL_async_start();
+            H5VL_async_object_wait(o);
+        }
+        if (0 == o->under_vol_id) {
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s, o->under_vol_id is 0\n", __func__);
+        }
         ret_value = H5VLintrospect_get_conn_cls(o->under_object, o->under_vol_id, lvl, conn_cls);
+    }
 
     return ret_value;
 } /* end H5VL_async_introspect_get_conn_cls() */
