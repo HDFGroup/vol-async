@@ -19,7 +19,7 @@ jobs:
 # Testing last version of the HDF5 1.14 series
 ###############################################
 
-  vol-async-hdf5-1.14-Makefile:
+  vol-async-hdf5-1_14-Makefile:
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
@@ -106,7 +106,7 @@ jobs:
           make check
           date
 
-  vol-async-hdf5-1.14-cmake:
+  vol-async-hdf5-1_14-cmake:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
