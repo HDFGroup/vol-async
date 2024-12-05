@@ -23,6 +23,7 @@ jobs:
       matrix:
         language: [ cpp ]
 
+    steps:
       - name: Checkout submodule Argobots
         uses: actions/checkout@v4.1.1
         with:
