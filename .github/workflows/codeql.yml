@@ -70,6 +70,13 @@ jobs:
           cd build
           cmake -DCMAKE_INSTALL_PREFIX=$VOL_DIR -DCMAKE_C_COMPILER=mpicc ..
 
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          config-file: ./.github/codeql.yml
+          queries: +security-and-quality
+
       - name: Build Async VOL
         run: |
           cd build
