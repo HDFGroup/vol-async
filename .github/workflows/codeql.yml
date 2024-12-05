@@ -71,7 +71,7 @@ jobs:
           cmake -DCMAKE_INSTALL_PREFIX=$VOL_DIR -DCMAKE_C_COMPILER=mpicc ..
 
       - name: Build Async VOL
-         run: |
+        run: |
           cd build
           make && make install
           ctest -V .
