@@ -37,7 +37,8 @@ jobs:
       - name: Checkout latest HDF5 release
         run: |
           wget https://github.com/HDFGroup/hdf5/releases/download/hdf5_1.14.5/hdf5-1.14.5.tar.gz
-          tar xzf hdf5-1.14.5.tar.gz hdf5
+          tar xzf hdf5-1.14.5.tar.gz
+          mv hdf5-1.14.5 hdf5
           
       - name: Installation
         run: |
@@ -124,6 +125,7 @@ jobs:
         run: |
           wget https://github.com/HDFGroup/hdf5/releases/download/hdf5_1.14.5/hdf5-1.14.5.tar.gz
           tar xzf hdf5-1.14.5.tar.gz hdf5
+          mv hdf5-1.14.5 hdf5
 
       - name: Installation
         run: |
