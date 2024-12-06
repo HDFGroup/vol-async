@@ -1430,16 +1430,7 @@ async_instance_init(int backing_thread_count)
     if (ASYNC_DBG_MSG_RANK == -1) {
         char fname[128];
         sprintf(fname, "async.log.%d", aid->mpi_rank);
-        int fd = open(fname, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
-        if (fd < 0) {
-            fprintf(fout_g, "  [ASYNC VOL ERROR] with opening %s\n", fname);
-            free(progress_xstreams);
-            free(progress_scheds);
-            free(aid);
-            hg_ret = -1;
-            goto done;
-        }
-        fout_g = fdopen(fd, "w");
+        fout_g = fopen(fname, "w");
         if (fout_g == NULL) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] with opening %s\n", fname);
             close(fd);
