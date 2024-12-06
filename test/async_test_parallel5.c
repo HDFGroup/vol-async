@@ -112,8 +112,7 @@ main(int argc, char *argv[])
         ret = -1;
         goto done;
     }
-
-    offset[0] = my_rank * (DIMLEN / proc_num);
+    offset[0] = (hsize_t)my_rank * (DIMLEN / proc_num);
     offset[1] = 0;
     H5Sselect_hyperslab(fspace_id, H5S_SELECT_SET, offset, NULL, my_size, NULL);
 
