@@ -1432,12 +1432,12 @@ async_instance_init(int backing_thread_count)
         sprintf(fname, "async.log.%d", aid->mpi_rank);
         int fd = open(fname, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
         if (fd < 0) {
-          fprintf(fout_g, "  [ASYNC VOL ERROR] with opening %s\n", fname);
-          free(progress_xstreams);
-          free(progress_scheds);
-          free(aid);
-          hg_ret = -1;
-          goto done;
+            fprintf(fout_g, "  [ASYNC VOL ERROR] with opening %s\n", fname);
+            free(progress_xstreams);
+            free(progress_scheds);
+            free(aid);
+            hg_ret = -1;
+            goto done;
         }
         fout_g = fdopen(fd, "w");
         if (fout_g == NULL) {
@@ -19639,7 +19639,7 @@ H5VL_async_new_obj(void *under_obj, hid_t under_vol_id)
 {
     H5VL_async_t *new_obj;
 
-    new_obj               = (H5VL_async_t *)calloc(1, sizeof(H5VL_async_t));
+    new_obj = (H5VL_async_t *)calloc(1, sizeof(H5VL_async_t));
     if (new_obj == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] with allocation in %s\n", __func__);
         return NULL;
@@ -19916,7 +19916,7 @@ H5VL_async_str_to_info(const char *str, void **_info)
     } /* end else */
 
     /* Allocate new async VOL connector info and set its fields */
-    info                 = (H5VL_async_info_t *)calloc(1, sizeof(H5VL_async_info_t));
+    info = (H5VL_async_info_t *)calloc(1, sizeof(H5VL_async_info_t));
     if (info == NULL) {
         fprintf(fout_g, "  [ASYNC VOL ERROR] with allocation in %s\n", __func__);
         return -1;
