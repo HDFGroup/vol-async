@@ -1,5 +1,15 @@
 query-filters:
   - exclude:
+      id: 3rdparty
+  - exclude:
       id: cpp/toctou-race-condition
   - exclude:
       id: cpp/short-global-name
+  - exclude:
+      # See: https://codeql.github.com/codeql-query-help/cpp/cpp-commented-out-code/ 
+      id: cpp/commented-out-code
+paths:
+ - 'src'
+paths-ignore:
+ - 'test'
+

@@ -1431,6 +1431,14 @@ async_instance_init(int backing_thread_count)
         char fname[128];
         sprintf(fname, "async.log.%d", aid->mpi_rank);
         fout_g = fopen(fname, "w");
+        if (fout_g == NULL) {
+            fprintf(fout_g, "  [ASYNC VOL ERROR] with opening %s\n", fname);
+            free(progress_xstreams);
+            free(progress_scheds);
+            free(aid);
+            hg_ret = -1;
+            goto done;
+        }
     }
 done:
     abt_ret = ABT_mutex_unlock(async_instance_mutex_g);
@@ -19621,7 +19629,11 @@ H5VL_async_new_obj(void *under_obj, hid_t under_vol_id)
 {
     H5VL_async_t *new_obj;
 
-    new_obj               = (H5VL_async_t *)calloc(1, sizeof(H5VL_async_t));
+    new_obj = (H5VL_async_t *)calloc(1, sizeof(H5VL_async_t));
+    if (new_obj == NULL) {
+        fprintf(fout_g, "  [ASYNC VOL ERROR] with allocation in %s\n", __func__);
+        return NULL;
+    }
     new_obj->magic        = ASYNC_MAGIC;
     new_obj->under_object = under_obj;
     new_obj->under_vol_id = under_vol_id;
@@ -19703,6 +19715,10 @@ H5VL_async_info_copy(const void *_info)
 
     /* Allocate new VOL info struct for the async connector */
     new_info = (H5VL_async_info_t *)calloc(1, sizeof(H5VL_async_info_t));
+    if (new_info == NULL) {
+        fprintf(fout_g, "  [ASYNC VOL ERROR] with allocation in %s\n", __func__);
+        return NULL;
+    }
 
     /* Increment reference count on underlying VOL ID, and copy the VOL info */
     new_info->under_vol_id = info->under_vol_id;
@@ -19861,6 +19877,10 @@ H5VL_async_str_to_info(const char *str, void **_info)
 #endif
 
     /* Retrieve the underlying VOL connector value and info */
+    if (sscanf(str, "under_vol=%u;", &under_vol_value) != 1) {
+        fprintf(fout_g, "  [ASYNC VOL ERROR] in %s\n", __func__);
+        return -1; /* Failed to parse the VOL connector input string */
+    }
     sscanf(str, "under_vol=%u;", &under_vol_value);
     under_vol_id = H5VLregister_connector_by_value((H5VL_class_value_t)under_vol_value, H5P_DEFAULT);
     if (strstr(str, "[") && strstr(str, "]")) {
@@ -19886,7 +19906,11 @@ H5VL_async_str_to_info(const char *str, void **_info)
     } /* end else */
 
     /* Allocate new async VOL connector info and set its fields */
-    info                 = (H5VL_async_info_t *)calloc(1, sizeof(H5VL_async_info_t));
+    info = (H5VL_async_info_t *)calloc(1, sizeof(H5VL_async_info_t));
+    if (info == NULL) {
+        fprintf(fout_g, "  [ASYNC VOL ERROR] with allocation in %s\n", __func__);
+        return -1;
+    }
     info->under_vol_id   = under_vol_id;
     info->under_vol_info = under_vol_info;
 
@@ -19944,6 +19968,10 @@ H5VL_async_get_wrap_ctx(const void *obj, void **wrap_ctx)
 
     /* Allocate new VOL object wrapping context for the async connector */
     new_wrap_ctx = (H5VL_async_wrap_ctx_t *)calloc(1, sizeof(H5VL_async_wrap_ctx_t));
+    if (new_wrap_ctx == NULL) {
+        fprintf(fout_g, "  [ASYNC VOL ERROR] with allocation in %s\n", __func__);
+        return -1;
+    }
 
     if (o_async->under_vol_id > 0) {
         under_vol_id = o_async->under_vol_id;

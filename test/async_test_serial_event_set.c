@@ -367,7 +367,6 @@ main(int argc, char *argv[])
             fprintf(stderr, "Error with dset 0 read %d/%d\n", data1_read[i], i);
             ret = -1;
             goto done;
-            break;
         }
     }
     fprintf(stderr, "Finished verification\n");

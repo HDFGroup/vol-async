@@ -73,8 +73,7 @@ main(int argc, char *argv[])
         sleep(sleeptime);
 
         gettimeofday(&t0, 0);
-
-        sprintf(file_name, "%s/test_%d.h5", fpath, ifile);
+        snprintf(file_name, sizeof(file_name), "%s/test_%d.h5", fpath, ifile);
         file_id = H5Fcreate_async(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, async_fapl, es_id);
         if (file_id < 0) {
             fprintf(stderr, "Error with file create\n");
