@@ -36,6 +36,7 @@ works, and perform publicly and display publicly, and to permit others to do so.
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <time.h>
 
 #ifdef ENABLE_WRITE_MEMCPY
@@ -1431,8 +1432,19 @@ async_instance_init(int backing_thread_count)
         char fname[128];
         sprintf(fname, "async.log.%d", aid->mpi_rank);
         fout_g = fopen(fname, "w");
-        if (fout_g == NULL) {
+        int fd = open(fname, O_WRONLY | O_CREAT, S_IWUSR | S_IRUSR | S_IRGRP);
+        if (fd < 0) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] with opening %s\n", fname);
+            free(progress_xstreams);
+            free(progress_scheds);
+            free(aid);
+            hg_ret = -1;
+            goto done;
+        }
+        fout_g = fdopen(fd, "w");
+        if (fout_g == NULL) {
+            fprintf(fout_g, "  [ASYNC VOL ERROR] with fopen for %s\n", fname);
+            close(fd);
             free(progress_xstreams);
             free(progress_scheds);
             free(aid);
@@ -1453,7 +1465,10 @@ done:
         return -1;
     }
 
-    func_log(__func__, "success");
+    if(hg_ret == -1)
+      func_log(__func__, "failed");
+    else
+      func_log(__func__, "success");
 
     return hg_ret;
 } // End async_instance_init
@@ -20024,7 +20039,12 @@ H5VL_async_wrap_object(void *obj, H5I_type_t obj_type, void *_wrap_ctx)
     /* Wrap the object with the underlying VOL */
     under = H5VLwrap_object(obj, obj_type, wrap_ctx->under_vol_id, wrap_ctx->under_wrap_ctx);
     if (under) {
-        new_obj                 = H5VL_async_new_obj(under, wrap_ctx->under_vol_id);
+        if ((new_obj = H5VL_async_new_obj(under, wrap_ctx->under_vol_id)) == NULL) {
+            fprintf(fout_g, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
+            return NULL;
+        }
+
+
         new_obj->file_async_obj = wrap_ctx->file_async_obj;
     }
     else
