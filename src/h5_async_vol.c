@@ -1433,7 +1433,6 @@ async_instance_init(int backing_thread_count)
         fout_g = fopen(fname, "w");
         if (fout_g == NULL) {
             fprintf(fout_g, "  [ASYNC VOL ERROR] with opening %s\n", fname);
-            close(fd);
             free(progress_xstreams);
             free(progress_scheds);
             free(aid);
