@@ -1465,10 +1465,10 @@ done:
         return -1;
     }
 
-    if(hg_ret == -1)
-      func_log(__func__, "failed");
+    if (hg_ret == -1)
+        func_log(__func__, "failed");
     else
-      func_log(__func__, "success");
+        func_log(__func__, "success");
 
     return hg_ret;
 } // End async_instance_init
@@ -20043,7 +20043,6 @@ H5VL_async_wrap_object(void *obj, H5I_type_t obj_type, void *_wrap_ctx)
             fprintf(fout_g, "  [ASYNC VOL ERROR] %s with request object calloc\n", __func__);
             return NULL;
         }
-
 
         new_obj->file_async_obj = wrap_ctx->file_async_obj;
     }
