@@ -15,6 +15,9 @@ query-filters:
   - exclude:
       # See: https://codeql.github.com/codeql-query-help/cpp/cpp-irregular-enum-init/
       id: cpp/irregular-enum-init
+  - exclude:
+      # See: https://codeql.github.com/codeql-query-help/cpp/cpp-guarded-free/
+      id: cpp/guarded-free
 
 # Directories to scan for vulnerabilities
 paths:
