@@ -18,6 +18,7 @@ query-filters:
   -exclude:
       # See: https://codeql.github.com/codeql-query-help/cpp/cpp-guarded-free/
       id: cpp/guarded-free
+
 # Directories to scan for vulnerabilities
 paths:
   - src  # Main source directory
