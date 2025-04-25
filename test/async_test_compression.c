@@ -7,7 +7,7 @@
 int main() {
     hid_t fid, dspace, dset, dcpl, es_id;
     hsize_t dims[2];
-    int ret, data[DIM0][DIM1];
+    int ret = 0, data[DIM0][DIM1];
     herr_t  status;
     hbool_t op_failed;
     size_t num_in_progress;
