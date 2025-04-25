@@ -1007,7 +1007,7 @@ func_log(const char *func, const char *name)
 }
 
 static inline void
-func_log_str(const char *func, const char *name, char *str)
+func_log_str(const char *func, const char *name, const char *str)
 {
 #ifdef ENABLE_DBG_MSG
     const char *type = "ASYNC VOL";
@@ -2219,9 +2219,10 @@ get_n_running_task_in_queue_nolock(async_task_t *task, const char *call_func)
     }
 
 #ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] %s, pool size %lu, called by [%s]\n", __func__, pool_size,
-                call_func);
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK)) {
+        func_log_int1(__func__, "pool size", (int)pool_size);
+        func_log_str(__func__, "called by", call_func);
+    }
 #endif
 
     return pool_size;
@@ -2285,9 +2286,10 @@ get_n_running_task_in_queue(async_task_t *task, const char *call_func)
     }
 
 #ifdef ENABLE_DBG_MSG
-    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] %s, pool size %lu, called by [%s]\n", __func__, pool_size,
-                call_func);
+    if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK)) {
+        func_log_int1(__func__, "pool size", (int)pool_size);
+        func_log_str(__func__, "called by", call_func);
+    }
 #endif
 
     return pool_size;
@@ -2346,7 +2348,8 @@ get_n_running_task_in_queue_obj(H5VL_async_t *async_obj, const char *call_func)
         return -1;
     }
 #ifdef ENABLE_DBG_MSG
-    fprintf(fout_g, "  [ASYNC VOL DBG] %s, pool size %lu, called by [%s]\n", __func__, pool_size, call_func);
+    func_log_int1(__func__, "pool size", (int)pool_size);
+    func_log_str(__func__, "called by", call_func);
 #endif
 
     return pool_size;
@@ -2381,7 +2384,7 @@ H5VL_async_task_wait(async_task_t *async_task)
 
 #ifdef ENABLE_DBG_MSG
     if (async_instance_g && (async_instance_g->mpi_rank == ASYNC_DBG_MSG_RANK || -1 == ASYNC_DBG_MSG_RANK))
-        fprintf(fout_g, "  [ASYNC VOL DBG] %s, released %u count\n", __func__, mutex_count);
+        func_log_int1(__func__, "release mutex count", (int)mutex_count);
 #endif
 
     if (async_task->is_done != 1)

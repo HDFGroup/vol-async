@@ -1,13 +1,13 @@
 ifndef HDF5_DIR
-    HDF5_DIR = /global/u1/h/houhun/hdf5/develop_gnu_cmake/install
+    HDF5_DIR = /global/cfs/cdirs/m2621/perlmutter/hdf5/build.1.14.6.async/install
 endif
 
 ifndef ABT_DIR
-    ABT_DIR = /global/u1/h/houhun/cori/argobots/install_gnu
+    ABT_DIR = /global/u1/h/houhun/hdf5vol/vol-async/argobots/install
 endif
 
 ifndef ASYNC_DIR
-    ASYNC_DIR = /global/homes/h/houhun/hdf5vol/vol-async/src
+    ASYNC_DIR = ../src
 endif
 
 STATLIB = libasynchdf5.a
@@ -35,7 +35,7 @@ LDFLAGS = $(DEBUG) -L$(ASYNC_DIR) -L$(ABT_DIR)/$(ABT_LIBDIR) -L$(HDF5_DIR)/$(HDF
 SRC = async_test_serial.c async_test_serial2.c async_test_multifile.c async_test_multifile_env.c async_test_serial_mdset.c \
       async_test_serial_event_set.c async_test_serial_event_set_error_stack.c \
       async_test_parallel.c async_test_parallel2.c async_test_parallel3.c async_test_parallel4.c async_test_parallel5.c \
-      async_test_parallel_merge.c
+      async_test_parallel_merge.c async_test_compression.c
 
 OBJ = $(SRC:.c=.o)
 EXE = $(SRC:.c=.exe)

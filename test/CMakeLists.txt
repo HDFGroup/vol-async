@@ -29,6 +29,7 @@ set(tests
     async_test_serial_event_set
     async_test_serial_event_set_error_stack
     async_test_serial_mdset
+    async_test_compression
 )
 
 if(MPI_FOUND)
