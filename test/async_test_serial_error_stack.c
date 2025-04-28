@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "hdf5.h"
-#include "h5_async_lib.h"
 
 #define DIMLEN 1024
 
@@ -10,24 +9,31 @@ int print_dbg_msg = 1;
 int
 main(int argc, char *argv[])
 {
-    hid_t       file_id, grp_id0, grp_id1, dset1_id, dset0_id, dspace_id, async_dxpl, async_fapl;
+    hid_t       file_id, grp_id0, grp_id1, dset1_id, dset0_id, dspace_id, dxpl, fapl, es_id;
     const char *file_name = "async_test_serial_error_stack.h5";
     const char *grp_name  = "Group";
     int *       data0_write, *data0_read, *data1_write, *data1_read;
     int         i, ret = 0;
     hsize_t     ds_size[2] = {DIMLEN, DIMLEN};
     herr_t      status;
+    hbool_t     op_failed;
+    size_t      num_in_progress;
 
-    async_fapl = H5Pcreate(H5P_FILE_ACCESS);
-    async_dxpl = H5Pcreate(H5P_DATASET_XFER);
+    fapl = H5Pcreate(H5P_FILE_ACCESS);
+    dxpl = H5Pcreate(H5P_DATASET_XFER);
 
-    H5Pset_vol_async(async_fapl);
+    es_id = H5EScreate();
+    if (es_id < 0) {
+        fprintf(stderr, "Error with first event set create\n");
+        ret = -1;
+        goto done;
+    }
 
     if (print_dbg_msg)
         printf("H5Fcreate start\n");
     fflush(stdout);
 
-    file_id = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, async_fapl);
+    file_id = H5Fcreate_async(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, fapl, es_id);
     if (file_id < 0) {
         fprintf(stderr, "Error with file create\n");
         ret = -1;
@@ -40,7 +46,7 @@ main(int argc, char *argv[])
     if (print_dbg_msg)
         printf("H5Gcreate start\n");
     fflush(stdout);
-    grp_id0 = H5Gcreate(file_id, grp_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    grp_id0 = H5Gcreate_async(file_id, grp_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
     if (grp_id0 < 0) {
         fprintf(stderr, "Error with group create\n");
         ret = -1;
@@ -53,7 +59,7 @@ main(int argc, char *argv[])
     if (print_dbg_msg)
         printf("H5Gcreate 2 start (should fail when executed)\n");
     fflush(stdout);
-    grp_id1 = H5Gcreate(file_id, grp_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    grp_id1 = H5Gcreate_async(file_id, grp_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
     if (grp_id1 < 0) {
         fprintf(stderr, "Error with group create\n");
         ret = -1;
@@ -77,7 +83,7 @@ main(int argc, char *argv[])
     if (print_dbg_msg)
         printf("H5Dcreate 0 start\n");
     fflush(stdout);
-    dset0_id = H5Dcreate(grp_id0, "dset0", H5T_NATIVE_INT, dspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    dset0_id = H5Dcreate_async(grp_id0, "dset0", H5T_NATIVE_INT, dspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
     if (dset0_id < 0) {
         fprintf(stderr, "Error with dset0 create\n");
         ret = -1;
@@ -90,7 +96,7 @@ main(int argc, char *argv[])
     if (print_dbg_msg)
         printf("H5Dcreate 1 start (should fail)\n");
     fflush(stdout);
-    dset1_id = H5Dcreate(grp_id1, "dset1", H5T_NATIVE_INT, dspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    dset1_id = H5Dcreate_async(grp_id1, "dset1", H5T_NATIVE_INT, dspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
     if (dset1_id < 0) {
         fprintf(stderr, "Error with dset1 create\n");
         ret = -1;
@@ -103,7 +109,7 @@ main(int argc, char *argv[])
     if (print_dbg_msg)
         printf("H5Dwrite 0 start\n");
     fflush(stdout);
-    status = H5Dwrite(dset0_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, async_dxpl, data0_write);
+    status = H5Dwrite_async(dset0_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl, data0_write, es_id);
     if (status < 0) {
         fprintf(stderr, "Error with dset 0 write\n");
         ret = -1;
@@ -116,7 +122,7 @@ main(int argc, char *argv[])
     if (print_dbg_msg)
         printf("H5Dwrite 1 start (should fail)\n");
     fflush(stdout);
-    status = H5Dwrite(dset1_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, async_dxpl, data1_write);
+    status = H5Dwrite_async(dset1_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl, data1_write, es_id);
     if (status < 0) {
         fprintf(stderr, "Error with dset 1 write\n");
         ret = -1;
@@ -129,7 +135,7 @@ main(int argc, char *argv[])
     if (print_dbg_msg)
         printf("H5Dread 0 start\n");
     fflush(stdout);
-    status = H5Dread(dset0_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, async_dxpl, data0_read);
+    status = H5Dread_async(dset0_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, dxpl, data0_read, es_id);
     if (status < 0) {
         fprintf(stderr, "Error with dset 0 read\n");
         ret = -1;
@@ -140,11 +146,16 @@ main(int argc, char *argv[])
     fflush(stdout);
 
     if (print_dbg_msg)
-        printf("Start H5Dwait\n");
-    fflush(stdout);
-    H5Dwait(dset0_id, H5P_DEFAULT);
+        printf("H5ESwait start\n");
+    status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
+    if (status < 0) {
+        fprintf(stderr, "Error with H5ESwait\n");
+        ret = -1;
+        goto done;
+    }
     if (print_dbg_msg)
-        printf("Done H5Dwait\n");
+        printf("H5ESwait done\n");
+
     fflush(stdout);
     // Verify read data
     for (i = 0; i < DIMLEN * DIMLEN; ++i) {
@@ -156,14 +167,33 @@ main(int argc, char *argv[])
     }
     printf("Finished verification\n");
 
-    H5Pclose(async_fapl);
-    H5Pclose(async_dxpl);
+    H5Pclose(fapl);
+    H5Pclose(dxpl);
     H5Sclose(dspace_id);
-    H5Dclose(dset0_id);
-    H5Dclose(dset1_id);
-    H5Gclose(grp_id0);
-    H5Gclose(grp_id1);
-    H5Fclose(file_id);
+
+    H5Dclose_async(dset0_id, es_id);
+    H5Dclose_async(dset1_id, es_id);
+    H5Gclose_async(grp_id0, es_id);
+    H5Gclose_async(grp_id1, es_id);
+    H5Fclose_async(file_id, es_id);
+
+    if (print_dbg_msg)
+        printf("H5ESwait start\n");
+    status = H5ESwait(es_id, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
+    if (status < 0) {
+        fprintf(stderr, "Error with H5ESwait\n");
+        ret = -1;
+        goto done;
+    }
+    if (print_dbg_msg)
+        printf("H5ESwait done\n");
+
+    status = H5ESclose(es_id);
+    if (status < 0) {
+        fprintf(stderr, "Error with H5ESclose\n");
+        ret = -1;
+        goto done;
+    }
 
 done:
     if (data0_write != NULL)
