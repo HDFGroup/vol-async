@@ -83,7 +83,8 @@ main(int argc, char *argv[])
     if (print_dbg_msg)
         printf("H5Dcreate 0 start\n");
     fflush(stdout);
-    dset0_id = H5Dcreate_async(grp_id0, "dset0", H5T_NATIVE_INT, dspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
+    dset0_id = H5Dcreate_async(grp_id0, "dset0", H5T_NATIVE_INT, dspace_id, H5P_DEFAULT, H5P_DEFAULT,
+                               H5P_DEFAULT, es_id);
     if (dset0_id < 0) {
         fprintf(stderr, "Error with dset0 create\n");
         ret = -1;
@@ -96,7 +97,8 @@ main(int argc, char *argv[])
     if (print_dbg_msg)
         printf("H5Dcreate 1 start (should fail)\n");
     fflush(stdout);
-    dset1_id = H5Dcreate_async(grp_id1, "dset1", H5T_NATIVE_INT, dspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
+    dset1_id = H5Dcreate_async(grp_id1, "dset1", H5T_NATIVE_INT, dspace_id, H5P_DEFAULT, H5P_DEFAULT,
+                               H5P_DEFAULT, es_id);
     if (dset1_id < 0) {
         fprintf(stderr, "Error with dset1 create\n");
         ret = -1;

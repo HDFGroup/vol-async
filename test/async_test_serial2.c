@@ -71,7 +71,8 @@ main(int argc, char *argv[])
     if (print_dbg_msg)
         printf("H5Dcreate 0 start\n");
     fflush(stdout);
-    dset0_id = H5Dcreate_async(grp_id, "dset0", H5T_NATIVE_INT, dspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
+    dset0_id = H5Dcreate_async(grp_id, "dset0", H5T_NATIVE_INT, dspace_id, H5P_DEFAULT, H5P_DEFAULT,
+                               H5P_DEFAULT, es_id);
     if (dset0_id < 0) {
         fprintf(stderr, "Error with dset0 create\n");
         ret = -1;
@@ -85,7 +86,8 @@ main(int argc, char *argv[])
     if (print_dbg_msg)
         printf("H5Dcreate 1 start\n");
     fflush(stdout);
-    dset1_id = H5Dcreate_async(grp_id, "dset1", H5T_NATIVE_INT, dspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT, es_id);
+    dset1_id = H5Dcreate_async(grp_id, "dset1", H5T_NATIVE_INT, dspace_id, H5P_DEFAULT, H5P_DEFAULT,
+                               H5P_DEFAULT, es_id);
     if (dset1_id < 0) {
         fprintf(stderr, "Error with dset1 create\n");
         ret = -1;
@@ -305,7 +307,6 @@ main(int argc, char *argv[])
     }
     printf("Finished verification\n");
 
-
     H5Pclose(fapl);
     H5Pclose(dxpl);
     H5Sclose(dspace_id);
@@ -332,7 +333,6 @@ main(int argc, char *argv[])
         ret = -1;
         goto done;
     }
-
 
 done:
     if (data0_write != NULL)
