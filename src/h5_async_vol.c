@@ -107,12 +107,12 @@ works, and perform publicly and display publicly, and to permit others to do so.
 #define FUNC_H5VLOPEN_LIB_CONTEXT_STR  "H5VLopen_lib_context"
 #define FUNC_H5VLCLOSE_LIB_CONTEXT_STR "H5VLclose_lib_context"
 #else
-#define FUNC_H5VLOPEN_LIB_CONTEXT      H5VLstart_lib_state
-#define FUNC_H5VLCLOSE_LIB_CONTEXT     H5VLfinish_lib_state
+#define FUNC_H5VLOPEN_LIB_CONTEXT      H5VLopen_lib_context
+#define FUNC_H5VLCLOSE_LIB_CONTEXT     H5VLclose_lib_context
 #define H5VLOPEN_LIB_CONTEXT(CONTEXT)  FUNC_H5VLOPEN_LIB_CONTEXT()
 #define H5VLCLOSE_LIB_CONTEXT(CONTEXT) FUNC_H5VLCLOSE_LIB_CONTEXT()
-#define FUNC_H5VLOPEN_LIB_CONTEXT_STR  "H5VLstart_lib_state"
-#define FUNC_H5VLCLOSE_LIB_CONTEXT_STR "H5VLfinish_lib_state"
+#define FUNC_H5VLOPEN_LIB_CONTEXT_STR  "H5VLopen_lib_context"
+#define FUNC_H5VLCLOSE_LIB_CONTEXT_STR "H5VLclose_lib_context"
 #endif
 
 FILE *fout_g;
