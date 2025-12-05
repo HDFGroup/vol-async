@@ -22689,6 +22689,7 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
     unsigned int     mutex_count = 0;
     hbool_t          tmp         = async_instance_g->start_abt_push;
     ABT_pool *       pool_ptr    = NULL;
+    int              tmp_cnt     = 0;
 
     assert(obj);
     assert(status);
@@ -22816,8 +22817,6 @@ H5VL_async_request_wait(void *obj, uint64_t timeout, H5VL_request_status_t *stat
     async_instance_g->start_abt_push = tmp;
 
 done:
-
-    int tmp_cnt = 0;
     while (false == acquired && mutex_count > 0) {
         func_log_int1(__func__, "trying to acquire global lock, count", mutex_count);
         if (H5TSmutex_acquire(mutex_count, &acquired) < 0)
