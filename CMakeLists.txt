@@ -1,17 +1,19 @@
 cmake_minimum_required(VERSION 3.12)
 
-project(HDF5_VOL_ASYNC VERSION 0.0.1 LANGUAGES C)
+project(HDF5_VOL_ASYNC VERSION 1.9.0 LANGUAGES C)
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 
 set (CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-find_package(MPI REQUIRED)
-find_package(ABT REQUIRED)
-find_package(HDF5 REQUIRED COMPONENTS C)
+if (NOT HDF5_VOL_ASYNC_PACKAGE_SOURCE)
+  find_package(MPI REQUIRED)
+  find_package(ABT REQUIRED)
+  find_package(HDF5 REQUIRED COMPONENTS C)
 
-include_directories(${MPI_INCLUDE_PATH})
-include_directories(${HDF5_INCLUDE_DIRS})
+  include_directories(${MPI_INCLUDE_PATH})
+  include_directories(${HDF5_INCLUDE_DIRS})
+endif ()
 
 include(CTest)
 enable_testing()
@@ -32,14 +34,16 @@ if(NOT HDF5_VOL_ASYNC_INSTALL_TEST_DIR)
   set(HDF5_VOL_ASYNC_INSTALL_TEST_DIR ${CMAKE_INSTALL_PREFIX}/test)
 endif()
 
-include(CheckSymbolExists)
-list(APPEND CMAKE_REQUIRED_INCLUDES ${HDF5_INCLUDE_DIRS})
-if(NOT HDF5_IS_PARALLEL)
-  check_symbol_exists(H5_HAVE_PARALLEL "H5pubconf.h" HDF5_HAVE_PARALLEL)
-  if(NOT HDF5_HAVE_PARALLEL)
-    message(FATAL_ERROR "HDF5 library needs to enable parallel support.")
+if (NOT HDF5_VOL_ASYNC_PACKAGE_SOURCE)
+  include(CheckSymbolExists)
+  list(APPEND CMAKE_REQUIRED_INCLUDES ${HDF5_INCLUDE_DIRS})
+  if(NOT HDF5_IS_PARALLEL)
+    check_symbol_exists(H5_HAVE_PARALLEL "H5pubconf.h" HDF5_HAVE_PARALLEL)
+    if(NOT HDF5_HAVE_PARALLEL)
+      message(FATAL_ERROR "HDF5 library needs to enable parallel support.")
+    endif()
   endif()
-endif()
+endif ()
 
 # Comment out until H5_IS_THREADSAFE is added as a CMake variable. Otherwise, 
 # this may fail when fetch content is used in VOL testing with HDF5 actions.
@@ -85,3 +89,47 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src)
 #-----------------------------------------------------------------------------
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/test)
+
+#-----------------------------------------------------------------------------
+# CPack
+#-----------------------------------------------------------------------------
+set (CPACK_PACKAGE_NAME "${HDF5_VOL_ASYNC_PACKAGE_NAME}")
+set (CPACK_PACKAGE_DESCRIPTION_FILE ${HDF5_VOL_ASYNC_SOURCE_DIR}/README.md)
+set (CPACK_RESOURCE_FILE_LICENSE ${HDF5_VOL_ASYNC_SOURCE_DIR}/LICENSE.txt)
+set (CPACK_PACKAGE_DESCRIPTION_SUMMARY "${HDF5_VOL_ASYNC_PACKAGE_DESCRIPTION}")
+set (CPACK_PACKAGE_VENDOR "${HDF5_VOL_ASYNC_PACKAGE_VENDOR}")
+set (CPACK_PACKAGE_VERSION_MAJOR "${PROJECT_VERSION_MAJOR}")
+set (CPACK_PACKAGE_VERSION_MINOR "${PROJECT_VERSION_MINOR}")
+set (CPACK_PACKAGE_VERSION_PATCH "${PROJECT_VERSION_PATCH}")
+set (CPACK_SOURCE_PACKAGE_FILE_NAME ${HDF5_VOL_ASYNC_PACKAGE}-${PROJECT_VERSION})
+set (CPACK_SOURCE_IGNORE_FILES
+  # Files specific to version control
+  "/\\\\.git/"
+  "/\\\\.git$"
+  "/\\\\.gitattributes$"
+  "/\\\\.github/"
+  "/\\\\.gitignore$"
+  "/\\\\.gitmodules$"
+
+  # IDE files
+  "/\\\\.vscode/"
+  "/\\\\.settings/"
+  "/\\\\.autotools$"
+  "/\\\\.autotools$"
+  "/\\\\.project$"
+  "/\\\\.cproject$"
+
+  # Misc
+  "/\\\\.gitlab-ci.yml$"
+
+  # Build
+  "/build/"
+
+  # Temporary files
+  "\\\\.swp$"
+  "\\\\.#"
+  "/#"
+  "~$"
+)
+
+include (CPack)
