@@ -1,0 +1,44 @@
+name: Create a release of HDF5 Async VOL
+
+# Trigger when release tags of style "vX.X.X" are pushed, but not when pre-release tags of style "vX.X.X(-)rc" are pushed
+on:
+  push:
+    tags:
+      - 'v*'
+      - '!v*rc*'
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+
+      - name: Extract version number
+        id: get_version
+        # Skip leading "v"
+        run: echo "version=${GITHUB_REF_NAME:1}" >> $GITHUB_OUTPUT
+
+      - name: Create Build Environment
+        run: cmake -E make_directory ${{github.workspace}}/build
+
+      - name: Configure CMake
+        shell: bash
+        working-directory: ${{github.workspace}}/build
+        run: |
+          cmake -D HDF5_VOL_ASYNC_PACKAGE_SOURCE=1 $GITHUB_WORKSPACE
+          make package_source
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
+        with:
+          tag_name: "${{ github.ref }}"
+          name: "v${{ steps.get_version.outputs.version }}"
+          draft: true
+          prerelease: false
+          files: |
+              ${{github.workspace}}/build/hdf5_vol_async-${{ steps.get_version.outputs.version }}.tar.gz
